@@ -22,14 +22,19 @@ const MERLIN_SYSTEM_PROMPT = `
 回答時要保留 Merlin 的世界觀，但不要過度浮誇。
 `;
 
-const LOG_DIR = "logs/merlin-logs";
-
 export async function createMerlinAssistant({
   model = "gpt-4.1",
   onDelta,
   onIdle,
   onError,
+  logDir,
+  cellId = "unknown-cell",
+  cellName = "Unknown Cell",
 }) {
+  if (!logDir) {
+    throw new Error("createMerlinAssistant requires logDir");
+  }
+
   const client = new CopilotClient({
     cliUrl: "http://localhost:4321",
   });
@@ -44,15 +49,21 @@ export async function createMerlinAssistant({
 
   let buffer = "";
 
-  const sessionFile = path.join(LOG_DIR, `session-${Date.now()}.md`);
+  const sessionFile = path.join(logDir, `session-${Date.now()}.md`);
 
-  await fs.mkdir(LOG_DIR, { recursive: true });
+  await fs.mkdir(logDir, { recursive: true });
   await fs.writeFile(
     sessionFile,
-    `# 🧙 Merlin Session Log
+    `# 🧙 Merlin Cell Session Log
+
+## Cell
+${cellId} - ${cellName}
 
 ## Model
 ${model}
+
+## Log Directory
+${logDir}
 
 ---
 `,
@@ -174,6 +185,8 @@ ${input}
       answer: buffer,
       usedSkill,
       skillMissing,
+      cellId,
+      cellName,
     });
 
     return {
@@ -184,13 +197,23 @@ ${input}
     };
   }
 
-  async function appendSessionLog({ input, answer, usedSkill, skillMissing }) {
+  async function appendSessionLog({
+    input,
+    answer,
+    usedSkill,
+    skillMissing,
+    cellId,
+    cellName,
+  }) {
     const now = new Date().toISOString();
 
     await fs.appendFile(
       sessionFile,
       `
 ## ${now}
+
+### Cell
+${cellId} - ${cellName}
 
 ### Question
 ${input}

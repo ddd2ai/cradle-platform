@@ -1,0 +1,17 @@
+{
+  "id": "cell-002",
+  "name": "cell-002",
+  "model": "gpt-4.1",
+  "status": "idle",
+  "maturity": 0,
+  "createdAt": "2026-05-31T13:06:51.943Z",
+  "updatedAt": "2026-05-31T13:14:21.621Z",
+  "lastStartedAt": "2026-05-31T13:14:21.613Z",
+  "directories": {
+    "root": "cells/cell-002",
+    "logs": "cells/cell-002/logs",
+    "memory": "cells/cell-002/memory",
+    "workspace": "cells/cell-002/workspace",
+    "snapshots": "cells/cell-002/snapshots"
+  }
+}
