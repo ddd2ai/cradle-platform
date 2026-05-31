@@ -3,10 +3,10 @@
   "name": "architect",
   "model": "gpt-4.1",
   "status": "idle",
-  "maturity": 2,
+  "maturity": 3,
   "createdAt": "2026-05-31T14:56:54.350Z",
-  "updatedAt": "2026-05-31T15:04:33.656Z",
-  "lastStartedAt": "2026-05-31T15:03:58.890Z",
+  "updatedAt": "2026-05-31T15:13:26.522Z",
+  "lastStartedAt": "2026-05-31T15:09:51.956Z",
   "directories": {
     "root": "cells/architect",
     "logs": "cells/architect/logs",

@@ -3,10 +3,10 @@
   "name": "builder",
   "model": "gpt-4.1",
   "status": "idle",
-  "maturity": 0,
+  "maturity": 1,
   "createdAt": "2026-05-31T14:56:59.568Z",
-  "updatedAt": "2026-05-31T15:03:58.931Z",
-  "lastStartedAt": "2026-05-31T15:03:58.921Z",
+  "updatedAt": "2026-05-31T15:13:33.587Z",
+  "lastStartedAt": "2026-05-31T15:09:51.980Z",
   "directories": {
     "root": "cells/builder",
     "logs": "cells/builder/logs",

@@ -16,6 +16,8 @@ export class MerlinEngine {
   constructor({ model = "gpt-4.1" } = {}) {
     this.model = model;
     this.cells = new Map();
+    this.inboxes = new Map();
+
     this.MERLIN_ID = "Merlin";
     this.activeCellId = this.MERLIN_ID;
     this.rl = null;
@@ -66,6 +68,7 @@ export class MerlinEngine {
 
     await cell.prepare();
     this.cells.set(id, cell);
+    this.ensureInbox(id);
 
     return cell;
   }
@@ -79,8 +82,27 @@ export class MerlinEngine {
 
     await cell.prepare();
     this.cells.set(id, cell);
+    this.ensureInbox(id);
 
     return cell;
+  }
+
+  ensureInbox(cellId) {
+    if (!this.inboxes.has(cellId)) {
+      this.inboxes.set(cellId, []);
+    }
+  }
+
+  pushMessage({ from, to, content, type = "message" }) {
+    this.ensureInbox(to);
+
+    this.inboxes.get(to).push({
+      from,
+      to,
+      type,
+      content,
+      createdAt: new Date().toISOString(),
+    });
   }
 
   getActiveCell() {
@@ -141,6 +163,7 @@ export class MerlinEngine {
           Cell: id,
           Status: profile?.status ?? "unknown",
           Maturity: profile?.maturity ?? 0,
+          Inbox: this.inboxes.get(id)?.length ?? 0,
         });
       }
 
@@ -209,7 +232,83 @@ Cells     : ${this.cells.size}
 Cell ID   : ${cell.id}
 Cell Name : ${cell.name}
 Model     : ${cell.model}
+Inbox     : ${this.inboxes.get(cell.id)?.length ?? 0}
 `);
+      return;
+    }
+
+    if (input.startsWith("/ask ")) {
+      const args = input.replace("/ask ", "").trim();
+      const firstSpaceIndex = args.indexOf(" ");
+
+      if (firstSpaceIndex === -1) {
+        console.log("Usage: /ask <cell-id> <message>");
+        return;
+      }
+
+      const targetCellId = args.slice(0, firstSpaceIndex).trim();
+      const message = args.slice(firstSpaceIndex + 1).trim();
+
+      const targetCell = this.cells.get(targetCellId);
+
+      if (!targetCell) {
+        console.log(`Cell not found: ${targetCellId}`);
+        return;
+      }
+
+      if (!message) {
+        console.log("Usage: /ask <cell-id> <message>");
+        return;
+      }
+
+      renderAnswerStart();
+      await targetCell.ask(message);
+      return;
+    }
+
+    if (input.startsWith("/broadcast ")) {
+      const message = input.replace("/broadcast ", "").trim();
+
+      if (!message) {
+        console.log("Usage: /broadcast <message>");
+        return;
+      }
+
+      for (const cellId of this.cells.keys()) {
+        this.pushMessage({
+          from: this.activeCellId,
+          to: cellId,
+          type: "broadcast",
+          content: message,
+        });
+      }
+
+      console.log(`Broadcast sent to ${this.cells.size} cells.`);
+      return;
+    }
+
+    if (input.startsWith("/run-all ")) {
+      const task = input.replace("/run-all ", "").trim();
+
+      if (!task) {
+        console.log("Usage: /run-all <task>");
+        return;
+      }
+
+      for (const [id, targetCell] of this.cells) {
+        console.log(`\n========== ${id} ==========`);
+
+        renderAnswerStart();
+
+        await targetCell.ask(`
+你是 ${id}。
+
+請根據你的身份、記憶與能力，執行以下任務：
+
+${task}
+`);
+      }
+
       return;
     }
 
@@ -219,6 +318,60 @@ Model     : ${cell.model}
     }
 
     const cell = this.getActiveCell();
+
+    if (input === "/inbox") {
+      const inbox = this.inboxes.get(cell.id) ?? [];
+
+      if (inbox.length === 0) {
+        console.log("(empty inbox)");
+        return;
+      }
+
+      for (const message of inbox) {
+        console.log(`
+[${message.type}] ${message.createdAt}
+From: ${message.from}
+To  : ${message.to}
+
+${message.content}
+`);
+      }
+
+      return;
+    }
+
+    if (input.startsWith("/send ")) {
+      const args = input.replace("/send ", "").trim();
+      const firstSpaceIndex = args.indexOf(" ");
+
+      if (firstSpaceIndex === -1) {
+        console.log("Usage: /send <cell-id> <message>");
+        return;
+      }
+
+      const targetCellId = args.slice(0, firstSpaceIndex).trim();
+      const message = args.slice(firstSpaceIndex + 1).trim();
+
+      if (!this.cells.has(targetCellId)) {
+        console.log(`Target cell not found: ${targetCellId}`);
+        return;
+      }
+
+      if (!message) {
+        console.log("Usage: /send <cell-id> <message>");
+        return;
+      }
+
+      this.pushMessage({
+        from: cell.id,
+        to: targetCellId,
+        type: "message",
+        content: message,
+      });
+
+      console.log(`Message sent from ${cell.id} to ${targetCellId}`);
+      return;
+    }
 
     if (input === "/memory") {
       console.log(await cell.buildMemoryContext());
@@ -283,13 +436,13 @@ ${await cell.safeReadMemory("history")}
       renderAnswerStart();
 
       const result = await cell.ask(`
-    請根據以下任務產生一份 Markdown 文件內容。
+請根據以下任務產生一份 Markdown 文件內容。
 
-    任務：
-    ${content}
+任務：
+${content}
 
-    請只輸出 Markdown 內容，不要額外解釋。
-    `);
+請只輸出 Markdown 內容，不要額外解釋。
+`);
 
       const outputText = this.cleanMarkdownFence(result?.text ?? result?.answer ?? "");
 
@@ -310,14 +463,13 @@ ${await cell.safeReadMemory("history")}
       try {
         const content = await cell.readWorkspaceFile(fileName);
         console.log(content);
-      } catch (error) {
+      } catch {
         console.log(`Workspace file not found: ${fileName}`);
       }
 
       return;
     }
 
-  
     if (input.startsWith("/revise ")) {
       const args = input.replace("/revise ", "").trim();
       const firstSpaceIndex = args.indexOf(" ");
@@ -347,24 +499,24 @@ ${await cell.safeReadMemory("history")}
       renderAnswerStart();
 
       const result = await cell.ask(`
-    請根據修改任務，重寫以下 Markdown 文件。
+請根據修改任務，重寫以下 Markdown 文件。
 
-    請遵守：
-    - 只輸出修改後的 Markdown 文件內容
-    - 不要輸出說明
-    - 不要包在 \`\`\`markdown code fence 裡
-    - 不要新增目前系統尚未實作的能力
+請遵守：
+- 只輸出修改後的 Markdown 文件內容
+- 不要輸出說明
+- 不要包在 \`\`\`markdown code fence 裡
+- 不要新增目前系統尚未實作的能力
 
-    # 修改任務
+# 修改任務
 
-    ${task}
+${task}
 
-    ---
+---
 
-    # 原始文件
+# 原始文件
 
-    ${originalContent}
-    `);
+${originalContent}
+`);
 
       const outputText = this.cleanMarkdownFence(result?.text ?? result?.answer ?? "");
 
@@ -373,7 +525,6 @@ ${await cell.safeReadMemory("history")}
       console.log(`\nWorkspace file revised: ${fileName}`);
       return;
     }
-
 
     if (input.startsWith("/share ")) {
       const args = input.replace("/share ", "").trim().split(/\s+/);
@@ -384,7 +535,6 @@ ${await cell.safeReadMemory("history")}
       }
 
       const [fileName, targetCellId] = args;
-
       const targetCell = this.cells.get(targetCellId);
 
       if (!targetCell) {
@@ -394,15 +544,9 @@ ${await cell.safeReadMemory("history")}
 
       try {
         const content = await cell.readWorkspaceFile(fileName);
+        await targetCell.writeWorkspaceFile(fileName, content);
 
-        await targetCell.writeWorkspaceFile(
-          fileName,
-          content
-        );
-
-        console.log(
-          `Shared ${fileName} from ${cell.id} to ${targetCellId}`
-        );
+        console.log(`Shared ${fileName} from ${cell.id} to ${targetCellId}`);
       } catch {
         console.log(`Workspace file not found: ${fileName}`);
       }
@@ -419,7 +563,6 @@ ${await cell.safeReadMemory("history")}
       }
 
       const [sourceCellId, fileName] = args;
-
       const sourceCell = this.cells.get(sourceCellId);
 
       if (!sourceCell) {
@@ -428,26 +571,16 @@ ${await cell.safeReadMemory("history")}
       }
 
       try {
-        const content =
-          await sourceCell.readWorkspaceFile(fileName);
+        const content = await sourceCell.readWorkspaceFile(fileName);
+        await cell.writeWorkspaceFile(fileName, content);
 
-        await cell.writeWorkspaceFile(
-          fileName,
-          content
-        );
-
-        console.log(
-          `Imported ${fileName} from ${sourceCellId} to ${cell.id}`
-        );
+        console.log(`Imported ${fileName} from ${sourceCellId} to ${cell.id}`);
       } catch {
-        console.log(
-          `Workspace file not found in ${sourceCellId}: ${fileName}`
-        );
+        console.log(`Workspace file not found in ${sourceCellId}: ${fileName}`);
       }
 
       return;
     }
-
 
     if (input === "/workspace") {
       const files = await cell.listWorkspace();
@@ -514,29 +647,34 @@ ${await cell.safeReadMemory("history")}
 Merlin Engine Commands
 
 Engine:
-  /help                 Show commands
-  /cells                List cells
-  /status               Show cell status
-  /new <cell-id>        Create and switch to a new cell
-  /use <cell-id>        Switch to a cell
-  /merlin               Return to Merlin engine mode
-  /whoami               Show current mode or cell
-  exit                  Shutdown engine
+  /help                    Show commands
+  /cells                   List cells
+  /status                  Show cell status
+  /new <cell-id>           Create and switch to a new cell
+  /use <cell-id>           Switch to a cell
+  /merlin                  Return to Merlin engine mode
+  /whoami                  Show current mode or cell
+  /ask <cell> <message>    Ask a specific cell without switching
+  /broadcast <message>     Send message to all cells
+  /run-all <task>          Ask all cells to execute same task
+  exit                     Shutdown engine
 
 Cell:
-  /memory               Show active memory context
-  /memory full          Show full memory files
-  /thoughts             Show recent thoughts
-  /feed <content>       Append knowledge to current cell
-  /write <task>         Ask current cell to create a workspace markdown file
-  /read <file>          Read a workspace file
-  /revise <file> <task> Revise a workspace file
-  /share <file> <cell>  Share file to another cell
-  /import <cell> <file> Import file from another cell
-  /workspace            List workspace files
-  /snapshot             Create snapshot
-  /snapshots            List snapshots
-  /restore <name>       Restore snapshot
+  /memory                  Show active memory context
+  /memory full             Show full memory files
+  /thoughts                Show recent thoughts
+  /feed <content>          Append knowledge to current cell
+  /send <cell> <message>   Send message to another cell
+  /inbox                   Show messages received by current cell
+  /write <task>            Ask current cell to create a workspace markdown file
+  /read <file>             Read a workspace file
+  /revise <file> <task>    Revise a workspace file
+  /share <file> <cell>     Share file to another cell
+  /import <cell> <file>    Import file from another cell
+  /workspace               List workspace files
+  /snapshot                Create snapshot
+  /snapshots               List snapshots
+  /restore <name>          Restore snapshot
 `);
   }
 
