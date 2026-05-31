@@ -7,7 +7,35 @@
 
 ---
 
-# 基本概念
+# Core Philosophy
+
+Merlin Platform 採用：
+
+```text
+Cell First
+DNA First
+Evolution First
+```
+
+設計哲學。
+
+Cell 建立時不具備固定角色。
+
+Cell 僅擁有：
+
+* DNA
+* Memory
+* Goals
+* Workspace
+* Maturity
+
+角色與專長不是建立時配置。
+
+而是在成長過程中逐步形成。
+
+---
+
+# Basic Concepts
 
 ## Merlin Engine
 
@@ -63,14 +91,28 @@ Merlin Cell 為獨立生命單位。
 
 每個 Cell 擁有：
 
+* DNA
 * Memory
 * Workspace
 * Thoughts
 * Logs
 * Snapshots
+* Goals
+* Maturity
 * AI Assistant
 
 每個 Cell 都可以獨立成長。
+
+Cell 不具備預設職責。
+
+Cell 的專長與身份會隨著：
+
+* 學習
+* 工作
+* 反思
+* 協作
+
+逐步形成。
 
 ---
 
@@ -98,6 +140,26 @@ cells/
 
 ---
 
+# Cell Profile
+
+每個 Cell 擁有自己的 DNA 與生命狀態。
+
+範例：
+
+```json
+{
+  "id": "cell-001",
+  "birthTime": "2026-05-31T22:00:00Z",
+  "status": "idle",
+  "maturity": 1,
+  "dna": [],
+  "goals": [],
+  "knowledgeCount": 0
+}
+```
+
+---
+
 # Prompt Modes
 
 ## Merlin Mode
@@ -115,12 +177,16 @@ cells/
 ```
 
 ```text
-🧬 architect >
+🧬 cell-002 >
 ```
 
 ```text
-🧬 reviewer >
+🧬 cell-003 >
 ```
+
+Cell 初始為中性生命單位。
+
+角色與專長由演化形成。
 
 ---
 
@@ -174,8 +240,24 @@ cells/
 ### Example
 
 ```bash
-/new architect
+/new cell-002
 ```
+
+### Notes
+
+新建立的 Cell 為中性生命體。
+
+```json
+{
+  "id": "cell-002",
+  "maturity": 1,
+  "dna": [],
+  "goals": [],
+  "knowledge": []
+}
+```
+
+不預設任何角色。
 
 ---
 
@@ -186,7 +268,7 @@ cells/
 ### Example
 
 ```bash
-/use architect
+/use cell-002
 ```
 
 ---
@@ -209,12 +291,6 @@ cells/
 
 ### Merlin Mode
 
-```bash
-/whoami
-```
-
-### Output
-
 ```text
 Mode      : Merlin
 Role      : Engine Console
@@ -225,9 +301,10 @@ Cells     : 3
 ### Cell Mode
 
 ```text
-Cell ID   : architect
-Cell Name : architect
+Cell ID   : cell-001
 Model     : gpt-4.1
+Status    : idle
+Maturity  : 3
 ```
 
 ---
@@ -238,23 +315,11 @@ Model     : gpt-4.1
 
 查看目前實際注入 Prompt 的 Memory Context。
 
-### Example
-
-```bash
-/memory
-```
-
 ---
 
 ## /memory full
 
 查看完整 Memory。
-
-### Example
-
-```bash
-/memory full
-```
 
 包含：
 
@@ -289,19 +354,6 @@ Memory updated.
 
 查看最近反思內容。
 
-### Example
-
-```bash
-/thoughts
-```
-
-### Output
-
-```text
-## Learned
-...
-```
-
 ---
 
 # Workspace Commands
@@ -309,12 +361,6 @@ Memory updated.
 ## /workspace
 
 列出 Workspace 檔案。
-
-### Example
-
-```bash
-/workspace
-```
 
 ---
 
@@ -324,23 +370,11 @@ Memory updated.
 
 建立快照。
 
-### Example
-
-```bash
-/snapshot
-```
-
 ---
 
 ## /snapshots
 
 列出快照。
-
-### Example
-
-```bash
-/snapshots
-```
 
 ---
 
@@ -359,12 +393,6 @@ Memory updated.
 ## exit
 
 關閉 Merlin Engine。
-
-### Example
-
-```bash
-exit
-```
 
 ### Output
 
@@ -394,6 +422,8 @@ Reflection
 Knowledge
  ↓
 Thoughts
+ ↓
+DNA Evolution
 ```
 
 ---
@@ -417,28 +447,83 @@ Thoughts
 | Cell Communication | 🚧     |
 | Broadcast          | 🚧     |
 | Clone Cell         | 🚧     |
-| Spawn Role Cell    | 🚧     |
+| DNA Evolution      | 🚧     |
+| Cell Mutation      | 🚧     |
+| Cell Reproduction  | 🚧     |
+
+---
+
+# Cell Evolution Philosophy
+
+生命先於角色。
+
+Cell 建立時：
+
+* 不指定職責
+* 不指定專長
+* 不指定身份
+
+Cell 僅擁有：
+
+* DNA
+* Memory
+* Goals
+* Workspace
+* Maturity
+
+隨著：
+
+* 學習
+* 工作
+* 反思
+* 協作
+
+逐步形成自身特徵。
+
+最終可能演化出：
+
+* 設計能力
+* 研究能力
+* 建構能力
+* 評審能力
+
+但這些能力並非建立時配置。
+
+而是成長過程中的自然結果。
 
 ---
 
 # Future Vision
 
 ```text
-                 Merlin
-                    │
-     ┌──────────────┼──────────────┐
-     ▼              ▼              ▼
- architect       reviewer       tester
-     │              │              │
-     ▼              ▼              ▼
- Memory         Memory         Memory
- Thoughts       Thoughts       Thoughts
- Workspace      Workspace      Workspace
- Snapshot       Snapshot       Snapshot
+                    Merlin
+                       │
+        ┌──────────────┼──────────────┐
+        ▼              ▼              ▼
+     cell-001      cell-002      cell-003
+        │              │              │
+        ▼              ▼              ▼
+      Memory         Memory         Memory
+      Thoughts       Thoughts       Thoughts
+      Workspace      Workspace      Workspace
+      Snapshot       Snapshot       Snapshot
+        │
+        ▼
+   Evolution Layer
+        │
+        ▼
+     DNA Growth
+        │
+        ▼
+ Specialized Traits
 ```
 
 Merlin 負責調度。
 
 Cell 負責成長。
+
+角色不是建立出來的。
+
+角色是演化出來的。
 
 最終形成可自我演化的 Merlin Colony。
