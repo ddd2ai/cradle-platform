@@ -1,0 +1,20 @@
+{
+  "name": "merlin-copilot-sdk",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@github/copilot-sdk": "^0.3.0",
+    "chalk": "^5.6.2",
+    "commander": "^14.0.3",
+    "express": "^5.2.1",
+    "terminal-kit": "^3.1.2"
+  },
+  "type": "module"
+}
