@@ -21,6 +21,7 @@ Merlin Engine 為 Merlin Platform 的核心控制器（Cell Container）。
 * 切換 Cell
 * 管理 Memory
 * 管理 Workspace
+* 管理 Thoughts
 * 管理 Snapshots
 * 調度 Cell
 * 管理生命週期
@@ -64,6 +65,7 @@ Merlin Cell 為獨立生命單位。
 
 * Memory
 * Workspace
+* Thoughts
 * Logs
 * Snapshots
 * AI Assistant
@@ -84,6 +86,9 @@ cells/
 │   │   ├── rules.md
 │   │   ├── knowledge.md
 │   │   └── history.md
+│   ├── thoughts/
+│   │   ├── 20260531-223228.md
+│   │   └── ...
 │   ├── workspace/
 │   └── snapshots/
 │
@@ -121,6 +126,18 @@ cells/
 
 # Commands
 
+## /help
+
+顯示所有指令。
+
+### Example
+
+```bash
+/help
+```
+
+---
+
 ## /cells
 
 列出所有 Cell。
@@ -131,14 +148,6 @@ cells/
 /cells
 ```
 
-### Output
-
-```text
-cell-001
-architect
-reviewer
-```
-
 ---
 
 ## /status
@@ -146,12 +155,6 @@ reviewer
 顯示所有 Cell 狀態。
 
 ### Example
-
-```bash
-/status
-```
-
-### Output
 
 ```text
 ┌────────────┬────────────┬─────────────┐
@@ -174,12 +177,6 @@ reviewer
 /new architect
 ```
 
-### Output
-
-```text
-Created and switched to architect
-```
-
 ---
 
 ## /use
@@ -192,12 +189,6 @@ Created and switched to architect
 /use architect
 ```
 
-### Output
-
-```text
-Switched to architect
-```
-
 ---
 
 ## /merlin
@@ -208,12 +199,6 @@ Switched to architect
 
 ```bash
 /merlin
-```
-
-### Output
-
-```text
-Returned to Merlin
 ```
 
 ---
@@ -251,13 +236,32 @@ Model     : gpt-4.1
 
 ## /memory
 
-查看目前 Cell 記憶。
+查看目前實際注入 Prompt 的 Memory Context。
 
 ### Example
 
 ```bash
 /memory
 ```
+
+---
+
+## /memory full
+
+查看完整 Memory。
+
+### Example
+
+```bash
+/memory full
+```
+
+包含：
+
+* identity.md
+* rules.md
+* knowledge.md
+* history.md
 
 ---
 
@@ -279,6 +283,27 @@ Memory updated.
 
 ---
 
+# Thought Commands
+
+## /thoughts
+
+查看最近反思內容。
+
+### Example
+
+```bash
+/thoughts
+```
+
+### Output
+
+```text
+## Learned
+...
+```
+
+---
+
 # Workspace Commands
 
 ## /workspace
@@ -289,19 +314,6 @@ Memory updated.
 
 ```bash
 /workspace
-```
-
-### Output
-
-```text
-README.md
-notes/design.md
-```
-
-或：
-
-```text
-(empty workspace)
 ```
 
 ---
@@ -318,12 +330,6 @@ notes/design.md
 /snapshot
 ```
 
-### Output
-
-```text
-Snapshot created: snapshot-20260531-215101
-```
-
 ---
 
 ## /snapshots
@@ -336,13 +342,6 @@ Snapshot created: snapshot-20260531-215101
 /snapshots
 ```
 
-### Output
-
-```text
-snapshot-20260531-215101
-snapshot-20260531-220010
-```
-
 ---
 
 ## /restore
@@ -353,12 +352,6 @@ snapshot-20260531-220010
 
 ```bash
 /restore snapshot-20260531-215101
-```
-
-### Output
-
-```text
-Snapshot restored: snapshot-20260531-215101
 ```
 
 ---
@@ -383,8 +376,6 @@ exit
 
 # Conversation Flow
 
-在 Cell Mode 中：
-
 ```text
 User
  ↓
@@ -394,9 +385,15 @@ Active Cell
  ↓
 Memory
  ↓
-Copilot SDK
+AI Assistant
  ↓
 Response
+ ↓
+Reflection
+ ↓
+Knowledge
+ ↓
+Thoughts
 ```
 
 ---
@@ -409,6 +406,8 @@ Response
 | Cell Switching     | ✅      |
 | Memory             | ✅      |
 | Feed Knowledge     | ✅      |
+| Reflection         | ✅      |
+| Thoughts           | ✅      |
 | Workspace          | ✅      |
 | Snapshot           | ✅      |
 | Restore            | ✅      |
@@ -433,6 +432,7 @@ Response
      │              │              │
      ▼              ▼              ▼
  Memory         Memory         Memory
+ Thoughts       Thoughts       Thoughts
  Workspace      Workspace      Workspace
  Snapshot       Snapshot       Snapshot
 ```

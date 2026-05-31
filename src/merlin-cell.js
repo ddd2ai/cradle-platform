@@ -24,6 +24,7 @@ export class MerlinCell {
     this.memoryDir = path.join(this.rootDir, "memory");
     this.workspaceDir = path.join(this.rootDir, "workspace");
     this.snapshotsDir = path.join(this.rootDir, "snapshots");
+    this.thoughtsDir = path.join(this.rootDir, "thoughts");
     this.cellFile = path.join(this.rootDir, "cell.json");
 
     this.memoryFiles = {
@@ -60,7 +61,7 @@ export class MerlinCell {
     await this.updateStatus("running");
 
     try {
-      const memoryContext = await this.readMemoryContext();
+      const memoryContext = await this.buildMemoryContext(input);
 
       const cellInput = `
 # Merlin Cell Context
@@ -68,6 +69,7 @@ export class MerlinCell {
 ## Cell
 - id: ${this.id}
 - name: ${this.name}
+- model: ${this.model}
 
 ## Memory
 
@@ -81,6 +83,7 @@ ${input}
 `;
 
       const result = await this.askWithTimeout(cellInput, 60000);
+      const outputText = result?.text ?? result?.answer ?? "(response streamed)";
 
       await this.appendHistory(`## ${new Date().toISOString()}
 
@@ -88,8 +91,13 @@ ${input}
 ${input}
 
 ### Result
-${result?.text ?? result?.answer ?? "(response streamed)"}
+${outputText}
 `);
+
+      await this.reflect({
+        input,
+        output: outputText,
+      });
 
       if (result.usedSkill) {
         renderSkill(result.usedSkill);
@@ -114,7 +122,10 @@ ${result?.text ?? result?.answer ?? "(response streamed)"}
       this.assistant.ask(input),
       new Promise((_, reject) =>
         setTimeout(
-          () => reject(new Error(`Timeout after ${timeoutMs}ms waiting for AI response`)),
+          () =>
+            reject(
+              new Error(`Timeout after ${timeoutMs}ms waiting for AI response`)
+            ),
           timeoutMs
         )
       ),
@@ -127,6 +138,7 @@ ${result?.text ?? result?.answer ?? "(response streamed)"}
       fs.mkdir(this.memoryDir, { recursive: true }),
       fs.mkdir(this.workspaceDir, { recursive: true }),
       fs.mkdir(this.snapshotsDir, { recursive: true }),
+      fs.mkdir(this.thoughtsDir, { recursive: true }),
     ]);
 
     const now = new Date().toISOString();
@@ -146,6 +158,7 @@ ${result?.text ?? result?.answer ?? "(response streamed)"}
         memory: this.memoryDir,
         workspace: this.workspaceDir,
         snapshots: this.snapshotsDir,
+        thoughts: this.thoughtsDir,
       },
     };
 
@@ -184,7 +197,8 @@ My cell id is ${this.id}.
 - Use Traditional Chinese.
 - Be concise, clear, and useful.
 - Preserve Merlin Platform context.
-- Grow through memory, workspace, and snapshots.
+- Grow through memory, workspace, thoughts, and snapshots.
+- Do not treat history as absolute truth; summarize and refine it into knowledge.
 
 `
     );
@@ -228,7 +242,6 @@ My cell id is ${this.id}.
   async updateStatus(status) {
     try {
       const profile = await this.readCellProfile();
-
       if (!profile) return;
 
       profile.status = status;
@@ -236,14 +249,13 @@ My cell id is ${this.id}.
 
       await this.writeCellProfile(profile);
     } catch {
-      // cell.json 寫入失敗不應該中斷 CLI
+      // cell.json 寫入失敗不應中斷 CLI
     }
   }
 
   async increaseMaturity(amount = 1) {
     try {
       const profile = await this.readCellProfile();
-
       if (!profile) return;
 
       profile.maturity = Number(profile.maturity ?? 0) + amount;
@@ -251,7 +263,7 @@ My cell id is ${this.id}.
 
       await this.writeCellProfile(profile);
     } catch {
-      // maturity 更新失敗不應該中斷 CLI
+      // maturity 更新失敗不應中斷 CLI
     }
   }
 
@@ -259,19 +271,143 @@ My cell id is ${this.id}.
   // Memory
   // =========================
 
+  async buildMemoryContext(input = "") {
+    const identity = await this.safeReadMemory("identity");
+    const rules = await this.safeReadMemory("rules");
+    const knowledge = await this.safeReadMemory("knowledge");
+    const recentHistory = await this.readRecentHistory(8000);
+    const recentThoughts = await this.readRecentThoughts(4000);
+
+    return `
+## Identity
+
+${identity}
+
+---
+
+## Rules
+
+${rules}
+
+---
+
+## Knowledge
+
+${knowledge}
+
+---
+
+## Recent History
+
+${recentHistory}
+
+---
+
+## Recent Thoughts
+
+${recentThoughts}
+
+---
+
+## Current Task Hint
+
+${input}
+`;
+  }
+
   async readMemoryContext() {
-    const sections = [];
+    return await this.buildMemoryContext();
+  }
 
-    for (const [name, file] of Object.entries(this.memoryFiles)) {
-      try {
-        const content = await fs.readFile(file, "utf8");
-        sections.push(`## ${name}\n\n${content}`);
-      } catch {
-        sections.push(`## ${name}\n\n`);
-      }
+  async safeReadMemory(name) {
+    try {
+      return await this.readMemory(name);
+    } catch {
+      return "";
     }
+  }
 
-    return sections.join("\n\n---\n\n");
+  async readRecentHistory(maxChars = 8000) {
+    try {
+      const content = await this.readMemory("history");
+      return this.tail(content, maxChars);
+    } catch {
+      return "";
+    }
+  }
+
+  async readRecentThoughts(maxChars = 4000) {
+    try {
+      const files = await fs.readdir(this.thoughtsDir);
+      const markdownFiles = files
+        .filter((file) => file.endsWith(".md"))
+        .sort()
+        .slice(-5);
+
+      const contents = [];
+
+      for (const file of markdownFiles) {
+        const fullPath = path.join(this.thoughtsDir, file);
+        const content = await fs.readFile(fullPath, "utf8");
+        contents.push(`# ${file}\n\n${content}`);
+      }
+
+      return this.tail(contents.join("\n\n---\n\n"), maxChars);
+    } catch {
+      return "";
+    }
+  }
+
+  async reflect({ input, output }) {
+    try {
+      const reflectionPrompt = `
+你是 ${this.name} 的自我反思模組。
+
+請根據本次互動，產生一段「可長期保存」的細胞記憶。
+
+請只輸出 Markdown，並分成三段：
+
+## Learned
+本次學到什麼。
+
+## Useful Pattern
+未來可重複使用的模式。
+
+## Next Growth
+這個 Cell 下一步可以如何成長。
+
+---
+
+# User Input
+
+${input}
+
+---
+
+# Cell Output
+
+${output}
+`;
+
+      const result = await this.askWithTimeout(reflectionPrompt, 30000);
+      const reflection = result?.text ?? result?.answer ?? "";
+
+      if (!reflection.trim()) return;
+
+      const timestamp = new Date().toISOString();
+
+      await this.appendThought(`## ${timestamp}
+
+${reflection}
+`);
+
+      await this.appendKnowledge(`## Learned at ${timestamp}
+
+${reflection}
+`);
+    } catch {
+      // reflection 失敗不應中斷主要任務
+    }
   }
 
   async readMemory(name = "knowledge") {
@@ -295,6 +431,15 @@ My cell id is ${this.id}.
 
   async appendHistory(content) {
     await this.appendMemory("history", content);
+  }
+
+  async appendThought(content) {
+    const file = path.join(
+      this.thoughtsDir,
+      `${this.formatTimestamp(new Date())}.md`
+    );
+
+    await fs.writeFile(file, content, "utf8");
   }
 
   resolveMemoryFile(name) {
@@ -344,10 +489,8 @@ My cell id is ${this.id}.
     await fs.mkdir(snapshotDir, { recursive: true });
 
     await this.copyDirectory(this.memoryDir, path.join(snapshotDir, "memory"));
-    await this.copyDirectory(
-      this.workspaceDir,
-      path.join(snapshotDir, "workspace")
-    );
+    await this.copyDirectory(this.workspaceDir, path.join(snapshotDir, "workspace"));
+    await this.copyDirectory(this.thoughtsDir, path.join(snapshotDir, "thoughts"));
 
     await fs.copyFile(this.cellFile, path.join(snapshotDir, "cell.json"));
 
@@ -355,7 +498,7 @@ My cell id is ${this.id}.
       cellId: this.id,
       snapshot: snapshotName,
       createdAt: new Date().toISOString(),
-      includes: ["cell.json", "memory", "workspace"],
+      includes: ["cell.json", "memory", "workspace", "thoughts"],
     };
 
     await fs.writeFile(
@@ -385,22 +528,20 @@ My cell id is ${this.id}.
     }
 
     const snapshotDir = path.join(this.snapshotsDir, snapshotName);
-
     await fs.access(snapshotDir);
 
     await fs.rm(this.memoryDir, { recursive: true, force: true });
     await fs.rm(this.workspaceDir, { recursive: true, force: true });
+    await fs.rm(this.thoughtsDir, { recursive: true, force: true });
 
     await this.copyDirectory(path.join(snapshotDir, "memory"), this.memoryDir);
-    await this.copyDirectory(
-      path.join(snapshotDir, "workspace"),
-      this.workspaceDir
-    );
+    await this.copyDirectory(path.join(snapshotDir, "workspace"), this.workspaceDir);
+    await this.copyDirectory(path.join(snapshotDir, "thoughts"), this.thoughtsDir);
 
     try {
       await fs.copyFile(path.join(snapshotDir, "cell.json"), this.cellFile);
     } catch {
-      // 舊 snapshot 可能沒有 cell.json，忽略
+      // 舊 snapshot 可能沒有 cell.json
     }
 
     await this.updateStatus("idle");
@@ -409,6 +550,11 @@ My cell id is ${this.id}.
   // =========================
   // Utils
   // =========================
+
+  tail(content, maxChars = 8000) {
+    if (!content) return "";
+    return content.length > maxChars ? content.slice(-maxChars) : content;
+  }
 
   async listDirectoryRecursive(dir, baseDir = dir) {
     const result = [];

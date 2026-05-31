@@ -3,15 +3,16 @@
   "name": "cell-001",
   "model": "gpt-4.1",
   "status": "idle",
-  "maturity": 2,
+  "maturity": 3,
   "createdAt": "2026-05-31T13:05:46.469Z",
-  "updatedAt": "2026-05-31T14:18:46.178Z",
-  "lastStartedAt": "2026-05-31T14:18:46.155Z",
+  "updatedAt": "2026-05-31T14:32:28.338Z",
+  "lastStartedAt": "2026-05-31T14:31:05.384Z",
   "directories": {
     "root": "cells/cell-001",
     "logs": "cells/cell-001/logs",
     "memory": "cells/cell-001/memory",
     "workspace": "cells/cell-001/workspace",
-    "snapshots": "cells/cell-001/snapshots"
+    "snapshots": "cells/cell-001/snapshots",
+    "thoughts": "cells/cell-001/thoughts"
   }
 }

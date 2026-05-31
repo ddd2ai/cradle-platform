@@ -115,6 +115,11 @@ export class MerlinEngine {
   async handleInput(input) {
     if (!input) return;
 
+    if (input === "/help") {
+      this.printHelp();
+      return;
+    }
+
     if (input === "/merlin" || input === "/use Merlin") {
       this.activeCellId = this.MERLIN_ID;
       console.log("Returned to Merlin");
@@ -213,14 +218,46 @@ Model     : ${cell.model}
       return;
     }
 
+    const cell = this.getActiveCell();
+
     if (input === "/memory") {
-      const cell = this.getActiveCell();
-      console.log(await cell.readMemoryContext());
+      console.log(await cell.buildMemoryContext());
+      return;
+    }
+
+    if (input === "/memory full") {
+      console.log(`
+# Identity
+
+${await cell.safeReadMemory("identity")}
+
+---
+
+# Rules
+
+${await cell.safeReadMemory("rules")}
+
+---
+
+# Knowledge
+
+${await cell.safeReadMemory("knowledge")}
+
+---
+
+# History
+
+${await cell.safeReadMemory("history")}
+`);
+      return;
+    }
+
+    if (input === "/thoughts") {
+      console.log(await cell.readRecentThoughts(12000));
       return;
     }
 
     if (input.startsWith("/feed ")) {
-      const cell = this.getActiveCell();
       const content = input.replace("/feed ", "").trim();
 
       if (!content) {
@@ -234,7 +271,6 @@ Model     : ${cell.model}
     }
 
     if (input === "/workspace") {
-      const cell = this.getActiveCell();
       const files = await cell.listWorkspace();
 
       console.log(files.length ? files.join("\n") : "(empty workspace)");
@@ -242,7 +278,6 @@ Model     : ${cell.model}
     }
 
     if (input === "/snapshot") {
-      const cell = this.getActiveCell();
       const snapshot = await cell.createSnapshot();
 
       console.log(`Snapshot created: ${snapshot}`);
@@ -250,7 +285,6 @@ Model     : ${cell.model}
     }
 
     if (input === "/snapshots") {
-      const cell = this.getActiveCell();
       const snapshots = await cell.listSnapshots();
 
       console.log(snapshots.length ? snapshots.join("\n") : "(no snapshots)");
@@ -258,7 +292,6 @@ Model     : ${cell.model}
     }
 
     if (input.startsWith("/restore ")) {
-      const cell = this.getActiveCell();
       const snapshotName = input.replace("/restore ", "").trim();
 
       if (!snapshotName) {
@@ -271,10 +304,34 @@ Model     : ${cell.model}
       return;
     }
 
-    const cell = this.getActiveCell();
-
     renderAnswerStart();
     await cell.ask(input);
+  }
+
+  printHelp() {
+    console.log(`
+Merlin Engine Commands
+
+Engine:
+  /help                 Show commands
+  /cells                List cells
+  /status               Show cell status
+  /new <cell-id>        Create and switch to a new cell
+  /use <cell-id>        Switch to a cell
+  /merlin               Return to Merlin engine mode
+  /whoami               Show current mode or cell
+  exit                  Shutdown engine
+
+Cell:
+  /memory               Show active memory context
+  /memory full          Show full memory files
+  /thoughts             Show recent thoughts
+  /feed <content>       Append knowledge to current cell
+  /workspace            List workspace files
+  /snapshot             Create snapshot
+  /snapshots            List snapshots
+  /restore <name>       Restore snapshot
+`);
   }
 
   async shutdown() {
