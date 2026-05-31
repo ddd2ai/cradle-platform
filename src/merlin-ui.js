@@ -4,6 +4,8 @@ const term = terminalKit.terminal;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const MERLIN_ID = "Merlin";
+
 const MERLIN_LOGO = [
   "                    ███╗   ███╗███████╗██████╗ ██╗     ██╗███╗   ██╗",
   "                    ████╗ ████║██╔════╝██╔══██╗██║     ██║████╗  ██║",
@@ -96,10 +98,13 @@ export function writeAssistantChunk(chunk) {
   term.white(chunk);
 }
 
-export function renderPrompt() {
-  return "\nMerlin > ";
-}
+export function renderPrompt(cellId = MERLIN_ID) {
+  if (cellId === MERLIN_ID) {
+    return "🧙 Merlin > ";
+  }
 
+  return `🧬 ${cellId} > `;
+}
 
 export function renderIdle() {
   term.green("\n");

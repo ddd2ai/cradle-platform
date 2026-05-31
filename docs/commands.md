@@ -9,27 +9,56 @@
 
 # 基本概念
 
-Merlin Platform 由兩個核心元件組成：
-
 ## Merlin Engine
 
-Merlin Engine 為細胞培養皿（Cell Container）。
+Merlin Engine 為 Merlin Platform 的核心控制器（Cell Container）。
 
 負責：
 
 * 管理所有 Cell
-* 載入 Cell
 * 建立 Cell
+* 載入 Cell
 * 切換 Cell
+* 管理 Memory
+* 管理 Workspace
+* 管理 Snapshots
 * 調度 Cell
-* 廣播訊息
 * 管理生命週期
+
+---
+
+## Merlin Mode
+
+Merlin 為 Engine 本體。
+
+```text
+🧙 Merlin >
+```
+
+在 Merlin Mode 中：
+
+* 可以管理 Cell
+* 可以建立 Cell
+* 可以查看狀態
+* 不會執行 AI 對話
+
+切換回 Merlin：
+
+```bash
+/merlin
+```
+
+或：
+
+```bash
+/use Merlin
+```
 
 ---
 
 ## Merlin Cell
 
-Merlin Cell 為獨立運作單位。
+Merlin Cell 為獨立生命單位。
 
 每個 Cell 擁有：
 
@@ -51,15 +80,41 @@ cells/
 │   ├── cell.json
 │   ├── logs/
 │   ├── memory/
+│   │   ├── identity.md
+│   │   ├── rules.md
+│   │   ├── knowledge.md
+│   │   └── history.md
 │   ├── workspace/
 │   └── snapshots/
 │
 ├── cell-002/
-│   ├── cell.json
-│   ├── logs/
-│   ├── memory/
-│   ├── workspace/
-│   └── snapshots/
+│   └── ...
+```
+
+---
+
+# Prompt Modes
+
+## Merlin Mode
+
+```text
+🧙 Merlin >
+```
+
+---
+
+## Cell Mode
+
+```text
+🧬 cell-001 >
+```
+
+```text
+🧬 architect >
+```
+
+```text
+🧬 reviewer >
 ```
 
 ---
@@ -68,139 +123,21 @@ cells/
 
 ## /cells
 
-列出所有已載入 Cell。
+列出所有 Cell。
 
-### Usage
+### Example
 
 ```bash
 /cells
 ```
 
-### Example
+### Output
 
 ```text
 cell-001
-cell-002
-cell-003
+architect
+reviewer
 ```
-
----
-
-## /new
-
-建立新的 Cell。
-
-### Usage
-
-```bash
-/new <cell-id>
-```
-
-### Example
-
-```bash
-/new cell-002
-```
-
-### Result
-
-```text
-Created and switched to cell-002
-```
-
----
-
-## /use
-
-切換目前操作中的 Cell。
-
-### Usage
-
-```bash
-/use <cell-id>
-```
-
-### Example
-
-```bash
-/use cell-001
-```
-
-### Result
-
-```text
-Switched to cell-001
-```
-
----
-
-## exit
-
-關閉 Merlin Engine。
-
-### Usage
-
-```bash
-exit
-```
-
-### Result
-
-```text
-Merlin shutting down...
-```
-
----
-
-# Conversation
-
-非指令內容將直接送往目前 Active Cell。
-
-### Example
-
-```text
-設計一個會員系統
-```
-
-流程：
-
-```text
-User
- ↓
-Merlin Engine
- ↓
-Active Cell
- ↓
-Copilot SDK
- ↓
-Response
-```
-
----
-
-# Current Lifecycle
-
-```text
-Merlin Engine
-    ↓
-Load Cells
-    ↓
-Select Active Cell
-    ↓
-Receive User Input
-    ↓
-Dispatch To Cell
-    ↓
-Cell Execute
-    ↓
-Response
-```
-
----
-
-# Planned Commands
-
-以下指令尚未實作。
 
 ---
 
@@ -217,62 +154,100 @@ Response
 ### Output
 
 ```text
-cell-001 idle
-cell-002 running
-cell-003 sleeping
+┌────────────┬────────────┬─────────────┐
+│ Cell       │ Status     │ Maturity    │
+├────────────┼────────────┼─────────────┤
+│ cell-001   │ idle       │ 2           │
+│ cell-002   │ running    │ 5           │
+└────────────┴────────────┴─────────────┘
 ```
 
 ---
 
-## /clone
+## /new
 
-複製 Cell。
-
-### Example
-
-```bash
-/clone cell-001 cell-002
-```
-
----
-
-## /broadcast
-
-向所有 Cell 發送訊息。
+建立新的 Cell。
 
 ### Example
 
 ```bash
-/broadcast 設計會員系統
+/new architect
 ```
 
-### Concept
+### Output
 
 ```text
-Architect Cell
-Reviewer Cell
-Tester Cell
-Java Cell
+Created and switched to architect
 ```
-
-同時收到任務。
 
 ---
 
-## /spawn
+## /use
 
-建立特定職責 Cell。
+切換至指定 Cell。
 
 ### Example
 
 ```bash
-/spawn architect
-/spawn reviewer
-/spawn tester
-/spawn java-expert
+/use architect
+```
+
+### Output
+
+```text
+Switched to architect
 ```
 
 ---
+
+## /merlin
+
+返回 Merlin Mode。
+
+### Example
+
+```bash
+/merlin
+```
+
+### Output
+
+```text
+Returned to Merlin
+```
+
+---
+
+## /whoami
+
+查看目前所在位置。
+
+### Merlin Mode
+
+```bash
+/whoami
+```
+
+### Output
+
+```text
+Mode      : Merlin
+Role      : Engine Console
+Model     : gpt-4.1
+Cells     : 3
+```
+
+### Cell Mode
+
+```text
+Cell ID   : architect
+Cell Name : architect
+Model     : gpt-4.1
+```
+
+---
+
+# Memory Commands
 
 ## /memory
 
@@ -288,7 +263,7 @@ Java Cell
 
 ## /feed
 
-向 Cell 記憶注入內容。
+向目前 Cell 注入知識。
 
 ### Example
 
@@ -296,11 +271,46 @@ Java Cell
 /feed 使用 Spring Boot 3
 ```
 
+### Output
+
+```text
+Memory updated.
+```
+
 ---
+
+# Workspace Commands
+
+## /workspace
+
+列出 Workspace 檔案。
+
+### Example
+
+```bash
+/workspace
+```
+
+### Output
+
+```text
+README.md
+notes/design.md
+```
+
+或：
+
+```text
+(empty workspace)
+```
+
+---
+
+# Snapshot Commands
 
 ## /snapshot
 
-建立 Cell 快照。
+建立快照。
 
 ### Example
 
@@ -308,37 +318,126 @@ Java Cell
 /snapshot
 ```
 
+### Output
+
+```text
+Snapshot created: snapshot-20260531-215101
+```
+
 ---
 
-## /restore
+## /snapshots
 
-回復 Cell 快照。
+列出快照。
 
 ### Example
 
 ```bash
-/restore snapshot-001
+/snapshots
 ```
+
+### Output
+
+```text
+snapshot-20260531-215101
+snapshot-20260531-220010
+```
+
+---
+
+## /restore
+
+回復快照。
+
+### Example
+
+```bash
+/restore snapshot-20260531-215101
+```
+
+### Output
+
+```text
+Snapshot restored: snapshot-20260531-215101
+```
+
+---
+
+## exit
+
+關閉 Merlin Engine。
+
+### Example
+
+```bash
+exit
+```
+
+### Output
+
+```text
+🌙 Merlin Engine hibernating...
+```
+
+---
+
+# Conversation Flow
+
+在 Cell Mode 中：
+
+```text
+User
+ ↓
+Merlin Engine
+ ↓
+Active Cell
+ ↓
+Memory
+ ↓
+Copilot SDK
+ ↓
+Response
+```
+
+---
+
+# Current Capability Matrix
+
+| Capability         | Status |
+| ------------------ | ------ |
+| Multi Cell         | ✅      |
+| Cell Switching     | ✅      |
+| Memory             | ✅      |
+| Feed Knowledge     | ✅      |
+| Workspace          | ✅      |
+| Snapshot           | ✅      |
+| Restore            | ✅      |
+| Status             | ✅      |
+| Maturity           | ✅      |
+| Merlin Mode        | ✅      |
+| Cell Communication | 🚧     |
+| Broadcast          | 🚧     |
+| Clone Cell         | 🚧     |
+| Spawn Role Cell    | 🚧     |
 
 ---
 
 # Future Vision
 
 ```text
-Merlin Platform
-        │
-        ▼
-   Merlin Engine
-        │
- ┌──────┼──────┐
- ▼      ▼      ▼
-Cell   Cell   Cell
- │      │      │
- ▼      ▼      ▼
-AI     AI     AI
+                 Merlin
+                    │
+     ┌──────────────┼──────────────┐
+     ▼              ▼              ▼
+ architect       reviewer       tester
+     │              │              │
+     ▼              ▼              ▼
+ Memory         Memory         Memory
+ Workspace      Workspace      Workspace
+ Snapshot       Snapshot       Snapshot
 ```
 
-Engine 負責調度。
+Merlin 負責調度。
 
 Cell 負責成長。
 

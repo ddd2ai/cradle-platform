@@ -16,7 +16,8 @@ export class MerlinEngine {
   constructor({ model = "gpt-4.1" } = {}) {
     this.model = model;
     this.cells = new Map();
-    this.activeCellId = null;
+    this.MERLIN_ID = "Merlin";
+    this.activeCellId = this.MERLIN_ID;
     this.rl = null;
   }
 
@@ -49,7 +50,11 @@ export class MerlinEngine {
       }
     }
 
-    this.activeCellId = [...this.cells.keys()][0];
+    this.activeCellId = this.MERLIN_ID;
+  }
+
+  isMerlinMode() {
+    return this.activeCellId === this.MERLIN_ID;
   }
 
   async createCell(id) {
@@ -61,6 +66,8 @@ export class MerlinEngine {
 
     await cell.prepare();
     this.cells.set(id, cell);
+
+    return cell;
   }
 
   async registerCell(id) {
@@ -72,6 +79,18 @@ export class MerlinEngine {
 
     await cell.prepare();
     this.cells.set(id, cell);
+
+    return cell;
+  }
+
+  getActiveCell() {
+    const cell = this.cells.get(this.activeCellId);
+
+    if (!cell) {
+      throw new Error(`Active cell not found: ${this.activeCellId}`);
+    }
+
+    return cell;
   }
 
   loop() {
@@ -96,26 +115,32 @@ export class MerlinEngine {
   async handleInput(input) {
     if (!input) return;
 
+    if (input === "/merlin" || input === "/use Merlin") {
+      this.activeCellId = this.MERLIN_ID;
+      console.log("Returned to Merlin");
+      return;
+    }
+
     if (input === "/cells") {
       console.log([...this.cells.keys()].join("\n"));
       return;
     }
 
     if (input === "/status") {
-        const rows = [];
+      const rows = [];
 
-        for (const [id, cell] of this.cells) {
-            const profile = await cell.readCellProfile();
+      for (const [id, cell] of this.cells) {
+        const profile = await cell.readCellProfile();
 
-            rows.push({
-            Cell: id,
-            Status: profile?.status ?? "unknown",
-            Maturity: profile?.maturity ?? 0,
-            });
-        }
-        
-        console.table(rows);
-        return;
+        rows.push({
+          Cell: id,
+          Status: profile?.status ?? "unknown",
+          Maturity: profile?.maturity ?? 0,
+        });
+      }
+
+      console.table(rows);
+      return;
     }
 
     if (input.startsWith("/new ")) {
@@ -123,6 +148,11 @@ export class MerlinEngine {
 
       if (!id) {
         console.log("Usage: /new cell-002");
+        return;
+      }
+
+      if (id === this.MERLIN_ID) {
+        console.log("Merlin is reserved for Engine mode.");
         return;
       }
 
@@ -141,6 +171,12 @@ export class MerlinEngine {
     if (input.startsWith("/use ")) {
       const id = input.replace("/use ", "").trim();
 
+      if (id === this.MERLIN_ID) {
+        this.activeCellId = this.MERLIN_ID;
+        console.log("Returned to Merlin");
+        return;
+      }
+
       if (!this.cells.has(id)) {
         console.log(`Cell not found: ${id}`);
         return;
@@ -151,11 +187,91 @@ export class MerlinEngine {
       return;
     }
 
-    const cell = this.cells.get(this.activeCellId);
+    if (input === "/whoami") {
+      if (this.isMerlinMode()) {
+        console.log(`
+Mode      : Merlin
+Role      : Engine Console
+Model     : ${this.model}
+Cells     : ${this.cells.size}
+`);
+        return;
+      }
 
-    if (!cell) {
-      throw new Error(`Active cell not found: ${this.activeCellId}`);
+      const cell = this.getActiveCell();
+
+      console.log(`
+Cell ID   : ${cell.id}
+Cell Name : ${cell.name}
+Model     : ${cell.model}
+`);
+      return;
     }
+
+    if (this.isMerlinMode()) {
+      console.log("You are in Merlin mode. Use /use <cell-id> to enter a cell.");
+      return;
+    }
+
+    if (input === "/memory") {
+      const cell = this.getActiveCell();
+      console.log(await cell.readMemoryContext());
+      return;
+    }
+
+    if (input.startsWith("/feed ")) {
+      const cell = this.getActiveCell();
+      const content = input.replace("/feed ", "").trim();
+
+      if (!content) {
+        console.log("Usage: /feed <content>");
+        return;
+      }
+
+      await cell.appendKnowledge(`## ${new Date().toISOString()}\n\n${content}`);
+      console.log("Memory updated.");
+      return;
+    }
+
+    if (input === "/workspace") {
+      const cell = this.getActiveCell();
+      const files = await cell.listWorkspace();
+
+      console.log(files.length ? files.join("\n") : "(empty workspace)");
+      return;
+    }
+
+    if (input === "/snapshot") {
+      const cell = this.getActiveCell();
+      const snapshot = await cell.createSnapshot();
+
+      console.log(`Snapshot created: ${snapshot}`);
+      return;
+    }
+
+    if (input === "/snapshots") {
+      const cell = this.getActiveCell();
+      const snapshots = await cell.listSnapshots();
+
+      console.log(snapshots.length ? snapshots.join("\n") : "(no snapshots)");
+      return;
+    }
+
+    if (input.startsWith("/restore ")) {
+      const cell = this.getActiveCell();
+      const snapshotName = input.replace("/restore ", "").trim();
+
+      if (!snapshotName) {
+        console.log("Usage: /restore <snapshot-name>");
+        return;
+      }
+
+      await cell.restoreSnapshot(snapshotName);
+      console.log(`Snapshot restored: ${snapshotName}`);
+      return;
+    }
+
+    const cell = this.getActiveCell();
 
     renderAnswerStart();
     await cell.ask(input);

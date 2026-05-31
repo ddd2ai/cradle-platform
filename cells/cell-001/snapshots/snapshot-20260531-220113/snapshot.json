@@ -1,0 +1,10 @@
+{
+  "cellId": "cell-001",
+  "snapshot": "snapshot-20260531-220113",
+  "createdAt": "2026-05-31T14:01:13.335Z",
+  "includes": [
+    "cell.json",
+    "memory",
+    "workspace"
+  ]
+}
