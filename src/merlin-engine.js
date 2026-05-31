@@ -270,6 +270,185 @@ ${await cell.safeReadMemory("history")}
       return;
     }
 
+    if (input.startsWith("/write ")) {
+      const content = input.replace("/write ", "").trim();
+
+      if (!content) {
+        console.log("Usage: /write <task>");
+        return;
+      }
+
+      const filename = `note-${this.formatTimestamp(new Date())}.md`;
+
+      renderAnswerStart();
+
+      const result = await cell.ask(`
+    請根據以下任務產生一份 Markdown 文件內容。
+
+    任務：
+    ${content}
+
+    請只輸出 Markdown 內容，不要額外解釋。
+    `);
+
+      const outputText = this.cleanMarkdownFence(result?.text ?? result?.answer ?? "");
+
+      await cell.writeWorkspaceFile(filename, outputText);
+
+      console.log(`\nWorkspace file created: ${filename}`);
+      return;
+    }
+
+    if (input.startsWith("/read ")) {
+      const fileName = input.replace("/read ", "").trim();
+
+      if (!fileName) {
+        console.log("Usage: /read <workspace-file>");
+        return;
+      }
+
+      try {
+        const content = await cell.readWorkspaceFile(fileName);
+        console.log(content);
+      } catch (error) {
+        console.log(`Workspace file not found: ${fileName}`);
+      }
+
+      return;
+    }
+
+  
+    if (input.startsWith("/revise ")) {
+      const args = input.replace("/revise ", "").trim();
+      const firstSpaceIndex = args.indexOf(" ");
+
+      if (firstSpaceIndex === -1) {
+        console.log("Usage: /revise <workspace-file> <task>");
+        return;
+      }
+
+      const fileName = args.slice(0, firstSpaceIndex).trim();
+      const task = args.slice(firstSpaceIndex + 1).trim();
+
+      if (!fileName || !task) {
+        console.log("Usage: /revise <workspace-file> <task>");
+        return;
+      }
+
+      let originalContent = "";
+
+      try {
+        originalContent = await cell.readWorkspaceFile(fileName);
+      } catch {
+        console.log(`Workspace file not found: ${fileName}`);
+        return;
+      }
+
+      renderAnswerStart();
+
+      const result = await cell.ask(`
+    請根據修改任務，重寫以下 Markdown 文件。
+
+    請遵守：
+    - 只輸出修改後的 Markdown 文件內容
+    - 不要輸出說明
+    - 不要包在 \`\`\`markdown code fence 裡
+    - 不要新增目前系統尚未實作的能力
+
+    # 修改任務
+
+    ${task}
+
+    ---
+
+    # 原始文件
+
+    ${originalContent}
+    `);
+
+      const outputText = this.cleanMarkdownFence(result?.text ?? result?.answer ?? "");
+
+      await cell.writeWorkspaceFile(fileName, outputText);
+
+      console.log(`\nWorkspace file revised: ${fileName}`);
+      return;
+    }
+
+
+    if (input.startsWith("/share ")) {
+      const args = input.replace("/share ", "").trim().split(/\s+/);
+
+      if (args.length < 2) {
+        console.log("Usage: /share <workspace-file> <target-cell-id>");
+        return;
+      }
+
+      const [fileName, targetCellId] = args;
+
+      const targetCell = this.cells.get(targetCellId);
+
+      if (!targetCell) {
+        console.log(`Target cell not found: ${targetCellId}`);
+        return;
+      }
+
+      try {
+        const content = await cell.readWorkspaceFile(fileName);
+
+        await targetCell.writeWorkspaceFile(
+          fileName,
+          content
+        );
+
+        console.log(
+          `Shared ${fileName} from ${cell.id} to ${targetCellId}`
+        );
+      } catch {
+        console.log(`Workspace file not found: ${fileName}`);
+      }
+
+      return;
+    }
+
+    if (input.startsWith("/import ")) {
+      const args = input.replace("/import ", "").trim().split(/\s+/);
+
+      if (args.length < 2) {
+        console.log("Usage: /import <source-cell-id> <workspace-file>");
+        return;
+      }
+
+      const [sourceCellId, fileName] = args;
+
+      const sourceCell = this.cells.get(sourceCellId);
+
+      if (!sourceCell) {
+        console.log(`Source cell not found: ${sourceCellId}`);
+        return;
+      }
+
+      try {
+        const content =
+          await sourceCell.readWorkspaceFile(fileName);
+
+        await cell.writeWorkspaceFile(
+          fileName,
+          content
+        );
+
+        console.log(
+          `Imported ${fileName} from ${sourceCellId} to ${cell.id}`
+        );
+      } catch {
+        console.log(
+          `Workspace file not found in ${sourceCellId}: ${fileName}`
+        );
+      }
+
+      return;
+    }
+
+
     if (input === "/workspace") {
       const files = await cell.listWorkspace();
 
@@ -308,6 +487,28 @@ ${await cell.safeReadMemory("history")}
     await cell.ask(input);
   }
 
+  formatTimestamp(date) {
+    const pad = (n) => String(n).padStart(2, "0");
+
+    return [
+      date.getFullYear(),
+      pad(date.getMonth() + 1),
+      pad(date.getDate()),
+      "-",
+      pad(date.getHours()),
+      pad(date.getMinutes()),
+      pad(date.getSeconds()),
+    ].join("");
+  }
+
+  cleanMarkdownFence(content = "") {
+    return content
+      .replace(/^```markdown\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/```\s*$/i, "")
+      .trim();
+  }
+
   printHelp() {
     console.log(`
 Merlin Engine Commands
@@ -327,6 +528,11 @@ Cell:
   /memory full          Show full memory files
   /thoughts             Show recent thoughts
   /feed <content>       Append knowledge to current cell
+  /write <task>         Ask current cell to create a workspace markdown file
+  /read <file>          Read a workspace file
+  /revise <file> <task> Revise a workspace file
+  /share <file> <cell>  Share file to another cell
+  /import <cell> <file> Import file from another cell
   /workspace            List workspace files
   /snapshot             Create snapshot
   /snapshots            List snapshots

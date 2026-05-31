@@ -3,10 +3,10 @@
   "name": "cell-001",
   "model": "gpt-4.1",
   "status": "idle",
-  "maturity": 3,
+  "maturity": 6,
   "createdAt": "2026-05-31T13:05:46.469Z",
-  "updatedAt": "2026-05-31T14:32:28.338Z",
-  "lastStartedAt": "2026-05-31T14:31:05.384Z",
+  "updatedAt": "2026-05-31T15:03:58.938Z",
+  "lastStartedAt": "2026-05-31T15:03:58.931Z",
   "directories": {
     "root": "cells/cell-001",
     "logs": "cells/cell-001/logs",

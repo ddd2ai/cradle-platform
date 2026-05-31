@@ -1,0 +1,18 @@
+{
+  "id": "builder",
+  "name": "builder",
+  "model": "gpt-4.1",
+  "status": "idle",
+  "maturity": 0,
+  "createdAt": "2026-05-31T14:56:59.568Z",
+  "updatedAt": "2026-05-31T15:03:58.931Z",
+  "lastStartedAt": "2026-05-31T15:03:58.921Z",
+  "directories": {
+    "root": "cells/builder",
+    "logs": "cells/builder/logs",
+    "memory": "cells/builder/memory",
+    "workspace": "cells/builder/workspace",
+    "snapshots": "cells/builder/snapshots",
+    "thoughts": "cells/builder/thoughts"
+  }
+}

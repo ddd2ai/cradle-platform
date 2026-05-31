@@ -1,0 +1,18 @@
+{
+  "id": "architect",
+  "name": "architect",
+  "model": "gpt-4.1",
+  "status": "idle",
+  "maturity": 2,
+  "createdAt": "2026-05-31T14:56:54.350Z",
+  "updatedAt": "2026-05-31T15:04:33.656Z",
+  "lastStartedAt": "2026-05-31T15:03:58.890Z",
+  "directories": {
+    "root": "cells/architect",
+    "logs": "cells/architect/logs",
+    "memory": "cells/architect/memory",
+    "workspace": "cells/architect/workspace",
+    "snapshots": "cells/architect/snapshots",
+    "thoughts": "cells/architect/thoughts"
+  }
+}
