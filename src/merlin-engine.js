@@ -212,6 +212,7 @@ Engine:
   /help                    Show commands
   /cells                   List cells
   /status                  Show cell status
+  /heartbeat               Run one evolution cycle for all cells
   /new <cell-id>           Create and switch to a new cell
   /use <cell-id>           Switch to a cell
   /merlin                  Return to Merlin engine mode

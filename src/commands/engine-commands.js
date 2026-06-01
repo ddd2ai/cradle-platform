@@ -111,23 +111,65 @@ export function createEngineCommands() {
       execute: async ({ engine }) => {
         if (engine.isMerlinMode()) {
           console.log(`
-Mode      : Merlin
-Role      : Engine Console
-Model     : ${engine.model}
-Cells     : ${engine.cells.size}
-`);
+          Mode      : Merlin
+          Role      : Engine Console
+          Model     : ${engine.model}
+          Cells     : ${engine.cells.size}
+          `);
           return;
         }
 
         const cell = engine.getActiveCell();
 
         console.log(`
-Cell ID   : ${cell.id}
-Cell Name : ${cell.name}
-Model     : ${cell.model}
-Inbox     : ${engine.inboxes.get(cell.id)?.length ?? 0}
-`);
+        Cell ID   : ${cell.id}
+        Cell Name : ${cell.name}
+        Model     : ${cell.model}
+        Inbox     : ${engine.inboxes.get(cell.id)?.length ?? 0}
+        `);
       },
     },
+
+    {
+      name: "/heartbeat",
+
+      match: (input) =>
+        input === "/heartbeat",
+
+      execute: async ({ engine }) => {
+
+        console.log("");
+        console.log("🫀 Colony Heartbeat");
+        console.log("");
+
+        for (const [id, cell] of engine.cells) {
+
+          console.log(
+            `[${id}] thinking...`
+          );
+
+          try {
+
+            await cell.think();
+
+            const maturity =
+              await cell.getMaturity();
+
+            console.log(
+              `✓ maturity=${maturity}`
+            );
+
+          } catch (error) {
+
+            console.log(
+              `✗ ${error.message}`
+            );
+          }
+
+          console.log("");
+        }
+      }
+    },
+
   ];
 }
