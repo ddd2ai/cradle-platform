@@ -6,16 +6,16 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const MERLIN_ID = "Merlin";
 
-const MERLIN_LOGO = [
-  "                    ███╗   ███╗███████╗██████╗ ██╗     ██╗███╗   ██╗",
-  "                    ████╗ ████║██╔════╝██╔══██╗██║     ██║████╗  ██║",
-  "                    ██╔████╔██║█████╗  ██████╔╝██║     ██║██╔██╗ ██║",
-  "                    ██║╚██╔╝██║██╔══╝  ██╔══██╗██║     ██║██║╚██╗██║",
-  "                    ██║ ╚═╝ ██║███████╗██║  ██║███████╗██║██║ ╚████║",
-  "                    ╚═╝     ╚═╝╚══════╝╚═╝  ╚═╝╚══════╝╚═╝╚═╝  ╚═══╝",
+const LOGO_TEXTS = [
+  "                    ██████╗██████╗  █████╗ ██████╗ ██╗     ███████╗",
+  "                   ██╔════╝██╔══██╗██╔══██╗██╔══██╗██║     ██╔════╝",
+  "                   ██║     ██████╔╝███████║██║  ██║██║     █████╗  ",
+  "                   ██║     ██╔══██╗██╔══██║██║  ██║██║     ██╔══╝  ",
+  "                   ╚██████╗██║  ██║██║  ██║██████╔╝███████╗███████╗",
+  "                    ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝ ╚══════╝╚══════╝",
 ];
 
-const MERLIN_CELL_MAP = `
+const LOGO_CELL_MAP = `
               ● Customer Cell ──────── ● Payment Cell             ●
                     │                          │                ╱ │ ╲
                     ▼                          ▼               ●──●──●●──●
@@ -35,7 +35,7 @@ const LOGO_COLORS = [
 ];
 
 function renderMerlinLogo() {
-  MERLIN_LOGO.forEach((line, index) => {
+  LOGO_TEXTS.forEach((line, index) => {
     LOGO_COLORS[index](line + "\n");
   });
 }
@@ -64,26 +64,27 @@ export function renderBoot(model) {
   renderMerlinLogo();
   renderTagline();
 
-  term.brightCyan(MERLIN_CELL_MAP);
+  term.brightCyan(LOGO_CELL_MAP);
 
   renderRuntimeStatus(model);
 }
 
 export async function renderSummon() {
-  term.green("\n⚡ Summoning Merlin Engine...\n");
+
+  term.green("🧫 Starting DNA Cradle...\n");
   await sleep(300);
 
-  term.green("🧬 Cells are connecting...\n");
+  term.green("🦠 Cells are connecting...\n");
   await sleep(300);
 
-  term.green("🌱 Software life is growing...\n");
+  term.green("🧬 Software life is growing...\n");
   await sleep(300);
 
-  term.green("🧙 Merlin has awakened...\n");
+  term.green("🌱 DNA Cradle is ready!\n");
 }
 
 export function renderSkill(skillName) {
-  term.brightMagenta(`\n🧬 Cell activated: ${skillName}\n`);
+  term.brightMagenta(`\n🦠 Cell activated: ${skillName}\n`);
 }
 
 export function renderSkillNotFound(skillName) {
@@ -103,7 +104,7 @@ export function renderPrompt(cellId = MERLIN_ID) {
     return "🧙 Merlin > ";
   }
 
-  return `🧬 ${cellId} > `;
+  return `🧫 ${cellId} > `;
 }
 
 export function renderIdle() {

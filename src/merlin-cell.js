@@ -309,6 +309,45 @@ async canDivide() {
   return (await this.getMaturity()) >= 5;
 }
 
+async divideTo(childCell) {
+  if (!(await this.canDivide())) {
+    throw new Error(`Cell ${this.id} is not mature enough to divide.`);
+  }
+
+  const parentInfo = await this.getEvolutionInfo();
+
+  await this.copyDirectory(this.memoryDir, childCell.memoryDir);
+
+  await childCell.setParent(this.id);
+  await childCell.setGeneration(parentInfo.generation + 1);
+
+  await childCell.writeMemory(
+    "history",
+    `# History
+
+Born from ${this.id} at ${new Date().toISOString()}.
+`
+  );
+
+  await childCell.appendThought(`
+## ${new Date().toISOString()}
+
+I was born from ${this.id}.
+My inherited memory should be refined into my own growth direction.
+`);
+
+  await this.addRelationship("divided-into", childCell.id);
+  await childCell.addRelationship("born-from", this.id);
+
+  await childCell.increaseMaturity(0);
+
+  return {
+    parent: this.id,
+    child: childCell.id,
+    generation: parentInfo.generation + 1,
+  };
+}
+
 async setGeneration(generation) {
   const profile = await this.readCellProfile();
 

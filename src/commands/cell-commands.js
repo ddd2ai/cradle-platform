@@ -385,11 +385,11 @@ ${originalContent}
           await cell.mature();
 
         console.log(`
-    🧬 ${cell.id} evolved
+        🦠 ${cell.id} evolved
 
-    Maturity:
-    ${result.maturity}
-    `);
+        Maturity:
+        ${result.maturity}
+        `);
       },
     },
 
@@ -408,11 +408,11 @@ ${originalContent}
         if (!(await parent.canDivide())) {
 
           console.log(`
-    Need maturity >= 5
+          Need maturity >= 5
 
-    Current:
-    ${await parent.getMaturity()}
-    `);
+          Current:
+          ${await parent.getMaturity()}
+          `);
 
           return;
         }
@@ -429,26 +429,17 @@ ${originalContent}
             childId
           );
 
-        const parentInfo =
-          await parent.getEvolutionInfo();
-
-        await child.setParent(
-          parent.id
-        );
-
-        await child.setGeneration(
-          parentInfo.generation + 1
-        );
+        await parent.divideTo(child);
 
         console.log(`
-    🦞 Cell Division Complete
+        🦠 Cell Division Complete
 
-    Parent :
-    ${parent.id}
+        Parent :
+        ${parent.id}
 
-    Child :
-    ${childId}
-    `);
+        Child :
+        ${childId}
+        `);
       },
     },
 
