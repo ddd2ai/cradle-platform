@@ -450,18 +450,16 @@ ${originalContent}
 
         const action = args[0];
 
-        if(action === "add") {
-
+        if (action === "add") {
           const name = args[1];
 
-          await cell.addResponsibility(
-            name
-          );
+          if (!name) {
+            console.log("Usage: /resp add <name>");
+            return;
+          }
 
-          console.log(
-            `Responsibility added: ${name}`
-          );
-
+          await cell.addResponsibility(name);
+          console.log(`Responsibility added: ${name}`);
           return;
         }
 
@@ -476,6 +474,8 @@ ${originalContent}
 
           return;
         }
+
+        console.log("Usage: /resp add <name> | /resp list");
       }
     },
 
@@ -520,6 +520,94 @@ ${originalContent}
       }
     },
 
+    {
+      name: "/profile",
+
+      match: (input, { engine }) =>
+        input === "/profile" &&
+        !engine.isMerlinMode(),
+
+      execute: async ({ engine }) => {
+        const cell = engine.getActiveCell();
+        const profile = await cell.getProfile();
+
+        console.log(JSON.stringify(profile, null, 2));
+      },
+    },
+
+    {
+      name: "/digest",
+
+      match: (input, { engine }) =>
+        input === "/digest" &&
+        !engine.isMerlinMode(),
+
+      execute: async ({ engine }) => {
+        const cell = engine.getActiveCell();
+        const inbox = engine.inboxes.get(cell.id) ?? [];
+
+        if (inbox.length === 0) {
+          console.log("(empty inbox)");
+          return;
+        }
+
+        renderAnswerStart();
+
+        const result = await cell.ask(`
+    請整理以下 inbox 訊息，輸出成 Markdown。
+
+    請包含：
+    - 重點摘要
+    - 可能任務
+    - 需要回應的對象
+    - 下一步建議
+
+    # Inbox
+
+    ${JSON.stringify(inbox, null, 2)}
+    `);
+
+        const outputText =
+          engine.cleanMarkdownFence(result?.text ?? result?.answer ?? "");
+
+        await cell.writeWorkspaceFile(
+          `digest-${engine.formatTimestamp(new Date())}.md`,
+          outputText
+        );
+
+        console.log("\nInbox digest created.");
+      },
+    },
+
+    {
+      name: "/specialize",
+
+      match: (input, { engine }) =>
+        input.startsWith("/specialize ") &&
+        !engine.isMerlinMode(),
+
+      execute: async ({ engine, input }) => {
+        const cell = engine.getActiveCell();
+        const role = input.replace("/specialize ", "").trim();
+
+        if (!role) {
+          console.log("Usage: /specialize <responsibility>");
+          return;
+        }
+
+        await cell.addResponsibility(role);
+
+        await cell.appendKnowledge(`
+    ## Specialization
+
+    This cell has started specializing in:
+
+    ${role}
+    `);
+
+        console.log(`Cell specialized: ${role}`);
+      },
+    },
 
     {
       name: "/graph",

@@ -692,6 +692,73 @@ ${reflection}
   }
 
   // =========================
+  // Cell Lifecycle
+  // =========================
+
+  async divide(childId) {
+    if (!childId) {
+      throw new Error("Child cell id is required.");
+    }
+
+    if (!(await this.canDivide())) {
+      throw new Error(
+        `Cell ${this.id} is not mature enough to divide. maturity=${await this.getMaturity()}`
+      );
+    }
+
+    const childRootDir = path.join("cells", childId);
+
+    await fs.mkdir(childRootDir, { recursive: true });
+
+    await this.copyDirectory(this.memoryDir, path.join(childRootDir, "memory"));
+    await this.copyDirectory(this.workspaceDir, path.join(childRootDir, "workspace"));
+
+    const parentProfile = await this.readCellProfile();
+
+    const childProfile = {
+      ...parentProfile,
+      id: childId,
+      name: childId,
+      status: "idle",
+      maturity: 0,
+      generation: Number(parentProfile?.generation ?? 1) + 1,
+      parent: this.id,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      lastStartedAt: null,
+      responsibilities: [],
+      relationships: [
+        {
+          type: "born-from",
+          target: this.id,
+        },
+      ],
+      directories: {
+        root: childRootDir,
+        logs: path.join(childRootDir, "logs"),
+        memory: path.join(childRootDir, "memory"),
+        workspace: path.join(childRootDir, "workspace"),
+        snapshots: path.join(childRootDir, "snapshots"),
+        thoughts: path.join(childRootDir, "thoughts"),
+      },
+    };
+
+    await fs.mkdir(childProfile.directories.logs, { recursive: true });
+    await fs.mkdir(childProfile.directories.snapshots, { recursive: true });
+    await fs.mkdir(childProfile.directories.thoughts, { recursive: true });
+
+    await fs.writeFile(
+      path.join(childRootDir, "cell.json"),
+      JSON.stringify(childProfile, null, 2),
+      "utf8"
+    );
+
+    await this.addRelationship("divided-into", childId);
+
+    return childProfile;
+  }
+
+  // =========================
   // Utils
   // =========================
 

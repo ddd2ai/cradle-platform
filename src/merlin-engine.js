@@ -231,6 +231,13 @@ Cell:
   /restore <name>          Restore snapshot
   /evolve                  Increase maturity
   /divide                  Create child cell
+  /resp add <name>         Add responsibility
+  /resp list               List responsibilities
+  /link <type> <cell>      Create relationship
+  /graph                   Show cell graph
+  /profile                 Show cell profile
+  /digest                  Digest inbox into workspace
+  /specialize <name>       Specialize cell
 `);
   }
 
