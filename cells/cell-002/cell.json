@@ -1,0 +1,27 @@
+{
+  "id": "cell-002",
+  "name": "cell-002",
+  "model": "gpt-4.1",
+  "status": "idle",
+  "maturity": 1,
+  "generation": 2,
+  "parent": "cell-001",
+  "responsibilities": [],
+  "relationships": [
+    {
+      "type": "born-from",
+      "target": "cell-001"
+    }
+  ],
+  "createdAt": "2026-06-01T14:20:54.042Z",
+  "updatedAt": "2026-06-01T14:22:37.585Z",
+  "lastStartedAt": "2026-06-01T14:20:54.042Z",
+  "directories": {
+    "root": "cells/cell-002",
+    "logs": "cells/cell-002/logs",
+    "memory": "cells/cell-002/memory",
+    "workspace": "cells/cell-002/workspace",
+    "snapshots": "cells/cell-002/snapshots",
+    "thoughts": "cells/cell-002/thoughts"
+  }
+}

@@ -220,6 +220,7 @@ Cell:
   /think                   Let current cell reflect and grow
   /feed <content>          Append knowledge to current cell
   /send <cell> <message>   Send message to another cell
+  /process                 Process inbox into memory and thoughts
   /inbox                   Show messages received by current cell
   /write <task>            Ask current cell to create a workspace markdown file
   /read <file>             Read a workspace file

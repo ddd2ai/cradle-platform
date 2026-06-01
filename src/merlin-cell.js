@@ -692,6 +692,75 @@ ${reflection}
     return thought.trim();
   }
 
+  async processInbox(inbox = []) {
+  if (inbox.length === 0) {
+    return {
+      processed: 0,
+      summary: "",
+    };
+  }
+
+  const profile = await this.getProfile();
+
+  const prompt = `
+你是 ${this.name} 的訊息代謝模組。
+
+請整理收到的 inbox，轉化成可長期保存的 Cell 記憶。
+
+請輸出 Markdown，包含：
+
+## Inbox Summary
+重點摘要。
+
+## Signals
+這些訊息透露出什麼需求、方向或環境刺激。
+
+## Possible Tasks
+可能形成的任務。
+
+## Growth Impact
+這些訊息對 Cell 成長有什麼影響。
+
+---
+
+# Profile
+
+${JSON.stringify(profile, null, 2)}
+
+---
+
+# Inbox
+
+${JSON.stringify(inbox, null, 2)}
+`;
+
+  const result = await this.askWithTimeout(prompt, 60000);
+  const summary = result?.text ?? result?.answer ?? "";
+
+  if (!summary.trim()) {
+    throw new Error("No inbox summary generated.");
+  }
+
+  const timestamp = new Date().toISOString();
+
+  await this.appendThought(`## ${timestamp}
+
+${summary}
+`);
+
+  await this.appendKnowledge(`## Inbox Processed at ${timestamp}
+
+${summary}
+`);
+
+  await this.increaseMaturity(1);
+
+  return {
+    processed: inbox.length,
+    summary: summary.trim(),
+  };
+}
+
   // =========================
   // Workspace
   // =========================

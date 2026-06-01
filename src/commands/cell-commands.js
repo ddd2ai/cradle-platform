@@ -593,6 +593,39 @@ ${originalContent}
     },
 
     {
+      name: "/process",
+
+      match: (input, { engine }) =>
+        input === "/process" &&
+        !engine.isMerlinMode(),
+
+      execute: async ({ engine }) => {
+        const cell = engine.getActiveCell();
+        const inbox = engine.inboxes.get(cell.id) ?? [];
+
+        if (inbox.length === 0) {
+          console.log("(empty inbox)");
+          return;
+        }
+
+        renderAnswerStart();
+
+        const result = await cell.processInbox(inbox);
+
+        engine.inboxes.set(cell.id, []);
+
+        console.log(`
+    Inbox processed.
+
+    Messages:
+    ${result.processed}
+
+    ${result.summary}
+    `);
+      },
+    },
+
+    {
       name: "/specialize",
 
       match: (input, { engine }) =>
