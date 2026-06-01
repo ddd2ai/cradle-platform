@@ -5,8 +5,8 @@
   "status": "idle",
   "maturity": 1,
   "createdAt": "2026-05-31T15:10:10.272Z",
-  "updatedAt": "2026-05-31T15:14:11.671Z",
-  "lastStartedAt": "2026-05-31T15:10:10.272Z",
+  "updatedAt": "2026-06-01T01:28:10.822Z",
+  "lastStartedAt": "2026-06-01T01:28:10.814Z",
   "directories": {
     "root": "cells/cell-004",
     "logs": "cells/cell-004/logs",
