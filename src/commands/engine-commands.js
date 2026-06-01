@@ -1,3 +1,5 @@
+import { renderTable } from "../ui/render-table.js";
+
 export function createEngineCommands() {
   return [
     {
@@ -28,27 +30,28 @@ export function createEngineCommands() {
     {
       name: "/status",
       match: (input) => input === "/status",
-      execute: async ({ engine }) => {
 
-        console.log("");
-        console.log("┌──────────┬──────────┬──────────┬──────────┬────────┐");
-        console.log("│ Cell     │ Status   │ Mature   │ Gen      │ Inbox  │");
-        console.log("├──────────┼──────────┼──────────┼──────────┼────────┤");
+      execute: async ({ engine }) => {
+        const rows = [];
 
         for (const [id, cell] of engine.cells) {
+          const profile = await cell.getEvolutionInfo();
 
-          const profile =
-            await cell.getEvolutionInfo();
-
-          const inbox =
-            engine.inboxes.get(id)?.length ?? 0;
-
-          console.log(
-            `│ ${String(id).padEnd(8)} │ ${String(profile.status).padEnd(8)} │ ${String(profile.maturity).padEnd(8)} │ ${String(profile.generation).padEnd(8)} │ ${String(inbox).padEnd(6)} │`
-          );
+          rows.push({
+            Cell: id,
+            Status: profile.status ?? "unknown",
+            Mature: profile.maturity ?? 0,
+            Gen: profile.generation ?? 1,
+            Inbox: engine.inboxes.get(id)?.length ?? 0,
+          });
         }
 
-        console.log("└──────────┴──────────┴──────────┴──────────┴────────┘");
+        console.log("");
+
+        renderTable(
+          ["Cell", "Status", "Mature", "Gen", "Inbox"],
+          rows
+        );
       },
     },
 

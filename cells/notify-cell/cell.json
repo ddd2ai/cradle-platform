@@ -1,0 +1,22 @@
+{
+  "id": "notify-cell",
+  "name": "notify-cell",
+  "model": "gpt-4.1",
+  "status": "idle",
+  "maturity": 0,
+  "generation": 1,
+  "parent": null,
+  "responsibilities": [],
+  "relationships": [],
+  "createdAt": "2026-06-01T13:16:59.169Z",
+  "updatedAt": "2026-06-01T13:26:10.513Z",
+  "lastStartedAt": "2026-06-01T13:26:10.507Z",
+  "directories": {
+    "root": "cells/notify-cell",
+    "logs": "cells/notify-cell/logs",
+    "memory": "cells/notify-cell/memory",
+    "workspace": "cells/notify-cell/workspace",
+    "snapshots": "cells/notify-cell/snapshots",
+    "thoughts": "cells/notify-cell/thoughts"
+  }
+}

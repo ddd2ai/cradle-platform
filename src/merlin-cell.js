@@ -147,10 +147,15 @@ const defaultProfile = {
   id: this.id,
   name: this.name,
   model: this.model,
+
   status: "idle",
   maturity: 0,
   generation: 1,
   parent: null,
+
+  responsibilities: [],
+  relationships: [],
+
   createdAt: now,
   updatedAt: now,
   lastStartedAt: now,
@@ -336,6 +341,74 @@ async getEvolutionInfo() {
     generation: Number(profile?.generation ?? 1),
     parent: profile?.parent ?? null,
   };
+}
+
+async addResponsibility(name) {
+
+  const profile =
+    await this.readCellProfile();
+
+  if (!profile) return;
+
+  profile.responsibilities ??= [];
+
+  if (
+    !profile.responsibilities.includes(name)
+  ) {
+    profile.responsibilities.push(name);
+  }
+
+  await this.writeCellProfile(profile);
+}
+
+async removeResponsibility(name) {
+
+  const profile =
+    await this.readCellProfile();
+
+  if (!profile) return;
+
+  profile.responsibilities =
+    (profile.responsibilities ?? [])
+      .filter(item => item !== name);
+
+  await this.writeCellProfile(profile);
+}
+
+async listResponsibilities() {
+
+  const profile =
+    await this.readCellProfile();
+
+  return profile?.responsibilities ?? [];
+}
+
+async addRelationship(
+  type,
+  target
+) {
+
+  const profile =
+    await this.readCellProfile();
+
+  if (!profile) return;
+
+  profile.relationships ??= [];
+
+  profile.relationships.push({
+    type,
+    target
+  });
+
+  await this.writeCellProfile(profile);
+}
+
+async listRelationships() {
+
+  const profile =
+    await this.readCellProfile();
+
+  return profile?.relationships ?? [];
 }
 
   // =========================

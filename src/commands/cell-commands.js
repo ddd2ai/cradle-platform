@@ -429,5 +429,141 @@ ${originalContent}
     `);
       },
     },
+
+
+    {
+      name: "/resp",
+
+      match: (input,{engine}) =>
+        input.startsWith("/resp ") &&
+        !engine.isMerlinMode(),
+
+      execute: async ({engine,input}) => {
+
+        const cell =
+          engine.getActiveCell();
+
+        const args =
+          input.replace("/resp ","")
+            .trim()
+            .split(/\s+/);
+
+        const action = args[0];
+
+        if(action === "add") {
+
+          const name = args[1];
+
+          await cell.addResponsibility(
+            name
+          );
+
+          console.log(
+            `Responsibility added: ${name}`
+          );
+
+          return;
+        }
+
+        if(action === "list") {
+
+          const items =
+            await cell.listResponsibilities();
+
+          console.log(
+            items.join("\n")
+          );
+
+          return;
+        }
+      }
+    },
+
+
+    {
+      name: "/link",
+
+      match: (input,{engine}) =>
+        input.startsWith("/link ") &&
+        !engine.isMerlinMode(),
+
+      execute: async ({engine,input}) => {
+
+        const cell =
+          engine.getActiveCell();
+
+        const args =
+          input.replace("/link ","")
+            .trim()
+            .split(/\s+/);
+
+        if(args.length < 2) {
+
+          console.log(
+            "Usage: /link depends-on cell-002"
+          );
+
+          return;
+        }
+
+        const type = args[0];
+        const target = args[1];
+
+        await cell.addRelationship(
+          type,
+          target
+        );
+
+        console.log(
+          `${type} -> ${target}`
+        );
+      }
+    },
+
+
+    {
+      name: "/graph",
+
+      match: (input,{engine}) =>
+        input === "/graph" &&
+        !engine.isMerlinMode(),
+
+      execute: async ({engine}) => {
+
+        const cell =
+          engine.getActiveCell();
+
+        const resp =
+          await cell.listResponsibilities();
+
+        const links =
+          await cell.listRelationships();
+
+        console.log("");
+
+        console.log(cell.id);
+
+        console.log("");
+        console.log("Responsibilities");
+
+        for(const item of resp) {
+          console.log(
+            ` ├─ ${item}`
+          );
+        }
+
+        console.log("");
+        console.log("Relationships");
+
+        for(const link of links) {
+          console.log(
+            ` ├─ ${link.type} -> ${link.target}`
+          );
+        }
+
+        console.log("");
+      }
+    },
+
   ];
 }

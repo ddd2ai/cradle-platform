@@ -3,12 +3,18 @@
   "name": "cell-005",
   "model": "gpt-4.1",
   "status": "idle",
-  "maturity": 5,
+  "maturity": 0,
   "generation": 1,
   "parent": null,
-  "createdAt": "2026-06-01T12:28:01.508Z",
-  "updatedAt": "2026-06-01T12:49:35.638Z",
-  "lastStartedAt": "2026-06-01T12:49:35.632Z",
+  "responsibilities": [
+    "notification",
+    "email",
+    "sms"
+  ],
+  "relationships": [],
+  "createdAt": "2026-06-01T13:16:01.368Z",
+  "updatedAt": "2026-06-01T13:26:10.500Z",
+  "lastStartedAt": "2026-06-01T13:26:10.494Z",
   "directories": {
     "root": "cells/cell-005",
     "logs": "cells/cell-005/logs",

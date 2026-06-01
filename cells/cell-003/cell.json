@@ -3,10 +3,14 @@
   "name": "cell-003",
   "model": "gpt-4.1",
   "status": "idle",
-  "maturity": 1,
-  "createdAt": "2026-05-31T13:49:06.912Z",
-  "updatedAt": "2026-06-01T12:49:35.623Z",
-  "lastStartedAt": "2026-06-01T12:49:35.616Z",
+  "maturity": 0,
+  "generation": 1,
+  "parent": null,
+  "responsibilities": [],
+  "relationships": [],
+  "createdAt": "2026-06-01T13:13:41.161Z",
+  "updatedAt": "2026-06-01T13:26:10.485Z",
+  "lastStartedAt": "2026-06-01T13:26:10.478Z",
   "directories": {
     "root": "cells/cell-003",
     "logs": "cells/cell-003/logs",
@@ -14,7 +18,5 @@
     "workspace": "cells/cell-003/workspace",
     "snapshots": "cells/cell-003/snapshots",
     "thoughts": "cells/cell-003/thoughts"
-  },
-  "generation": 1,
-  "parent": null
+  }
 }

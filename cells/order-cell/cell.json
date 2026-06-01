@@ -1,0 +1,35 @@
+{
+  "id": "order-cell",
+  "name": "order-cell",
+  "model": "gpt-4.1",
+  "status": "idle",
+  "maturity": 0,
+  "generation": 1,
+  "parent": null,
+  "responsibilities": [],
+  "relationships": [
+    {
+      "type": "depends-on",
+      "target": "customer-cell"
+    },
+    {
+      "type": "depends-on",
+      "target": "payment-cell"
+    },
+    {
+      "type": "publishes-to",
+      "target": "notify-cell"
+    }
+  ],
+  "createdAt": "2026-06-01T13:17:14.757Z",
+  "updatedAt": "2026-06-01T13:26:10.521Z",
+  "lastStartedAt": "2026-06-01T13:26:10.513Z",
+  "directories": {
+    "root": "cells/order-cell",
+    "logs": "cells/order-cell/logs",
+    "memory": "cells/order-cell/memory",
+    "workspace": "cells/order-cell/workspace",
+    "snapshots": "cells/order-cell/snapshots",
+    "thoughts": "cells/order-cell/thoughts"
+  }
+}

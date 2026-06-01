@@ -3,10 +3,42 @@
   "name": "cell-001",
   "model": "gpt-4.1",
   "status": "idle",
-  "maturity": 8,
-  "createdAt": "2026-05-31T13:05:46.469Z",
-  "updatedAt": "2026-06-01T12:49:35.608Z",
-  "lastStartedAt": "2026-06-01T12:49:35.587Z",
+  "maturity": 0,
+  "generation": 1,
+  "parent": null,
+  "responsibilities": [
+    "payment",
+    "refund",
+    "notification",
+    "report",
+    "create-order",
+    "update-order",
+    "cancel-order",
+    "audit",
+    "risk",
+    "settlement"
+  ],
+  "relationships": [
+    {
+      "type": "depends-on",
+      "target": "cell-002"
+    },
+    {
+      "type": "depends-on",
+      "target": "cell-003"
+    },
+    {
+      "type": "depends-on",
+      "target": "cell-004"
+    },
+    {
+      "type": "publishes-to",
+      "target": "cell-005"
+    }
+  ],
+  "createdAt": "2026-06-01T13:12:37.590Z",
+  "updatedAt": "2026-06-01T13:26:10.470Z",
+  "lastStartedAt": "2026-06-01T13:26:10.451Z",
   "directories": {
     "root": "cells/cell-001",
     "logs": "cells/cell-001/logs",
@@ -14,7 +46,5 @@
     "workspace": "cells/cell-001/workspace",
     "snapshots": "cells/cell-001/snapshots",
     "thoughts": "cells/cell-001/thoughts"
-  },
-  "generation": 1,
-  "parent": null
+  }
 }
