@@ -216,6 +216,7 @@ Engine:
   /new <cell-id>           Create and switch to a new cell
   /use <cell-id>           Switch to a cell
   /merlin                  Return to Merlin engine mode
+  /colony                  Show colony overview
   /whoami                  Show current mode or cell
   /ask <cell> <message>    Ask a specific cell without switching
   /broadcast <message>     Send message to all cells

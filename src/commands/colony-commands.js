@@ -74,12 +74,62 @@ export function createColonyCommands() {
           renderAnswerStart();
 
           await targetCell.ask(`
-你是 ${id}。
+          你是 ${id}。
 
-請根據你的身份、記憶與能力，執行以下任務：
+          請根據你的身份、記憶與能力，執行以下任務：
 
-${task}
-`);
+          ${task}
+          `);
+        }
+      },
+    },
+
+
+    {
+      name: "/colony",
+
+      match: (input) =>
+        input === "/colony",
+
+      execute: async ({ engine }) => {
+        console.log("");
+        console.log("🧫 Cradle Colony");
+        console.log("");
+
+        for (const [id, cell] of engine.cells) {
+          const profile = await cell.getEvolutionInfo();
+          const responsibilities = await cell.listResponsibilities();
+          const relationships = await cell.listRelationships();
+          const inboxCount = engine.inboxes.get(id)?.length ?? 0;
+
+          console.log(id);
+          console.log(` ├─ status: ${profile.status ?? "unknown"}`);
+          console.log(` ├─ maturity: ${profile.maturity ?? 0}`);
+          console.log(` ├─ generation: ${profile.generation ?? 1}`);
+          console.log(` ├─ parent: ${profile.parent ?? "-"}`);
+          console.log(` ├─ inbox: ${inboxCount}`);
+
+          console.log(" ├─ responsibilities:");
+
+          if (responsibilities.length === 0) {
+            console.log(" │   └─ -");
+          } else {
+            for (const item of responsibilities) {
+              console.log(` │   └─ ${item}`);
+            }
+          }
+
+          console.log(" └─ relationships:");
+
+          if (relationships.length === 0) {
+            console.log("     └─ -");
+          } else {
+            for (const link of relationships) {
+              console.log(`     └─ ${link.type} -> ${link.target}`);
+            }
+          }
+
+          console.log("");
         }
       },
     },
