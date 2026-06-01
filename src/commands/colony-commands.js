@@ -1,4 +1,5 @@
 import { renderAnswerStart } from "../merlin-ui.js";
+import { renderColonyGraph } from "../ui/render-colony-graph.js";
 
 export function createColonyCommands() {
   return [
@@ -133,5 +134,32 @@ export function createColonyCommands() {
         }
       },
     },
+
+    {
+      name: "/colony-graph",
+
+      match: (input) =>
+        input === "/colony-graph",
+
+      execute: async ({ engine }) => {
+        const nodes = [];
+
+        for (const [id, cell] of engine.cells) {
+          const profile = await cell.getEvolutionInfo();
+          const relationships = await cell.listRelationships();
+
+          nodes.push({
+            id,
+            generation: profile.generation ?? 1,
+            parent: profile.parent ?? null,
+            relationships,
+          });
+        }
+
+        renderColonyGraph(nodes);
+      },
+    },
+
+
   ];
 }

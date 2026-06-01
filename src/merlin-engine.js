@@ -217,6 +217,7 @@ Engine:
   /use <cell-id>           Switch to a cell
   /merlin                  Return to Merlin engine mode
   /colony                  Show colony overview
+  /colony-graph            Show colony relationship graph
   /whoami                  Show current mode or cell
   /ask <cell> <message>    Ask a specific cell without switching
   /broadcast <message>     Send message to all cells
@@ -231,6 +232,7 @@ Cell:
   /feed <content>          Append knowledge to current cell
   /send <cell> <message>   Send message to another cell
   /process                 Process inbox into memory and thoughts
+  /clean-inbox             Clear current cell inbox
   /inbox                   Show messages received by current cell
   /write <task>            Ask current cell to create a workspace markdown file
   /read <file>             Read a workspace file

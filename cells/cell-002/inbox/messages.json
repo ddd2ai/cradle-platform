@@ -1,9 +1,0 @@
-[
-  {
-    "from": "cell-001",
-    "to": "cell-002",
-    "type": "message",
-    "content": "hello from cell-001",
-    "createdAt": "2026-06-01T14:36:59.353Z"
-  }
-]

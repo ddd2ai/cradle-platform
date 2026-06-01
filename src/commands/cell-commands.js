@@ -616,13 +616,30 @@ ${originalContent}
         await cell.clearInbox();
 
         console.log(`
-    Inbox processed.
+        Inbox processed.
 
-    Messages:
-    ${result.processed}
+        Messages:
+        ${result.processed}
 
-    ${result.summary}
-    `);
+        ${result.summary}
+        `);
+      },
+    },
+
+    {
+      name: "/clean-inbox",
+
+      match: (input, { engine }) =>
+        input === "/clean-inbox" &&
+        !engine.isMerlinMode(),
+
+      execute: async ({ engine }) => {
+        const cell = engine.getActiveCell();
+
+        engine.inboxes.set(cell.id, []);
+        await cell.clearInbox();
+
+        console.log(`Inbox cleared: ${cell.id}`);
       },
     },
 

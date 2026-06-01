@@ -3,7 +3,7 @@
   "name": "cell-002",
   "model": "gpt-4.1",
   "status": "idle",
-  "maturity": 3,
+  "maturity": 0,
   "generation": 2,
   "parent": "cell-001",
   "responsibilities": [],
@@ -13,9 +13,9 @@
       "target": "cell-001"
     }
   ],
-  "createdAt": "2026-06-01T14:20:54.042Z",
-  "updatedAt": "2026-06-01T14:50:53.065Z",
-  "lastStartedAt": "2026-06-01T14:50:53.058Z",
+  "createdAt": "2026-06-01T15:19:43.540Z",
+  "updatedAt": "2026-06-01T15:23:50.894Z",
+  "lastStartedAt": "2026-06-01T15:23:50.885Z",
   "directories": {
     "root": "cells/cell-002",
     "logs": "cells/cell-002/logs",
