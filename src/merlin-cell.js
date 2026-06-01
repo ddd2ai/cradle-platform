@@ -597,6 +597,63 @@ ${reflection}
   }
 
   // =========================
+  // Thinking
+  // =========================
+
+  async think() {
+    const profile = await this.getProfile();
+    const memoryContext = await this.buildMemoryContext();
+
+    const prompt = `
+  你是 ${this.name} 的自我思考模組。
+
+  請根據目前 Cell 狀態，產生一份「成長反思」。
+
+  請輸出 Markdown，包含：
+
+  ## Current State
+  目前狀態。
+
+  ## Observed Pattern
+  最近觀察到的模式。
+
+  ## Growth Direction
+  下一步成長方向。
+
+  ## Suggested Action
+  建議行動。
+
+  ---
+
+  # Profile
+
+  ${JSON.stringify(profile, null, 2)}
+
+  ---
+
+  # Memory Context
+
+  ${memoryContext}
+  `;
+
+    const result = await this.askWithTimeout(prompt, 60000);
+    const thought = result?.text ?? result?.answer ?? "";
+
+    if (!thought.trim()) {
+      throw new Error("No thought generated.");
+    }
+
+    await this.appendThought(`## ${new Date().toISOString()}
+
+  ${thought}
+  `);
+
+    await this.increaseMaturity(1);
+
+    return thought.trim();
+  }
+
+  // =========================
   // Workspace
   // =========================
 

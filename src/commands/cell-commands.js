@@ -112,6 +112,28 @@ ${await cell.safeReadMemory("history")}
     },
 
     {
+      name: "/think",
+
+      match: (input, { engine }) =>
+        input === "/think" &&
+        !engine.isMerlinMode(),
+
+      execute: async ({ engine }) => {
+        const cell = engine.getActiveCell();
+
+        renderAnswerStart();
+
+        const thought = await cell.think();
+
+        console.log(`
+    Thought created.
+
+    ${thought}
+    `);
+      },
+    },
+
+    {
       name: "/feed",
       match: (input, { engine }) => input.startsWith("/feed ") && !engine.isMerlinMode(),
       execute: async ({ engine, input }) => {

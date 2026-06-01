@@ -217,6 +217,7 @@ Cell:
   /memory                  Show active memory context
   /memory full             Show full memory files
   /thoughts                Show recent thoughts
+  /think                   Let current cell reflect and grow
   /feed <content>          Append knowledge to current cell
   /send <cell> <message>   Send message to another cell
   /inbox                   Show messages received by current cell
