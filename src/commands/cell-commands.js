@@ -346,5 +346,88 @@ ${originalContent}
         console.log(`Snapshot restored: ${snapshotName}`);
       },
     },
+
+    {
+      name: "/evolve",
+
+      match: (input, { engine }) =>
+        input === "/evolve" &&
+        !engine.isMerlinMode(),
+
+      execute: async ({ engine }) => {
+
+        const cell =
+          engine.getActiveCell();
+
+        const result =
+          await cell.mature();
+
+        console.log(`
+    🧬 ${cell.id} evolved
+
+    Maturity:
+    ${result.maturity}
+    `);
+      },
+    },
+
+    {
+      name: "/divide",
+
+      match: (input, { engine }) =>
+        input === "/divide" &&
+        !engine.isMerlinMode(),
+
+      execute: async ({ engine }) => {
+
+        const parent =
+          engine.getActiveCell();
+
+        if (!(await parent.canDivide())) {
+
+          console.log(`
+    Need maturity >= 5
+
+    Current:
+    ${await parent.getMaturity()}
+    `);
+
+          return;
+        }
+
+        const nextNumber =
+          engine.cells.size + 1;
+
+        const childId =
+          `cell-${String(nextNumber)
+            .padStart(3, "0")}`;
+
+        const child =
+          await engine.createCell(
+            childId
+          );
+
+        const parentInfo =
+          await parent.getEvolutionInfo();
+
+        await child.setParent(
+          parent.id
+        );
+
+        await child.setGeneration(
+          parentInfo.generation + 1
+        );
+
+        console.log(`
+    🦞 Cell Division Complete
+
+    Parent :
+    ${parent.id}
+
+    Child :
+    ${childId}
+    `);
+      },
+    },
   ];
 }

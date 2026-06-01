@@ -17,12 +17,12 @@ const MERLIN_LOGO = [
 
 const MERLIN_CELL_MAP = `
               ● Customer Cell ──────── ● Payment Cell             ●
-                    │                          │               ╱ │ ╲
-                    ▼                          ▼             ●──●──●
+                    │                          │                ╱ │ ╲
+                    ▼                          ▼               ●──●──●●──●
               ● Order Cell ─────────── ● Risk Cell              ╲ │ ╱
-                    │                          │                 ●
-                    ▼                          ▼
-              ● Notify Cell ────────── ● Model Cell
+                    │                          │                 ●●──●
+                    ▼                          ▼                ╱    
+              ● Notify Cell ────────── ● Model Cell            ●
 `;
 
 const LOGO_COLORS = [

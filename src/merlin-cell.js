@@ -107,7 +107,7 @@ ${outputText}
         renderSkillNotFound(result.skillMissing);
       }
 
-      await this.increaseMaturity(1);
+      await this.mature(1);
       await this.updateStatus("idle");
 
       return result;
@@ -143,38 +143,49 @@ ${outputText}
 
     const now = new Date().toISOString();
 
-    const defaultProfile = {
-      id: this.id,
-      name: this.name,
-      model: this.model,
-      status: "idle",
-      maturity: 0,
-      createdAt: now,
-      updatedAt: now,
-      lastStartedAt: now,
-      directories: {
-        root: this.rootDir,
-        logs: this.logsDir,
-        memory: this.memoryDir,
-        workspace: this.workspaceDir,
-        snapshots: this.snapshotsDir,
-        thoughts: this.thoughtsDir,
-      },
-    };
+const defaultProfile = {
+  id: this.id,
+  name: this.name,
+  model: this.model,
+  status: "idle",
+  maturity: 0,
+  generation: 1,
+  parent: null,
+  createdAt: now,
+  updatedAt: now,
+  lastStartedAt: now,
+
+  directories: {
+    root: this.rootDir,
+    logs: this.logsDir,
+    memory: this.memoryDir,
+    workspace: this.workspaceDir,
+    snapshots: this.snapshotsDir,
+    thoughts: this.thoughtsDir,
+  },
+};
 
     const existingProfile = await this.readCellProfile();
 
     const nextProfile = existingProfile
-      ? {
-          ...existingProfile,
-          name: existingProfile.name || this.name,
-          model: this.model,
-          status: "idle",
-          updatedAt: now,
-          lastStartedAt: now,
-          directories: defaultProfile.directories,
-        }
-      : defaultProfile;
+    ? {
+        ...existingProfile,
+        name: existingProfile.name || this.name,
+        model: this.model,
+        status: "idle",
+
+        generation:
+          existingProfile.generation ?? 1,
+
+        parent:
+          existingProfile.parent ?? null,
+
+        updatedAt: now,
+        lastStartedAt: now,
+
+        directories: defaultProfile.directories,
+      }
+    : defaultProfile;
 
     await this.writeCellProfile(nextProfile);
   }
@@ -266,6 +277,66 @@ My cell id is ${this.id}.
       // maturity 更新失敗不應中斷 CLI
     }
   }
+
+  async getProfile() {
+  return (await this.readCellProfile()) || {};
+}
+
+async getStatus() {
+  const profile = await this.readCellProfile();
+  return profile?.status ?? "unknown";
+}
+
+async getMaturity() {
+  const profile = await this.readCellProfile();
+  return Number(profile?.maturity ?? 0);
+}
+
+async mature(amount = 1) {
+  await this.increaseMaturity(amount);
+
+  return {
+    maturity: await this.getMaturity(),
+  };
+}
+
+async canDivide() {
+  return (await this.getMaturity()) >= 5;
+}
+
+async setGeneration(generation) {
+  const profile = await this.readCellProfile();
+
+  if (!profile) return;
+
+  profile.generation = generation;
+  profile.updatedAt = new Date().toISOString();
+
+  await this.writeCellProfile(profile);
+}
+
+async setParent(parentId) {
+  const profile = await this.readCellProfile();
+
+  if (!profile) return;
+
+  profile.parent = parentId;
+  profile.updatedAt = new Date().toISOString();
+
+  await this.writeCellProfile(profile);
+}
+
+async getEvolutionInfo() {
+  const profile = await this.readCellProfile();
+
+  return {
+    id: profile?.id,
+    status: profile?.status,
+    maturity: Number(profile?.maturity ?? 0),
+    generation: Number(profile?.generation ?? 1),
+    parent: profile?.parent ?? null,
+  };
+}
 
   // =========================
   // Memory

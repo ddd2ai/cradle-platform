@@ -29,20 +29,26 @@ export function createEngineCommands() {
       name: "/status",
       match: (input) => input === "/status",
       execute: async ({ engine }) => {
-        const rows = [];
+
+        console.log("");
+        console.log("┌──────────┬──────────┬──────────┬──────────┬────────┐");
+        console.log("│ Cell     │ Status   │ Mature   │ Gen      │ Inbox  │");
+        console.log("├──────────┼──────────┼──────────┼──────────┼────────┤");
 
         for (const [id, cell] of engine.cells) {
-          const profile = await cell.readCellProfile();
 
-          rows.push({
-            Cell: id,
-            Status: profile?.status ?? "unknown",
-            Maturity: profile?.maturity ?? 0,
-            Inbox: engine.inboxes.get(id)?.length ?? 0,
-          });
+          const profile =
+            await cell.getEvolutionInfo();
+
+          const inbox =
+            engine.inboxes.get(id)?.length ?? 0;
+
+          console.log(
+            `│ ${String(id).padEnd(8)} │ ${String(profile.status).padEnd(8)} │ ${String(profile.maturity).padEnd(8)} │ ${String(profile.generation).padEnd(8)} │ ${String(inbox).padEnd(6)} │`
+          );
         }
 
-        console.table(rows);
+        console.log("└──────────┴──────────┴──────────┴──────────┴────────┘");
       },
     },
 

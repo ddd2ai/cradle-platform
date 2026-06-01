@@ -229,6 +229,8 @@ Cell:
   /snapshot                Create snapshot
   /snapshots               List snapshots
   /restore <name>          Restore snapshot
+  /evolve                  Increase maturity
+  /divide                  Create child cell
 `);
   }
 

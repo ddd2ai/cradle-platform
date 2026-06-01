@@ -5,8 +5,8 @@
   "status": "idle",
   "maturity": 8,
   "createdAt": "2026-05-31T13:05:46.469Z",
-  "updatedAt": "2026-06-01T01:28:10.800Z",
-  "lastStartedAt": "2026-06-01T01:28:10.790Z",
+  "updatedAt": "2026-06-01T12:49:35.608Z",
+  "lastStartedAt": "2026-06-01T12:49:35.587Z",
   "directories": {
     "root": "cells/cell-001",
     "logs": "cells/cell-001/logs",
@@ -14,5 +14,7 @@
     "workspace": "cells/cell-001/workspace",
     "snapshots": "cells/cell-001/snapshots",
     "thoughts": "cells/cell-001/thoughts"
-  }
+  },
+  "generation": 1,
+  "parent": null
 }
