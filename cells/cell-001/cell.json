@@ -14,14 +14,15 @@
     }
   ],
   "createdAt": "2026-06-01T14:20:09.528Z",
-  "updatedAt": "2026-06-01T14:20:47.386Z",
-  "lastStartedAt": "2026-06-01T14:20:09.528Z",
+  "updatedAt": "2026-06-01T14:37:17.545Z",
+  "lastStartedAt": "2026-06-01T14:37:17.512Z",
   "directories": {
     "root": "cells/cell-001",
     "logs": "cells/cell-001/logs",
     "memory": "cells/cell-001/memory",
     "workspace": "cells/cell-001/workspace",
     "snapshots": "cells/cell-001/snapshots",
-    "thoughts": "cells/cell-001/thoughts"
+    "thoughts": "cells/cell-001/thoughts",
+    "inbox": "cells/cell-001/inbox"
   }
 }

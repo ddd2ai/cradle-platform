@@ -84,7 +84,7 @@ export class MerlinEngine {
 
     await cell.prepare();
     this.cells.set(id, cell);
-    this.ensureInbox(id);
+    this.inboxes.set(id, await cell.readInbox());
 
     return cell;
   }
@@ -98,7 +98,7 @@ export class MerlinEngine {
 
     await cell.prepare();
     this.cells.set(id, cell);
-    this.ensureInbox(id);
+    this.inboxes.set(id, await cell.readInbox());
 
     return cell;
   }
@@ -109,16 +109,24 @@ export class MerlinEngine {
     }
   }
 
-  pushMessage({ from, to, content, type = "message" }) {
+  async pushMessage({ from, to, content, type = "message" }) {
     this.ensureInbox(to);
 
-    this.inboxes.get(to).push({
+    const message = {
       from,
       to,
       type,
       content,
       createdAt: new Date().toISOString(),
-    });
+    };
+
+    this.inboxes.get(to).push(message);
+
+    const cell = this.cells.get(to);
+
+    if (cell) {
+      await cell.appendInboxMessage(message);
+    }
   }
 
   getActiveCell() {

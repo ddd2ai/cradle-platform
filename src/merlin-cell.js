@@ -26,6 +26,8 @@ export class MerlinCell {
     this.snapshotsDir = path.join(this.rootDir, "snapshots");
     this.thoughtsDir = path.join(this.rootDir, "thoughts");
     this.cellFile = path.join(this.rootDir, "cell.json");
+    this.inboxDir = path.join(this.rootDir, "inbox");
+    this.inboxFile = path.join(this.inboxDir, "messages.json");
 
     this.memoryFiles = {
       identity: path.join(this.memoryDir, "identity.md"),
@@ -139,6 +141,7 @@ ${outputText}
       fs.mkdir(this.workspaceDir, { recursive: true }),
       fs.mkdir(this.snapshotsDir, { recursive: true }),
       fs.mkdir(this.thoughtsDir, { recursive: true }),
+      fs.mkdir(this.inboxDir, { recursive: true }),
     ]);
 
     const now = new Date().toISOString();
@@ -167,6 +170,7 @@ const defaultProfile = {
     workspace: this.workspaceDir,
     snapshots: this.snapshotsDir,
     thoughts: this.thoughtsDir,
+    inbox: this.inboxDir,
   },
 };
 
@@ -284,171 +288,206 @@ My cell id is ${this.id}.
   }
 
   async getProfile() {
-  return (await this.readCellProfile()) || {};
-}
-
-async getStatus() {
-  const profile = await this.readCellProfile();
-  return profile?.status ?? "unknown";
-}
-
-async getMaturity() {
-  const profile = await this.readCellProfile();
-  return Number(profile?.maturity ?? 0);
-}
-
-async mature(amount = 1) {
-  await this.increaseMaturity(amount);
-
-  return {
-    maturity: await this.getMaturity(),
-  };
-}
-
-async canDivide() {
-  return (await this.getMaturity()) >= 5;
-}
-
-async divideTo(childCell) {
-  if (!(await this.canDivide())) {
-    throw new Error(`Cell ${this.id} is not mature enough to divide.`);
+    return (await this.readCellProfile()) || {};
   }
 
-  const parentInfo = await this.getEvolutionInfo();
-
-  await this.copyDirectory(this.memoryDir, childCell.memoryDir);
-
-  await childCell.setParent(this.id);
-  await childCell.setGeneration(parentInfo.generation + 1);
-
-  await childCell.writeMemory(
-    "history",
-    `# History
-
-Born from ${this.id} at ${new Date().toISOString()}.
-`
-  );
-
-  await childCell.appendThought(`
-## ${new Date().toISOString()}
-
-I was born from ${this.id}.
-My inherited memory should be refined into my own growth direction.
-`);
-
-  await this.addRelationship("divided-into", childCell.id);
-  await childCell.addRelationship("born-from", this.id);
-
-  await childCell.increaseMaturity(0);
-
-  return {
-    parent: this.id,
-    child: childCell.id,
-    generation: parentInfo.generation + 1,
-  };
-}
-
-async setGeneration(generation) {
-  const profile = await this.readCellProfile();
-
-  if (!profile) return;
-
-  profile.generation = generation;
-  profile.updatedAt = new Date().toISOString();
-
-  await this.writeCellProfile(profile);
-}
-
-async setParent(parentId) {
-  const profile = await this.readCellProfile();
-
-  if (!profile) return;
-
-  profile.parent = parentId;
-  profile.updatedAt = new Date().toISOString();
-
-  await this.writeCellProfile(profile);
-}
-
-async getEvolutionInfo() {
-  const profile = await this.readCellProfile();
-
-  return {
-    id: profile?.id,
-    status: profile?.status,
-    maturity: Number(profile?.maturity ?? 0),
-    generation: Number(profile?.generation ?? 1),
-    parent: profile?.parent ?? null,
-  };
-}
-
-async addResponsibility(name) {
-
-  const profile =
-    await this.readCellProfile();
-
-  if (!profile) return;
-
-  profile.responsibilities ??= [];
-
-  if (
-    !profile.responsibilities.includes(name)
-  ) {
-    profile.responsibilities.push(name);
+  async getStatus() {
+    const profile = await this.readCellProfile();
+    return profile?.status ?? "unknown";
   }
 
-  await this.writeCellProfile(profile);
-}
+  async getMaturity() {
+    const profile = await this.readCellProfile();
+    return Number(profile?.maturity ?? 0);
+  }
 
-async removeResponsibility(name) {
+  async mature(amount = 1) {
+    await this.increaseMaturity(amount);
 
-  const profile =
-    await this.readCellProfile();
+    return {
+      maturity: await this.getMaturity(),
+    };
+  }
 
-  if (!profile) return;
+  async canDivide() {
+    return (await this.getMaturity()) >= 5;
+  }
 
-  profile.responsibilities =
-    (profile.responsibilities ?? [])
-      .filter(item => item !== name);
+  async divideTo(childCell) {
+    if (!(await this.canDivide())) {
+      throw new Error(`Cell ${this.id} is not mature enough to divide.`);
+    }
 
-  await this.writeCellProfile(profile);
-}
+    const parentInfo = await this.getEvolutionInfo();
 
-async listResponsibilities() {
+    await this.copyDirectory(this.memoryDir, childCell.memoryDir);
 
-  const profile =
-    await this.readCellProfile();
+    await childCell.setParent(this.id);
+    await childCell.setGeneration(parentInfo.generation + 1);
 
-  return profile?.responsibilities ?? [];
-}
+    await childCell.writeMemory(
+      "history",
+      `# History
 
-async addRelationship(
-  type,
-  target
-) {
+  Born from ${this.id} at ${new Date().toISOString()}.
+  `
+    );
 
-  const profile =
-    await this.readCellProfile();
+    await childCell.appendThought(`
+  ## ${new Date().toISOString()}
 
-  if (!profile) return;
+  I was born from ${this.id}.
+  My inherited memory should be refined into my own growth direction.
+  `);
 
-  profile.relationships ??= [];
+    await this.addRelationship("divided-into", childCell.id);
+    await childCell.addRelationship("born-from", this.id);
 
-  profile.relationships.push({
+    await childCell.increaseMaturity(0);
+
+    return {
+      parent: this.id,
+      child: childCell.id,
+      generation: parentInfo.generation + 1,
+    };
+  }
+
+  async setGeneration(generation) {
+    const profile = await this.readCellProfile();
+
+    if (!profile) return;
+
+    profile.generation = generation;
+    profile.updatedAt = new Date().toISOString();
+
+    await this.writeCellProfile(profile);
+  }
+
+  async setParent(parentId) {
+    const profile = await this.readCellProfile();
+
+    if (!profile) return;
+
+    profile.parent = parentId;
+    profile.updatedAt = new Date().toISOString();
+
+    await this.writeCellProfile(profile);
+  }
+
+  async getEvolutionInfo() {
+    const profile = await this.readCellProfile();
+
+    return {
+      id: profile?.id,
+      status: profile?.status,
+      maturity: Number(profile?.maturity ?? 0),
+      generation: Number(profile?.generation ?? 1),
+      parent: profile?.parent ?? null,
+    };
+  }
+
+  async addResponsibility(name) {
+
+    const profile =
+      await this.readCellProfile();
+
+    if (!profile) return;
+
+    profile.responsibilities ??= [];
+
+    if (
+      !profile.responsibilities.includes(name)
+    ) {
+      profile.responsibilities.push(name);
+    }
+
+    await this.writeCellProfile(profile);
+  }
+
+  async removeResponsibility(name) {
+
+    const profile =
+      await this.readCellProfile();
+
+    if (!profile) return;
+
+    profile.responsibilities =
+      (profile.responsibilities ?? [])
+        .filter(item => item !== name);
+
+    await this.writeCellProfile(profile);
+  }
+
+  async listResponsibilities() {
+
+    const profile =
+      await this.readCellProfile();
+
+    return profile?.responsibilities ?? [];
+  }
+
+  async addRelationship(
     type,
     target
-  });
+  ) {
 
-  await this.writeCellProfile(profile);
-}
+    const profile =
+      await this.readCellProfile();
 
-async listRelationships() {
+    if (!profile) return;
 
-  const profile =
-    await this.readCellProfile();
+    profile.relationships ??= [];
 
-  return profile?.relationships ?? [];
-}
+    profile.relationships.push({
+      type,
+      target
+    });
+
+    await this.writeCellProfile(profile);
+  }
+
+  async listRelationships() {
+
+    const profile =
+      await this.readCellProfile();
+
+    return profile?.relationships ?? [];
+  }
+
+
+  // =========================
+  // Inbox
+  // =========================
+
+  async readInbox() {
+    try {
+      const raw = await fs.readFile(this.inboxFile, "utf8");
+      return JSON.parse(raw);
+    } catch {
+      return [];
+    }
+  }
+
+  async writeInbox(messages = []) {
+    await fs.mkdir(this.inboxDir, { recursive: true });
+    await fs.writeFile(
+      this.inboxFile,
+      JSON.stringify(messages, null, 2),
+      "utf8"
+    );
+  }
+
+  async appendInboxMessage(message) {
+    const messages = await this.readInbox();
+    messages.push(message);
+    await this.writeInbox(messages);
+    return messages;
+  }
+
+  async clearInbox() {
+    await this.writeInbox([]);
+  }
+
 
   // =========================
   // Memory
@@ -462,40 +501,40 @@ async listRelationships() {
     const recentThoughts = await this.readRecentThoughts(4000);
 
     return `
-## Identity
+    ## Identity
 
-${identity}
+    ${identity}
 
----
+    ---
 
-## Rules
+    ## Rules
 
-${rules}
+    ${rules}
 
----
+    ---
 
-## Knowledge
+    ## Knowledge
 
-${knowledge}
+    ${knowledge}
 
----
+    ---
 
-## Recent History
+    ## Recent History
 
-${recentHistory}
+    ${recentHistory}
 
----
+    ---
 
-## Recent Thoughts
+    ## Recent Thoughts
 
-${recentThoughts}
+    ${recentThoughts}
 
----
+    ---
 
-## Current Task Hint
+    ## Current Task Hint
 
-${input}
-`;
+    ${input}
+    `;
   }
 
   async readMemoryContext() {

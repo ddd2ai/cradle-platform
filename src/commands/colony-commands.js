@@ -45,7 +45,7 @@ export function createColonyCommands() {
         }
 
         for (const cellId of engine.cells.keys()) {
-          engine.pushMessage({
+          await engine.pushMessage({
             from: engine.activeCellId,
             to: cellId,
             type: "broadcast",

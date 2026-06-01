@@ -16,12 +16,12 @@ export function createCellCommands() {
 
         for (const message of inbox) {
           console.log(`
-[${message.type}] ${message.createdAt}
-From: ${message.from}
-To  : ${message.to}
+          [${message.type}] ${message.createdAt}
+          From: ${message.from}
+          To  : ${message.to}
 
-${message.content}
-`);
+          ${message.content}
+          `);
         }
       },
     },
@@ -52,7 +52,7 @@ ${message.content}
           return;
         }
 
-        engine.pushMessage({
+        await engine.pushMessage({
           from: cell.id,
           to: targetCellId,
           type: "message",
@@ -613,6 +613,7 @@ ${originalContent}
         const result = await cell.processInbox(inbox);
 
         engine.inboxes.set(cell.id, []);
+        await cell.clearInbox();
 
         console.log(`
     Inbox processed.
