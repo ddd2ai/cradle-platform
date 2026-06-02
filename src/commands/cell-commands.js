@@ -73,6 +73,36 @@ export function createCellCommands() {
     },
 
     {
+      name: "/dna init",
+      match: (input, { engine }) =>
+        input === "/dna init" && !engine.isMerlinMode(),
+
+      execute: async ({ engine }) => {
+        const cell = engine.getActiveCell();
+
+        console.log("🧬 Initializing DNA traits...");
+        console.log("🧠 Asking AI to seed cell DNA...");
+
+        renderAnswerStart();
+
+        await cell.initDNA();
+
+        console.log("\nDNA initialized.");
+      },
+    },
+
+    {
+      name: "/dna",
+      match: (input, { engine }) =>
+        input === "/dna" && !engine.isMerlinMode(),
+
+      execute: async ({ engine }) => {
+        const cell = engine.getActiveCell();
+        console.log(await cell.readDNAContext());
+      },
+    },
+
+    {
       name: "/memory full",
       match: (input, { engine }) => input === "/memory full" && !engine.isMerlinMode(),
       execute: async ({ engine }) => {
@@ -122,15 +152,14 @@ export function createCellCommands() {
       execute: async ({ engine }) => {
         const cell = engine.getActiveCell();
 
+        console.log("🧬 Reading DNA and memory...");
+        console.log("🧠 Thinking...");
+
         renderAnswerStart();
 
-        const thought = await cell.think();
+        await cell.think();
 
-        console.log(`
-    Thought created.
-
-    ${thought}
-    `);
+        console.log("\nThought created.");
       },
     },
 

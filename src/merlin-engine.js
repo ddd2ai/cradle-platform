@@ -272,6 +272,11 @@ export class MerlinEngine {
 
       exit                     Shutdown engine
 
+      
+    Cell DNA:
+      /dna                     Show current cell DNA context
+      /dna init                Initialize DNA traits with AI
+
 
     Cell Communication:
       /send <cell> <message>   Send message to another cell

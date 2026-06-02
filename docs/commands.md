@@ -311,6 +311,22 @@ Maturity  : 3
 
 # Memory Commands
 
+## /dna
+
+查看目前 Cell 的 DNA Context。
+
+DNA 包含七個基因：
+
+* perception.md - 如何感知外部刺激
+* decision.md - 如何做決策
+* decomposition.md - 如何拆解問題
+* learning.md - 如何吸收經驗
+* collaboration.md - 如何與其他 Cell 協作
+* creation.md - 如何生成產物
+* evolution.md - 如何隨時間演化
+
+---
+
 ## /memory
 
 查看目前實際注入 Prompt 的 Memory Context。

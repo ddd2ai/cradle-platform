@@ -23,6 +23,10 @@ export class MerlinCell {
     this.rootDir = path.join("cells", this.id);
     this.logsDir = path.join(this.rootDir, "logs");
     this.memoryDir = path.join(this.rootDir, "memory");
+    this.dnaDir = path.join(this.rootDir, "dna");
+    this.dnaDefinitionFile = path.join(process.cwd(), "DNA_DEFINITION.md");
+    this.dnaFactorsFile = path.join(process.cwd(), "DNA_FACTORS.md");
+    this.dnaVectorFile = path.join(this.rootDir, "dna-vector.json");
     this.workspaceDir = path.join(this.rootDir, "workspace");
     this.workspaceDirs = {
       notes: path.join(this.workspaceDir, "notes"),
@@ -52,6 +56,8 @@ export class MerlinCell {
 
   async prepare() {
     await this.prepareCellDirectory();
+    await this.prepareDNAFiles();
+    await this.prepareDNAVector();
     await this.prepareMemoryFiles();
 
     this.assistant = await createMerlinAssistant({
@@ -149,6 +155,7 @@ export class MerlinCell {
     await Promise.all([
       fs.mkdir(this.logsDir, { recursive: true }),
       fs.mkdir(this.memoryDir, { recursive: true }),
+      fs.mkdir(this.dnaDir, { recursive: true }),
       fs.mkdir(this.workspaceDir, { recursive: true }),
       fs.mkdir(this.workspaceDirs.notes, { recursive: true }),
       fs.mkdir(this.workspaceDirs.tasks, { recursive: true }),
@@ -185,6 +192,7 @@ export class MerlinCell {
         root: this.rootDir,
         logs: this.logsDir,
         memory: this.memoryDir,
+        dna: this.dnaDir,
         workspace: this.workspaceDir,
         workspaceDirs: this.workspaceDirs,
         snapshots: this.snapshotsDir,
@@ -274,6 +282,55 @@ export class MerlinCell {
     return tasks.find((task) => task.status === "pending") ?? null;
   }
 
+  async readDNADefinition() {
+    try {
+      const content = await fs.readFile(this.dnaDefinitionFile, "utf8");
+
+      const matches = [...content.matchAll(/^##\s+([A-Z0-9_-]+)\s*$/gm)];
+
+      return matches.map((match) => {
+        const name = match[1].trim();
+
+        return {
+          name,
+          fileName: `${name.toLowerCase()}.md`,
+        };
+      });
+    } catch {
+      return [
+        { name: "PERCEPTION", fileName: "perception.md" },
+        { name: "DECISION", fileName: "decision.md" },
+        { name: "DECOMPOSITION", fileName: "decomposition.md" },
+        { name: "LEARNING", fileName: "learning.md" },
+        { name: "COLLABORATION", fileName: "collaboration.md" },
+        { name: "CREATION", fileName: "creation.md" },
+        { name: "EVOLUTION", fileName: "evolution.md" },
+      ];
+    }
+  }
+
+  async getDNAFiles() {
+    const definitions = await this.readDNADefinition();
+
+    return Object.fromEntries(
+      definitions.map((definition) => [
+        definition.name,
+        path.join(this.dnaDir, definition.fileName),
+      ])
+    );
+  }
+
+  async readDNAFactors() {
+    try {
+      const content = await fs.readFile(this.dnaFactorsFile, "utf8");
+      const matches = [...content.matchAll(/^##\s+([a-zA-Z0-9_-]+)\s*$/gm)];
+
+      return matches.map((match) => match[1].trim());
+    } catch {
+      return ["strength", "stability", "plasticity"];
+    }
+  }
+
   async prepareMemoryFiles() {
     await this.ensureFile(
       this.memoryFiles.identity,
@@ -310,6 +367,85 @@ export class MerlinCell {
       `# History
 
       `
+    );
+  }
+
+  async prepareDNAFiles() {
+    const definitions = await this.readDNADefinition();
+
+    for (const definition of definitions) {
+      const file = path.join(this.dnaDir, definition.fileName);
+
+      await this.ensureFile(
+        file,
+        this.createDNASeed(definition.name)
+      );
+    }
+  }
+
+  createDNASeed(name) {
+    return `# ${name} DNA
+
+## Meaning
+
+TODO: define meaning from DNA_DEFINITION.md.
+
+## Traits
+
+- TODO: define traits.
+
+## Vector
+
+\`\`\`json
+{
+  "strength": 0.5,
+  "stability": 0.7,
+  "plasticity": 0.3
+}
+\`\`\`
+`;
+  }
+
+  async prepareDNAVector() {
+    const definitions = await this.readDNADefinition();
+    const factors = await this.readDNAFactors();
+
+    const existing = await this.readDNAVector();
+
+    const vector = existing ?? {};
+
+    for (const definition of definitions) {
+      vector[definition.name] ??= {};
+
+      for (const factor of factors) {
+        vector[definition.name][factor] ??= this.defaultDNAFactorValue(factor);
+      }
+    }
+
+    await this.writeDNAVector(vector);
+  }
+
+  defaultDNAFactorValue(factor) {
+    if (factor === "strength") return 0.5;
+    if (factor === "stability") return 0.7;
+    if (factor === "plasticity") return 0.3;
+    return 0.5;
+  }
+
+  async readDNAVector() {
+    try {
+      const raw = await fs.readFile(this.dnaVectorFile, "utf8");
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+
+  async writeDNAVector(vector) {
+    await fs.writeFile(
+      this.dnaVectorFile,
+      JSON.stringify(vector, null, 2),
+      "utf8"
     );
   }
 
@@ -568,14 +704,106 @@ export class MerlinCell {
   // Memory
   // =========================
 
+  async readDNAContext() {
+    const dnaFiles = await this.getDNAFiles();
+    const contents = [];
+
+    for (const [key, file] of Object.entries(dnaFiles)) {
+      try {
+        const content = await fs.readFile(file, "utf8");
+        contents.push(`# ${key}\n\n${content}`);
+      } catch {
+        // skip missing DNA file
+      }
+    }
+
+    const vector = await this.readDNAVector();
+
+    if (vector) {
+      contents.push(`# DNA Vector\n\n\`\`\`json\n${JSON.stringify(vector, null, 2)}\n\`\`\``);
+    }
+
+    return contents.join("\n\n---\n\n");
+  }
+
+  async initDNA() {
+    const profile = await this.getProfile();
+    const dnaContext = await this.readDNAContext();
+    const memoryContext = await this.buildMemoryContext();
+
+    const definitions = await this.readDNADefinition();
+    const dnaKeys = definitions.map(def => def.name.toLowerCase());
+    const jsonFormat = Object.fromEntries(
+      dnaKeys.map(key => [key, "...完整 markdown..."])
+    );
+
+    const prompt = `
+你是 ${this.name} 的 DNA 初始化模組。
+
+請根據目前 Cell 狀態，為 ${dnaKeys.length} 個 DNA 檔案產生初始內容。
+
+請輸出 JSON，不要 Markdown，不要 code fence。
+
+格式：
+
+${JSON.stringify(jsonFormat, null, 2)}
+
+---
+
+# Profile
+
+${JSON.stringify(profile, null, 2)}
+
+---
+
+# Current DNA
+
+${dnaContext}
+
+---
+
+# Memory Context
+
+${memoryContext}
+`;
+
+    const result = await this.askWithTimeout(prompt, 120000);
+    const raw = result?.text ?? result?.answer ?? "";
+
+    const cleaned = raw
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/```\s*$/i, "")
+      .trim();
+
+    const nextDNA = JSON.parse(cleaned);
+
+    const dnaFiles = await this.getDNAFiles();
+
+    for (const [name, content] of Object.entries(nextDNA)) {
+      const upperKey = name.toUpperCase();
+      if (!dnaFiles[upperKey]) continue;
+      await fs.writeFile(dnaFiles[upperKey], content, "utf8");
+    }
+
+    return nextDNA;
+  }
+
   async buildMemoryContext(input = "") {
     const identity = await this.safeReadMemory("identity");
     const rules = await this.safeReadMemory("rules");
     const knowledge = await this.safeReadMemory("knowledge");
     const recentHistory = await this.readRecentHistory(8000);
     const recentThoughts = await this.readRecentThoughts(4000);
+    const dnaContext = await this.readDNAContext();
 
     return `
+    ## DNA
+
+    ${dnaContext}
+
+    ---
+
     ## Identity
 
     ${identity}
@@ -789,7 +1017,7 @@ export class MerlinCell {
     ${memoryContext}
     `;
 
-    const result = await this.askWithTimeout(prompt, 60000);
+    const result = await this.askWithTimeout(prompt, 120000);
     const thought = result?.text ?? result?.answer ?? "";
 
     if (!thought.trim()) {
