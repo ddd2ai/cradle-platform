@@ -52,7 +52,8 @@ function renderTagline() {
 function renderRuntimeStatus(model) {
   term.gray(`
      ──────────────────────────────────────────────────────────────────────────────
-          🧠 Model: ${model}   |   ⚡ State: READY   |   📶 Mode: STREAMING
+            Model: ${model}   |     State: READY   |     Mode: STREAMING
+            
 `);
 }
 
@@ -71,16 +72,16 @@ export function renderBoot(model) {
 
 export async function renderSummon() {
 
-  term.green("🧫 Starting DNA Cradle...\n");
+  term.green("🧬 Starting DNA Cradle...\n");
   await sleep(300);
 
   term.green("🦠 Cells are connecting...\n");
   await sleep(300);
 
-  term.green("🧬 Software life is growing...\n");
+  term.green("🌾 Software life is growing...\n");
   await sleep(300);
 
-  term.green("🌱 DNA Cradle is ready!\n");
+  term.green("🧫 DNA Cradle is ready!\n");
 }
 
 export function renderSkill(skillName) {
@@ -101,10 +102,10 @@ export function writeAssistantChunk(chunk) {
 
 export function renderPrompt(cellId = MERLIN_ID) {
   if (cellId === MERLIN_ID) {
-    return "🧙 Merlin > ";
+    return "🔬 Merlin > ";
   }
 
-  return `🧫 ${cellId} > `;
+  return `🦠 ${cellId} > `;
 }
 
 export function renderIdle() {
