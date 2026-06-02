@@ -24,8 +24,8 @@ function renderMerlinLogo() {
     term.magenta,
     term.brightBlue,
     term.blue,
-    term.cyan,
     term.brightCyan,
+    term.cyan,
   ];
 
   const cradleColors = [
