@@ -248,54 +248,79 @@ export class MerlinEngine {
 
   printHelp() {
     console.log(`
-Merlin Engine Commands
+    Merlin Engine Commands
 
-Engine:
-  /help                    Show commands
-  /cells                   List cells
-  /status                  Show cell status
-  /tick                    Run one colony work cycle
-  /heartbeat               Run one colony work cycle (legacy)
-  /new <cell-id>           Create and switch to a new cell
-  /use <cell-id>           Switch to a cell
-  /merlin                  Return to Merlin engine mode
-  /colony                  Show colony overview
-  /colony-graph            Show colony relationship graph
-  /whoami                  Show current mode or cell
-  /ask <cell> <message>    Ask a specific cell without switching
-  /broadcast <message>     Send message to all cells
-  /run-all <task>          Ask all cells to execute same task
-  exit                     Shutdown engine
+    Engine:
+      /help                    Show commands
+      /cells                   List cells
+      /status                  Show cell status
+      /work                    Show colony work queue
+      /tick                    Run one colony work cycle
+      /heartbeat               Run one colony work cycle (legacy)
 
-Cell:
-  /memory                  Show active memory context
-  /memory full             Show full memory files
-  /thoughts                Show recent thoughts
-  /think                   Let current cell reflect and grow
-  /feed <content>          Append knowledge to current cell
-  /send <cell> <message>   Send message to another cell
-  /process                 Process inbox into memory and thoughts
-  /clean-inbox             Clear current cell inbox
-  /inbox                   Show messages received by current cell
-  /write <task>            Ask current cell to create a workspace markdown file
-  /read <file>             Read a workspace file
-  /revise <file> <task>    Revise a workspace file
-  /share <file> <cell>     Share file to another cell
-  /import <cell> <file>    Import file from another cell
-  /workspace               List workspace files
-  /snapshot                Create snapshot
-  /snapshots               List snapshots
-  /restore <name>          Restore snapshot
-  /evolve                  Increase maturity
-  /divide                  Create child cell
-  /resp add <name>         Add responsibility
-  /resp list               List responsibilities
-  /link <type> <cell>      Create relationship
-  /graph                   Show cell graph
-  /profile                 Show cell profile
-  /digest                  Digest inbox into workspace
-  /specialize <name>       Specialize cell
-`);
+      /new <cell-id>           Create and switch to a new cell
+      /use <cell-id>           Switch to a cell
+      /merlin                  Return to Merlin engine mode
+      /whoami                  Show current mode or cell
+
+      /colony                  Show colony overview
+      /colony-graph            Show colony relationship graph
+
+      /ask <cell> <message>    Ask a specific cell
+      /broadcast <message>     Send message to all cells
+      /run-all <task>          Ask all cells to execute same task
+
+      exit                     Shutdown engine
+
+
+    Cell Communication:
+      /send <cell> <message>   Send message to another cell
+      /inbox                   Show inbox messages
+      /process                 Process inbox into memory
+      /clean-inbox             Clear inbox
+
+
+    Cell Tasks:
+      /tasks                   Show task queue
+      /do                      Execute next pending task
+      /digest                  Digest inbox into workspace
+
+
+    Cell Memory:
+      /memory                  Show active memory context
+      /memory full             Show full memory files
+      /thoughts                Show recent thoughts
+      /feed <content>          Append knowledge
+      /think                   Let current cell reflect and grow
+
+
+    Cell Workspace:
+      /workspace               List workspace files
+      /write <task>            Create workspace markdown
+      /read <file>             Read workspace file
+      /revise <file> <task>    Revise workspace file
+      /share <file> <cell>     Share file to another cell
+      /import <cell> <file>    Import file from another cell
+
+
+    Cell Evolution:
+      /profile                 Show cell profile
+      /evolve                  Increase maturity
+      /divide                  Create child cell
+      /specialize <name>       Specialize cell
+
+      /resp add <name>         Add responsibility
+      /resp list               List responsibilities
+
+      /link <type> <cell>      Create relationship
+      /graph                   Show cell graph
+
+
+    Cell Snapshots:
+      /snapshot                Create snapshot
+      /snapshots               List snapshots
+      /restore <name>          Restore snapshot
+    `);
   }
 
   async shutdown() {

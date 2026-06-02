@@ -1,5 +1,6 @@
 import { renderAnswerStart } from "../merlin-ui.js";
 import { renderColonyGraph } from "../ui/render-colony-graph.js";
+import { renderTable } from "../ui/render-table.js";
 
 export function createColonyCommands() {
   return [
@@ -85,6 +86,45 @@ export function createColonyCommands() {
       },
     },
 
+   {
+      name: "/work",
+
+      match: (input) =>
+        input === "/work",
+
+      execute: async ({ engine }) => {
+        const rows = [];
+
+        for (const [id, cell] of engine.cells) {
+          const inbox = await cell.readInbox();
+          const tasks = await cell.readTasks();
+
+          const pendingTasks =
+            tasks.filter((task) => task.status === "pending");
+
+          engine.inboxes.set(id, inbox);
+
+          rows.push({
+            Cell: id,
+            Inbox: inbox.length,
+            Tasks: pendingTasks.length,
+            Action:
+              inbox.length > 0
+                ? "process"
+                : pendingTasks.length > 0
+                  ? "todo"
+                  : "idle",
+          });
+        }
+
+        console.log("");
+
+        renderTable(
+          ["Cell", "Inbox", "Tasks", "Action"],
+          rows
+        );
+      },
+    },
 
     {
       name: "/colony",

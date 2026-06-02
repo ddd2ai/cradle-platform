@@ -79,28 +79,28 @@ export function createCellCommands() {
         const cell = engine.getActiveCell();
 
         console.log(`
-# Identity
+        # Identity
 
-${await cell.safeReadMemory("identity")}
+        ${await cell.safeReadMemory("identity")}
 
----
+        ---
 
-# Rules
+        # Rules
 
-${await cell.safeReadMemory("rules")}
+        ${await cell.safeReadMemory("rules")}
 
----
+        ---
 
-# Knowledge
+        # Knowledge
 
-${await cell.safeReadMemory("knowledge")}
+        ${await cell.safeReadMemory("knowledge")}
 
----
+        ---
 
-# History
+        # History
 
-${await cell.safeReadMemory("history")}
-`);
+        ${await cell.safeReadMemory("history")}
+        `);
       },
     },
 
@@ -168,13 +168,13 @@ ${await cell.safeReadMemory("history")}
         renderAnswerStart();
 
         const result = await cell.ask(`
-請根據以下任務產生一份 Markdown 文件內容。
+        請根據以下任務產生一份 Markdown 文件內容。
 
-任務：
-${content}
+        任務：
+        ${content}
 
-請只輸出 Markdown 內容，不要額外解釋。
-`);
+        請只輸出 Markdown 內容，不要額外解釋。
+        `);
 
         const outputText = engine.cleanMarkdownFence(result?.text ?? result?.answer ?? "");
 
@@ -238,24 +238,24 @@ ${content}
         renderAnswerStart();
 
         const result = await cell.ask(`
-請根據修改任務，重寫以下 Markdown 文件。
+        請根據修改任務，重寫以下 Markdown 文件。
 
-請遵守：
-- 只輸出修改後的 Markdown 文件內容
-- 不要輸出說明
-- 不要包在 \`\`\`markdown code fence 裡
-- 不要新增目前系統尚未實作的能力
+        請遵守：
+        - 只輸出修改後的 Markdown 文件內容
+        - 不要輸出說明
+        - 不要包在 \`\`\`markdown code fence 裡
+        - 不要新增目前系統尚未實作的能力
 
-# 修改任務
+        # 修改任務
 
-${task}
+        ${task}
 
----
+        ---
 
-# 原始文件
+        # 原始文件
 
-${originalContent}
-`);
+        ${originalContent}
+        `);
 
         const outputText = engine.cleanMarkdownFence(result?.text ?? result?.answer ?? "");
 
@@ -663,14 +663,77 @@ ${originalContent}
         await cell.addResponsibility(role);
 
         await cell.appendKnowledge(`
-    ## Specialization
+        ## Specialization
 
-    This cell has started specializing in:
+        This cell has started specializing in:
 
-    ${role}
-    `);
+        ${role}
+        `);
 
         console.log(`Cell specialized: ${role}`);
+      },
+    },
+
+    {
+      name: "/tasks",
+      match: (input, { engine }) =>
+        input === "/tasks" && !engine.isMerlinMode(),
+
+      execute: async ({ engine }) => {
+        const cell = engine.getActiveCell();
+        const tasks = await cell.readTasks();
+
+        if (tasks.length === 0) {
+          console.log("(no tasks)");
+          return;
+        }
+
+        for (const task of tasks) {
+          console.log(`
+    [${task.status}] ${task.id}
+    ${task.title}
+    source: ${task.source}
+    `);
+        }
+      },
+    },
+
+    {
+      name: "/do",
+
+      match: (input, { engine }) =>
+        input === "/do" && !engine.isMerlinMode(),
+
+      execute: async ({ engine }) => {
+        const cell = engine.getActiveCell();
+        const task = await cell.nextPendingTask();
+
+        if (!task) {
+          console.log("(no pending task)");
+          return;
+        }
+
+        renderAnswerStart();
+
+        const result = await cell.ask(`
+        請根據以下 Task 產出一份 Markdown 工作成果。
+
+        請只輸出 Markdown，不要額外解釋。
+
+        # Task
+
+        ${JSON.stringify(task, null, 2)}
+        `);
+
+        const outputText =
+          engine.cleanMarkdownFence(result?.text ?? result?.answer ?? "");
+
+        const filename = `${task.id}.md`;
+
+        await cell.writeWorkspaceFile(filename, outputText);
+        await cell.completeTask(task.id);
+
+        console.log(`\nArtifact created: ${filename}`);
       },
     },
 

@@ -10,6 +10,7 @@ import {
 } from "./merlin-ui.js";
 
 export class MerlinCell {
+
   constructor({
     id = "cell-001",
     name = "Merlin Cell",
@@ -28,6 +29,8 @@ export class MerlinCell {
     this.cellFile = path.join(this.rootDir, "cell.json");
     this.inboxDir = path.join(this.rootDir, "inbox");
     this.inboxFile = path.join(this.inboxDir, "messages.json");
+    this.tasksDir = path.join(this.rootDir, "tasks");
+    this.tasksFile = path.join(this.tasksDir, "tasks.json");
 
     this.memoryFiles = {
       identity: path.join(this.memoryDir, "identity.md"),
@@ -66,35 +69,35 @@ export class MerlinCell {
       const memoryContext = await this.buildMemoryContext(input);
 
       const cellInput = `
-# Merlin Cell Context
+      # Merlin Cell Context
 
-## Cell
-- id: ${this.id}
-- name: ${this.name}
-- model: ${this.model}
+      ## Cell
+      - id: ${this.id}
+      - name: ${this.name}
+      - model: ${this.model}
 
-## Memory
+      ## Memory
 
-${memoryContext}
+      ${memoryContext}
 
----
+      ---
 
-# User Input
+      # User Input
 
-${input}
-`;
+      ${input}
+      `;
 
       const result = await this.askWithTimeout(cellInput, 60000);
       const outputText = result?.text ?? result?.answer ?? "(response streamed)";
 
       await this.appendHistory(`## ${new Date().toISOString()}
 
-### User
-${input}
+      ### User
+      ${input}
 
-### Result
-${outputText}
-`);
+      ### Result
+      ${outputText}
+      `);
 
       await this.reflect({
         input,
@@ -142,37 +145,38 @@ ${outputText}
       fs.mkdir(this.snapshotsDir, { recursive: true }),
       fs.mkdir(this.thoughtsDir, { recursive: true }),
       fs.mkdir(this.inboxDir, { recursive: true }),
+      fs.mkdir(this.tasksDir, { recursive: true }),
     ]);
 
     const now = new Date().toISOString();
 
-const defaultProfile = {
-  id: this.id,
-  name: this.name,
-  model: this.model,
+    const defaultProfile = {
+      id: this.id,
+      name: this.name,
+      model: this.model,
 
-  status: "idle",
-  maturity: 0,
-  generation: 1,
-  parent: null,
+      status: "idle",
+      maturity: 0,
+      generation: 1,
+      parent: null,
 
-  responsibilities: [],
-  relationships: [],
+      responsibilities: [],
+      relationships: [],
 
-  createdAt: now,
-  updatedAt: now,
-  lastStartedAt: now,
+      createdAt: now,
+      updatedAt: now,
+      lastStartedAt: now,
 
-  directories: {
-    root: this.rootDir,
-    logs: this.logsDir,
-    memory: this.memoryDir,
-    workspace: this.workspaceDir,
-    snapshots: this.snapshotsDir,
-    thoughts: this.thoughtsDir,
-    inbox: this.inboxDir,
-  },
-};
+      directories: {
+        root: this.rootDir,
+        logs: this.logsDir,
+        memory: this.memoryDir,
+        workspace: this.workspaceDir,
+        snapshots: this.snapshotsDir,
+        thoughts: this.thoughtsDir,
+        inbox: this.inboxDir,
+      },
+    };
 
     const existingProfile = await this.readCellProfile();
 
@@ -199,42 +203,98 @@ const defaultProfile = {
     await this.writeCellProfile(nextProfile);
   }
 
+
+  async readTasks() {
+    try {
+      const raw = await fs.readFile(this.tasksFile, "utf8");
+      return JSON.parse(raw);
+    } catch {
+      return [];
+    }
+  }
+
+  async writeTasks(tasks = []) {
+    await fs.mkdir(this.tasksDir, { recursive: true });
+    await fs.writeFile(
+      this.tasksFile,
+      JSON.stringify(tasks, null, 2),
+      "utf8"
+    );
+  }
+
+  async addTask({ title, source = "manual", content = "" }) {
+    const tasks = await this.readTasks();
+
+    const task = {
+      id: `task-${this.formatTimestamp(new Date())}`,
+      title,
+      source,
+      content,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    tasks.push(task);
+    await this.writeTasks(tasks);
+
+    return task;
+  }
+
+  async completeTask(taskId) {
+    const tasks = await this.readTasks();
+
+    for (const task of tasks) {
+      if (task.id === taskId) {
+        task.status = "done";
+        task.updatedAt = new Date().toISOString();
+      }
+    }
+
+    await this.writeTasks(tasks);
+  }
+
+  async nextPendingTask() {
+    const tasks = await this.readTasks();
+    return tasks.find((task) => task.status === "pending") ?? null;
+  }
+
   async prepareMemoryFiles() {
     await this.ensureFile(
       this.memoryFiles.identity,
       `# Identity
 
-I am ${this.name}.
-My cell id is ${this.id}.
+      I am ${this.name}.
+      My cell id is ${this.id}.
 
-`
+      `
     );
 
     await this.ensureFile(
       this.memoryFiles.rules,
       `# Rules
 
-- Use Traditional Chinese.
-- Be concise, clear, and useful.
-- Preserve Merlin Platform context.
-- Grow through memory, workspace, thoughts, and snapshots.
-- Do not treat history as absolute truth; summarize and refine it into knowledge.
+      - Use Traditional Chinese.
+      - Be concise, clear, and useful.
+      - Preserve Merlin Platform context.
+      - Grow through memory, workspace, thoughts, and snapshots.
+      - Do not treat history as absolute truth; summarize and refine it into knowledge.
 
-`
+      `
     );
 
     await this.ensureFile(
       this.memoryFiles.knowledge,
       `# Knowledge
 
-`
+      `
     );
 
     await this.ensureFile(
       this.memoryFiles.history,
       `# History
 
-`
+      `
     );
   }
 
@@ -329,16 +389,16 @@ My cell id is ${this.id}.
       "history",
       `# History
 
-  Born from ${this.id} at ${new Date().toISOString()}.
-  `
+      Born from ${this.id} at ${new Date().toISOString()}.
+      `
     );
 
     await childCell.appendThought(`
-  ## ${new Date().toISOString()}
+    ## ${new Date().toISOString()}
 
-  I was born from ${this.id}.
-  My inherited memory should be refined into my own growth direction.
-  `);
+    I was born from ${this.id}.
+    My inherited memory should be refined into my own growth direction.
+    `);
 
     await this.addRelationship("divided-into", childCell.id);
     await childCell.addRelationship("born-from", this.id);
@@ -583,33 +643,33 @@ My cell id is ${this.id}.
   async reflect({ input, output }) {
     try {
       const reflectionPrompt = `
-你是 ${this.name} 的自我反思模組。
+      你是 ${this.name} 的自我反思模組。
 
-請根據本次互動，產生一段「可長期保存」的細胞記憶。
+      請根據本次互動，產生一段「可長期保存」的細胞記憶。
 
-請只輸出 Markdown，並分成三段：
+      請只輸出 Markdown，並分成三段：
 
-## Learned
-本次學到什麼。
+      ## Learned
+      本次學到什麼。
 
-## Useful Pattern
-未來可重複使用的模式。
+      ## Useful Pattern
+      未來可重複使用的模式。
 
-## Next Growth
-這個 Cell 下一步可以如何成長。
+      ## Next Growth
+      這個 Cell 下一步可以如何成長。
 
----
+      ---
 
-# User Input
+      # User Input
 
-${input}
+      ${input}
 
----
+      ---
 
-# Cell Output
+      # Cell Output
 
-${output}
-`;
+      ${output}
+      `;
 
       const result = await this.askWithTimeout(reflectionPrompt, 30000);
       const reflection = result?.text ?? result?.answer ?? "";
@@ -620,13 +680,13 @@ ${output}
 
       await this.appendThought(`## ${timestamp}
 
-${reflection}
-`);
+      ${reflection}
+      `);
 
       await this.appendKnowledge(`## Learned at ${timestamp}
 
-${reflection}
-`);
+      ${reflection}
+      `);
     } catch {
       // reflection 失敗不應中斷主要任務
     }
@@ -683,36 +743,36 @@ ${reflection}
     const memoryContext = await this.buildMemoryContext();
 
     const prompt = `
-  你是 ${this.name} 的自我思考模組。
+    你是 ${this.name} 的自我思考模組。
 
-  請根據目前 Cell 狀態，產生一份「成長反思」。
+    請根據目前 Cell 狀態，產生一份「成長反思」。
 
-  請輸出 Markdown，包含：
+    請輸出 Markdown，包含：
 
-  ## Current State
-  目前狀態。
+    ## Current State
+    目前狀態。
 
-  ## Observed Pattern
-  最近觀察到的模式。
+    ## Observed Pattern
+    最近觀察到的模式。
 
-  ## Growth Direction
-  下一步成長方向。
+    ## Growth Direction
+    下一步成長方向。
 
-  ## Suggested Action
-  建議行動。
+    ## Suggested Action
+    建議行動。
 
-  ---
+    ---
 
-  # Profile
+    # Profile
 
-  ${JSON.stringify(profile, null, 2)}
+    ${JSON.stringify(profile, null, 2)}
 
-  ---
+    ---
 
-  # Memory Context
+    # Memory Context
 
-  ${memoryContext}
-  `;
+    ${memoryContext}
+    `;
 
     const result = await this.askWithTimeout(prompt, 60000);
     const thought = result?.text ?? result?.answer ?? "";
@@ -723,8 +783,8 @@ ${reflection}
 
     await this.appendThought(`## ${new Date().toISOString()}
 
-  ${thought}
-  `);
+    ${thought}
+    `);
 
     await this.increaseMaturity(1);
 
@@ -742,36 +802,36 @@ ${reflection}
   const profile = await this.getProfile();
 
   const prompt = `
-你是 ${this.name} 的訊息代謝模組。
+  你是 ${this.name} 的訊息代謝模組。
 
-請整理收到的 inbox，轉化成可長期保存的 Cell 記憶。
+  請整理收到的 inbox，轉化成可長期保存的 Cell 記憶。
 
-請輸出 Markdown，包含：
+  請輸出 Markdown，包含：
 
-## Inbox Summary
-重點摘要。
+  ## Inbox Summary
+  重點摘要。
 
-## Signals
-這些訊息透露出什麼需求、方向或環境刺激。
+  ## Signals
+  這些訊息透露出什麼需求、方向或環境刺激。
 
-## Possible Tasks
-可能形成的任務。
+  ## Possible Tasks
+  可能形成的任務。
 
-## Growth Impact
-這些訊息對 Cell 成長有什麼影響。
+  ## Growth Impact
+  這些訊息對 Cell 成長有什麼影響。
 
----
+  ---
 
-# Profile
+  # Profile
 
-${JSON.stringify(profile, null, 2)}
+  ${JSON.stringify(profile, null, 2)}
 
----
+  ---
 
-# Inbox
+  # Inbox
 
-${JSON.stringify(inbox, null, 2)}
-`;
+  ${JSON.stringify(inbox, null, 2)}
+  `;
 
   const result = await this.askWithTimeout(prompt, 60000);
   const summary = result?.text ?? result?.answer ?? "";
@@ -784,19 +844,26 @@ ${JSON.stringify(inbox, null, 2)}
 
   await this.appendThought(`## ${timestamp}
 
-${summary}
-`);
+  ${summary}
+  `);
 
   await this.appendKnowledge(`## Inbox Processed at ${timestamp}
 
-${summary}
-`);
+  ${summary}
+  `);
+
+  const task = await this.addTask({
+    title: `Process inbox from ${inbox.map((m) => m.from).join(", ")}`,
+    source: "inbox",
+    content: summary.trim(),
+  });
 
   await this.increaseMaturity(1);
 
   return {
     processed: inbox.length,
     summary: summary.trim(),
+    task,
   };
 }
 
