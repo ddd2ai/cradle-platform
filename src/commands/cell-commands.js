@@ -979,5 +979,155 @@ createdAt: ${new Date().toISOString()}
       }
     },
 
+    {
+      name: "/delegate",
+
+      match: (input, { engine }) =>
+        input.startsWith("/delegate ") && !engine.isMerlinMode(),
+
+      execute: async ({ engine, input }) => {
+        const cell = engine.getActiveCell();
+        const args = input.replace("/delegate ", "").trim();
+        const firstSpaceIndex = args.indexOf(" ");
+
+        if (firstSpaceIndex === -1) {
+          console.log("Usage: /delegate <cell-id> <task>");
+          return;
+        }
+
+        const targetCellId = args.slice(0, firstSpaceIndex).trim();
+        const task = args.slice(firstSpaceIndex + 1).trim();
+
+        if (!engine.cells.has(targetCellId)) {
+          console.log(`Target cell not found: ${targetCellId}`);
+          return;
+        }
+
+        if (!task) {
+          console.log("Usage: /delegate <cell-id> <task>");
+          return;
+        }
+
+        await engine.pushMessage({
+          from: cell.id,
+          to: targetCellId,
+          type: "delegation",
+          content: task,
+        });
+
+        await cell.addRelationship("delegated-to", targetCellId);
+
+        await cell.writeWorkspaceFile(
+          `decisions/delegation-${engine.formatTimestamp(new Date())}.md`,
+          `# Delegation
+
+          ## From
+
+          ${cell.id}
+
+          ## To
+
+          ${targetCellId}
+
+          ## Task
+
+          ${task}
+
+          ---
+          createdAt: ${new Date().toISOString()}
+          `
+        );
+
+        console.log(`Delegated task from ${cell.id} to ${targetCellId}`);
+      },
+    },
+
+    {
+      name: "/report",
+
+      match: (input, { engine }) =>
+        input.startsWith("/report ") && !engine.isMerlinMode(),
+
+      execute: async ({ engine, input }) => {
+        const cell = engine.getActiveCell();
+        const args = input.replace("/report ", "").trim();
+        const firstSpaceIndex = args.indexOf(" ");
+
+        if (firstSpaceIndex === -1) {
+          console.log("Usage: /report <cell-id> <workspace-file>");
+          return;
+        }
+
+        const targetCellId = args.slice(0, firstSpaceIndex).trim();
+        const fileName = args.slice(firstSpaceIndex + 1).trim();
+
+        const targetCell = engine.cells.get(targetCellId);
+
+        if (!targetCell) {
+          console.log(`Target cell not found: ${targetCellId}`);
+          return;
+        }
+
+        let content = "";
+
+        try {
+          content = await cell.readWorkspaceFile(fileName);
+        } catch {
+          console.log(`Workspace file not found: ${fileName}`);
+          return;
+        }
+
+        await engine.pushMessage({
+          from: cell.id,
+          to: targetCellId,
+          type: "report",
+          content: `
+          # Report from ${cell.id}
+
+          ## Source File
+
+          ${fileName}
+
+          ## Content
+
+          ${content}
+          `,
+        });
+
+        await cell.addRelationship("reported-to", targetCellId);
+
+        console.log(`Report sent from ${cell.id} to ${targetCellId}`);
+      },
+    },
+
+    {
+      name: "/trace",
+
+      match: (input, { engine }) =>
+        input === "/trace" && !engine.isMerlinMode(),
+
+      execute: async ({ engine }) => {
+        const cell = engine.getActiveCell();
+
+        const profile = await cell.getProfile();
+        const relationships = profile.relationships ?? [];
+
+        console.log("");
+        console.log(`Trace: ${cell.id}`);
+        console.log("");
+
+        if (relationships.length === 0) {
+          console.log("(no relationships)");
+          return;
+        }
+
+        for (const link of relationships) {
+          console.log(`${cell.id} --${link.type}--> ${link.target}`);
+        }
+
+        console.log("");
+      },
+    },
+
   ];
 }

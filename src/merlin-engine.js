@@ -327,6 +327,10 @@ export class MerlinEngine {
       /link <type> <cell>      Create relationship
       /graph                   Show cell graph
 
+    Cell Collaboration:
+      /delegate <cell> <task>  Delegate task to another cell
+      /report <cell> <file>    Report artifact to another cell
+      /trace                   Show current cell collaboration trace
 
     Cell Snapshots:
       /snapshot                Create snapshot
