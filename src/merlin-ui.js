@@ -6,38 +6,74 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const MERLIN_ID = "Merlin";
 
-const LOGO_TEXTS = [
-  "                    ██████╗██████╗  █████╗ ██████╗ ██╗     ███████╗",
-  "                   ██╔════╝██╔══██╗██╔══██╗██╔══██╗██║     ██╔════╝",
-  "                   ██║     ██████╔╝███████║██║  ██║██║     █████╗  ",
-  "                   ██║     ██╔══██╗██╔══██║██║  ██║██║     ██╔══╝  ",
-  "                   ╚██████╗██║  ██║██║  ██║██████╔╝███████╗███████╗",
-  "                    ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝ ╚══════╝╚══════╝",
-];
 
-const LOGO_CELL_MAP = `
-              ● Customer Cell ──────── ● Payment Cell             ●
-                    │                          │                ╱ │ ╲
-                    ▼                          ▼               ●──●──●●──●
-              ● Order Cell ─────────── ● Risk Cell              ╲ │ ╱
-                    │                          │                 ●●──●
-                    ▼                          ▼                ╱    
-              ● Notify Cell ────────── ● Model Cell            ●
-`;
-
-const LOGO_COLORS = [
-  term.brightMagenta,
-  term.brightBlue,
-  term.brightCyan,
-  term.brightGreen,
-  term.brightYellow,
-  term.brightRed,
-];
 
 function renderMerlinLogo() {
-  LOGO_TEXTS.forEach((line, index) => {
-    LOGO_COLORS[index](line + "\n");
-  });
+
+  const dnaColors = [
+    term.brightMagenta,
+    term.magenta,
+    term.brightRed,
+    term.red,
+    term.brightYellow,
+    term.yellow,
+  ];
+
+  const helixColors = [
+    term.brightMagenta,
+    term.magenta,
+    term.brightBlue,
+    term.blue,
+    term.cyan,
+    term.brightCyan,
+  ];
+
+  const cradleColors = [
+    term.brightCyan,
+    term.cyan,
+    term.brightBlue,
+    term.blue,
+    term.brightCyan,
+    term.cyan,
+  ];
+
+  const dnaTexts = [
+    "    ██████╗ ███╗   ██╗ █████╗ ",
+    "    ██╔══██╗████╗  ██║██╔══██╗",
+    "    ██║  ██║██╔██╗ ██║███████║",
+    "    ██║  ██║██║╚██╗██║██╔══██║",
+    "    ██████╔╝██║ ╚████║██║  ██║",
+    "    ╚═════╝ ╚═╝  ╚═══╝╚═╝  ╚═╝",
+  ];
+
+  const helixTexts = [
+    "  ██──────██ ",
+    "    ██──██   ",
+    "      ███    ",
+    "     ███     ",
+    "    ██──██   ",
+    "  ██──────██ ",
+  ];
+
+  const cradleTexts = [
+    "  ██████╗██████╗  █████╗ ██████╗ ██╗     ███████╗",
+    " ██╔════╝██╔══██╗██╔══██╗██╔══██╗██║     ██╔════╝",
+    " ██║     ██████╔╝███████║██║  ██║██║     █████╗",
+    " ██║     ██╔══██╗██╔══██║██║  ██║██║     ██╔══╝",
+    " ╚██████╗██║  ██║██║  ██║██████╔╝███████╗███████╗",
+    "  ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝ ╚══════╝╚══════╝",
+  ];
+
+  for (let i = 0; i < 6; i++) {
+
+    dnaColors[i](dnaTexts[i]);
+
+    helixColors[i](helixTexts[i]);
+
+    cradleColors[i](cradleTexts[i]);
+
+    term("\n");
+  }
 }
 
 function renderTagline() {
@@ -62,6 +98,17 @@ export function clearScreen() {
 }
 
 export function renderBoot(model) {
+
+  const LOGO_CELL_MAP = `
+                ● Customer Cell ──────── ● Payment Cell             ●
+                      │                          │                ╱ │ ╲
+                      ▼                          ▼               ●──●──●●──●
+                ● Order Cell ─────────── ● Risk Cell              ╲ │ ╱
+                      │                          │                 ●●──●
+                      ▼                          ▼                ╱    
+                ● Notify Cell ────────── ● Model Cell            ●
+  `;
+
   renderMerlinLogo();
   renderTagline();
 
