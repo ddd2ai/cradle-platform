@@ -24,6 +24,14 @@ export class MerlinCell {
     this.logsDir = path.join(this.rootDir, "logs");
     this.memoryDir = path.join(this.rootDir, "memory");
     this.workspaceDir = path.join(this.rootDir, "workspace");
+    this.workspaceDirs = {
+      notes: path.join(this.workspaceDir, "notes"),
+      tasks: path.join(this.workspaceDir, "tasks"),
+      artifacts: path.join(this.workspaceDir, "artifacts"),
+      projects: path.join(this.workspaceDir, "projects"),
+      research: path.join(this.workspaceDir, "research"),
+      decisions: path.join(this.workspaceDir, "decisions"),
+    };
     this.snapshotsDir = path.join(this.rootDir, "snapshots");
     this.thoughtsDir = path.join(this.rootDir, "thoughts");
     this.cellFile = path.join(this.rootDir, "cell.json");
@@ -142,6 +150,12 @@ export class MerlinCell {
       fs.mkdir(this.logsDir, { recursive: true }),
       fs.mkdir(this.memoryDir, { recursive: true }),
       fs.mkdir(this.workspaceDir, { recursive: true }),
+      fs.mkdir(this.workspaceDirs.notes, { recursive: true }),
+      fs.mkdir(this.workspaceDirs.tasks, { recursive: true }),
+      fs.mkdir(this.workspaceDirs.artifacts, { recursive: true }),
+      fs.mkdir(this.workspaceDirs.projects, { recursive: true }),
+      fs.mkdir(this.workspaceDirs.research, { recursive: true }),
+      fs.mkdir(this.workspaceDirs.decisions, { recursive: true }),
       fs.mkdir(this.snapshotsDir, { recursive: true }),
       fs.mkdir(this.thoughtsDir, { recursive: true }),
       fs.mkdir(this.inboxDir, { recursive: true }),
@@ -172,6 +186,7 @@ export class MerlinCell {
         logs: this.logsDir,
         memory: this.memoryDir,
         workspace: this.workspaceDir,
+        workspaceDirs: this.workspaceDirs,
         snapshots: this.snapshotsDir,
         thoughts: this.thoughtsDir,
         inbox: this.inboxDir,
@@ -873,6 +888,28 @@ export class MerlinCell {
 
   async listWorkspace() {
     return await this.listDirectoryRecursive(this.workspaceDir);
+  }
+
+  async listWorkspaceSections() {
+    const sections = [
+      "notes",
+      "tasks",
+      "artifacts",
+      "projects",
+      "research",
+      "decisions",
+    ];
+
+    const result = {};
+
+    for (const section of sections) {
+      result[section] = await this.listDirectoryRecursive(
+        path.join(this.workspaceDir, section),
+        path.join(this.workspaceDir, section)
+      );
+    }
+
+    return result;
   }
 
   async writeWorkspaceFile(relativePath, content) {

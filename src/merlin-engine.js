@@ -294,13 +294,25 @@ export class MerlinEngine {
       /think                   Let current cell reflect and grow
 
 
+    Cell Notes:
+      /write-note <content>    Create note in workspace/notes
+      /research <content>      Create research note
+      /decide <content>        Create design decision
+
+
     Cell Workspace:
       /workspace               List workspace files
-      /write <task>            Create workspace markdown
+      /write <task>            Create workspace artifact
       /read <file>             Read workspace file
       /revise <file> <task>    Revise workspace file
       /share <file> <cell>     Share file to another cell
       /import <cell> <file>    Import file from another cell
+
+
+    Cell Projects:
+      /project-init <name>     Create project workspace
+      /project-file <project> <file>
+                              Create file inside project
 
 
     Cell Evolution:
