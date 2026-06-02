@@ -109,10 +109,12 @@ export class MerlinEngine {
     }
   }
 
+  
   async pushMessage({ from, to, content, type = "message" }) {
     this.ensureInbox(to);
 
     const message = {
+      id: crypto.randomUUID(),
       from,
       to,
       type,
@@ -126,6 +128,46 @@ export class MerlinEngine {
 
     if (cell) {
       await cell.appendInboxMessage(message);
+    }
+  }
+
+  async tickAll() {
+    console.log("");
+    console.log("🫀 Colony Work Cycle");
+    console.log("");
+
+    for (const [id, cell] of this.cells) {
+      console.log(`[${id}] tick...`);
+
+      try {
+        const inbox = await cell.readInbox();
+        this.inboxes.set(id, inbox);
+
+        if (inbox.length === 0) {
+          console.log("  idle: no inbox");
+          console.log("");
+          continue;
+        }
+
+        await cell.updateStatus("running");
+
+        const result = await cell.processInbox(inbox);
+
+        this.inboxes.set(id, []);
+        await cell.clearInbox();
+
+        await cell.updateStatus("idle");
+
+        console.log(`  processed=${result.processed}`);
+        console.log(`  maturity=${await cell.getMaturity()}`);
+      } catch (error) {
+        await cell.updateStatus("error");
+        console.log(`  ✗ ${error.message}`);
+
+        await cell.updateStatus("idle");
+      }
+
+      console.log("");
     }
   }
 
@@ -212,7 +254,8 @@ Engine:
   /help                    Show commands
   /cells                   List cells
   /status                  Show cell status
-  /heartbeat               Run one evolution cycle for all cells
+  /tick                    Run one colony work cycle
+  /heartbeat               Run one colony work cycle (legacy)
   /new <cell-id>           Create and switch to a new cell
   /use <cell-id>           Switch to a cell
   /merlin                  Return to Merlin engine mode

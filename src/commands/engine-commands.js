@@ -130,59 +130,15 @@ export function createEngineCommands() {
       },
     },
 
-    {
+   {
       name: "/heartbeat",
 
       match: (input) =>
-        input === "/heartbeat",
+        input === "/heartbeat" ||
+        input === "/tick",
 
       execute: async ({ engine }) => {
-
-        console.log("");
-        console.log("🫀 Colony Heartbeat");
-        console.log("");
-
-        for (const [id, cell] of engine.cells) {
-
-          console.log(
-            `[${id}] thinking...`
-          );
-
-          try {
-
-            await cell.think();
-
-            const maturity =
-              await cell.getMaturity();
-
-            const inboxCount =
-              engine.inboxes.get(id)?.length ?? 0;
-
-            console.log(
-              `✓ maturity=${maturity}, inbox=${inboxCount}`
-            );
-
-            if (inboxCount > 0) {
-              console.log(
-                `  ⚠ has ${inboxCount} message(s). Use /use ${id} then /process`
-              );
-            }
-
-            if (await cell.canDivide()) {
-              console.log(
-                `  🧬 ready to divide. Use /use ${id} then /divide`
-              );
-            }
-
-          } catch (error) {
-
-            console.log(
-              `✗ ${error.message}`
-            );
-          }
-
-          console.log("");
-        }
+        await engine.tickAll();
       }
     },
 

@@ -7,7 +7,8 @@ export function createCellCommands() {
       match: (input, { engine }) => input === "/inbox" && !engine.isMerlinMode(),
       execute: async ({ engine }) => {
         const cell = engine.getActiveCell();
-        const inbox = engine.inboxes.get(cell.id) ?? [];
+        const inbox = await cell.readInbox();
+        engine.inboxes.set(cell.id, inbox);
 
         if (inbox.length === 0) {
           console.log("(empty inbox)");
