@@ -88,7 +88,7 @@ function renderTagline() {
 function renderRuntimeStatus(model) {
   term.gray(`
      ──────────────────────────────────────────────────────────────────────────────
-            Model: ${model}   |     State: READY   |     Mode: STREAMING
+              Model: ${model}   |     State: READY   |     Mode: STREAMING
             
 `);
 }
