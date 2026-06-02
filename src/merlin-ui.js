@@ -78,17 +78,19 @@ function renderMerlinLogo() {
 
 function renderTagline() {
   term("\n");
-  term("                     ");
-  term.brightBlue("Software Life Engineering");
-  term.gray(" | ");
+  term("                ");
+  term.brightYellow("Software Life Engineering");
+  term.gray("  |  ");
   term.brightGreen("DNA Driven Design");
+  term.gray("  |  ");
+  term.brightBlue("version: v1.0");
   term("\n\n");
 }
 
 function renderRuntimeStatus(model) {
   term.gray(`
-     ──────────────────────────────────────────────────────────────────────────────
-              Model: ${model}   |     State: READY   |     Mode: STREAMING
+     ────────────────────────────────────────────────────────────────────────────────────
+                Model: ${model}   |     State: READY   |     Mode: STREAMING
             
 `);
 }
