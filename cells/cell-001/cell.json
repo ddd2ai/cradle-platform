@@ -9,8 +9,8 @@
   "responsibilities": [],
   "relationships": [],
   "createdAt": "2026-06-02T11:10:23.899Z",
-  "updatedAt": "2026-06-02T11:13:01.698Z",
-  "lastStartedAt": "2026-06-02T11:13:01.677Z",
+  "updatedAt": "2026-06-02T11:27:29.621Z",
+  "lastStartedAt": "2026-06-02T11:27:29.593Z",
   "directories": {
     "root": "cells/cell-001",
     "logs": "cells/cell-001/logs",

@@ -771,8 +771,12 @@ createdAt: ${new Date().toISOString()}
       execute: async ({ engine }) => {
         const cell = engine.getActiveCell();
         const profile = await cell.getProfile();
+        const convergence = await cell.calculateConvergence();
 
-        console.log(JSON.stringify(profile, null, 2));
+        console.log(JSON.stringify({
+          ...profile,
+          convergence,
+        }, null, 2));
       },
     },
 

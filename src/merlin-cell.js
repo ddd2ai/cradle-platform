@@ -27,6 +27,7 @@ export class MerlinCell {
     this.dnaDefinitionFile = path.join(process.cwd(), "DNA_DEFINITION.md");
     this.dnaFactorsFile = path.join(process.cwd(), "DNA_FACTORS.md");
     this.dnaVectorFile = path.join(this.rootDir, "dna-vector.json");
+    this.dnaHistoryFile = path.join(this.rootDir, "dna-history.json");
     this.workspaceDir = path.join(this.rootDir, "workspace");
     this.workspaceDirs = {
       notes: path.join(this.workspaceDir, "notes"),
@@ -423,6 +424,7 @@ TODO: define meaning from DNA_DEFINITION.md.
     }
 
     await this.writeDNAVector(vector);
+    await this.appendDNAHistory("prepare");
   }
 
   defaultDNAFactorValue(factor) {
@@ -447,6 +449,84 @@ TODO: define meaning from DNA_DEFINITION.md.
       JSON.stringify(vector, null, 2),
       "utf8"
     );
+  }
+
+  async appendDNAHistory(reason = "unknown") {
+    const vector = await this.readDNAVector();
+
+    if (!vector) return;
+
+    let history = [];
+
+    try {
+      const raw = await fs.readFile(this.dnaHistoryFile, "utf8");
+      history = JSON.parse(raw);
+    } catch {
+      history = [];
+    }
+
+    history.push({
+      at: new Date().toISOString(),
+      reason,
+      vector,
+    });
+
+    await fs.writeFile(
+      this.dnaHistoryFile,
+      JSON.stringify(history, null, 2),
+      "utf8"
+    );
+  }
+
+  async calculateDNAVelocity(windowSize = 5) {
+    let history = [];
+
+    try {
+      const raw = await fs.readFile(this.dnaHistoryFile, "utf8");
+      history = JSON.parse(raw);
+    } catch {
+      return 1;
+    }
+
+    if (history.length < 2) {
+      return 1;
+    }
+
+    const recent = history.slice(-windowSize);
+
+    let totalDelta = 0;
+    let count = 0;
+
+    for (let i = 1; i < recent.length; i++) {
+      const prev = recent[i - 1].vector;
+      const curr = recent[i].vector;
+
+      for (const dnaKey of Object.keys(curr)) {
+        for (const factor of Object.keys(curr[dnaKey] ?? {})) {
+          const a = Number(prev?.[dnaKey]?.[factor] ?? 0);
+          const b = Number(curr?.[dnaKey]?.[factor] ?? 0);
+
+          totalDelta += Math.abs(b - a);
+          count++;
+        }
+      }
+    }
+
+    if (count === 0) return 1;
+
+    return totalDelta / count;
+  }
+
+  async calculateConvergence() {
+    const velocity = await this.calculateDNAVelocity();
+
+    const convergence = Math.max(0, Math.min(1, 1 - velocity));
+
+    return {
+      velocity,
+      convergence,
+      percent: Math.round(convergence * 100),
+    };
   }
 
   async ensureFile(file, content = "") {
