@@ -53,6 +53,26 @@ Evolution
 
 ---
 
+## Cradle Core Files
+
+Cradle Platform 由四個核心檔案驅動細胞的演化與成長:
+
+- **DNA_DEFINITION.md**: 細胞內部基因定義 - 定義細胞擁有哪些內部能力
+- **DNA_FACTORS.md**: 成熟度與演化因子 - 定義細胞如何計算成熟度
+- **VISION.md**: 細胞要長成的目標系統 - 定義演化的方向與願景
+- **ENVIRONMENT.md**: 細胞所在的生長環境與限制 - 定義外部環境的技術棧與約束
+
+這四個檔案構成了 Cradle 的生命模型:
+- DNA_DEFINITION + DNA_FACTORS = **內因** (細胞的內在基因)
+- VISION = **願景** (細胞的演化目標)
+- ENVIRONMENT = **外境** (細胞所處的環境)
+
+```text
+內因 + 外境 + 願景 = Cradle Cell 的完整生命模型
+```
+
+---
+
 ## Core Concepts
 
 ### Cradle Engine

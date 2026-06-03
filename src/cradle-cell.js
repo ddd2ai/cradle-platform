@@ -26,6 +26,8 @@ export class CradleCell {
     this.dnaDir = path.join(this.rootDir, "dna");
     this.dnaDefinitionFile = path.join(process.cwd(), "DNA_DEFINITION.md");
     this.dnaFactorsFile = path.join(process.cwd(), "DNA_FACTORS.md");
+    this.visionFile = path.join(process.cwd(), "VISION.md");
+    this.environmentFile = path.join(process.cwd(), "ENVIRONMENT.md");
     this.dnaVectorFile = path.join(this.rootDir, "dna-vector.json");
     this.dnaHistoryFile = path.join(this.rootDir, "dna-history.json");
     this.workspaceDir = path.join(this.rootDir, "workspace");
@@ -57,6 +59,7 @@ export class CradleCell {
 
   async prepare() {
     await this.prepareCellDirectory();
+    await this.ensureRootFiles();
     await this.prepareDNAFiles();
     await this.prepareDNAVector();
     await this.prepareMemoryFiles();
@@ -368,6 +371,27 @@ export class CradleCell {
       `# History
 
       `
+    );
+  }
+
+  async ensureRootFiles() {
+    await this.ensureFile(
+      this.visionFile,
+      `# VISION
+
+建立一套電商系統。
+`
+    );
+
+    await this.ensureFile(
+      this.environmentFile,
+      `# ENVIRONMENT
+
+- Java 21
+- Spring Boot
+- Hexagonal Architecture
+- MariaDB
+`
     );
   }
 
@@ -876,11 +900,25 @@ ${memoryContext}
     const recentHistory = await this.readRecentHistory(8000);
     const recentThoughts = await this.readRecentThoughts(4000);
     const dnaContext = await this.readDNAContext();
+    const vision = await this.readVision();
+    const environment = await this.readEnvironment();
 
     return `
     ## DNA
 
     ${dnaContext}
+
+    ---
+
+    ## Vision
+
+    ${vision}
+
+    ---
+
+    ## Environment
+
+    ${environment}
 
     ---
 
@@ -929,6 +967,22 @@ ${memoryContext}
       return await this.readMemory(name);
     } catch {
       return "";
+    }
+  }
+
+  async readVision() {
+    try {
+      return await fs.readFile(this.visionFile, "utf8");
+    } catch {
+      return "# VISION\n\n建立一套電商系統。";
+    }
+  }
+
+  async readEnvironment() {
+    try {
+      return await fs.readFile(this.environmentFile, "utf8");
+    } catch {
+      return "# ENVIRONMENT\n\n- Java 21\n- Spring Boot\n- Hexagonal Architecture\n- MariaDB";
     }
   }
 
