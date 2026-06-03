@@ -77,18 +77,24 @@ Cradle 所追求的流程：
 
 ---
 
-這四個檔案共同構成一個完整生命體：
+這四個配置檔案，共同培養出一個完整生命體：
 
 ```text
-DNA_DEFINITION
-      +
 DNA_FACTORS
-      +
-VISION
-      +
-ENVIRONMENT
-      =
-Cradle Cell
+ (Maturity)
+      ▲
+100%  │                   
+      │                
+ 80%  │                ╭──────────────────────── 
+      │           ╭────╯    ENVIRONMENT   ▲
+ 60%  │        ╭──╯                       |
+      │   ╭────╯                          |
+ 40%  │          🦠      🌱      🌿🌿🌿     
+      │        Cell → Growth → Evolution   ──────▶ VISION
+ 20%  │
+      │
+      └──────|──────|──────|──────|───────|───────|──────▶ DNA_DEFINITION
+            DNA1   DNA2   DNA3   DNA4   DNA5    DNA6
 ```
 
 從生命的角度來看：
