@@ -1,4 +1,14 @@
 import { renderTable } from "../ui/render-table.js";
+import readline from "readline/promises";
+import { stdin as input, stdout as output } from "process";
+import {
+  resolveEnvironment
+} from "../environment/environment-resolver.js";
+
+import {
+  isInstalled,
+  installTool
+} from "../environment/environment-installer.js";
 
 export function createEngineCommands() {
   return [
@@ -139,6 +149,98 @@ export function createEngineCommands() {
 
       execute: async ({ engine }) => {
         await engine.tickAll();
+      }
+    },
+
+    {
+      name: "/env plan",
+
+      match: (input) =>
+        input === "/env plan",
+
+      execute: async () => {
+
+        const tools =
+          await resolveEnvironment();
+
+        if (tools.length === 0) {
+          console.log("(no tools detected)");
+          return;
+        }
+
+        console.log("");
+        console.log("Environment Plan");
+        console.log("");
+
+        for (const tool of tools) {
+
+          const installed =
+            await isInstalled(tool);
+
+          console.log(
+            `${installed ? "✓" : "✗"} ${tool.name}`
+          );
+        }
+
+        console.log("");
+      }
+    },
+
+    {
+      name: "/env prepare",
+
+      match: (input) =>
+        input === "/env prepare",
+
+      execute: async () => {
+
+        const tools =
+          await resolveEnvironment();
+
+        const rl =
+          readline.createInterface({ input, output });
+
+        try {
+          console.log("");
+          console.log("Preparing Environment");
+          console.log("");
+
+          for (const tool of tools) {
+
+            const installed =
+              await isInstalled(tool);
+
+            if (installed) {
+              console.log(`✓ ${tool.name}`);
+              continue;
+            }
+
+            console.log(`✗ ${tool.name}`);
+            console.log(`  install: ${tool.install}`);
+            console.log("");
+
+            const answer =
+              await rl.question(
+                `Install ${tool.name}? (Y/N) `
+              );
+
+            if (
+              answer.trim().toUpperCase() !== "Y"
+            ) {
+              console.log(`Skipped ${tool.name}`);
+              continue;
+            }
+
+            await installTool(tool);
+            console.log(`✓ ${tool.name} installed`);
+          }
+
+          console.log("");
+          console.log("Environment Ready");
+
+        } finally {
+          rl.close();
+        }
       }
     },
 

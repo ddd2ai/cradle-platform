@@ -252,8 +252,11 @@ export class CradleEngine {
 
     Engine:
       /help                    Show commands
+      /whoami                  Show current mode or cell
+
       /cells                   List cells
       /status                  Show cell status
+
       /work                    Show colony work queue
       /tick                    Run one colony work cycle
       /heartbeat               Run one colony work cycle (legacy)
@@ -261,7 +264,6 @@ export class CradleEngine {
       /new <cell-id>           Create and switch to a new cell
       /use <cell-id>           Switch to a cell
       /cradle                  Return to Cradle engine mode
-      /whoami                  Show current mode or cell
 
       /colony                  Show colony overview
       /colony-graph            Show colony relationship graph
@@ -272,7 +274,18 @@ export class CradleEngine {
 
       exit                     Shutdown engine
 
-      
+
+    Environment:
+      /env plan                Show environment install plan
+      /env prepare             Prepare environment
+
+    Core Files:
+      DNA_DEFINITION.md        Define DNA traits
+      DNA_FACTORS.md           Define maturity factors
+      VISION.md               Define evolution direction
+      ENVIRONMENT.md          Define runtime environment
+
+
     Cell DNA:
       /dna                     Show current cell DNA context
       /dna init                Initialize DNA traits with AI
@@ -294,7 +307,9 @@ export class CradleEngine {
     Cell Memory:
       /memory                  Show active memory context
       /memory full             Show full memory files
+
       /thoughts                Show recent thoughts
+
       /feed <content>          Append knowledge
       /think                   Let current cell reflect and grow
 
@@ -307,21 +322,25 @@ export class CradleEngine {
 
     Cell Workspace:
       /workspace               List workspace files
+
       /write <task>            Create workspace artifact
       /read <file>             Read workspace file
       /revise <file> <task>    Revise workspace file
+
       /share <file> <cell>     Share file to another cell
       /import <cell> <file>    Import file from another cell
 
 
     Cell Projects:
       /project-init <name>     Create project workspace
-      /project-file <project> <file>
-                              Create file inside project
+
+      /project-file
+          <project> <file>     Create file inside project
 
 
     Cell Evolution:
       /profile                 Show cell profile
+
       /evolve                  Increase maturity
       /divide                  Create child cell
       /specialize <name>       Specialize cell
@@ -332,15 +351,32 @@ export class CradleEngine {
       /link <type> <cell>      Create relationship
       /graph                   Show cell graph
 
+
     Cell Collaboration:
       /delegate <cell> <task>  Delegate task to another cell
       /report <cell> <file>    Report artifact to another cell
-      /trace                   Show current cell collaboration trace
+      /trace                   Show collaboration trace
+
 
     Cell Snapshots:
       /snapshot                Create snapshot
       /snapshots               List snapshots
       /restore <name>          Restore snapshot
+
+
+    Cradle Philosophy:
+
+      DNA
+        What a cell can become
+
+      Vision
+        What a cell wants to become
+
+      Environment
+        Where a cell grows
+
+      Evolution
+        How a cell matures
     `);
   }
 
