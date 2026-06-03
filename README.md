@@ -1,6 +1,6 @@
 # Cradle Platform
 
-> A Living Software Engineering Platform
+> 軟體生命工程平台（A Living Software Engineering Platform）
 
 Cradle Platform 是一個探索「軟體生命工程（Software Life Engineering）」的實驗平台。
 
@@ -10,41 +10,45 @@ Cradle Platform 是一個探索「軟體生命工程（Software Life Engineering
 * Agent 不只是工具
 * Service 不只是 API
 
-每一個系統都被視為一個可以成長的生命體。
+每一個系統，都被視為一個可以成長的生命體。
+
+我們不只是建造系統。
+
+我們嘗試培育生命。
 
 ---
 
-## Vision
+# 願景（Vision）
 
-傳統軟體工程：
-
-```text
-Requirement
-    ↓
-Design
-    ↓
-Code
-    ↓
-Deploy
-```
-
-Cradle Platform：
+傳統軟體工程的流程：
 
 ```text
-Seed
-    ↓
-Insight
-    ↓
-Model
-    ↓
-Cell
-    ↓
-Growth
-    ↓
-Evolution
+需求
+  ↓
+設計
+  ↓
+程式碼
+  ↓
+部署
 ```
 
-我們希望讓系統能夠：
+Cradle 所追求的流程：
+
+```text
+種子
+  ↓
+洞察
+  ↓
+模型
+  ↓
+細胞
+  ↓
+成長
+  ↓
+演化
+```
+
+我們希望未來的系統能夠：
 
 * 自我成長
 * 自我組織
@@ -53,50 +57,102 @@ Evolution
 
 ---
 
-## Cradle Core Files
+# Cradle 生命模型
 
-Cradle Platform 由四個核心檔案驅動細胞的演化與成長:
+每個 Cradle Cell 都由四個核心檔案所定義：
 
-- **DNA_DEFINITION.md**: 細胞內部基因定義 - 定義細胞擁有哪些內部能力
-- **DNA_FACTORS.md**: 成熟度與演化因子 - 定義細胞如何計算成熟度
-- **VISION.md**: 細胞要長成的目標系統 - 定義演化的方向與願景
-- **ENVIRONMENT.md**: 細胞所在的生長環境與限制 - 定義外部環境的技術棧與約束
+## DNA_DEFINITION.md
 
-這四個檔案構成了 Cradle 的生命模型:
-- DNA_DEFINITION + DNA_FACTORS = **內因** (細胞的內在基因)
-- VISION = **願景** (細胞的演化目標)
-- ENVIRONMENT = **外境** (細胞所處的環境)
+細胞基因定義。
+
+描述細胞擁有哪些能力與特性。
+
+---
+
+## DNA_FACTORS.md
+
+演化因子定義。
+
+描述細胞如何成長，以及如何計算成熟度。
+
+---
+
+## VISION.md
+
+願景定義。
+
+描述細胞最終希望演化成什麼樣子。
+
+---
+
+## ENVIRONMENT.md
+
+環境定義。
+
+描述細胞所處的技術環境、限制條件與外部刺激。
+
+---
+
+這四個檔案共同構成一個完整生命體：
 
 ```text
-內因 + 外境 + 願景 = Cradle Cell 的完整生命模型
+DNA_DEFINITION
+      +
+DNA_FACTORS
+      +
+VISION
+      +
+ENVIRONMENT
+      =
+Cradle Cell
+```
+
+從生命的角度來看：
+
+```text
+內因 + 外境 + 願景 = 生命
+```
+
+其中：
+
+```text
+DNA_DEFINITION + DNA_FACTORS = 內因
+VISION                         = 願景
+ENVIRONMENT                    = 外境
 ```
 
 ---
 
-## Core Concepts
+# 核心概念
 
-### Cradle Engine
+## Cradle Engine
 
 Cradle Engine 是整個平台的培養皿（Incubator）。
 
 負責：
 
 * 啟動細胞
+* 管理細胞
 * 傳遞訊息
-* 收集結果
+* 收集成果
 * 評估成熟度
+* 觀察演化過程
 
 ```text
 Cradle Engine
-    │
-    ├── Cradle Cell
-    ├── Cradle Cell
-    └── Cradle Cell
+      │
+      ├── Cell
+      ├── Cell
+      └── Cell
 ```
+
+Engine 不負責決定生命長成什麼樣子。
+
+Engine 只負責提供生命成長的環境。
 
 ---
 
-### Cradle Cell
+## Cradle Cell
 
 Cradle Cell 是平台中的最小生命單位。
 
@@ -105,9 +161,10 @@ Cradle Cell 是平台中的最小生命單位。
 ```text
 Identity
 Memory
+DNA
 Energy
 Maturity
-Connection
+Connections
 ```
 
 例如：
@@ -119,11 +176,22 @@ Order Cell
 Notification Cell
 ```
 
+未來甚至可能是：
+
+```text
+Architect Cell
+Developer Cell
+Research Cell
+Tester Cell
+```
+
+或任何尚未被定義的生命型態。
+
 ---
 
-### Cradle Message
+## Cradle Message
 
-Cell 之間透過訊息交換資訊。
+Cell 透過訊息進行交流。
 
 ```text
 Cell A
@@ -140,24 +208,49 @@ Cell B
 Insight
 Model
 Skill
-Event
 Task
+Event
 Knowledge
+DNA
 ```
+
+訊息是細胞之間的神經系統。
 
 ---
 
-### Maturity
+# 成熟度（Maturity）
 
-每個 Cell 都有自己的成熟度。
+每個 Cell 都擁有自己的成熟度。
 
 ```text
-0   Seed
-20  Insight
-40  Model
-60  Interface
-80  Service
-100 Mature
+0    Seed
+20   Insight
+40   Model
+60   Interface
+80   Service
+100  Mature
+```
+
+對應的生命階段：
+
+```text
+Seed
+ └─ 開始存在
+
+Insight
+ └─ 開始理解
+
+Model
+ └─ 建立結構
+
+Interface
+ └─ 開始互動
+
+Service
+ └─ 產生價值
+
+Mature
+ └─ 穩定演化
 ```
 
 成熟度越高：
@@ -165,10 +258,15 @@ Knowledge
 * 能力越完整
 * 知識越豐富
 * 自主性越高
+* 演化能力越強
+
+成熟並不代表停止成長。
+
+成熟代表演化趨於穩定。
 
 ---
 
-## Architecture
+# 架構概念
 
 ```text
 ┌─────────────────────────┐
@@ -179,8 +277,10 @@ Knowledge
      │Cradle Engine│
      └──────┬──────┘
             │
+
     ┌───────┼────────┐
     │       │        │
+
 ┌───▼───┐ ┌─▼────┐ ┌─▼────┐
 │ Cell A│ │Cell B│ │Cell C│
 └───┬───┘ └──┬───┘ └──┬───┘
@@ -192,31 +292,33 @@ Knowledge
 
 ---
 
-## DNA Driven Design
+# DNA Driven Design
 
 Cradle 採用 DNA Driven Design 思維。
 
-系統由語意驅動：
+系統並非直接從程式碼開始。
+
+而是從語意開始。
 
 ```text
-Natural Language
-        ↓
+自然語言
+      ↓
 Insight
-        ↓
+      ↓
 Model
-        ↓
+      ↓
 Interface
-        ↓
+      ↓
 Implementation
 ```
 
-目標不是生成程式碼。
+程式碼只是最後的顯化結果。
 
-而是讓系統能夠逐步長出程式碼。
+真正的系統存在於 DNA 之中。
 
 ---
 
-## Project Structure
+# 專案結構
 
 ```text
 cradle-platform/
@@ -237,77 +339,53 @@ cradle-platform/
 ├── messages/
 │   └── cradle-message.js
 │
-├── models/
-│
 ├── insights/
-│
+├── models/
 ├── souls/
+│
+├── DNA_DEFINITION.md
+├── DNA_FACTORS.md
+├── VISION.md
+├── ENVIRONMENT.md
 │
 └── README.md
 ```
 
 ---
 
-## Example
+# 長期目標
 
-建立一個 Cell：
+## Multi-Agent Ecosystem
 
-```javascript
-const paymentCell = new CradleCell({
-  id: "payment",
-  name: "Payment Cell"
-});
-```
-
-註冊到 Engine：
-
-```javascript
-engine.register(paymentCell);
-```
-
-啟動培養：
-
-```javascript
-engine.tick();
-```
+建立由多個 Cell 自主合作形成的生態系。
 
 ---
 
-## Long-Term Goals
+## Software Life Engineering
 
-Cradle Platform 未來將探索：
-
-### Multi-Agent Ecosystem
-
-多個 Cell 自主合作。
+探索軟體生命工程。
 
 ---
 
-### Software Life Engineering
+## VM-Based Agent Incubator
 
-軟體生命工程。
-
----
-
-### VM-Based Agent Incubator
-
-使用虛擬機培養 AI Agent。
+使用虛擬機作為生命培養環境。
 
 ---
 
-### Self-Growing Architecture
+## Self-Growing Architecture
 
-由 AI 自主形成系統架構。
-
----
-
-### DNA Driven Design
-
-從語言到系統的完整映射。
+讓架構能夠自主形成與調整。
 
 ---
 
-## Philosophy
+## DNA Driven Design
+
+建立從語言到系統的完整映射。
+
+---
+
+# 哲學（Philosophy）
 
 我們不把軟體看成機器。
 
@@ -317,8 +395,10 @@ Cradle Platform 未來將探索：
 
 生命會成長。
 
+生命會適應環境。
+
 生命會演化。
 
 而 Cradle Platform 的目標，
 
-就是成為這些生命誕生的培養皿。
+就是成為這些生命誕生與成長的培養皿。
