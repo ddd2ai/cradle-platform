@@ -1,10 +1,10 @@
-# Merlin Platform
+# Cradle Platform
 
 > A Living Software Engineering Platform
 
-Merlin Platform 是一個探索「軟體生命工程（Software Life Engineering）」的實驗平台。
+Cradle Platform 是一個探索「軟體生命工程（Software Life Engineering）」的實驗平台。
 
-在 Merlin 的世界裡：
+在 Cradle 的世界裡：
 
 * 軟體不只是程式碼
 * Agent 不只是工具
@@ -28,7 +28,7 @@ Code
 Deploy
 ```
 
-Merlin Platform：
+Cradle Platform：
 
 ```text
 Seed
@@ -55,9 +55,9 @@ Evolution
 
 ## Core Concepts
 
-### Merlin Engine
+### Cradle Engine
 
-Merlin Engine 是整個平台的培養皿（Incubator）。
+Cradle Engine 是整個平台的培養皿（Incubator）。
 
 負責：
 
@@ -67,18 +67,18 @@ Merlin Engine 是整個平台的培養皿（Incubator）。
 * 評估成熟度
 
 ```text
-Merlin Engine
+Cradle Engine
     │
-    ├── Merlin Cell
-    ├── Merlin Cell
-    └── Merlin Cell
+    ├── Cradle Cell
+    ├── Cradle Cell
+    └── Cradle Cell
 ```
 
 ---
 
-### Merlin Cell
+### Cradle Cell
 
-Merlin Cell 是平台中的最小生命單位。
+Cradle Cell 是平台中的最小生命單位。
 
 每個 Cell 都擁有：
 
@@ -101,7 +101,7 @@ Notification Cell
 
 ---
 
-### Merlin Message
+### Cradle Message
 
 Cell 之間透過訊息交換資訊。
 
@@ -152,11 +152,11 @@ Knowledge
 
 ```text
 ┌─────────────────────────┐
-│     Merlin Platform     │
+│     Cradle Platform     │
 └───────────┬─────────────┘
             │
      ┌──────▼──────┐
-     │Merlin Engine│
+     │Cradle Engine│
      └──────┬──────┘
             │
     ┌───────┼────────┐
@@ -174,7 +174,7 @@ Knowledge
 
 ## DNA Driven Design
 
-Merlin 採用 DNA Driven Design 思維。
+Cradle 採用 DNA Driven Design 思維。
 
 系統由語意驅動：
 
@@ -199,10 +199,10 @@ Implementation
 ## Project Structure
 
 ```text
-merlin-platform/
+cradle-platform/
 
 ├── engine/
-│   └── merlin-engine.js
+│   └── cradle-engine.js
 │
 ├── cells/
 │   ├── customer-cell.js
@@ -215,7 +215,7 @@ merlin-platform/
 │   └── analysis/
 │
 ├── messages/
-│   └── merlin-message.js
+│   └── cradle-message.js
 │
 ├── models/
 │
@@ -233,7 +233,7 @@ merlin-platform/
 建立一個 Cell：
 
 ```javascript
-const paymentCell = new MerlinCell({
+const paymentCell = new CradleCell({
   id: "payment",
   name: "Payment Cell"
 });
@@ -255,7 +255,7 @@ engine.tick();
 
 ## Long-Term Goals
 
-Merlin Platform 未來將探索：
+Cradle Platform 未來將探索：
 
 ### Multi-Agent Ecosystem
 
@@ -299,6 +299,6 @@ Merlin Platform 未來將探索：
 
 生命會演化。
 
-而 Merlin Platform 的目標，
+而 Cradle Platform 的目標，
 
 就是成為這些生命誕生的培養皿。

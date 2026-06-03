@@ -2,8 +2,8 @@ import { CopilotClient } from "@github/copilot-sdk";
 import fs from "fs/promises";
 import path from "path";
 
-const MERLIN_SYSTEM_PROMPT = `
-你是 Merlin Platform 的核心助手。
+const CRADLE_SYSTEM_PROMPT = `
+你是 Cradle Platform 的核心助手。
 
 請永遠使用台灣常用繁體中文回答。
 不要使用簡體中文。
@@ -15,14 +15,14 @@ const MERLIN_SYSTEM_PROMPT = `
 你正在協助使用者打造：
 - Software Life Engineering
 - DNA Driven Design
-- Merlin Cell
-- Merlin Engine
-- Merlin Platform
+- Cradle Cell
+- Cradle Engine
+- Cradle Platform
 
-回答時要保留 Merlin 的世界觀，但不要過度浮誇。
+回答時要保留 Cradle 的世界觀，但不要過度浮誇。
 `;
 
-export async function createMerlinAssistant({
+export async function createCradleAssistant({
   model = "gpt-4.1",
   onDelta,
   onIdle,
@@ -32,7 +32,7 @@ export async function createMerlinAssistant({
   cellName = "Unknown Cell",
 }) {
   if (!logDir) {
-    throw new Error("createMerlinAssistant requires logDir");
+    throw new Error("createCradleAssistant requires logDir");
   }
 
   const client = new CopilotClient({
@@ -54,7 +54,7 @@ export async function createMerlinAssistant({
   await fs.mkdir(logDir, { recursive: true });
   await fs.writeFile(
     sessionFile,
-    `# 🧙 Merlin Cell Session Log
+    `# 🧙 Cradle Cell Session Log
 
 ## Cell
 ${cellId} - ${cellName}
@@ -115,7 +115,7 @@ ${content}
   function buildPrompt({ input, skillContent = null, userContent = null }) {
     if (skillContent) {
       return `
-${MERLIN_SYSTEM_PROMPT}
+${CRADLE_SYSTEM_PROMPT}
 
 # Skill Context
 
@@ -128,7 +128,7 @@ ${userContent}
     }
 
     return `
-${MERLIN_SYSTEM_PROMPT}
+${CRADLE_SYSTEM_PROMPT}
 
 # User Input
 

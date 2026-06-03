@@ -1,19 +1,19 @@
-// merlin-cell.js
+// cradle-cell.js
 import fs from "fs/promises";
 import path from "path";
-import { createMerlinAssistant } from "./merlin-ai.js";
+import { createCradleAssistant } from "./cradle-ai.js";
 import {
   renderError,
   renderSkill,
   renderSkillNotFound,
   writeAssistantChunk,
-} from "./merlin-ui.js";
+} from "./cradle-ui.js";
 
-export class MerlinCell {
+export class CradleCell {
 
   constructor({
     id = "cell-001",
-    name = "Merlin Cell",
+    name = "Cradle Cell",
     model = "gpt-4.1",
   } = {}) {
     this.id = id;
@@ -61,7 +61,7 @@ export class MerlinCell {
     await this.prepareDNAVector();
     await this.prepareMemoryFiles();
 
-    this.assistant = await createMerlinAssistant({
+    this.assistant = await createCradleAssistant({
       model: this.model,
       onDelta: writeAssistantChunk,
       onError: renderError,
@@ -84,7 +84,7 @@ export class MerlinCell {
       const memoryContext = await this.buildMemoryContext(input);
 
       const cellInput = `
-      # Merlin Cell Context
+      # Cradle Cell Context
 
       ## Cell
       - id: ${this.id}
@@ -349,7 +349,7 @@ export class MerlinCell {
 
       - Use Traditional Chinese.
       - Be concise, clear, and useful.
-      - Preserve Merlin Platform context.
+      - Preserve Cradle Platform context.
       - Grow through memory, workspace, thoughts, and snapshots.
       - Do not treat history as absolute truth; summarize and refine it into knowledge.
 

@@ -1,7 +1,7 @@
-// merlin-engine.js
+// cradle-engine.js
 import readline from "readline";
 import fs from "fs/promises";
-import { MerlinCell } from "./merlin-cell.js";
+import { CradleCell } from "./cradle-cell.js";
 import {
   clearScreen,
   renderBoot,
@@ -10,21 +10,21 @@ import {
   renderAnswerStart,
   renderError,
   renderBye,
-} from "./merlin-ui.js";
+} from "./cradle-ui.js";
 
 import { CommandRegistry } from "./commands/command-registry.js";
 import { createEngineCommands } from "./commands/engine-commands.js";
 import { createCellCommands } from "./commands/cell-commands.js";
 import { createColonyCommands } from "./commands/colony-commands.js";
 
-export class MerlinEngine {
+export class CradleEngine {
   constructor({ model = "gpt-4.1" } = {}) {
     this.model = model;
     this.cells = new Map();
     this.inboxes = new Map();
 
-    this.MERLIN_ID = "Merlin";
-    this.activeCellId = this.MERLIN_ID;
+    this.CRADLE_ID = "Cradle";
+    this.activeCellId = this.CRADLE_ID;
     this.rl = null;
 
     this.commandRegistry = new CommandRegistry();
@@ -68,15 +68,15 @@ export class MerlinEngine {
       }
     }
 
-    this.activeCellId = this.MERLIN_ID;
+    this.activeCellId = this.CRADLE_ID;
   }
 
-  isMerlinMode() {
-    return this.activeCellId === this.MERLIN_ID;
+  isCradleMode() {
+    return this.activeCellId === this.CRADLE_ID;
   }
 
   async createCell(id) {
-    const cell = new MerlinCell({
+    const cell = new CradleCell({
       id,
       name: id,
       model: this.model,
@@ -90,7 +90,7 @@ export class MerlinEngine {
   }
 
   async registerCell(id) {
-    const cell = new MerlinCell({
+    const cell = new CradleCell({
       id,
       name: id,
       model: this.model,
@@ -215,8 +215,8 @@ export class MerlinEngine {
       return;
     }
 
-    if (this.isMerlinMode()) {
-      console.log("You are in Merlin mode. Use /use <cell-id> to enter a cell.");
+    if (this.isCradleMode()) {
+      console.log("You are in Cradle mode. Use /use <cell-id> to enter a cell.");
       return;
     }
 
@@ -248,7 +248,7 @@ export class MerlinEngine {
 
   printHelp() {
     console.log(`
-    Merlin Engine Commands
+    Cradle Engine Commands
 
     Engine:
       /help                    Show commands
@@ -260,7 +260,7 @@ export class MerlinEngine {
 
       /new <cell-id>           Create and switch to a new cell
       /use <cell-id>           Switch to a cell
-      /merlin                  Return to Merlin engine mode
+      /cradle                  Return to Cradle engine mode
       /whoami                  Show current mode or cell
 
       /colony                  Show colony overview

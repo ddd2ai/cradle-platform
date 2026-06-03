@@ -8,9 +8,9 @@
   "parent": null,
   "responsibilities": [],
   "relationships": [],
-  "createdAt": "2026-06-02T11:10:23.899Z",
-  "updatedAt": "2026-06-02T13:51:10.808Z",
-  "lastStartedAt": "2026-06-02T13:51:10.788Z",
+  "createdAt": "2026-06-03T00:08:49.395Z",
+  "updatedAt": "2026-06-03T00:08:49.418Z",
+  "lastStartedAt": "2026-06-03T00:08:49.395Z",
   "directories": {
     "root": "cells/cell-001",
     "logs": "cells/cell-001/logs",

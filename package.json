@@ -1,18 +1,18 @@
 {
-  "name": "merlin-platform",
+  "name": "cradle-platform",
   "version": "0.1.0",
   "description": "Software Life Engineering Platform",
   "type": "module",
 
-  "main": "src/merlin.js",
+  "main": "src/cradle.js",
 
   "scripts": {
-    "start": "node src/merlin.js",
-    "dev": "node src/merlin.js"
+    "start": "node src/cradle.js",
+    "dev": "node src/cradle.js"
   },
 
   "keywords": [
-    "merlin",
+    "cradle",
     "dna-driven-design",
     "software-life-engineering",
     "ai",

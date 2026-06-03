@@ -1,10 +1,10 @@
-import { renderAnswerStart } from "../merlin-ui.js";
+import { renderAnswerStart } from "../cradle-ui.js";
 
 export function createCellCommands() {
   return [
     {
       name: "/inbox",
-      match: (input, { engine }) => input === "/inbox" && !engine.isMerlinMode(),
+      match: (input, { engine }) => input === "/inbox" && !engine.isCradleMode(),
       execute: async ({ engine }) => {
         const cell = engine.getActiveCell();
         const inbox = await cell.readInbox();
@@ -29,7 +29,7 @@ export function createCellCommands() {
 
     {
       name: "/send",
-      match: (input, { engine }) => input.startsWith("/send ") && !engine.isMerlinMode(),
+      match: (input, { engine }) => input.startsWith("/send ") && !engine.isCradleMode(),
       execute: async ({ engine, input }) => {
         const cell = engine.getActiveCell();
         const args = input.replace("/send ", "").trim();
@@ -66,7 +66,7 @@ export function createCellCommands() {
 
     {
       name: "/memory",
-      match: (input, { engine }) => input === "/memory" && !engine.isMerlinMode(),
+      match: (input, { engine }) => input === "/memory" && !engine.isCradleMode(),
       execute: async ({ engine }) => {
         console.log(await engine.getActiveCell().buildMemoryContext());
       },
@@ -75,7 +75,7 @@ export function createCellCommands() {
     {
       name: "/dna init",
       match: (input, { engine }) =>
-        input === "/dna init" && !engine.isMerlinMode(),
+        input === "/dna init" && !engine.isCradleMode(),
 
       execute: async ({ engine }) => {
         const cell = engine.getActiveCell();
@@ -94,7 +94,7 @@ export function createCellCommands() {
     {
       name: "/dna",
       match: (input, { engine }) =>
-        input === "/dna" && !engine.isMerlinMode(),
+        input === "/dna" && !engine.isCradleMode(),
 
       execute: async ({ engine }) => {
         const cell = engine.getActiveCell();
@@ -104,7 +104,7 @@ export function createCellCommands() {
 
     {
       name: "/memory full",
-      match: (input, { engine }) => input === "/memory full" && !engine.isMerlinMode(),
+      match: (input, { engine }) => input === "/memory full" && !engine.isCradleMode(),
       execute: async ({ engine }) => {
         const cell = engine.getActiveCell();
 
@@ -136,7 +136,7 @@ export function createCellCommands() {
 
     {
       name: "/thoughts",
-      match: (input, { engine }) => input === "/thoughts" && !engine.isMerlinMode(),
+      match: (input, { engine }) => input === "/thoughts" && !engine.isCradleMode(),
       execute: async ({ engine }) => {
         console.log(await engine.getActiveCell().readRecentThoughts(12000));
       },
@@ -147,7 +147,7 @@ export function createCellCommands() {
 
       match: (input, { engine }) =>
         input === "/think" &&
-        !engine.isMerlinMode(),
+        !engine.isCradleMode(),
 
       execute: async ({ engine }) => {
         const cell = engine.getActiveCell();
@@ -165,7 +165,7 @@ export function createCellCommands() {
 
     {
       name: "/feed",
-      match: (input, { engine }) => input.startsWith("/feed ") && !engine.isMerlinMode(),
+      match: (input, { engine }) => input.startsWith("/feed ") && !engine.isCradleMode(),
       execute: async ({ engine, input }) => {
         const cell = engine.getActiveCell();
         const content = input.replace("/feed ", "").trim();
@@ -182,7 +182,7 @@ export function createCellCommands() {
 
     {
       name: "/write",
-      match: (input, { engine }) => input.startsWith("/write ") && !engine.isMerlinMode(),
+      match: (input, { engine }) => input.startsWith("/write ") && !engine.isCradleMode(),
       execute: async ({ engine, input }) => {
         const cell = engine.getActiveCell();
         const content = input.replace("/write ", "").trim();
@@ -216,7 +216,7 @@ export function createCellCommands() {
     {
       name: "/write-note",
       match: (input, { engine }) =>
-        input.startsWith("/write-note ") && !engine.isMerlinMode(),
+        input.startsWith("/write-note ") && !engine.isCradleMode(),
 
       execute: async ({ engine, input }) => {
         const cell = engine.getActiveCell();
@@ -247,7 +247,7 @@ createdAt: ${new Date().toISOString()}
     {
       name: "/decide",
       match: (input, { engine }) =>
-        input.startsWith("/decide ") && !engine.isMerlinMode(),
+        input.startsWith("/decide ") && !engine.isCradleMode(),
 
       execute: async ({ engine, input }) => {
         const cell = engine.getActiveCell();
@@ -286,7 +286,7 @@ createdAt: ${new Date().toISOString()}
     {
       name: "/research",
       match: (input, { engine }) =>
-        input.startsWith("/research ") && !engine.isMerlinMode(),
+        input.startsWith("/research ") && !engine.isCradleMode(),
 
       execute: async ({ engine, input }) => {
         const cell = engine.getActiveCell();
@@ -324,7 +324,7 @@ createdAt: ${new Date().toISOString()}
 
     {
       name: "/read",
-      match: (input, { engine }) => input.startsWith("/read ") && !engine.isMerlinMode(),
+      match: (input, { engine }) => input.startsWith("/read ") && !engine.isCradleMode(),
       execute: async ({ engine, input }) => {
         const cell = engine.getActiveCell();
         const fileName = input.replace("/read ", "").trim();
@@ -345,7 +345,7 @@ createdAt: ${new Date().toISOString()}
 
     {
       name: "/revise",
-      match: (input, { engine }) => input.startsWith("/revise ") && !engine.isMerlinMode(),
+      match: (input, { engine }) => input.startsWith("/revise ") && !engine.isCradleMode(),
       execute: async ({ engine, input }) => {
         const cell = engine.getActiveCell();
         const args = input.replace("/revise ", "").trim();
@@ -405,7 +405,7 @@ createdAt: ${new Date().toISOString()}
 
     {
       name: "/share",
-      match: (input, { engine }) => input.startsWith("/share ") && !engine.isMerlinMode(),
+      match: (input, { engine }) => input.startsWith("/share ") && !engine.isCradleMode(),
       execute: async ({ engine, input }) => {
         const cell = engine.getActiveCell();
         const args = input.replace("/share ", "").trim().split(/\s+/);
@@ -436,7 +436,7 @@ createdAt: ${new Date().toISOString()}
 
     {
       name: "/import",
-      match: (input, { engine }) => input.startsWith("/import ") && !engine.isMerlinMode(),
+      match: (input, { engine }) => input.startsWith("/import ") && !engine.isCradleMode(),
       execute: async ({ engine, input }) => {
         const cell = engine.getActiveCell();
         const args = input.replace("/import ", "").trim().split(/\s+/);
@@ -468,7 +468,7 @@ createdAt: ${new Date().toISOString()}
     {
       name: "/project-init",
       match: (input, { engine }) =>
-        input.startsWith("/project-init ") && !engine.isMerlinMode(),
+        input.startsWith("/project-init ") && !engine.isCradleMode(),
 
       execute: async ({ engine, input }) => {
         const cell = engine.getActiveCell();
@@ -503,7 +503,7 @@ createdAt: ${new Date().toISOString()}
     {
       name: "/project-file",
       match: (input, { engine }) =>
-        input.startsWith("/project-file ") && !engine.isMerlinMode(),
+        input.startsWith("/project-file ") && !engine.isCradleMode(),
 
       execute: async ({ engine, input }) => {
         const cell = engine.getActiveCell();
@@ -537,7 +537,7 @@ createdAt: ${new Date().toISOString()}
     {
       name: "/workspace",
       match: (input, { engine }) =>
-        input === "/workspace" && !engine.isMerlinMode(),
+        input === "/workspace" && !engine.isCradleMode(),
 
       execute: async ({ engine }) => {
         const cell = engine.getActiveCell();
@@ -565,7 +565,7 @@ createdAt: ${new Date().toISOString()}
 
     {
       name: "/snapshot",
-      match: (input, { engine }) => input === "/snapshot" && !engine.isMerlinMode(),
+      match: (input, { engine }) => input === "/snapshot" && !engine.isCradleMode(),
       execute: async ({ engine }) => {
         const snapshot = await engine.getActiveCell().createSnapshot();
         console.log(`Snapshot created: ${snapshot}`);
@@ -574,7 +574,7 @@ createdAt: ${new Date().toISOString()}
 
     {
       name: "/snapshots",
-      match: (input, { engine }) => input === "/snapshots" && !engine.isMerlinMode(),
+      match: (input, { engine }) => input === "/snapshots" && !engine.isCradleMode(),
       execute: async ({ engine }) => {
         const snapshots = await engine.getActiveCell().listSnapshots();
         console.log(snapshots.length ? snapshots.join("\n") : "(no snapshots)");
@@ -583,7 +583,7 @@ createdAt: ${new Date().toISOString()}
 
     {
       name: "/restore",
-      match: (input, { engine }) => input.startsWith("/restore ") && !engine.isMerlinMode(),
+      match: (input, { engine }) => input.startsWith("/restore ") && !engine.isCradleMode(),
       execute: async ({ engine, input }) => {
         const snapshotName = input.replace("/restore ", "").trim();
 
@@ -602,7 +602,7 @@ createdAt: ${new Date().toISOString()}
 
       match: (input, { engine }) =>
         input === "/evolve" &&
-        !engine.isMerlinMode(),
+        !engine.isCradleMode(),
 
       execute: async ({ engine }) => {
 
@@ -626,7 +626,7 @@ createdAt: ${new Date().toISOString()}
 
       match: (input, { engine }) =>
         input === "/divide" &&
-        !engine.isMerlinMode(),
+        !engine.isCradleMode(),
 
       execute: async ({ engine }) => {
 
@@ -677,7 +677,7 @@ createdAt: ${new Date().toISOString()}
 
       match: (input,{engine}) =>
         input.startsWith("/resp ") &&
-        !engine.isMerlinMode(),
+        !engine.isCradleMode(),
 
       execute: async ({engine,input}) => {
 
@@ -726,7 +726,7 @@ createdAt: ${new Date().toISOString()}
 
       match: (input,{engine}) =>
         input.startsWith("/link ") &&
-        !engine.isMerlinMode(),
+        !engine.isCradleMode(),
 
       execute: async ({engine,input}) => {
 
@@ -766,7 +766,7 @@ createdAt: ${new Date().toISOString()}
 
       match: (input, { engine }) =>
         input === "/profile" &&
-        !engine.isMerlinMode(),
+        !engine.isCradleMode(),
 
       execute: async ({ engine }) => {
         const cell = engine.getActiveCell();
@@ -785,7 +785,7 @@ createdAt: ${new Date().toISOString()}
 
       match: (input, { engine }) =>
         input === "/digest" &&
-        !engine.isMerlinMode(),
+        !engine.isCradleMode(),
 
       execute: async ({ engine }) => {
         const cell = engine.getActiveCell();
@@ -829,7 +829,7 @@ createdAt: ${new Date().toISOString()}
 
       match: (input, { engine }) =>
         input === "/process" &&
-        !engine.isMerlinMode(),
+        !engine.isCradleMode(),
 
       execute: async ({ engine }) => {
         const cell = engine.getActiveCell();
@@ -863,7 +863,7 @@ createdAt: ${new Date().toISOString()}
 
       match: (input, { engine }) =>
         input === "/clean-inbox" &&
-        !engine.isMerlinMode(),
+        !engine.isCradleMode(),
 
       execute: async ({ engine }) => {
         const cell = engine.getActiveCell();
@@ -880,7 +880,7 @@ createdAt: ${new Date().toISOString()}
 
       match: (input, { engine }) =>
         input.startsWith("/specialize ") &&
-        !engine.isMerlinMode(),
+        !engine.isCradleMode(),
 
       execute: async ({ engine, input }) => {
         const cell = engine.getActiveCell();
@@ -908,7 +908,7 @@ createdAt: ${new Date().toISOString()}
     {
       name: "/tasks",
       match: (input, { engine }) =>
-        input === "/tasks" && !engine.isMerlinMode(),
+        input === "/tasks" && !engine.isCradleMode(),
 
       execute: async ({ engine }) => {
         const cell = engine.getActiveCell();
@@ -933,7 +933,7 @@ createdAt: ${new Date().toISOString()}
       name: "/do",
 
       match: (input, { engine }) =>
-        input === "/do" && !engine.isMerlinMode(),
+        input === "/do" && !engine.isCradleMode(),
 
       execute: async ({ engine }) => {
         const cell = engine.getActiveCell();
@@ -973,7 +973,7 @@ createdAt: ${new Date().toISOString()}
 
       match: (input,{engine}) =>
         input === "/graph" &&
-        !engine.isMerlinMode(),
+        !engine.isCradleMode(),
 
       execute: async ({engine}) => {
 
@@ -1016,7 +1016,7 @@ createdAt: ${new Date().toISOString()}
       name: "/delegate",
 
       match: (input, { engine }) =>
-        input.startsWith("/delegate ") && !engine.isMerlinMode(),
+        input.startsWith("/delegate ") && !engine.isCradleMode(),
 
       execute: async ({ engine, input }) => {
         const cell = engine.getActiveCell();
@@ -1079,7 +1079,7 @@ createdAt: ${new Date().toISOString()}
       name: "/report",
 
       match: (input, { engine }) =>
-        input.startsWith("/report ") && !engine.isMerlinMode(),
+        input.startsWith("/report ") && !engine.isCradleMode(),
 
       execute: async ({ engine, input }) => {
         const cell = engine.getActiveCell();
@@ -1137,7 +1137,7 @@ createdAt: ${new Date().toISOString()}
       name: "/trace",
 
       match: (input, { engine }) =>
-        input === "/trace" && !engine.isMerlinMode(),
+        input === "/trace" && !engine.isCradleMode(),
 
       execute: async ({ engine }) => {
         const cell = engine.getActiveCell();

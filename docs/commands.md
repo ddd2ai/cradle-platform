@@ -1,15 +1,15 @@
-# Merlin Engine Commands
+# Cradle Engine Commands
 
-> Merlin Engine Command Reference
+> Cradle Engine Command Reference
 >
-> 本文件記錄 Merlin Engine 所有可用指令。
+> 本文件記錄 Cradle Engine 所有可用指令。
 > 未來每新增一個指令，都應同步更新本文件。
 
 ---
 
 # Core Philosophy
 
-Merlin Platform 採用：
+Cradle Platform 採用：
 
 ```text
 Cell First
@@ -37,9 +37,9 @@ Cell 僅擁有：
 
 # Basic Concepts
 
-## Merlin Engine
+## Cradle Engine
 
-Merlin Engine 為 Merlin Platform 的核心控制器（Cell Container）。
+Cradle Engine 為 Cradle Platform 的核心控制器（Cell Container）。
 
 負責：
 
@@ -56,38 +56,38 @@ Merlin Engine 為 Merlin Platform 的核心控制器（Cell Container）。
 
 ---
 
-## Merlin Mode
+## Cradle Mode
 
-Merlin 為 Engine 本體。
+Cradle 為 Engine 本體。
 
 ```text
-🧙 Merlin >
+🧙 Cradle >
 ```
 
-在 Merlin Mode 中：
+在 Cradle Mode 中：
 
 * 可以管理 Cell
 * 可以建立 Cell
 * 可以查看狀態
 * 不會執行 AI 對話
 
-切換回 Merlin：
+切換回 Cradle：
 
 ```bash
-/merlin
+/cradle
 ```
 
 或：
 
 ```bash
-/use Merlin
+/use Cradle
 ```
 
 ---
 
-## Merlin Cell
+## Cradle Cell
 
-Merlin Cell 為獨立生命單位。
+Cradle Cell 為獨立生命單位。
 
 每個 Cell 擁有：
 
@@ -162,10 +162,10 @@ cells/
 
 # Prompt Modes
 
-## Merlin Mode
+## Cradle Mode
 
 ```text
-🧙 Merlin >
+🧙 Cradle >
 ```
 
 ---
@@ -273,14 +273,14 @@ Cell 初始為中性生命單位。
 
 ---
 
-## /merlin
+## /cradle
 
-返回 Merlin Mode。
+返回 Cradle Mode。
 
 ### Example
 
 ```bash
-/merlin
+/cradle
 ```
 
 ---
@@ -289,10 +289,10 @@ Cell 初始為中性生命單位。
 
 查看目前所在位置。
 
-### Merlin Mode
+### Cradle Mode
 
 ```text
-Mode      : Merlin
+Mode      : Cradle
 Role      : Engine Console
 Model     : gpt-4.1
 Cells     : 3
@@ -408,12 +408,12 @@ Memory updated.
 
 ## exit
 
-關閉 Merlin Engine。
+關閉 Cradle Engine。
 
 ### Output
 
 ```text
-🌙 Merlin Engine hibernating...
+🌙 Cradle Engine hibernating...
 ```
 
 ---
@@ -423,7 +423,7 @@ Memory updated.
 ```text
 User
  ↓
-Merlin Engine
+Cradle Engine
  ↓
 Active Cell
  ↓
@@ -459,7 +459,7 @@ DNA Evolution
 | Restore            | ✅      |
 | Status             | ✅      |
 | Maturity           | ✅      |
-| Merlin Mode        | ✅      |
+| Cradle Mode        | ✅      |
 | Cell Communication | 🚧     |
 | Broadcast          | 🚧     |
 | Clone Cell         | 🚧     |
@@ -512,7 +512,7 @@ Cell 僅擁有：
 # Future Vision
 
 ```text
-                    Merlin
+                    Cradle
                        │
         ┌──────────────┼──────────────┐
         ▼              ▼              ▼
@@ -534,7 +534,7 @@ Cell 僅擁有：
  Specialized Traits
 ```
 
-Merlin 負責調度。
+Cradle 負責調度。
 
 Cell 負責成長。
 
@@ -542,4 +542,4 @@ Cell 負責成長。
 
 角色是演化出來的。
 
-最終形成可自我演化的 Merlin Colony。
+最終形成可自我演化的 Cradle Colony。

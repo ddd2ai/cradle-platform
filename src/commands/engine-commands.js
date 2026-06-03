@@ -11,11 +11,11 @@ export function createEngineCommands() {
     },
 
     {
-      name: "/merlin",
-      match: (input) => input === "/merlin" || input === "/use Merlin",
+      name: "/cradle",
+      match: (input) => input === "/cradle" || input === "/use Cradle",
       execute: async ({ engine }) => {
-        engine.activeCellId = engine.MERLIN_ID;
-        console.log("Returned to Merlin");
+        engine.activeCellId = engine.CRADLE_ID;
+        console.log("Returned to Cradle");
       },
     },
 
@@ -66,8 +66,8 @@ export function createEngineCommands() {
           return;
         }
 
-        if (id === engine.MERLIN_ID) {
-          console.log("Merlin is reserved for Engine mode.");
+        if (id === engine.CRADLE_ID) {
+          console.log("Cradle is reserved for Engine mode.");
           return;
         }
 
@@ -89,9 +89,9 @@ export function createEngineCommands() {
       execute: async ({ engine, input }) => {
         const id = input.replace("/use ", "").trim();
 
-        if (id === engine.MERLIN_ID) {
-          engine.activeCellId = engine.MERLIN_ID;
-          console.log("Returned to Merlin");
+        if (id === engine.CRADLE_ID) {
+          engine.activeCellId = engine.CRADLE_ID;
+          console.log("Returned to Cradle");
           return;
         }
 
@@ -109,9 +109,9 @@ export function createEngineCommands() {
       name: "/whoami",
       match: (input) => input === "/whoami",
       execute: async ({ engine }) => {
-        if (engine.isMerlinMode()) {
+        if (engine.isCradleMode()) {
           console.log(`
-          Mode      : Merlin
+          Mode      : Cradle
           Role      : Engine Console
           Model     : ${engine.model}
           Cells     : ${engine.cells.size}
