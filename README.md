@@ -100,9 +100,9 @@ Cradle Cell
 其中：
 
 ```text
-DNA_DEFINITION + DNA_FACTORS = 內因
-VISION                         = 願景
-ENVIRONMENT                    = 外境
+內部因子 = DNA_DEFINITION + DNA_FACTORS
+培養願景 = VISION
+外部環境 = ENVIRONMENT
 ```
 
 ---
@@ -124,7 +124,6 @@ Cradle Engine 是整個平台的培養皿（Incubator）。
 
 ```text
 Cradle Engine
-      │
       ├── Cell
       ├── Cell
       └── Cell
@@ -178,12 +177,12 @@ Tester Cell
 Cell 透過訊息進行交流。
 
 ```text
-Cell A
+ Cell A
    │
  Message
    │
    ▼
-Cell B
+ Cell B
 ```
 
 訊息可能包含：
