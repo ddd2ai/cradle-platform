@@ -1,3 +1,5 @@
+import fs from "fs/promises";
+import path from "path";
 import { renderAnswerStart } from "../cradle-ui.js";
 
 export function createCellCommands() {
@@ -160,6 +162,88 @@ export function createCellCommands() {
         await cell.think();
 
         console.log("\nThought created.");
+      },
+    },
+
+    {
+      name: "/observe",
+      match: (input, { engine }) =>
+        input === "/observe" && !engine.isCradleMode(),
+
+      execute: async ({ engine }) => {
+        const cell = engine.getActiveCell();
+        const stimuli = await cell.readStimuli();
+
+        if (stimuli.length === 0) {
+          console.log("(no stimuli)");
+          return;
+        }
+
+        console.log("");
+        console.log("Situation Stimuli");
+        console.log("");
+
+        for (const item of stimuli) {
+          console.log(`[${item.category}] ${item.file}`);
+        }
+      },
+    },
+
+    {
+      name: "/perceive",
+      match: (input, { engine }) =>
+        input === "/perceive" && !engine.isCradleMode(),
+
+      execute: async ({ engine }) => {
+        const cell = engine.getActiveCell();
+        const stimuli = await cell.readStimuli();
+
+        if (stimuli.length === 0) {
+          console.log("(no stimuli)");
+          return;
+        }
+
+        renderAnswerStart();
+        console.log("🧬 Reading situation stimuli...");
+        console.log("🧠 Perceiving...");
+
+        const result = await cell.askWithTimeout(`
+        請根據目前的 Cell DNA、Memory、Vision、Environment，觀察以下 situation stimuli。
+
+        請產生一份 Observation，包含：
+
+        - 觀察摘要
+        - 對目前 Cell 的影響
+        - 可能牽動的 DNA trait
+        - 建議下一步行動
+
+        # Cell Context
+
+        ${await cell.buildMemoryContext()}
+
+        # Stimuli
+
+        ${stimuli.map((s) => `
+        ## ${s.category}/${s.file}
+
+        ${s.content}
+        `).join("\n\n")}
+        `, 120000);
+
+        const outputText = engine.cleanMarkdownFence(
+          result?.text ?? result?.answer ?? ""
+        );
+
+        const filename =
+          `observation-${engine.formatTimestamp(new Date())}.md`;
+
+        await fs.writeFile(
+          path.join(cell.observationsDir, filename),
+          outputText,
+          "utf8"
+        );
+
+        console.log(`\nObservation created: situation/observations/${filename}`);
       },
     },
 

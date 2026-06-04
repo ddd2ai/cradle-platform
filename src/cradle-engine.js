@@ -274,16 +274,20 @@ export class CradleEngine {
 
       exit                     Shutdown engine
 
+    Situation:
+      /observe                List all situation stimuli
+      /perceive               Analyze stimuli and create observation
+      
 
     Environment:
       /env plan                Show environment install plan
       /env prepare             Prepare environment
 
-    Core Files:
+    Config:
       DNA_DEFINITION.md        Define DNA traits
       DNA_FACTORS.md           Define maturity factors
-      VISION.md               Define evolution direction
-      ENVIRONMENT.md          Define runtime environment
+      VISION.md                Define evolution direction
+      ENVIRONMENT.md           Define runtime environment
 
 
     Cell DNA:

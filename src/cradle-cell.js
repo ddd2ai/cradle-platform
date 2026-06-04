@@ -31,6 +31,10 @@ export class CradleCell {
     this.dnaVectorFile = path.join(this.rootDir, "dna-vector.json");
     this.dnaHistoryFile = path.join(this.rootDir, "dna-history.json");
     this.workspaceDir = path.join(this.rootDir, "workspace");
+    this.situationDir = path.join(process.cwd(), "situation");
+    this.stimuliDir = path.join(this.situationDir, "stimuli");
+    this.observationsDir = path.join(this.situationDir, "observations");
+    this.metricsDir = path.join(this.situationDir, "metrics");
     this.workspaceDirs = {
       notes: path.join(this.workspaceDir, "notes"),
       tasks: path.join(this.workspaceDir, "tasks"),
@@ -171,6 +175,14 @@ export class CradleCell {
       fs.mkdir(this.thoughtsDir, { recursive: true }),
       fs.mkdir(this.inboxDir, { recursive: true }),
       fs.mkdir(this.tasksDir, { recursive: true }),
+      fs.mkdir(this.situationDir, { recursive: true }),
+      fs.mkdir(this.stimuliDir, { recursive: true }),
+      fs.mkdir(path.join(this.stimuliDir, "signals"), { recursive: true }),
+      fs.mkdir(path.join(this.stimuliDir, "threats"), { recursive: true }),
+      fs.mkdir(path.join(this.stimuliDir, "pressures"), { recursive: true }),
+      fs.mkdir(path.join(this.stimuliDir, "resources"), { recursive: true }),
+      fs.mkdir(this.observationsDir, { recursive: true }),
+      fs.mkdir(this.metricsDir, { recursive: true }),
     ]);
 
     const now = new Date().toISOString();
@@ -984,6 +996,43 @@ ${memoryContext}
     } catch {
       return "# ENVIRONMENT\n\n- Java 21\n- Spring Boot\n- Hexagonal Architecture\n- MariaDB";
     }
+  }
+
+  async readStimuli() {
+    const categories = [
+      "signals",
+      "threats",
+      "pressures",
+      "resources",
+    ];
+
+    const results = [];
+
+    for (const category of categories) {
+      const dir = path.join(this.stimuliDir, category);
+
+      try {
+        const files = await fs.readdir(dir);
+
+        for (const file of files) {
+          if (!file.endsWith(".md")) continue;
+
+          const filePath = path.join(dir, file);
+          const content = await fs.readFile(filePath, "utf8");
+
+          results.push({
+            category,
+            file,
+            path: filePath,
+            content,
+          });
+        }
+      } catch {
+        // skip missing category
+      }
+    }
+
+    return results;
   }
 
   async readRecentHistory(maxChars = 8000) {
