@@ -5,7 +5,7 @@ export async function resolveEnvironment() {
 
   const content =
     await fs.readFile(
-      "ENVIRONMENT.md",
+      "config/ENVIRONMENT.md",
       "utf8"
     );
 

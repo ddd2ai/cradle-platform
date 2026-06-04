@@ -24,10 +24,10 @@ export class CradleCell {
     this.logsDir = path.join(this.rootDir, "logs");
     this.memoryDir = path.join(this.rootDir, "memory");
     this.dnaDir = path.join(this.rootDir, "dna");
-    this.dnaDefinitionFile = path.join(process.cwd(), "DNA_DEFINITION.md");
-    this.dnaFactorsFile = path.join(process.cwd(), "DNA_FACTORS.md");
-    this.visionFile = path.join(process.cwd(), "VISION.md");
-    this.environmentFile = path.join(process.cwd(), "ENVIRONMENT.md");
+    this.dnaDefinitionFile = path.join(process.cwd(), "config", "DNA_DEFINITION.md");
+    this.dnaFactorsFile = path.join(process.cwd(), "config", "DNA_FACTORS.md");
+    this.visionFile = path.join(process.cwd(), "config", "VISION.md");
+    this.environmentFile = path.join(process.cwd(), "config", "ENVIRONMENT.md");
     this.dnaVectorFile = path.join(this.rootDir, "dna-vector.json");
     this.dnaHistoryFile = path.join(this.rootDir, "dna-history.json");
     this.workspaceDir = path.join(this.rootDir, "workspace");

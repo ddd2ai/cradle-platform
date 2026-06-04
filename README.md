@@ -355,14 +355,11 @@ cradle-platform/
 ├── messages/
 │   └── cradle-message.js
 │
-├── insights/
-├── models/
-├── souls/
-│
-├── DNA_DEFINITION.md
-├── DNA_FACTORS.md
-├── VISION.md
-├── ENVIRONMENT.md
+├── config/
+│   ├── DNA_DEFINITION.md
+│   ├── DNA_FACTORS.md
+│   ├── VISION.md
+│   └── ENVIRONMENT.md
 │
 └── README.md
 ```
