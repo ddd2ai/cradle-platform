@@ -288,6 +288,7 @@ export class CradleEngine {
 
       /work                    Show colony work queue
       /evolution-status        Show colony evolution status
+      /colony-dna              Show colony DNA matrix
       /tick                    Manually tick all cells once
       /heartbeat               Run one colony work cycle (legacy)
 

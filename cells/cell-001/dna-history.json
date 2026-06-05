@@ -1996,5 +1996,113 @@
         "fitness": 0.5
       }
     }
+  },
+  {
+    "at": "2026-06-05T07:21:47.147Z",
+    "reason": "prepare",
+    "vector": {
+      "PERCEPTION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.56
+      },
+      "DECISION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "DECOMPOSITION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "LEARNING": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "COLLABORATION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.32,
+        "fitness": 0.5
+      },
+      "CREATION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "EVOLUTION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "REFLECTION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.31,
+        "fitness": 0.5
+      }
+    }
+  },
+  {
+    "at": "2026-06-05T07:55:58.882Z",
+    "reason": "prepare",
+    "vector": {
+      "PERCEPTION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.56
+      },
+      "DECISION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "DECOMPOSITION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "LEARNING": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "COLLABORATION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.32,
+        "fitness": 0.5
+      },
+      "CREATION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "EVOLUTION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "REFLECTION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.31,
+        "fitness": 0.5
+      }
+    }
   }
 ]

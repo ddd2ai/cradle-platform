@@ -8,6 +8,10 @@ import {
   renderSkillNotFound,
   writeAssistantChunk,
 } from "./cradle-ui.js";
+import {
+  calculateTraitValue,
+  calculateCellScore,
+} from "./dna/dna-measure.js";
 
 export class CradleCell {
 
@@ -282,7 +286,7 @@ export class CradleCell {
     ${outputText}
     `);
 
-    
+
     await this.appendThought(`
     ## ${new Date().toISOString()}
 
@@ -2133,6 +2137,62 @@ ${memoryContext}
     await this.addRelationship("divided-into", childId);
 
     return childProfile;
+  }
+
+  // =========================
+  // DNA Rank
+  // =========================
+
+  async getDNARank() {
+
+    const dna =
+      await this.readDNAVector();
+
+    const traits = [
+      "PERCEPTION",
+      "DECISION",
+      "DECOMPOSITION",
+      "LEARNING",
+      "COLLABORATION",
+      "CREATION",
+      "EVOLUTION",
+      "REFLECTION",
+    ];
+
+    const scores = {};
+
+    for (const trait of traits) {
+
+      const value =
+        dna?.[trait];
+
+      if (!value) {
+        scores[trait] = 0;
+        continue;
+      }
+
+      scores[trait] =
+        calculateTraitValue(value);
+    }
+
+    const dominant =
+      Object.entries(scores)
+        .sort((a, b) => b[1] - a[1])[0];
+
+    const cellScore =
+      calculateCellScore(
+        scores
+      );
+
+    return {
+      dominantDNA:
+        dominant[0],
+
+      score:
+        cellScore,
+
+      scores,
+    };
   }
 
   // =========================

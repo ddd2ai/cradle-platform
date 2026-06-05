@@ -167,6 +167,76 @@ export function createColonyCommands() {
     },
 
     {
+      name: "/colony-dna",
+
+      match: (input) =>
+        input === "/colony-dna",
+
+      execute: async ({ engine }) => {
+
+        const rows = [];
+
+        for (const [id, cell] of engine.cells) {
+
+          const dna =
+            await cell.getDNARank();
+
+          rows.push({
+            Cell: id,
+            "Dominant DNA":
+              dna.dominantDNA,
+            Score:
+              dna.score.toFixed(2),
+
+            PER:
+              dna.scores.PERCEPTION.toFixed(2),
+
+            DEC:
+              dna.scores.DECISION.toFixed(2),
+
+            DEP:
+              dna.scores.DECOMPOSITION.toFixed(2),
+
+            LEA:
+              dna.scores.LEARNING.toFixed(2),
+
+            COL:
+              dna.scores.COLLABORATION.toFixed(2),
+
+            CRE:
+              dna.scores.CREATION.toFixed(2),
+
+            EVO:
+              dna.scores.EVOLUTION.toFixed(2),
+
+            REF:
+              dna.scores.REFLECTION.toFixed(2),
+          });
+        }
+
+        console.log("");
+        console.log("DNA Matrix");
+
+        renderTable(
+          [
+            "Cell",
+            "Dominant DNA",
+            "Score",
+            "PER",
+            "DEC",
+            "DEP",
+            "LEA",
+            "COL",
+            "CRE",
+            "EVO",
+            "REF",
+          ],
+          rows
+        );
+      },
+    },
+
+    {
       name: "/colony",
 
       match: (input) =>
