@@ -128,8 +128,10 @@ export class CradleCell {
 
   async tick() {
     console.log(`🫀 ${this.id} heartbeat`);
-    
+
     if (this.isTicking) {
+      console.log(`  ${this.id} skipped: already ticking`);
+
       return {
         skipped: true,
         reason: "already ticking",
@@ -141,22 +143,50 @@ export class CradleCell {
     try {
       const inbox = await this.readInbox();
 
-      if (inbox.length === 0) {
+      if (inbox.length > 0) {
+        console.log(`  ${this.id} processing inbox=${inbox.length}`);
+
+        await this.updateStatus("running");
+
+        const result = await this.processInbox(inbox);
+
+        await this.clearInbox();
+
+        await this.updateStatus(this.active ? "active" : "idle");
+
         return {
-          processed: 0,
-          reason: "empty inbox",
+          type: "inbox",
+          processed: result.processed ?? inbox.length,
         };
       }
 
-      await this.updateStatus("running");
+      const task = await this.nextPendingTask();
 
-      const result = await this.processInbox(inbox);
+      if (task) {
+        console.log(`  ${this.id} processing task=${task.id}`);
 
-      await this.clearInbox();
+        await this.updateStatus("running");
 
-      await this.updateStatus(this.active ? "active" : "idle");
+        const result = await this.processTask(task);
 
-      return result;
+        await this.completeTask(task.id);
+
+        await this.updateStatus(this.active ? "active" : "idle");
+
+        return {
+          type: "task",
+          processed: 1,
+          taskId: task.id,
+          result,
+        };
+      }
+
+      console.log(`  ${this.id} idle: no inbox or task`);
+
+      return {
+        processed: 0,
+        reason: "no inbox or task",
+      };
     } catch (error) {
       await this.updateStatus("error");
       throw error;
@@ -164,6 +194,75 @@ export class CradleCell {
       this.isTicking = false;
     }
   }
+
+
+  async processTask(task) {
+    const result = await this.askWithTimeout(`
+    你是 ${this.id}。
+
+    請根據你的 DNA、Memory、Vision、Environment，處理以下任務。
+
+    # Task
+
+    ${task.title}
+
+    # Content
+
+    ${task.content || "(empty)"}
+
+    請輸出：
+    - 任務理解
+    - 執行結果
+    - 下一步建議
+    `, 120000);
+
+      const outputText =
+        result?.text ??
+        result?.answer ??
+        "(response streamed)";
+
+      const filename =
+        `tasks/task-result-${this.formatTimestamp(new Date())}.md`;
+
+      await this.writeWorkspaceFile(
+        filename,
+        `# Task Result
+
+    ## Task
+
+    ${task.title}
+
+    ## Task ID
+
+    ${task.id}
+
+    ## Result
+
+    ${outputText}
+
+    ---
+    createdAt: ${new Date().toISOString()}
+    `
+      );
+
+      await this.appendHistory(`
+    ## ${new Date().toISOString()}
+
+    ### Task
+    ${task.title}
+
+    ### Result
+    ${outputText}
+    `);
+
+    await this.mature(1);
+
+    return {
+      file: filename,
+      text: outputText,
+    };
+  }
+
 
   async ask(input) {
     if (!this.assistant) {
