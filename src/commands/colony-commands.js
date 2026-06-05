@@ -127,6 +127,46 @@ export function createColonyCommands() {
     },
 
     {
+      name: "/evolution-status",
+
+      match: (input) =>
+        input === "/evolution-status",
+
+      execute: async ({ engine }) => {
+        const rows = [];
+
+        for (const [id, cell] of engine.cells) {
+          const status = await cell.getEvolutionStatus();
+
+          rows.push({
+            Cell: id,
+            Thoughts: status.totalThoughts,
+            Unevolved: status.unevolvedThoughts,
+            Evolved: status.evolvedThoughts,
+            Evolutions: status.evolutionCount,
+            Next: status.nextEvolutionIn,
+            Last: status.lastEvolvedAt,
+          });
+        }
+
+        console.log("");
+
+        renderTable(
+          [
+            "Cell",
+            "Thoughts",
+            "Unevolved",
+            "Evolved",
+            "Evolutions",
+            "Next",
+            "Last",
+          ],
+          rows
+        );
+      },
+    },
+
+    {
       name: "/colony",
 
       match: (input) =>

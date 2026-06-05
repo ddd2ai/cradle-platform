@@ -286,6 +286,7 @@ export class CradleEngine {
       /deactivate-all          Deactivate all cells
 
       /work                    Show colony work queue
+      /evolution-status        Show colony evolution status
       /tick                    Manually tick all cells once
       /heartbeat               Run one colony work cycle (legacy)
 

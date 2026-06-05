@@ -1660,6 +1660,26 @@ ${memoryContext}
     }
   }
 
+  async getEvolutionStatus() {
+    const thoughts = await this.listThoughtFiles();
+    const state = await this.readEvolutionState();
+
+    const evolvedThoughts = state.evolvedThoughts ?? [];
+    const unevolvedThoughts = thoughts.filter(
+      (file) => !evolvedThoughts.includes(file)
+    );
+
+    return {
+      totalThoughts: thoughts.length,
+      evolvedThoughts: evolvedThoughts.length,
+      unevolvedThoughts: unevolvedThoughts.length,
+      nextEvolutionIn: Math.max(0, 5 - unevolvedThoughts.length),
+      evolutionCount: Number(state.evolutionCount ?? 0),
+      lastEvolvedAt: state.lastEvolvedAt ?? "-",
+      lastEvolutionFile: state.lastEvolutionFile ?? "-",
+    };
+  }
+
   async loadUnevolvedThoughts(limit = 5) {
     const state = await this.readEvolutionState();
     const files = await this.listThoughtFiles();
