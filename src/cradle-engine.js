@@ -26,6 +26,7 @@ export class CradleEngine {
     this.CRADLE_ID = "Cradle";
     this.activeCellId = this.CRADLE_ID;
     this.rl = null;
+    this.watchTimer = null;
 
     this.commandRegistry = new CommandRegistry();
     this.registerCommands();
@@ -297,6 +298,9 @@ export class CradleEngine {
       /colony                  Show colony overview
       /colony-graph            Show colony relationship graph
 
+      /watch                   Start live colony dashboard
+      /unwatch                 Stop live colony dashboard
+
       /ask <cell> <message>    Ask a specific cell
       /broadcast <message>     Send message to all cells
       /run-all <task>          Ask all cells to execute same task
@@ -424,6 +428,11 @@ export class CradleEngine {
   }
 
   async shutdown() {
+    if (this.watchTimer) {
+      clearInterval(this.watchTimer);
+      this.watchTimer = null;
+    }
+
     renderBye();
     this.rl?.close();
 

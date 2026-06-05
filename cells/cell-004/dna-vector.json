@@ -3,7 +3,7 @@
     "strength": 0.5,
     "stability": 0.7,
     "plasticity": 0.3,
-    "fitness": 0.5
+    "fitness": 0.52
   },
   "DECISION": {
     "strength": 0.5,
@@ -12,7 +12,7 @@
     "fitness": 0.5
   },
   "DECOMPOSITION": {
-    "strength": 0.5,
+    "strength": 0.52,
     "stability": 0.7,
     "plasticity": 0.3,
     "fitness": 0.5
@@ -38,7 +38,7 @@
   "EVOLUTION": {
     "strength": 0.5,
     "stability": 0.7,
-    "plasticity": 0.3,
+    "plasticity": 0.31,
     "fitness": 0.5
   },
   "REFLECTION": {

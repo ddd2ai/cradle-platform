@@ -16,5 +16,113 @@
     "status": "done",
     "createdAt": "2026-06-05T02:39:45.372Z",
     "updatedAt": "2026-06-05T02:39:54.986Z"
+  },
+  {
+    "id": "task-20260605-140928",
+    "title": "建立商品查詢 API",
+    "source": "metabolism",
+    "content": "設計並實作商品查詢 API，支援依商品名稱、分類、價格區間查詢，回傳商品清單，並符合 Spring Boot 與 Hexagonal Architecture 架構原則。",
+    "status": "done",
+    "createdAt": "2026-06-05T06:09:28.561Z",
+    "updatedAt": "2026-06-05T06:09:38.293Z"
+  },
+  {
+    "id": "task-20260605-141107",
+    "title": "建立商品查詢 API",
+    "source": "metabolism",
+    "content": "設計並實作商品查詢 API，支援依商品名稱、分類、價格區間查詢，回傳商品清單，並符合 Spring Boot 與 Hexagonal Architecture 架構原則。",
+    "status": "done",
+    "createdAt": "2026-06-05T06:11:07.282Z",
+    "updatedAt": "2026-06-05T06:11:19.043Z"
+  },
+  {
+    "id": "task-20260605-141127",
+    "title": "建立商品查詢 API",
+    "source": "metabolism",
+    "content": "設計並實作商品查詢 API，支援依商品名稱、分類、價格區間查詢，回傳商品清單，並符合 Spring Boot 與 Hexagonal Architecture 架構原則。",
+    "status": "done",
+    "createdAt": "2026-06-05T06:11:27.660Z",
+    "updatedAt": "2026-06-05T06:11:39.950Z"
+  },
+  {
+    "id": "task-20260605-141209",
+    "title": "商品查詢 API 效能優化",
+    "source": "metabolism",
+    "content": "設計並實作商品查詢 API 的分頁、查詢效能提升、資料庫索引、關鍵字搜尋與快取策略，確保系統可承受高流量並維持良好回應速度。",
+    "status": "done",
+    "createdAt": "2026-06-05T06:12:09.859Z",
+    "updatedAt": "2026-06-05T06:12:19.332Z"
+  },
+  {
+    "id": "task-20260605-141259",
+    "title": "建立任務認領與去重機制",
+    "source": "metabolism",
+    "content": "設計並實作任務認領（claimedBy）與去重流程，確保商品查詢等共用需求只會有一個 cell 處理，避免重複任務與 ownership 不明。",
+    "status": "done",
+    "createdAt": "2026-06-05T06:12:59.611Z",
+    "updatedAt": "2026-06-05T06:13:09.149Z"
+  },
+  {
+    "id": "task-20260605-141328",
+    "title": "完善商品領域模型",
+    "source": "metabolism",
+    "content": "根據現有 Product 與 ProductQuery 結構，補充必要欄位（如建立時間、庫存等），並設計對應的 Entity、Repository、DTO，確保模型能支援 API 查詢、效能優化與業務擴充。",
+    "status": "done",
+    "createdAt": "2026-06-05T06:13:28.738Z",
+    "updatedAt": "2026-06-05T06:13:38.505Z"
+  },
+  {
+    "id": "task-20260605-141717",
+    "title": "建立訂單查詢 API",
+    "source": "metabolism",
+    "content": "設計並實作訂單查詢 API，支援依訂單編號、會員 ID、日期區間查詢，回傳訂單狀態，符合現有技術環境（Java 21、Spring Boot、六角架構、MariaDB）。",
+    "status": "done",
+    "createdAt": "2026-06-05T06:17:17.784Z",
+    "updatedAt": "2026-06-05T06:17:27.060Z"
+  },
+  {
+    "id": "task-20260605-141857",
+    "title": "開發 Payment Gateway",
+    "source": "metabolism",
+    "content": "設計並實作 Payment Gateway，支援信用卡與轉帳付款、退款功能，提供 REST API 並自動產生 OpenAPI 文件，符合現有技術環境（Java 21、Spring Boot、六角架構、MariaDB）。",
+    "status": "done",
+    "createdAt": "2026-06-05T06:18:57.378Z",
+    "updatedAt": "2026-06-05T06:19:07.903Z"
+  },
+  {
+    "id": "task-20260605-141926",
+    "title": "系統效能優化",
+    "source": "metabolism",
+    "content": "分析現有 API 與資料庫效能瓶頸，規劃並實作 Cache、Read Replica、查詢優化、非同步處理等方案，降低回應時間與 DB 負載，提升用戶體驗。",
+    "status": "done",
+    "createdAt": "2026-06-05T06:19:26.888Z",
+    "updatedAt": "2026-06-05T06:19:38.156Z"
+  },
+  {
+    "id": "task-20260605-141957",
+    "title": "API 安全性強化",
+    "source": "metabolism",
+    "content": "全面檢查並補強 API 的 Authentication、Authorization、Audit Log 與 Rate Limit，防止未授權存取與資安風險，確保系統安全。",
+    "status": "done",
+    "createdAt": "2026-06-05T06:19:57.191Z",
+    "updatedAt": "2026-06-05T06:20:10.863Z"
+  },
+  {
+    "id": "task-20260605-142017",
+    "title": "推廣與落實 Hexagonal Template",
+    "source": "metabolism",
+    "content": "盤點現有專案，推動全面採用公司標準 Hexagonal Architecture Template，確保 adapter-in、application、domain、adapter-out 分層明確，並善用 OpenAPI、MapStruct、JUnit 等工具，提升開發品質與維護效率。",
+    "status": "done",
+    "createdAt": "2026-06-05T06:20:17.204Z",
+    "updatedAt": "2026-06-05T06:20:27.724Z"
+  },
+  {
+    "id": "task-20260605-142038",
+    "title": "設計細胞分工與分化機制",
+    "source": "metabolism",
+    "content": "規劃並實作細胞分工策略，包含：1. 任務認領與去重流程，2. 根據經驗或環境調整 DNA，3. 讓 Cell 逐步長出不同專長與 Affinity，4. 建立分工演化的監控與回饋機制。",
+    "status": "done",
+    "createdAt": "2026-06-05T06:20:38.089Z",
+    "updatedAt": "2026-06-05T06:20:49.054Z"
   }
 ]

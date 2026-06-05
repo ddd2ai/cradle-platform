@@ -3,7 +3,7 @@
     "strength": 0.5,
     "stability": 0.7,
     "plasticity": 0.3,
-    "fitness": 0.5
+    "fitness": 0.52
   },
   "DECISION": {
     "strength": 0.5,
@@ -15,7 +15,7 @@
     "strength": 0.5,
     "stability": 0.7,
     "plasticity": 0.3,
-    "fitness": 0.5
+    "fitness": 0.52
   },
   "LEARNING": {
     "strength": 0.5,
@@ -39,7 +39,7 @@
     "strength": 0.5,
     "stability": 0.7,
     "plasticity": 0.3,
-    "fitness": 0.5
+    "fitness": 0.52
   },
   "REFLECTION": {
     "strength": 0.5,

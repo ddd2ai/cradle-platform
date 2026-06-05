@@ -282,6 +282,25 @@ export class CradleCell {
     ${outputText}
     `);
 
+    
+    await this.appendThought(`
+    ## ${new Date().toISOString()}
+
+    ## Task Experience
+
+    ### Task
+    ${task.title}
+
+    ### Source
+    ${task.source}
+
+    ### Result Summary
+    ${outputText}
+
+    ### Growth Impact
+    This task changed how the cell understands its environment and future work.
+    `);
+
     await this.mature(1);
 
     return {

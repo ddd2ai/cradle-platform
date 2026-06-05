@@ -240,6 +240,136 @@ export function createColonyCommands() {
       },
     },
 
+    {
+      name: "/watch",
+
+      match: (input) =>
+        input === "/watch",
+
+      execute: async ({ engine }) => {
+        if (engine.watchTimer) {
+          console.log("Watch already running.");
+          return;
+        }
+
+        engine.watchTimer = setInterval(async () => {
+          console.clear();
+
+          console.log("🧫 Cradle Live Watch");
+          console.log(`Updated at: ${new Date().toLocaleString()}`);
+          console.log("");
+
+          // Status Table
+          const statusRows = [];
+
+          for (const [id, cell] of engine.cells) {
+            const profile = await cell.getEvolutionInfo();
+
+            statusRows.push({
+              Cell: id,
+              Status: profile.status ?? "unknown",
+              Active: cell.isActive() ? "yes" : "no",
+              Mature: profile.maturity ?? 0,
+              Gen: profile.generation ?? 1,
+              Inbox: engine.inboxes.get(id)?.length ?? 0,
+            });
+          }
+
+          console.log("Status");
+          renderTable(
+            ["Cell", "Status", "Active", "Mature", "Gen", "Inbox"],
+            statusRows
+          );
+
+          // Work Table
+          const workRows = [];
+
+          for (const [id, cell] of engine.cells) {
+            const inbox = await cell.readInbox();
+            const tasks = await cell.readTasks();
+
+            const pendingTasks =
+              tasks.filter((task) => task.status === "pending");
+
+            engine.inboxes.set(id, inbox);
+
+            workRows.push({
+              Cell: id,
+              Inbox: inbox.length,
+              Tasks: pendingTasks.length,
+              Action:
+                inbox.length > 0
+                  ? "process"
+                  : pendingTasks.length > 0
+                    ? "todo"
+                    : "idle",
+            });
+          }
+
+          console.log("");
+          console.log("Work");
+          renderTable(
+            ["Cell", "Inbox", "Tasks", "Action"],
+            workRows
+          );
+
+          // Evolution Table
+          const evolutionRows = [];
+
+          for (const [id, cell] of engine.cells) {
+            const status = await cell.getEvolutionStatus();
+
+            evolutionRows.push({
+              Cell: id,
+              Thoughts: status.totalThoughts,
+              Unevolved: status.unevolvedThoughts,
+              Evolved: status.evolvedThoughts,
+              Evolutions: status.evolutionCount,
+              Next: status.nextEvolutionIn,
+            });
+          }
+
+          console.log("");
+          console.log("Evolution");
+          renderTable(
+            [
+              "Cell",
+              "Thoughts",
+              "Unevolved",
+              "Evolved",
+              "Evolutions",
+              "Next",
+            ],
+            evolutionRows
+          );
+
+          console.log("");
+          console.log("Use /unwatch to stop live watch.");
+        }, 2000);
+
+        console.log("Live watch started. Use /unwatch to stop.");
+      },
+    },
+
+    {
+      name: "/unwatch",
+
+      match: (input) =>
+        input === "/unwatch",
+
+      execute: async ({ engine }) => {
+        if (!engine.watchTimer) {
+          console.log("Watch is not running.");
+          return;
+        }
+
+        clearInterval(engine.watchTimer);
+        engine.watchTimer = null;
+
+        console.log("Watch stopped.");
+      },
+    },
+
 
   ];
 }
