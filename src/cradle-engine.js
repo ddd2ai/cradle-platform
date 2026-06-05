@@ -16,6 +16,7 @@ import { CommandRegistry } from "./commands/command-registry.js";
 import { createEngineCommands } from "./commands/engine-commands.js";
 import { createCellCommands } from "./commands/cell-commands.js";
 import { createColonyCommands } from "./commands/colony-commands.js";
+import dnaPlot2DCommand from "./commands/plot2d-command.js";
 
 export class CradleEngine {
   constructor({ model = "gpt-4.1" } = {}) {
@@ -37,6 +38,7 @@ export class CradleEngine {
       ...createEngineCommands(),
       ...createColonyCommands(),
       ...createCellCommands(),
+      dnaPlot2DCommand,
     ]);
   }
 
@@ -323,6 +325,23 @@ export class CradleEngine {
       VISION.md                Define evolution direction
       ENVIRONMENT.md           Define runtime environment
 
+    Analysis:
+      /plot2d <x> <y>      Project DNA vectors into 2D space
+
+                               Examples:
+                               /plot2d CRE COL
+                               /plot2d EVO REF
+                               /plot2d PER DEC
+
+                               Available DNA Factors:
+                               PER (Perception)
+                               DEC (Decision)
+                               DEP (Decomposition)
+                               LEA (Learning)
+                               COL (Collaboration)
+                               CRE (Creation)
+                               EVO (Evolution)
+                               REF (Reflection)
 
     Cell Growth:
       /think                   Generate one thought

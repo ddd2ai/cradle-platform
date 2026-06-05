@@ -1280,6 +1280,26 @@ TODO: define meaning from DNA_DEFINITION.md.
 
   async getEvolutionInfo() {
     const profile = await this.readCellProfile();
+    const dnaVector = await this.readDNAVector();
+
+    // Convert DNA vector to simplified format for projection
+    const dna = {};
+    if (dnaVector) {
+      const traitMapping = {
+        PERCEPTION: "PER",
+        DECISION: "DEC",
+        DECOMPOSITION: "DEP",
+        LEARNING: "LEA",
+        COLLABORATION: "COL",
+        CREATION: "CRE",
+        EVOLUTION: "EVO",
+        REFLECTION: "REF",
+      };
+
+      for (const [trait, shortName] of Object.entries(traitMapping)) {
+        dna[shortName] = calculateTraitValue(dnaVector[trait] ?? {});
+      }
+    }
 
     return {
       id: profile?.id,
@@ -1287,6 +1307,7 @@ TODO: define meaning from DNA_DEFINITION.md.
       maturity: Number(profile?.maturity ?? 0),
       generation: Number(profile?.generation ?? 1),
       parent: profile?.parent ?? null,
+      dna,
     };
   }
 
