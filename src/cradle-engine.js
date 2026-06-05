@@ -318,9 +318,19 @@ export class CradleEngine {
       ENVIRONMENT.md           Define runtime environment
 
 
+    Cell Growth:
+      /think                   Generate one thought
+      /thoughts                Show recent thoughts
+
+    Cell Evolution:
+      /evolve                  Evolve from accumulated thoughts
+      /evolution               Show latest evolution
+      /evolutions              List evolution records
+
     Cell DNA:
-      /dna                     Show current cell DNA context
-      /dna init                Initialize DNA traits with AI
+      /dna                     Show DNA vector
+      /dna-history             Show DNA history
+      /dna init                Initialize DNA traits
 
 
     Cell Communication:

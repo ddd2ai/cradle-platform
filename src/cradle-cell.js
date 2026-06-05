@@ -50,6 +50,8 @@ export class CradleCell {
     this.inboxFile = path.join(this.inboxDir, "messages.json");
     this.tasksDir = path.join(this.rootDir, "tasks");
     this.tasksFile = path.join(this.tasksDir, "tasks.json");
+    this.evolutionsDir = path.join(this.rootDir, "evolutions");
+    this.evolutionStateFile = path.join(this.rootDir, "evolution-state.json");
 
     this.memoryFiles = {
       identity: path.join(this.memoryDir, "identity.md"),
@@ -64,6 +66,7 @@ export class CradleCell {
     this.tickTimer = null;
     this.tickIntervalMs = 10_000;
     this.isTicking = false;
+    this.isEvolving = false;
   }
 
   async prepare() {
@@ -190,6 +193,18 @@ export class CradleCell {
           type: "metabolism",
           processed: metabolism.created,
           observationFile: metabolism.observationFile,
+        };
+      }
+
+      const evolution = await this.evolve();
+
+      if (evolution.evolved) {
+        console.log(`  ${this.id} evolved from thoughts=${evolution.thoughtCount}`);
+
+        return {
+          type: "evolution",
+          processed: evolution.thoughtCount,
+          file: evolution.file,
         };
       }
 
@@ -460,6 +475,7 @@ createdAt: ${new Date().toISOString()}
       fs.mkdir(this.thoughtsDir, { recursive: true }),
       fs.mkdir(this.inboxDir, { recursive: true }),
       fs.mkdir(this.tasksDir, { recursive: true }),
+      fs.mkdir(this.evolutionsDir, { recursive: true }),
       fs.mkdir(this.situationDir, { recursive: true }),
       fs.mkdir(this.stimuliDir, { recursive: true }),
       fs.mkdir(path.join(this.stimuliDir, "signals"), { recursive: true }),
@@ -800,6 +816,46 @@ TODO: define meaning from DNA_DEFINITION.md.
     );
   }
 
+  async readDNAHistory() {
+    try {
+      const raw = await fs.readFile(
+        this.dnaHistoryFile,
+        "utf8"
+      );
+
+      return JSON.parse(raw);
+    } catch {
+      return [];
+    }
+  }
+
+  clampDNAValue(value) {
+    return Math.max(0, Math.min(1, value));
+  }
+
+  async applyDNADrift(dnaDrift = []) {
+    const vector = await this.readDNAVector();
+
+    if (!vector) return;
+
+    for (const drift of dnaDrift) {
+      const trait = String(drift.trait ?? "").toUpperCase();
+      const factor = drift.factor;
+      const delta = Number(drift.delta ?? 0);
+
+      if (!trait || !factor) continue;
+
+      vector[trait] ??= {};
+      vector[trait][factor] ??= 0.5;
+
+      vector[trait][factor] =
+        this.clampDNAValue(Number(vector[trait][factor]) + delta);
+    }
+
+    await this.writeDNAVector(vector);
+    await this.appendDNAHistory("evolution");
+  }
+
   async calculateDNAVelocity(windowSize = 5) {
     let history = [];
 
@@ -849,6 +905,206 @@ TODO: define meaning from DNA_DEFINITION.md.
       convergence,
       percent: Math.round(convergence * 100),
     };
+  }
+
+  parseEvolutionJson(raw = "{}") {
+    const cleaned = raw
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/```\s*$/i, "")
+      .trim();
+
+    try {
+      return JSON.parse(cleaned);
+    } catch {
+      const start = cleaned.indexOf("{");
+      const end = cleaned.lastIndexOf("}");
+
+      if (start >= 0 && end > start) {
+        return JSON.parse(cleaned.slice(start, end + 1));
+      }
+
+      return {
+        summary: "Evolution JSON parse failed.",
+        dnaDrift: [],
+        affinities: [],
+      };
+    }
+  }
+
+  async readLatestEvolution() {
+    try {
+      const files = await fs.readdir(
+        this.evolutionsDir
+      );
+
+      const latest =
+        files
+          .filter(file => file.endsWith(".md"))
+          .sort()
+          .at(-1);
+
+      if (!latest) {
+        return null;
+      }
+
+      return await fs.readFile(
+        path.join(
+          this.evolutionsDir,
+          latest
+        ),
+        "utf8"
+      );
+    } catch {
+      return null;
+    }
+  }
+
+  async evolve({ force = false } = {}) {
+    if (this.isEvolving) {
+      return {
+        evolved: false,
+        reason: "already evolving",
+        thoughtCount: 0,
+      };
+    }
+
+    this.isEvolving = true;
+
+    try {
+      const thoughts = await this.loadUnevolvedThoughts(5);
+
+      if (!force && thoughts.length < 5) {
+        return {
+          evolved: false,
+          reason: "not enough thoughts",
+          thoughtCount: thoughts.length,
+        };
+      }
+
+      if (thoughts.length === 0) {
+        return {
+          evolved: false,
+          reason: "no thoughts",
+          thoughtCount: 0,
+        };
+      }
+
+      const dnaVector = await this.readDNAVector();
+
+      const thoughtContext = thoughts
+        .map((thought) => `
+## ${thought.file}
+
+${this.tail(thought.content, 1200)}
+`)
+        .join("\n\n");
+
+      const result = await this.askWithTimeout(`
+你是 ${this.id} 的 Evolution 模組。
+
+你的任務是：
+根據最近累積的 Thought，總結這個 Cell 的經驗，並產生小幅 DNA drift。
+
+請只輸出 JSON。
+不要 markdown。
+不要 code fence。
+不要額外說明。
+
+輸出格式如下：
+
+{
+  "summary": "這次 evolution 的總結",
+  "dnaDrift": [
+    {
+      "trait": "PERCEPTION",
+      "factor": "fitness",
+      "delta": 0.02,
+      "reason": "原因"
+    }
+  ],
+  "affinities": ["api", "product", "query"]
+}
+
+限制：
+- trait 只能是：PERCEPTION、DECISION、DECOMPOSITION、LEARNING、COLLABORATION、CREATION、EVOLUTION、REFLECTION
+- factor 只能是：strength、stability、plasticity、fitness
+- delta 必須介於 -0.05 到 0.05
+- 最多輸出 5 筆 dnaDrift
+- affinities 最多 5 個
+- 不要一次大幅改變 DNA
+- 如果沒有明確變化，dnaDrift 可以是空陣列
+
+# Current DNA Vector
+
+${JSON.stringify(dnaVector, null, 2)}
+
+# Thoughts
+
+${thoughtContext}
+`, 180000);
+
+      const raw = result?.text ?? result?.answer ?? "{}";
+      const evolution = this.parseEvolutionJson(raw);
+
+      await this.applyDNADrift(evolution.dnaDrift ?? []);
+
+      const filename =
+        `evolution-${this.formatTimestamp(new Date())}.md`;
+
+      await fs.writeFile(
+        path.join(this.evolutionsDir, filename),
+        `# Evolution
+
+## Summary
+
+${evolution.summary ?? "(empty)"}
+
+## DNA Drift
+
+\`\`\`json
+${JSON.stringify(evolution.dnaDrift ?? [], null, 2)}
+\`\`\`
+
+## Affinities
+
+${(evolution.affinities ?? []).map((item) => `- ${item}`).join("\n")}
+
+## Thoughts
+
+${thoughts.map((thought) => `- ${thought.file}`).join("\n")}
+
+---
+createdAt: ${new Date().toISOString()}
+`,
+        "utf8"
+      );
+
+      const state = await this.readEvolutionState();
+
+      state.evolvedThoughts = [
+        ...new Set([
+          ...(state.evolvedThoughts ?? []),
+          ...thoughts.map((thought) => thought.file),
+        ]),
+      ];
+
+      state.evolutionCount = Number(state.evolutionCount ?? 0) + 1;
+      state.lastEvolvedAt = new Date().toISOString();
+      state.lastEvolutionFile = filename;
+
+      await this.writeEvolutionState(state);
+
+      return {
+        evolved: true,
+        file: filename,
+        thoughtCount: thoughts.length,
+        dnaDrift: evolution.dnaDrift ?? [],
+        affinities: evolution.affinities ?? [],
+      };
+    } finally {
+      this.isEvolving = false;
+    }
   }
 
   async ensureFile(file, content = "") {
@@ -1370,6 +1626,63 @@ ${memoryContext}
     } catch {
       return "";
     }
+  }
+
+  async readEvolutionState() {
+    try {
+      const raw = await fs.readFile(this.evolutionStateFile, "utf8");
+      return JSON.parse(raw);
+    } catch {
+      return {
+        evolvedThoughts: [],
+        evolutionCount: 0,
+        lastEvolvedAt: null,
+      };
+    }
+  }
+
+  async writeEvolutionState(state) {
+    await fs.writeFile(
+      this.evolutionStateFile,
+      JSON.stringify(state, null, 2),
+      "utf8"
+    );
+  }
+
+  async listThoughtFiles() {
+    try {
+      const files = await fs.readdir(this.thoughtsDir);
+      return files
+        .filter((file) => file.endsWith(".md"))
+        .sort();
+    } catch {
+      return [];
+    }
+  }
+
+  async loadUnevolvedThoughts(limit = 5) {
+    const state = await this.readEvolutionState();
+    const files = await this.listThoughtFiles();
+
+    const unevolved = files
+      .filter((file) => !state.evolvedThoughts.includes(file))
+      .slice(0, limit);
+
+    const thoughts = [];
+
+    for (const file of unevolved) {
+      const content = await fs.readFile(
+        path.join(this.thoughtsDir, file),
+        "utf8"
+      );
+
+      thoughts.push({
+        file,
+        content,
+      });
+    }
+
+    return thoughts;
   }
 
   async reflect({ input, output }) {

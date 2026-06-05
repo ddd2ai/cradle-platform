@@ -105,6 +105,41 @@ export function createCellCommands() {
     },
 
     {
+      name: "/dna-history",
+
+      match: (input, { engine }) =>
+        input === "/dna-history" &&
+        !engine.isCradleMode(),
+
+      execute: async ({ engine }) => {
+
+        const cell =
+          engine.getActiveCell();
+
+        const history =
+          await cell.readDNAHistory();
+
+        console.log("");
+
+        if (history.length === 0) {
+          console.log("(empty dna history)");
+          return;
+        }
+
+        history
+          .slice(-10)
+          .forEach((item, index) => {
+
+            console.log(
+              `[${index + 1}] ${item.at} (${item.reason})`
+            );
+          });
+
+        console.log("");
+      },
+    },
+
+    {
       name: "/memory full",
       match: (input, { engine }) => input === "/memory full" && !engine.isCradleMode(),
       execute: async ({ engine }) => {
@@ -712,19 +747,81 @@ createdAt: ${new Date().toISOString()}
         !engine.isCradleMode(),
 
       execute: async ({ engine }) => {
+        const cell = engine.getActiveCell();
+
+        console.log("🧬 Evolving from thoughts...");
+
+        const result = await cell.evolve({
+          force: true,
+        });
+
+        if (!result.evolved) {
+          console.log(`
+Evolution skipped.
+
+Reason       : ${result.reason}
+Thought count: ${result.thoughtCount}
+`);
+          return;
+        }
+
+        console.log(`
+Evolution completed.
+
+File         : ${result.file}
+Thoughts     : ${result.thoughtCount}
+DNA drift    : ${result.dnaDrift.length}
+`);
+      },
+    },
+
+    {
+      name: "/evolution",
+
+      match: (input, { engine }) =>
+        input === "/evolution" &&
+        !engine.isCradleMode(),
+
+      execute: async ({ engine }) => {
 
         const cell =
           engine.getActiveCell();
 
-        const result =
-          await cell.mature();
+        const content =
+          await cell.readLatestEvolution();
 
-        console.log(`
-        🦠 ${cell.id} evolved
+        console.log(
+          content ??
+          "No evolution found."
+        );
+      },
+    },
 
-        Maturity:
-        ${result.maturity}
-        `);
+    {
+      name: "/evolutions",
+
+      match: (input, { engine }) =>
+        input === "/evolutions" &&
+        !engine.isCradleMode(),
+
+      execute: async ({ engine }) => {
+
+        const cell =
+          engine.getActiveCell();
+
+        const files =
+          await fs.readdir(
+            cell.evolutionsDir
+          );
+
+        console.log("");
+
+        files
+          .filter(file => file.endsWith(".md"))
+          .sort()
+          .forEach(file => console.log(file));
+
+        console.log("");
       },
     },
 
