@@ -6,20 +6,29 @@ export function renderDNAPlot2D(points, axisX, axisY) {
     Array.from({ length: width + 1 }, () => " ")
   );
 
- 
-
   for (const point of points) {
     const x = clamp(Number(point.x ?? 0), 0, 1);
     const y = clamp(Number(point.y ?? 0), 0, 1);
 
-    const col = Math.round(x * width);
-    const row = height - Math.round(y * height);
+    let col = Math.round(x * width);
+    let row = height - Math.round(y * height);
 
     const label = `🦠 ${point.id}`;
-    const start = Math.min(col, width - label.length);
 
-    for (let i = 0; i < label.length && start + i <= width; i++) {
-      canvas[row][start + i] = label[i];
+    const position = findAvailablePosition(
+      canvas,
+      row,
+      col,
+      label.length,
+      height,
+      width
+    );
+
+    row = position.row;
+    col = position.col;
+
+    for (let i = 0; i < label.length && col + i <= width; i++) {
+      canvas[row][col + i] = label[i];
     }
   }
 
@@ -53,4 +62,39 @@ export function renderDNAPlot2D(points, axisX, axisY) {
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
+}
+
+function findAvailablePosition(canvas, row, col, labelLength, height, width) {
+  const maxAttempts = 20;
+
+  for (let offset = 0; offset < maxAttempts; offset++) {
+    const nextRow = Math.min(row + offset, height);
+    const nextCol = Math.min(col + offset * 2, width - labelLength);
+
+    if (canPlaceLabel(canvas, nextRow, nextCol, labelLength, width)) {
+      return {
+        row: nextRow,
+        col: nextCol,
+      };
+    }
+  }
+
+  return {
+    row,
+    col: Math.min(col, width - labelLength),
+  };
+}
+
+function canPlaceLabel(canvas, row, col, labelLength, width) {
+  if (col < 0 || col + labelLength > width) {
+    return false;
+  }
+
+  for (let i = 0; i < labelLength; i++) {
+    if (canvas[row][col + i] !== " ") {
+      return false;
+    }
+  }
+
+  return true;
 }
