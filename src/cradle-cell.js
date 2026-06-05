@@ -59,6 +59,11 @@ export class CradleCell {
     };
 
     this.assistant = null;
+
+    this.active = false;
+    this.tickTimer = null;
+    this.tickIntervalMs = 10_000;
+    this.isTicking = false;
   }
 
   async prepare() {
@@ -78,6 +83,86 @@ export class CradleCell {
     });
 
     await this.updateStatus("idle");
+  }
+
+  async activate() {
+    if (this.active) {
+      console.log(`Cell already active: ${this.id}`);
+      return;
+    }
+
+    this.active = true;
+    await this.updateStatus("active");
+
+    this.tickTimer = setInterval(() => {
+      this.tick().catch(async (error) => {
+        console.log(`[${this.id}] tick failed: ${error.message}`);
+        await this.updateStatus("error");
+      });
+    }, this.tickIntervalMs);
+
+    console.log(`🟢 Cell activated: ${this.id}`);
+  }
+
+  async deactivate() {
+    if (!this.active) {
+      console.log(`Cell already inactive: ${this.id}`);
+      return;
+    }
+
+    this.active = false;
+
+    if (this.tickTimer) {
+      clearInterval(this.tickTimer);
+      this.tickTimer = null;
+    }
+
+    await this.updateStatus("idle");
+
+    console.log(`⚪ Cell deactivated: ${this.id}`);
+  }
+
+  isActive() {
+    return this.active;
+  }
+
+  async tick() {
+    console.log(`🫀 ${this.id} heartbeat`);
+    
+    if (this.isTicking) {
+      return {
+        skipped: true,
+        reason: "already ticking",
+      };
+    }
+
+    this.isTicking = true;
+
+    try {
+      const inbox = await this.readInbox();
+
+      if (inbox.length === 0) {
+        return {
+          processed: 0,
+          reason: "empty inbox",
+        };
+      }
+
+      await this.updateStatus("running");
+
+      const result = await this.processInbox(inbox);
+
+      await this.clearInbox();
+
+      await this.updateStatus(this.active ? "active" : "idle");
+
+      return result;
+    } catch (error) {
+      await this.updateStatus("error");
+      throw error;
+    } finally {
+      this.isTicking = false;
+    }
   }
 
   async ask(input) {
@@ -1557,6 +1642,12 @@ ${memoryContext}
   }
 
   async shutdown() {
+    if (this.tickTimer) {
+      clearInterval(this.tickTimer);
+      this.tickTimer = null;
+    }
+
+    this.active = false;
     await this.updateStatus("stopped");
     await this.assistant?.cleanup();
   }

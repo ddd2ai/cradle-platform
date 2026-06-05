@@ -1,0 +1,32 @@
+{
+  "id": "cell-005",
+  "name": "cell-005",
+  "model": "gpt-4.1",
+  "status": "active",
+  "maturity": 2,
+  "generation": 1,
+  "parent": null,
+  "responsibilities": [],
+  "relationships": [],
+  "createdAt": "2026-06-05T02:10:52.358Z",
+  "updatedAt": "2026-06-05T02:12:06.677Z",
+  "lastStartedAt": "2026-06-05T02:10:52.358Z",
+  "directories": {
+    "root": "cells/cell-005",
+    "logs": "cells/cell-005/logs",
+    "memory": "cells/cell-005/memory",
+    "dna": "cells/cell-005/dna",
+    "workspace": "cells/cell-005/workspace",
+    "workspaceDirs": {
+      "notes": "cells/cell-005/workspace/notes",
+      "tasks": "cells/cell-005/workspace/tasks",
+      "artifacts": "cells/cell-005/workspace/artifacts",
+      "projects": "cells/cell-005/workspace/projects",
+      "research": "cells/cell-005/workspace/research",
+      "decisions": "cells/cell-005/workspace/decisions"
+    },
+    "snapshots": "cells/cell-005/snapshots",
+    "thoughts": "cells/cell-005/thoughts",
+    "inbox": "cells/cell-005/inbox"
+  }
+}

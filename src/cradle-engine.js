@@ -131,40 +131,63 @@ export class CradleEngine {
     }
   }
 
+  async activateCell(cellId) {
+    const cell = this.cells.get(cellId);
+
+    if (!cell) {
+      console.log(`Cell not found: ${cellId}`);
+      return;
+    }
+
+    await cell.activate();
+  }
+
+  async deactivateCell(cellId) {
+    const cell = this.cells.get(cellId);
+
+    if (!cell) {
+      console.log(`Cell not found: ${cellId}`);
+      return;
+    }
+
+    await cell.deactivate();
+  }
+
+  async activateAllCells() {
+    for (const cell of this.cells.values()) {
+      await cell.activate();
+    }
+  }
+
+  async deactivateAllCells() {
+    for (const cell of this.cells.values()) {
+      await cell.deactivate();
+    }
+  }
+
   async tickAll() {
     console.log("");
-    console.log("🫀 Colony Work Cycle");
+    console.log("🫀 Manual Colony Tick");
     console.log("");
 
     for (const [id, cell] of this.cells) {
       console.log(`[${id}] tick...`);
 
       try {
+        const result = await cell.tick();
+
         const inbox = await cell.readInbox();
         this.inboxes.set(id, inbox);
 
-        if (inbox.length === 0) {
-          console.log("  idle: no inbox");
-          console.log("");
-          continue;
+        console.log(`  processed=${result.processed ?? 0}`);
+
+        if (result.reason) {
+          console.log(`  reason=${result.reason}`);
         }
 
-        await cell.updateStatus("running");
-
-        const result = await cell.processInbox(inbox);
-
-        this.inboxes.set(id, []);
-        await cell.clearInbox();
-
-        await cell.updateStatus("idle");
-
-        console.log(`  processed=${result.processed}`);
         console.log(`  maturity=${await cell.getMaturity()}`);
       } catch (error) {
-        await cell.updateStatus("error");
         console.log(`  ✗ ${error.message}`);
-
-        await cell.updateStatus("idle");
       }
 
       console.log("");
@@ -257,8 +280,13 @@ export class CradleEngine {
       /cells                   List cells
       /status                  Show cell status
 
+      /activate <cell-id>      Activate a cell
+      /deactivate <cell-id>    Deactivate a cell
+      /activate-all            Activate all cells
+      /deactivate-all          Deactivate all cells
+
       /work                    Show colony work queue
-      /tick                    Run one colony work cycle
+      /tick                    Manually tick all cells once
       /heartbeat               Run one colony work cycle (legacy)
 
       /new <cell-id>           Create and switch to a new cell

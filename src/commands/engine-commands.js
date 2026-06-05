@@ -50,6 +50,7 @@ export function createEngineCommands() {
           rows.push({
             Cell: id,
             Status: profile.status ?? "unknown",
+            Active: cell.isActive() ? "yes" : "no",
             Mature: profile.maturity ?? 0,
             Gen: profile.generation ?? 1,
             Inbox: engine.inboxes.get(id)?.length ?? 0,
@@ -59,7 +60,7 @@ export function createEngineCommands() {
         console.log("");
 
         renderTable(
-          ["Cell", "Status", "Mature", "Gen", "Inbox"],
+          ["Cell", "Status", "Active", "Mature", "Gen", "Inbox"],
           rows
         );
       },
@@ -137,6 +138,52 @@ export function createEngineCommands() {
         Model     : ${cell.model}
         Inbox     : ${engine.inboxes.get(cell.id)?.length ?? 0}
         `);
+      },
+    },
+
+    {
+      name: "/activate",
+      match: (input) => input.startsWith("/activate "),
+      execute: async ({ engine, input }) => {
+        const cellId = input.replace("/activate ", "").trim();
+
+        if (!cellId) {
+          console.log("Usage: /activate <cell-id>");
+          return;
+        }
+
+        await engine.activateCell(cellId);
+      },
+    },
+
+    {
+      name: "/deactivate",
+      match: (input) => input.startsWith("/deactivate "),
+      execute: async ({ engine, input }) => {
+        const cellId = input.replace("/deactivate ", "").trim();
+
+        if (!cellId) {
+          console.log("Usage: /deactivate <cell-id>");
+          return;
+        }
+
+        await engine.deactivateCell(cellId);
+      },
+    },
+
+    {
+      name: "/activate-all",
+      match: (input) => input === "/activate-all",
+      execute: async ({ engine }) => {
+        await engine.activateAllCells();
+      },
+    },
+
+    {
+      name: "/deactivate-all",
+      match: (input) => input === "/deactivate-all",
+      execute: async ({ engine }) => {
+        await engine.deactivateAllCells();
       },
     },
 
