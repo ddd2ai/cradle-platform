@@ -1017,89 +1017,101 @@ TODO: define meaning from DNA_DEFINITION.md.
 
       const thoughtContext = thoughts
         .map((thought) => `
-## ${thought.file}
+      ## ${thought.file}
 
-${this.tail(thought.content, 1200)}
-`)
-        .join("\n\n");
+      ${this.tail(thought.content, 1200)}
+      `)
+              .join("\n\n");
 
-      const result = await this.askWithTimeout(`
-你是 ${this.id} 的 Evolution 模組。
+            const result = await this.askWithTimeout(`
+      你是 ${this.id} 的 Evolution 模組。
 
-你的任務是：
-根據最近累積的 Thought，總結這個 Cell 的經驗，並產生小幅 DNA drift。
+      你的任務是：
+      根據最近累積的 Thought，總結這個 Cell 的經驗，並產生小幅 DNA drift。
 
-請只輸出 JSON。
-不要 markdown。
-不要 code fence。
-不要額外說明。
+      請只輸出 JSON。
+      不要 markdown。
+      不要 code fence。
+      不要額外說明。
 
-輸出格式如下：
+      輸出格式如下：
 
-{
-  "summary": "這次 evolution 的總結",
-  "dnaDrift": [
-    {
-      "trait": "PERCEPTION",
-      "factor": "fitness",
-      "delta": 0.02,
-      "reason": "原因"
-    }
-  ],
-  "affinities": ["api", "product", "query"]
-}
+      {
+        "summary": "這次 evolution 的總結",
+        "dnaDrift": [
+          {
+            "trait": "PERCEPTION",
+            "factor": "fitness",
+            "delta": 0.02,
+            "reason": "原因"
+          }
+        ],
+        "affinities": ["api", "product", "query"]
+      }
 
-限制：
-- trait 只能是：PERCEPTION、DECISION、DECOMPOSITION、LEARNING、COLLABORATION、CREATION、EVOLUTION、REFLECTION
-- factor 只能是：strength、stability、plasticity、fitness
-- delta 必須介於 -0.05 到 0.05
-- 最多輸出 5 筆 dnaDrift
-- affinities 最多 5 個
-- 不要一次大幅改變 DNA
-- 如果沒有明確變化，dnaDrift 可以是空陣列
+      限制：
+      - trait 只能是：PERCEPTION、DECISION、DECOMPOSITION、LEARNING、COLLABORATION、CREATION、EVOLUTION、REFLECTION
+      - factor 只能是：strength、stability、plasticity、fitness
+      - delta 必須介於 -0.05 到 0.05
+      - 最多輸出 2 筆 dnaDrift
+      - affinities 最多 5 個
+      - 不要一次大幅改變 DNA
+      - 如果沒有明確變化，dnaDrift 可以是空陣列
 
-# Current DNA Vector
+      DNA Drift Rules：
+      - 只調整最能代表這批 thoughts 的 DNA trait。
+      - 不要平均分配 drift 到多個 trait。
+      - 優先讓 Cell 逐漸形成 specialization，而不是維持全能平衡。
+      - 如果 thoughts 明顯偏向某一種能力，請集中強化該 trait。
+      - 不相關的 trait 不要調整。
+      - 重複出現的主題，應該強化同一個主要 trait。
+      - strength 代表此 trait 對 Cell 行為的影響倍率。
+      - fitness 代表此 trait 在目前環境中的平均有效性。
+      - stability 代表此 trait 的可信度修正。
+      - plasticity 代表此 trait 的波動程度或可塑性。
 
-${JSON.stringify(dnaVector, null, 2)}
+      # Current DNA Vector
 
-# Thoughts
+      ${JSON.stringify(dnaVector, null, 2)}
 
-${thoughtContext}
-`, 180000);
+      # Thoughts
 
-      const raw = result?.text ?? result?.answer ?? "{}";
-      const evolution = this.parseEvolutionJson(raw);
+      ${thoughtContext}
+      `, 180000);
 
-      await this.applyDNADrift(evolution.dnaDrift ?? []);
+            const raw = result?.text ?? result?.answer ?? "{}";
+            const evolution = this.parseEvolutionJson(raw);
 
-      const filename =
-        `evolution-${this.formatTimestamp(new Date())}.md`;
+            await this.applyDNADrift(evolution.dnaDrift ?? []);
 
-      await fs.writeFile(
-        path.join(this.evolutionsDir, filename),
-        `# Evolution
+            const filename =
+              `evolution-${this.formatTimestamp(new Date())}.md`;
 
-## Summary
+            await fs.writeFile(
+              path.join(this.evolutionsDir, filename),
+              `# Evolution
 
-${evolution.summary ?? "(empty)"}
+      ## Summary
 
-## DNA Drift
+      ${evolution.summary ?? "(empty)"}
 
-\`\`\`json
-${JSON.stringify(evolution.dnaDrift ?? [], null, 2)}
-\`\`\`
+      ## DNA Drift
 
-## Affinities
+      \`\`\`json
+      ${JSON.stringify(evolution.dnaDrift ?? [], null, 2)}
+      \`\`\`
 
-${(evolution.affinities ?? []).map((item) => `- ${item}`).join("\n")}
+      ## Affinities
 
-## Thoughts
+      ${(evolution.affinities ?? []).map((item) => `- ${item}`).join("\n")}
 
-${thoughts.map((thought) => `- ${thought.file}`).join("\n")}
+      ## Thoughts
 
----
-createdAt: ${new Date().toISOString()}
-`,
+      ${thoughts.map((thought) => `- ${thought.file}`).join("\n")}
+
+      ---
+      createdAt: ${new Date().toISOString()}
+      `,
         "utf8"
       );
 

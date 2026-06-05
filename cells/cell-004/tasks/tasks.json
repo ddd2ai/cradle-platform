@@ -115,5 +115,302 @@
     "status": "done",
     "createdAt": "2026-06-05T06:20:37.429Z",
     "updatedAt": "2026-06-05T06:20:49.921Z"
+  },
+  {
+    "id": "task-20260605-160025",
+    "title": "設計 Colony 共用記憶機制",
+    "source": "metabolism",
+    "content": "規劃並實作細胞間的共享記憶體，支援狀態同步、任務協作與知識累積，避免資訊孤島。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:00:25.976Z",
+    "updatedAt": "2026-06-05T08:00:33.106Z"
+  },
+  {
+    "id": "task-20260605-160025",
+    "title": "DNA 向量數學化演化機制",
+    "source": "metabolism",
+    "content": "設計 DNA 向量自動調整與演化演算法，明確定義各向量如何根據經驗、環境刺激變化。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:00:25.976Z",
+    "updatedAt": "2026-06-05T08:00:33.106Z"
+  },
+  {
+    "id": "task-20260605-160025",
+    "title": "細胞專長分化與分工決策流程",
+    "source": "metabolism",
+    "content": "建立細胞專長（Affinity）判斷規則，設計任務分派與認領流程，避免重複處理與資源浪費。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:00:25.977Z",
+    "updatedAt": "2026-06-05T08:00:33.106Z"
+  },
+  {
+    "id": "task-20260605-160025",
+    "title": "管理報表 API 設計與實作",
+    "source": "metabolism",
+    "content": "依據 signals/report-api.md，設計並實作管理報表查詢 API，支援多維度統計與查詢。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:00:25.978Z",
+    "updatedAt": "2026-06-05T08:00:33.106Z"
+  },
+  {
+    "id": "task-20260605-160025",
+    "title": "事件驅動架構導入規劃",
+    "source": "metabolism",
+    "content": "參考 event-driven 資源，規劃事件驅動架構，提升系統解耦與擴充彈性。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:00:25.978Z",
+    "updatedAt": "2026-06-05T08:00:33.106Z"
+  },
+  {
+    "id": "task-20260605-160313",
+    "title": "建立任務協作與歸屬協議",
+    "source": "metabolism",
+    "content": "設計細胞間任務協調、認領、結果共享與協作後關係更新的標準流程，避免重複工作。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:03:13.094Z",
+    "updatedAt": "2026-06-05T08:03:22.161Z"
+  },
+  {
+    "id": "task-20260605-160313",
+    "title": "推動 artifact 產出流程",
+    "source": "metabolism",
+    "content": "規劃並落實 API 規格、domain model、controller skeleton、測試案例與文件的自動產出機制。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:03:13.095Z",
+    "updatedAt": "2026-06-05T08:03:22.161Z"
+  },
+  {
+    "id": "task-20260605-160313",
+    "title": "優化 DNA 演化公式",
+    "source": "metabolism",
+    "content": "分析細胞歷史行為，偵測專長化趨勢，調整 DNA 演化與漂移演算法。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:03:13.095Z",
+    "updatedAt": "2026-06-05T08:03:22.161Z"
+  },
+  {
+    "id": "task-20260605-160313",
+    "title": "建立行為反思與規則修正機制",
+    "source": "metabolism",
+    "content": "定期彙整錯誤與重複行為，提出演化規則修正建議，促進自我優化。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:03:13.096Z",
+    "updatedAt": "2026-06-05T08:03:22.161Z"
+  },
+  {
+    "id": "task-20260605-160522",
+    "title": "建立決策評估與記錄流程",
+    "source": "metabolism",
+    "content": "設計一套決策評估機制，協助細胞在效能、可維護性、資源分配、重構與重建等議題上做出透明且可追蹤的選擇，並記錄決策依據。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:05:22.437Z",
+    "updatedAt": "2026-06-05T08:05:33.245Z"
+  },
+  {
+    "id": "task-20260605-160522",
+    "title": "主動感知與異常偵測任務",
+    "source": "metabolism",
+    "content": "實作弱訊號偵測、隱性依賴分析與用戶行為異常監控，提前發現潛在問題，並建立回報與處理流程。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:05:22.438Z",
+    "updatedAt": "2026-06-05T08:05:33.245Z"
+  },
+  {
+    "id": "task-20260605-160542",
+    "title": "推動協作與知識分享機制",
+    "source": "metabolism",
+    "content": "設計細胞協作、任務協商與發現分享流程，確保資訊流通與 ownership 明確。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:05:42.789Z",
+    "updatedAt": "2026-06-05T08:05:52.395Z"
+  },
+  {
+    "id": "task-20260605-160542",
+    "title": "推動系統分解與重用",
+    "source": "metabolism",
+    "content": "規劃單體拆分、user story 拆解與重複程式碼重構，提升系統可維護性與彈性。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:05:42.789Z",
+    "updatedAt": "2026-06-05T08:05:52.395Z"
+  },
+  {
+    "id": "task-20260605-160542",
+    "title": "建立經驗學習與推理優化流程",
+    "source": "metabolism",
+    "content": "分析失敗部署、歷史思考與任務結果，萃取模式並反饋至推理與決策機制。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:05:42.789Z",
+    "updatedAt": "2026-06-05T08:05:52.395Z"
+  },
+  {
+    "id": "task-20260605-160605",
+    "title": "產生 REST API 規格",
+    "source": "metabolism",
+    "content": "根據現有電商系統需求，設計並產生標準化 REST API 規格，支援自動化文件與前後端協作。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:06:05.274Z",
+    "updatedAt": "2026-06-05T08:06:13.077Z"
+  },
+  {
+    "id": "task-20260605-160605",
+    "title": "設計新領域模型",
+    "source": "metabolism",
+    "content": "分析業務需求，設計可擴充的新 domain model，並考慮與現有架構的整合。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:06:05.274Z",
+    "updatedAt": "2026-06-05T08:06:13.077Z"
+  },
+  {
+    "id": "task-20260605-160605",
+    "title": "建立可重用架構模板",
+    "source": "metabolism",
+    "content": "整理現有最佳實踐，建立可複用的 Hexagonal/Spring Boot 架構模板，加速新模組開發。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:06:05.275Z",
+    "updatedAt": "2026-06-05T08:06:13.077Z"
+  },
+  {
+    "id": "task-20260605-160605",
+    "title": "優化 DNA 適應與演化策略",
+    "source": "metabolism",
+    "content": "檢討現有 DNA 調整與演化頻率，設計更精細的適應與漂移演算法，提升細胞自我調整能力。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:06:05.275Z",
+    "updatedAt": "2026-06-05T08:06:13.077Z"
+  },
+  {
+    "id": "task-20260605-160605",
+    "title": "回顧決策與經驗萃取",
+    "source": "metabolism",
+    "content": "定期回顧近期決策，總結經驗與教訓，並將成果納入知識庫，強化組織學習。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:06:05.275Z",
+    "updatedAt": "2026-06-05T08:06:13.077Z"
+  },
+  {
+    "id": "task-20260605-160621",
+    "title": "設計 Colony 共用記憶體制",
+    "source": "metabolism",
+    "content": "規劃並實作支援狀態同步、知識累積、權限控管的共用記憶機制，促進細胞協作。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:06:21.732Z",
+    "updatedAt": "2026-06-05T08:06:33.089Z"
+  },
+  {
+    "id": "task-20260605-160621",
+    "title": "建立細胞信任與關係管理機制",
+    "source": "metabolism",
+    "content": "設計信任分數與關係追蹤流程，強化長期協作與任務分派依據。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:06:21.733Z",
+    "updatedAt": "2026-06-05T08:06:33.089Z"
+  },
+  {
+    "id": "task-20260605-160621",
+    "title": "推動細胞專長分化與任務認領",
+    "source": "metabolism",
+    "content": "根據 DNA 差異與歷史表現，設計專長標註與任務自動認領機制，提升分工效率。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:06:21.735Z",
+    "updatedAt": "2026-06-05T08:06:33.089Z"
+  },
+  {
+    "id": "task-20260605-160621",
+    "title": "優化刺激分派決策流程",
+    "source": "metabolism",
+    "content": "建立刺激分派規則，確保未來刺激能根據細胞專長與信任度精準分配。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:06:21.736Z",
+    "updatedAt": "2026-06-05T08:06:33.089Z"
+  },
+  {
+    "id": "task-20260605-162012",
+    "title": "建立細胞間協作與任務歸屬監控流程",
+    "source": "metabolism",
+    "content": "根據 signals/collaboration-001、003，需設計自動化監控與協調機制，確保任務唯一歸屬、避免重工，並即時同步 ownership 狀態。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:20:12.744Z",
+    "updatedAt": "2026-06-05T08:20:28.848Z"
+  },
+  {
+    "id": "task-20260605-162012",
+    "title": "推動知識與發現即時分享機制",
+    "source": "metabolism",
+    "content": "根據 signals/collaboration-002，需強化知識分享通道，讓細胞能將新發現、最佳實踐即時同步至 colony，促進集體學習。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:20:12.745Z",
+    "updatedAt": "2026-06-05T08:20:28.848Z"
+  },
+  {
+    "id": "task-20260605-162012",
+    "title": "產生並維護標準化 REST API 規格",
+    "source": "metabolism",
+    "content": "根據 signals/creation-001，需持續產生、維護並自動化產出電商系統 REST API 規格，確保前後端協作順暢。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:20:12.745Z",
+    "updatedAt": "2026-06-05T08:20:28.848Z"
+  },
+  {
+    "id": "task-20260605-162012",
+    "title": "設計可重用的領域模型與架構模板",
+    "source": "metabolism",
+    "content": "根據 signals/creation-002、003，需設計並文件化電商核心領域模型與架構模板，提升開發效率與一致性。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:20:12.746Z",
+    "updatedAt": "2026-06-05T08:20:28.848Z"
+  },
+  {
+    "id": "task-20260605-162012",
+    "title": "建立決策評估與記錄自動化流程",
+    "source": "metabolism",
+    "content": "根據 signals/decision-001、002、003，需將決策評估、記錄與回顧流程自動化，提升決策透明度與組織學習能力。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:20:12.746Z",
+    "updatedAt": "2026-06-05T08:20:28.848Z"
+  },
+  {
+    "id": "task-20260605-162012",
+    "title": "推動系統分解與元件重用",
+    "source": "metabolism",
+    "content": "根據 signals/decomposition-001、002、003，需持續推動單體拆分、任務細分與元件重用，強化系統可維護性。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:20:12.747Z",
+    "updatedAt": "2026-06-05T08:20:28.848Z"
+  },
+  {
+    "id": "task-20260605-162012",
+    "title": "優化 DNA 演化與適應策略",
+    "source": "metabolism",
+    "content": "根據 signals/evolution-001、002、003，需設計更精細的 DNA 調整與演化頻率機制，提升細胞自我適應能力。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:20:12.747Z",
+    "updatedAt": "2026-06-05T08:20:28.848Z"
+  },
+  {
+    "id": "task-20260605-162012",
+    "title": "建立失敗學習與經驗分析流程",
+    "source": "metabolism",
+    "content": "根據 signals/learning-001、002、003，需自動化收集失敗案例、分析歷史經驗與發現重複模式，強化學習能力。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:20:12.747Z",
+    "updatedAt": "2026-06-05T08:20:28.848Z"
+  },
+  {
+    "id": "task-20260605-162012",
+    "title": "強化環境感知與依賴關係偵測",
+    "source": "metabolism",
+    "content": "根據 signals/perception-001、002、003，需建立弱訊號偵測、依賴關係分析與異常行為觀察機制，提升系統韌性。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:20:12.747Z",
+    "updatedAt": "2026-06-05T08:20:28.848Z"
+  },
+  {
+    "id": "task-20260605-162012",
+    "title": "推動決策反思與成果回顧",
+    "source": "metabolism",
+    "content": "根據 signals/reflection-001、002、003，需定期回顧決策、總結經驗並比對預期與實際結果，持續優化決策品質。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:20:12.748Z",
+    "updatedAt": "2026-06-05T08:20:28.848Z"
   }
 ]

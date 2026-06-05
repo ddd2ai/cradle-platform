@@ -340,5 +340,221 @@
     "status": "done",
     "createdAt": "2026-06-05T06:20:34.646Z",
     "updatedAt": "2026-06-05T06:20:51.762Z"
+  },
+  {
+    "id": "task-20260605-160027",
+    "title": "設計細胞專長分化演算法",
+    "source": "metabolism",
+    "content": "根據 identical DNA，設計細胞如何透過經驗、環境刺激與 DNA 向量數學自動分化專長，並結合任務認領機制。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:00:27.175Z",
+    "updatedAt": "2026-06-05T08:00:43.912Z"
+  },
+  {
+    "id": "task-20260605-160027",
+    "title": "建立 Colony 共享記憶機制",
+    "source": "metabolism",
+    "content": "設計一套可供所有細胞讀寫的共享記憶體，支援協作、任務狀態同步與知識累積。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:00:27.176Z",
+    "updatedAt": "2026-06-05T08:00:43.912Z"
+  },
+  {
+    "id": "task-20260605-160027",
+    "title": "導入 DNA 向量數學演化流程",
+    "source": "metabolism",
+    "content": "規劃 DNA 向量如何根據任務經驗、刺激、壓力自動調整，並記錄演化歷程。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:00:27.176Z",
+    "updatedAt": "2026-06-05T08:00:43.912Z"
+  },
+  {
+    "id": "task-20260605-160027",
+    "title": "訂定細胞分化與任務認領規則",
+    "source": "metabolism",
+    "content": "設計 affinity 演算法，讓細胞根據 DNA similarity 與專長自動認領最適合的任務，避免重複與競態。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:00:27.176Z",
+    "updatedAt": "2026-06-05T08:00:43.912Z"
+  },
+  {
+    "id": "task-20260605-160027",
+    "title": "API 權限與資安補強",
+    "source": "metabolism",
+    "content": "針對現有與新 API，全面檢查並補強認證與授權，防止敏感資料外洩與未授權存取。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:00:27.177Z",
+    "updatedAt": "2026-06-05T08:00:43.912Z"
+  },
+  {
+    "id": "task-20260605-160027",
+    "title": "快取與高流量壓力測試",
+    "source": "metabolism",
+    "content": "設計快取策略，並針對高流量與慢查詢路徑進行壓力測試與效能優化。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:00:27.177Z",
+    "updatedAt": "2026-06-05T08:00:43.912Z"
+  },
+  {
+    "id": "task-20260605-160027",
+    "title": "導入異步處理與橫向擴展",
+    "source": "metabolism",
+    "content": "設計支援 async processing 與 scaling-out 的架構，減少單點故障風險。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:00:27.177Z",
+    "updatedAt": "2026-06-05T08:00:43.912Z"
+  },
+  {
+    "id": "task-20260605-160312",
+    "title": "設計協作與任務協調流程",
+    "source": "metabolism",
+    "content": "建立細胞間任務協調、責任分配與結果共享機制，避免重複開發並強化協作記錄。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:03:12.939Z",
+    "updatedAt": "2026-06-05T08:03:21.928Z"
+  },
+  {
+    "id": "task-20260605-160312",
+    "title": "產出 API 與設計文件",
+    "source": "metabolism",
+    "content": "依據需求，產出 API 規格、Domain Model、Controller 範本、測試案例與說明文件，充實 workspace。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:03:12.939Z",
+    "updatedAt": "2026-06-05T08:03:21.928Z"
+  },
+  {
+    "id": "task-20260605-160312",
+    "title": "優化 DNA 演化公式",
+    "source": "metabolism",
+    "content": "分析歷史分化與專長形成過程，調整 DNA 向量演化與 drift 公式，提升分化效率與適應性。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:03:12.939Z",
+    "updatedAt": "2026-06-05T08:03:21.928Z"
+  },
+  {
+    "id": "task-20260605-160312",
+    "title": "建立反思與規則修正機制",
+    "source": "metabolism",
+    "content": "定期回顧細胞行為與演化結果，歸納錯誤與重複模式，提出演化規則修正建議。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:03:12.940Z",
+    "updatedAt": "2026-06-05T08:03:21.928Z"
+  },
+  {
+    "id": "task-20260605-160523",
+    "title": "設計決策評估與取捨機制",
+    "source": "metabolism",
+    "content": "建立一套可量化效能、可維護性、資源分配與重構時機的決策流程，支援工程團隊做出明確選擇。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:05:23.681Z",
+    "updatedAt": "2026-06-05T08:05:33.147Z"
+  },
+  {
+    "id": "task-20260605-160523",
+    "title": "強化環境感知與異常偵測",
+    "source": "metabolism",
+    "content": "設計弱訊號監控、隱性依賴分析與用戶行為異常偵測機制，提前發現潛在問題。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:05:23.682Z",
+    "updatedAt": "2026-06-05T08:05:33.147Z"
+  },
+  {
+    "id": "task-20260605-160546",
+    "title": "設計協作與知識共享流程",
+    "source": "metabolism",
+    "content": "建立細胞協作、任務協商與發現共享機制，確保多細胞能協同完成複雜任務並同步知識。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:05:46.516Z",
+    "updatedAt": "2026-06-05T08:05:55.107Z"
+  },
+  {
+    "id": "task-20260605-160546",
+    "title": "推動系統分解與元件重用",
+    "source": "metabolism",
+    "content": "規劃單體系統拆分、user story 拆解與重複程式碼元件化，提升可維護性與開發效率。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:05:46.517Z",
+    "updatedAt": "2026-06-05T08:05:55.107Z"
+  },
+  {
+    "id": "task-20260605-160546",
+    "title": "建立經驗學習與推理優化機制",
+    "source": "metabolism",
+    "content": "設計從失敗、歷史思考與任務結果中萃取模式，持續優化決策與推理流程。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:05:46.517Z",
+    "updatedAt": "2026-06-05T08:05:55.107Z"
+  },
+  {
+    "id": "task-20260605-160602",
+    "title": "設計與產出 REST API 規格",
+    "source": "metabolism",
+    "content": "根據現有需求，產生標準化的 REST API 規格文件，支援後續開發與協作。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:06:02.585Z",
+    "updatedAt": "2026-06-05T08:06:18.293Z"
+  },
+  {
+    "id": "task-20260605-160602",
+    "title": "設計新領域模型與架構模板",
+    "source": "metabolism",
+    "content": "建立新的領域模型與可重用架構模板，提升系統擴充性與一致性。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:06:02.586Z",
+    "updatedAt": "2026-06-05T08:06:18.293Z"
+  },
+  {
+    "id": "task-20260605-160602",
+    "title": "優化 DNA 演化與適應策略",
+    "source": "metabolism",
+    "content": "調整 DNA 適應與演化頻率，優化 DNA 漂移計算，提升細胞自我調整能力。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:06:02.586Z",
+    "updatedAt": "2026-06-05T08:06:18.293Z"
+  },
+  {
+    "id": "task-20260605-160602",
+    "title": "建立反思與經驗回顧流程",
+    "source": "metabolism",
+    "content": "定期回顧決策、總結教訓，並比較預期與實際成果，持續優化團隊運作。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:06:02.587Z",
+    "updatedAt": "2026-06-05T08:06:18.293Z"
+  },
+  {
+    "id": "task-20260605-162011",
+    "title": "設計知識共享與發現廣播機制",
+    "source": "metabolism",
+    "content": "建立細胞間知識同步與發現廣播流程，確保所有細胞能即時取得新知、最佳實踐與問題，避免知識孤島。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:20:11.174Z",
+    "updatedAt": "2026-06-05T08:20:18.515Z"
+  },
+  {
+    "id": "task-20260605-162011",
+    "title": "實作 DNA 演化與適應策略優化",
+    "source": "metabolism",
+    "content": "根據外部刺激與任務經驗，優化 DNA 向量調整公式，提升細胞自我演化與分化效率。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:20:11.175Z",
+    "updatedAt": "2026-06-05T08:20:18.515Z"
+  },
+  {
+    "id": "task-20260605-162011",
+    "title": "導入失敗經驗回饋與學習機制",
+    "source": "metabolism",
+    "content": "設計失敗案例回饋流程，讓細胞能從錯誤部署、異常行為中萃取學習，強化系統韌性。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:20:11.175Z",
+    "updatedAt": "2026-06-05T08:20:18.515Z"
+  },
+  {
+    "id": "task-20260605-162011",
+    "title": "偵測並管理系統隱性依賴",
+    "source": "metabolism",
+    "content": "建立隱性依賴偵測與標註機制，協助細胞辨識跨模組、跨系統的潛在耦合，降低風險。",
+    "status": "done",
+    "createdAt": "2026-06-05T08:20:11.175Z",
+    "updatedAt": "2026-06-05T08:20:18.515Z"
   }
 ]
