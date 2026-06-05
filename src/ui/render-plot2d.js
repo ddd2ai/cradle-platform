@@ -15,7 +15,7 @@ export function renderDNAPlot2D(points, axisX, axisY) {
     const col = Math.round(x * width);
     const row = height - Math.round(y * height);
 
-    const label = `● ${point.id}`;
+    const label = `🦠 ${point.id}`;
     const start = Math.min(col, width - label.length);
 
     for (let i = 0; i < label.length && start + i <= width; i++) {
