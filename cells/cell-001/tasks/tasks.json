@@ -1,29 +1,20 @@
 [
   {
-    "id": "task-20260605-100958",
-    "title": "Process inbox from cell-002",
-    "source": "inbox",
-    "content": "```markdown\n## Inbox Summary\n收到來自 cell-002 的簡單問候訊息：「你好」。\n\n## Signals\n- cell-002 主動發起聯繫，代表 cell 間溝通管道已建立並可用。\n- 目前訊息內容單純，尚未透露具體需求或任務。\n\n## Possible Tasks\n- 建立 cell-002 的聯絡紀錄，作為未來互動的基礎。\n- 監控後續訊息，判斷是否有進一步合作或支援需求。\n- 強化訊息分類與記錄流程，確保訊息可追溯。\n\n## Growth Impact\n- 增加 cell-001 的社交觸角，為後續協作或資源交換鋪路。\n- 提升訊息代謝模組的運作經驗，為處理更複雜訊息做準備。\n```\n這份記錄可直接存入 cell-001 的長期記憶，作為訊息代謝的基礎。",
+    "id": "task-20260605-103945",
+    "title": "建立商品查詢 API",
+    "source": "metabolism",
+    "content": "設計並實作支援多條件（如關鍵字、分類、價格區間）查詢的商品 API，強化產品目錄與搜尋功能，符合電商系統需求。",
     "status": "done",
-    "createdAt": "2026-06-05T02:09:58.925Z",
-    "updatedAt": "2026-06-05T02:22:23.073Z"
+    "createdAt": "2026-06-05T02:39:45.371Z",
+    "updatedAt": "2026-06-05T02:39:54.986Z"
   },
   {
-    "id": "task-20260605-101126",
-    "title": "Process inbox from cell-005",
-    "source": "inbox",
-    "content": "```markdown\n## Inbox Summary\n- 收到來自 cell-005 的一則 broadcast 訊息，內容為「測試訊息」。\n\n## Signals\n- cell-005 正在測試訊息傳遞機制，代表細胞間通訊功能正在驗證或初始化。\n- 系統已進入可互動階段，細胞之間開始有訊息流動。\n\n## Possible Tasks\n- 紀錄並驗證訊息傳遞流程是否正常。\n- 建立訊息處理與分類的標準流程。\n- 針對 broadcast 訊息設計自動回應或記錄機制。\n\n## Growth Impact\n- 驗證訊息通路，為後續細胞協作與分工打下基礎。\n- 提升 cell-001 的訊息代謝成熟度，促進記憶與反應能力的演化。\n```",
+    "id": "task-20260605-103945",
+    "title": "建立 observation → task 自動代謝流程",
+    "source": "metabolism",
+    "content": "設計並實作細胞自動將 observation（外部刺激、signals）轉換為具體任務的流程，提升細胞自主反應與任務生成能力。",
     "status": "done",
-    "createdAt": "2026-06-05T02:11:26.449Z",
-    "updatedAt": "2026-06-05T02:22:31.942Z"
-  },
-  {
-    "id": "task-20260605-101204",
-    "title": "Process inbox from cell-005",
-    "source": "inbox",
-    "content": "```markdown\n## Inbox Summary\n- 收到來自 cell-005 的 broadcast 訊息，內容為「hello」。\n\n## Signals\n- cell-005 持續進行訊息傳遞測試，顯示細胞間通訊已進入互動階段。\n- 訊息內容轉為一般問候，代表測試逐步貼近實際應用場景。\n\n## Possible Tasks\n- 儲存並標記此類互動訊息，作為訊息代謝成熟度的依據。\n- 觀察訊息內容變化，調整訊息分類與處理策略。\n- 設計自動回應或互動機制，提升細胞間協作效率。\n\n## Growth Impact\n- 增強 cell-001 的訊息理解與分類能力，促進記憶體系完善。\n- 為後續更複雜的訊息處理與協作打下基礎，加速成熟度提升。\n```",
-    "status": "done",
-    "createdAt": "2026-06-05T02:12:04.847Z",
-    "updatedAt": "2026-06-05T02:22:41.804Z"
+    "createdAt": "2026-06-05T02:39:45.372Z",
+    "updatedAt": "2026-06-05T02:39:54.986Z"
   }
 ]

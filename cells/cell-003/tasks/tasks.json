@@ -1,20 +1,20 @@
 [
   {
-    "id": "task-20260605-101126",
-    "title": "Process inbox from cell-005",
-    "source": "inbox",
-    "content": "```markdown\n## Inbox Summary\n收到來自 cell-005 的一則 broadcast 訊息，內容為「測試訊息」。目前僅有單一訊息，屬於基本通訊測試。\n\n## Signals\n- cell-005 正在驗證訊息傳遞機制，代表細胞間的訊息通道已經建立並可用。\n- 系統已進入初步運作階段，細胞間互動開始啟動。\n\n## Possible Tasks\n- 記錄並標註此為訊息通訊測試事件。\n- 監控後續是否有更多實質內容或指令進入 inbox。\n- 準備訊息處理與分類機制，為未來更複雜的訊息流做準備。\n\n## Growth Impact\n- 驗證訊息通路，為 cell-003 後續的訊息代謝與記憶形成打下基礎。\n- 目前對成熟度提升有限，但確認了細胞間的基本連結與互動能力。\n```",
+    "id": "task-20260605-103945",
+    "title": "建立商品查詢 API",
+    "source": "metabolism",
+    "content": "設計並實作商品查詢 API，支援依據商品目錄與關鍵字搜尋，回應商品資訊，符合電商系統需求。",
     "status": "done",
-    "createdAt": "2026-06-05T02:11:26.100Z",
-    "updatedAt": "2026-06-05T02:22:23.046Z"
+    "createdAt": "2026-06-05T02:39:45.015Z",
+    "updatedAt": "2026-06-05T02:39:54.824Z"
   },
   {
-    "id": "task-20260605-101304",
-    "title": "Process inbox from cell-005",
-    "source": "inbox",
-    "content": "```markdown\n## Inbox Summary\n收到來自 cell-005 的 broadcast 訊息：「hello」。這是一次簡單的細胞間問候，顯示訊息通道持續運作。\n\n## Signals\n- cell-005 持續與 cell-003 保持連線，測試訊息流穩定性。\n- 系統進入互動階段，訊息內容開始由測試轉向基本互動。\n\n## Possible Tasks\n- 將此類問候訊息標註為「連線確認」或「心跳」訊號。\n- 建立訊息分類規則，區分測試、互動、指令等不同型態。\n- 持續監控訊息流，準備擴充處理更複雜的訊息。\n\n## Growth Impact\n- 穩定的訊息互動有助於 cell-003 建立初步的訊息記憶結構。\n- 對成熟度提升有正面影響，為後續更高階的訊息代謝與協作能力打基礎。\n```",
+    "id": "task-20260605-103945",
+    "title": "建立 observation → task 流程",
+    "source": "metabolism",
+    "content": "設計自動將觀察到的需求或訊號轉換為 task 的流程，確保細胞能自主代謝外部刺激，提升自我演化能力。",
     "status": "done",
-    "createdAt": "2026-06-05T02:13:04.517Z",
-    "updatedAt": "2026-06-05T02:22:32.022Z"
+    "createdAt": "2026-06-05T02:39:45.015Z",
+    "updatedAt": "2026-06-05T02:39:54.824Z"
   }
 ]

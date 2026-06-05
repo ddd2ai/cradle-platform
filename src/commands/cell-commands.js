@@ -208,9 +208,9 @@ export function createCellCommands() {
         console.log("🧠 Perceiving...");
 
         const result = await cell.askWithTimeout(`
-        請根據目前的 Cell DNA、Memory、Vision、Environment，觀察以下 situation stimuli。
+        請根據目前的 Cell DNA、Memory、Vision、Environment,觀察以下 situation stimuli。
 
-        請產生一份 Observation，包含：
+        請產生一份 Observation,包含：
 
         - 觀察摘要
         - 對目前 Cell 的影響
@@ -244,6 +244,29 @@ export function createCellCommands() {
         );
 
         console.log(`\nObservation created: situation/observations/${filename}`);
+      },
+    },
+
+    {
+      name: "/metabolize",
+      match: (input, { engine }) =>
+        input === "/metabolize" && !engine.isCradleMode(),
+
+      execute: async ({ engine }) => {
+        const cell = engine.getActiveCell();
+
+        console.log("🧬 Reading stimuli...");
+        console.log("🧠 Creating tasks from situation...");
+
+        const result = await cell.metabolize();
+
+        console.log(`
+Metabolism completed.
+
+Created tasks : ${result.created}
+Observation   : ${result.observationFile ?? "-"}
+Reason        : ${result.reason ?? "-"}
+`);
       },
     },
 

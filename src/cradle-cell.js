@@ -181,11 +181,23 @@ export class CradleCell {
         };
       }
 
-      console.log(`  ${this.id} idle: no inbox or task`);
+      const metabolism = await this.metabolize();
+
+      if (metabolism.created > 0) {
+        console.log(`  ${this.id} metabolized stimuli, tasks=${metabolism.created}`);
+
+        return {
+          type: "metabolism",
+          processed: metabolism.created,
+          observationFile: metabolism.observationFile,
+        };
+      }
+
+      console.log(`  ${this.id} idle: no inbox, task, or stimuli`);
 
       return {
         processed: 0,
-        reason: "no inbox or task",
+        reason: "no inbox, task, or stimuli",
       };
     } catch (error) {
       await this.updateStatus("error");
@@ -200,7 +212,7 @@ export class CradleCell {
     const result = await this.askWithTimeout(`
     你是 ${this.id}。
 
-    請根據你的 DNA、Memory、Vision、Environment，處理以下任務。
+    請根據你的 DNA、Memory、Vision、Environment,處理以下任務。
 
     # Task
 
@@ -216,17 +228,17 @@ export class CradleCell {
     - 下一步建議
     `, 120000);
 
-      const outputText =
-        result?.text ??
-        result?.answer ??
-        "(response streamed)";
+    const outputText =
+      result?.text ??
+      result?.answer ??
+      "(response streamed)";
 
-      const filename =
-        `tasks/task-result-${this.formatTimestamp(new Date())}.md`;
+    const filename =
+      `tasks/task-result-${this.formatTimestamp(new Date())}.md`;
 
-      await this.writeWorkspaceFile(
-        filename,
-        `# Task Result
+    await this.writeWorkspaceFile(
+      filename,
+      `# Task Result
 
     ## Task
 
@@ -243,9 +255,9 @@ export class CradleCell {
     ---
     createdAt: ${new Date().toISOString()}
     `
-      );
+    );
 
-      await this.appendHistory(`
+    await this.appendHistory(`
     ## ${new Date().toISOString()}
 
     ### Task
@@ -260,6 +272,95 @@ export class CradleCell {
     return {
       file: filename,
       text: outputText,
+    };
+  }
+
+  async metabolize() {
+    const stimuli = await this.readStimuli();
+
+    if (stimuli.length === 0) {
+      return {
+        created: 0,
+        reason: "no stimuli",
+      };
+    }
+
+    const result = await this.askWithTimeout(`
+你是 ${this.id}。
+
+請根據目前的 DNA、Memory、Vision、Environment,觀察 situation stimuli。
+
+請判斷是否需要建立新的 task。
+
+# Cell Context
+
+${await this.buildMemoryContext()}
+
+# Stimuli
+
+${stimuli.map((s) => `
+## ${s.category}/${s.file}
+
+${s.content}
+`).join("\n\n")}
+
+請輸出 JSON,不要 markdown,不要 code fence。
+
+格式：
+{
+  "observation": "觀察摘要",
+  "tasks": [
+    {
+      "title": "任務標題",
+      "content": "任務內容"
+    }
+  ]
+}
+`, 120000);
+
+    const raw =
+      result?.text ??
+      result?.answer ??
+      "{}";
+
+    const cleaned = raw
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/```\s*$/i, "")
+      .trim();
+
+    const parsed = JSON.parse(cleaned);
+
+    const observationFile =
+      `observation-${this.formatTimestamp(new Date())}.md`;
+
+    await fs.writeFile(
+      path.join(this.observationsDir, observationFile),
+      `# Observation
+
+${parsed.observation ?? "(empty)"}
+
+---
+createdAt: ${new Date().toISOString()}
+`,
+      "utf8"
+    );
+
+    const tasks = parsed.tasks ?? [];
+
+    for (const task of tasks) {
+      await this.addTask({
+        title: task.title,
+        source: "metabolism",
+        content: task.content ?? task.title,
+      });
+    }
+
+    await this.archiveStimuli(stimuli);
+
+    return {
+      created: tasks.length,
+      observationFile,
     };
   }
 
@@ -365,6 +466,7 @@ export class CradleCell {
       fs.mkdir(path.join(this.stimuliDir, "threats"), { recursive: true }),
       fs.mkdir(path.join(this.stimuliDir, "pressures"), { recursive: true }),
       fs.mkdir(path.join(this.stimuliDir, "resources"), { recursive: true }),
+      fs.mkdir(path.join(this.stimuliDir, "processed"), { recursive: true }),
       fs.mkdir(this.observationsDir, { recursive: true }),
       fs.mkdir(this.metricsDir, { recursive: true }),
     ]);
@@ -1217,6 +1319,26 @@ ${memoryContext}
     }
 
     return results;
+  }
+
+  async archiveStimuli(stimuli = []) {
+    const processedDir = path.join(this.stimuliDir, "processed");
+
+    await fs.mkdir(processedDir, { recursive: true });
+
+    for (const item of stimuli) {
+      const from = path.join(this.stimuliDir, item.category, item.file);
+      const to = path.join(
+        processedDir,
+        `${item.category}-${this.formatTimestamp(new Date())}-${item.file}`
+      );
+
+      try {
+        await fs.rename(from, to);
+      } catch {
+        // ignore missing file
+      }
+    }
   }
 
   async readRecentHistory(maxChars = 8000) {
