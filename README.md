@@ -1,6 +1,6 @@
 # Cradle Platform
 
-> 軟體生命工程平台（A Living Software Engineering Platform）
+> 🌱 Cultivating Software Life through 🧬 DNA Driven Design
 
 Cradle Platform 是一個探索「軟體生命工程（Software Life Engineering）」的實驗平台。
 
