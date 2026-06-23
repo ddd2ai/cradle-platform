@@ -10,7 +10,7 @@ import {
   renderAnswerStart,
   renderError,
   renderBye,
-} from "./cradle-ui.js";
+} from "./cradle-console.js";
 
 import { CommandRegistry } from "./commands/command-registry.js";
 import { createEngineCommands } from "./commands/engine-commands.js";

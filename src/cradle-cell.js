@@ -9,7 +9,7 @@ import {
   renderSkill,
   renderSkillNotFound,
   writeAssistantChunk,
-} from "./cradle-ui.js";
+} from "./cradle-console.js";
 import {
   calculateTraitValue,
   calculateCellScore,

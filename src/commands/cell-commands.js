@@ -1,6 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
-import { renderAnswerStart } from "../cradle-ui.js";
+import { renderAnswerStart } from "../cradle-console.js";
 
 export function createCellCommands() {
   return [
