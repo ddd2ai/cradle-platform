@@ -49,7 +49,12 @@ export class CradleEngine {
 
   async start() {
     clearScreen();
-    renderBoot(this.model);
+
+    renderBoot({
+      provider: this.provider,
+      model: this.model,
+    });
+    
     await renderSummon();
 
     await this.loadCells();

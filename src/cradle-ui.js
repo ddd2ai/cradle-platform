@@ -87,10 +87,10 @@ function renderTagline() {
   term("\n\n");
 }
 
-function renderRuntimeStatus(model) {
+function renderRuntimeStatus({ provider, model }) {
   term.gray(`
-     ────────────────────────────────────────────────────────────────────────────────────
-                Model: ${model}   |     State: READY   |     Mode: STREAMING
+       ────────────────────────────────────────────────────────────────────────────────────
+                Provider: ${provider}   |   Model: ${model}   |   State: READY   
             
 `);
 }
@@ -99,7 +99,7 @@ export function clearScreen() {
   term.clear();
 }
 
-export function renderBoot(model) {
+export function renderBoot({ provider, model }) {
 
   const LOGO_CELL_MAP = `
                 ● Customer Cell ──────── ● Payment Cell             ●
@@ -116,7 +116,7 @@ export function renderBoot(model) {
 
   term.brightCyan(LOGO_CELL_MAP);
 
-  renderRuntimeStatus(model);
+  renderRuntimeStatus({ provider, model });
 }
 
 export async function renderSummon() {
