@@ -339,21 +339,19 @@ DNA Driven Design 的目標，
 ```text
 cradle-platform/
 
-├── engine/
-│   └── cradle-engine.js
+├── src/
+│   ├── cradle-engine.js
+│   ├── cradle-cell.js
+│   ├── cradle-ai.js
+│   ├── llm-provider.js
+│   └── providers/
+│       ├── copilot-provider.js
+│       └── ollama-provider.js
 │
 ├── cells/
-│   ├── customer-cell.js
-│   ├── payment-cell.js
-│   └── order-cell.js
-│
-├── skills/
-│   ├── coding/
-│   ├── modeling/
-│   └── analysis/
-│
-├── messages/
-│   └── cradle-message.js
+│   ├── cell-001/
+│   ├── cell-002/
+│   └── ...
 │
 ├── config/
 │   ├── DNA_DEFINITION.md
@@ -361,8 +359,101 @@ cradle-platform/
 │   ├── VISION.md
 │   └── ENVIRONMENT.md
 │
+├── docs/
+│   ├── llm-provider.md
+│   └── PROVIDER_REFACTOR.md
+│
+├── examples/
+│   └── provider-example.js
+│
+├── test/
+│   └── test-provider.js
+│
 └── README.md
 ```
+
+---
+
+# LLM Provider 架構
+
+Cradle Platform 的 LLM Provider 是 **Cradle Cell 的感知器官**。
+
+LLM 不是 Cradle 的核心，而是**可替換的能源**。
+
+## 架構概念
+
+```text
+cradle-ai.js
+  └─ createCradleAssistant()
+      只負責 Cradle 行為
+      
+llm-provider.js
+  └─ Provider 抽象規格
+  
+providers/
+  ├─ copilot-provider.js  (Copilot SDK)
+  └─ ollama-provider.js   (Ollama HTTP API)
+```
+
+## 使用範例
+
+### 使用 Copilot
+
+```js
+import { createCradleAssistant } from "./src/cradle-ai.js";
+import { createCopilotProvider } from "./src/providers/copilot-provider.js";
+
+const provider = await createCopilotProvider({
+  model: "gpt-4.1",
+});
+
+const assistant = await createCradleAssistant({
+  provider,
+  logDir: "./logs",
+  cellId: "cell-001",
+  cellName: "Seed Cell",
+});
+
+await assistant.ask("幫我分析目前的 DNA 狀態");
+```
+
+### 使用 Ollama
+
+```js
+import { createCradleAssistant } from "./src/cradle-ai.js";
+import { createOllamaProvider } from "./src/providers/ollama-provider.js";
+
+const provider = createOllamaProvider({
+  model: "llama3.1:8b",
+});
+
+const assistant = await createCradleAssistant({
+  provider,
+  logDir: "./logs",
+  cellId: "cell-001",
+  cellName: "Seed Cell",
+});
+
+await assistant.ask("幫我思考下一步");
+```
+
+## 測試範例
+
+```bash
+# 測試 Copilot Provider
+node test/test-provider.js
+
+# 測試 Ollama Provider
+node test/test-provider.js --ollama
+
+# 執行使用範例
+node examples/provider-example.js --copilot
+node examples/provider-example.js --ollama
+```
+
+詳細文件請參考:
+- [LLM Provider 架構文件](docs/llm-provider.md)
+- [Provider 重構說明](docs/PROVIDER_REFACTOR.md)
 
 ---
 

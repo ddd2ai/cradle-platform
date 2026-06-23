@@ -1,8 +1,10 @@
 import { CradleEngine } from "./cradle-engine.js";
 
-const MODEL = process.env.MODEL || "gpt-4.1";
+const PROVIDER = process.env.PROVIDER || "copilot";
+const MODEL = process.env.MODEL || (PROVIDER === "ollama" ? "llama3.1:8b" : "gpt-4.1"); 
 
 const engine = new CradleEngine({
+  provider: PROVIDER,
   model: MODEL,
 });
 

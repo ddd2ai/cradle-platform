@@ -1,4 +1,3 @@
-import { CopilotClient } from "@github/copilot-sdk";
 import fs from "fs/promises";
 import path from "path";
 
@@ -30,7 +29,7 @@ ENVIRONMENT.md: 定義細胞所在的生長環境與限制。
 `;
 
 export async function createCradleAssistant({
-  model = "gpt-4.1",
+  provider,
   onDelta,
   onIdle,
   onError,
@@ -42,23 +41,15 @@ export async function createCradleAssistant({
     throw new Error("createCradleAssistant requires logDir");
   }
 
-  const client = new CopilotClient({
-    cliUrl: "http://localhost:4321",
-  });
-
-  const approveAll = async () => ({ outcome: "approved" });
-
-  const session = await client.createSession({
-    model,
-    streaming: true,
-    onPermissionRequest: approveAll,
-  });
+  if (!provider) {
+    throw new Error("createCradleAssistant requires provider");
+  }
 
   let buffer = "";
-
   const sessionFile = path.join(logDir, `session-${Date.now()}.md`);
 
   await fs.mkdir(logDir, { recursive: true });
+
   await fs.writeFile(
     sessionFile,
     `# 🧙 Cradle Cell Session Log
@@ -66,8 +57,11 @@ export async function createCradleAssistant({
 ## Cell
 ${cellId} - ${cellName}
 
+## Provider
+${provider.name}
+
 ## Model
-${model}
+${provider.model}
 
 ## Log Directory
 ${logDir}
@@ -143,20 +137,6 @@ ${input}
 `;
   }
 
-  session.on("assistant.message_delta", (event) => {
-    const chunk = event.data.deltaContent || "";
-    buffer += chunk;
-    onDelta?.(chunk);
-  });
-
-  session.on("session.idle", () => {
-    onIdle?.();
-  });
-
-  session.on("error", (error) => {
-    onError?.(error);
-  });
-
   async function ask(input) {
     buffer = "";
 
@@ -183,9 +163,19 @@ ${input}
       }
     }
 
-    await session.sendAndWait({
+    const answer = await provider.ask({
       prompt: finalPrompt,
+      onDelta: (chunk) => {
+        buffer += chunk;
+        onDelta?.(chunk);
+      },
+      onIdle,
+      onError,
     });
+
+    if (!buffer && answer) {
+      buffer = answer;
+    }
 
     await appendSessionLog({
       input,
@@ -201,6 +191,8 @@ ${input}
       usedSkill,
       skillMissing,
       sessionFile,
+      provider: provider.name,
+      model: provider.model,
     };
   }
 
@@ -231,6 +223,12 @@ ${usedSkill || "none"}
 ### Missing Skill
 ${skillMissing || "none"}
 
+### Provider
+${provider.name}
+
+### Model
+${provider.model}
+
 ### Answer
 ${answer}
 
@@ -241,8 +239,7 @@ ${answer}
   }
 
   async function cleanup() {
-    await session.disconnect?.();
-    await client.stop?.();
+    await provider.cleanup?.();
   }
 
   return {

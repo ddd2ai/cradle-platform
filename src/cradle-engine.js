@@ -19,8 +19,13 @@ import { createColonyCommands } from "./commands/colony-commands.js";
 import dnaPlot2DCommand from "./commands/plot2d-command.js";
 
 export class CradleEngine {
-  constructor({ model = "gpt-4.1" } = {}) {
+  constructor({ 
+      model = "gpt-4.1",
+      provider = "copilot",
+  } = {}) {
     this.model = model;
+    this.provider = provider;
+
     this.cells = new Map();
     this.inboxes = new Map();
 
@@ -83,6 +88,7 @@ export class CradleEngine {
       id,
       name: id,
       model: this.model,
+      provider: this.provider,
     });
 
     await cell.prepare();
@@ -97,6 +103,7 @@ export class CradleEngine {
       id,
       name: id,
       model: this.model,
+      provider: this.provider,
     });
 
     await cell.prepare();

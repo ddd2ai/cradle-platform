@@ -2,6 +2,8 @@
 import fs from "fs/promises";
 import path from "path";
 import { createCradleAssistant } from "./cradle-ai.js";
+import { createCopilotProvider } from "./providers/copilot-provider.js";
+import { createOllamaProvider } from "./providers/ollama-provider.js";
 import {
   renderError,
   renderSkill,
@@ -19,10 +21,12 @@ export class CradleCell {
     id = "cell-001",
     name = "Cradle Cell",
     model = "gpt-4.1",
+    provider = "copilot",
   } = {}) {
     this.id = id;
     this.name = name;
     this.model = model;
+    this.provider = provider;
 
     this.rootDir = path.join("cells", this.id);
     this.logsDir = path.join(this.rootDir, "logs");
@@ -80,8 +84,10 @@ export class CradleCell {
     await this.prepareDNAVector();
     await this.prepareMemoryFiles();
 
+    const provider = await this.createProvider();
+
     this.assistant = await createCradleAssistant({
-      model: this.model,
+      provider,
       onDelta: writeAssistantChunk,
       onError: renderError,
       logDir: this.logsDir,
@@ -90,6 +96,23 @@ export class CradleCell {
     });
 
     await this.updateStatus("idle");
+  }
+
+  async createProvider() {
+    
+    if (this.provider === "ollama") {
+      return createOllamaProvider({
+        model: this.model,
+      });
+    }
+
+    if (this.provider === "copilot") {
+      return await createCopilotProvider({
+        model: this.model,
+      });
+    }
+
+    throw new Error(`Unsupported LLM provider: ${this.provider}`);
   }
 
   async activate() {
