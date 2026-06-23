@@ -20,7 +20,7 @@ async function exampleCopilot() {
 
   // 1. 建立 Copilot Provider
   const provider = await createCopilotProvider({
-    model: "gpt-4.1",
+    model: "gpt-5-mini",
   });
 
   console.log(`Provider: ${provider.name}`);
@@ -98,7 +98,7 @@ async function exampleSkill() {
   console.log("📙 範例 3: 使用 Skill\n");
 
   const provider = await createCopilotProvider({
-    model: "gpt-4.1",
+    model: "gpt-5-mini",
   });
 
   const assistant = await createCradleAssistant({

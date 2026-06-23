@@ -14,7 +14,7 @@
 
 ```js
 const assistant = await createCradleAssistant({
-  model: "gpt-4.1",  // ❌ 已移除
+  model: "gpt-5-mini",  // ❌ 已移除
   onDelta,
   onIdle,
   onError,
@@ -30,7 +30,7 @@ const assistant = await createCradleAssistant({
 import { createCopilotProvider } from "./providers/copilot-provider.js";
 
 const provider = await createCopilotProvider({
-  model: "gpt-4.1",
+  model: "gpt-5-mini",
 });
 
 const assistant = await createCradleAssistant({
@@ -67,7 +67,7 @@ import { createOllamaProvider } from "./providers/ollama-provider.js";
 ```js
 // Copilot
 const provider = await createCopilotProvider({
-  model: "gpt-4.1",
+  model: "gpt-5-mini",
   cliUrl: "http://localhost:4321",  // optional
 });
 
@@ -147,7 +147,7 @@ async prepare() {
 import { createCradleAssistant } from "./cradle-ai.js";
 
 const assistant = await createCradleAssistant({
-  model: "gpt-4.1",  // ❌
+  model: "gpt-5-mini",  // ❌
   logDir: "./logs",
   cellId: "test",
   cellName: "Test",
@@ -161,7 +161,7 @@ import { createCradleAssistant } from "./cradle-ai.js";
 import { createCopilotProvider } from "./providers/copilot-provider.js";
 
 const provider = await createCopilotProvider({
-  model: "gpt-4.1",
+  model: "gpt-5-mini",
 });
 
 const assistant = await createCradleAssistant({
@@ -179,7 +179,7 @@ const assistant = await createCradleAssistant({
 ```js
 // 選項 1: 使用 Copilot
 const provider = await createCopilotProvider({
-  model: "gpt-4.1",
+  model: "gpt-5-mini",
 });
 
 // 選項 2: 使用 Ollama
@@ -190,7 +190,7 @@ const provider = createOllamaProvider({
 // 選項 3: 根據環境變數選擇
 const provider = process.env.USE_OLLAMA
   ? createOllamaProvider({ model: "llama3.1:8b" })
-  : await createCopilotProvider({ model: "gpt-4.1" });
+  : await createCopilotProvider({ model: "gpt-5-mini" });
 
 // 之後的程式碼完全相同
 const assistant = await createCradleAssistant({
@@ -248,7 +248,7 @@ const assistant = await createCradleAssistant({
 ```js
 try {
   const provider = await createCopilotProvider({
-    model: "gpt-4.1",
+    model: "gpt-5-mini",
   });
 } catch (error) {
   console.error("Copilot 連線失敗:", error.message);

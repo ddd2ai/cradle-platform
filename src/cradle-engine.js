@@ -20,7 +20,7 @@ import dnaPlot2DCommand from "./commands/plot2d-command.js";
 
 export class CradleEngine {
   constructor({ 
-      model = "gpt-4.1",
+      model = "gpt-5-mini",
       provider = "copilot",
   } = {}) {
     this.model = model;

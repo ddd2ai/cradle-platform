@@ -17,7 +17,7 @@ async function testCopilotProvider() {
 
   try {
     const provider = await createCopilotProvider({
-      model: "gpt-4.1",
+      model: "gpt-5-mini",
     });
 
     console.log(`✅ Provider created: ${provider.name}`);

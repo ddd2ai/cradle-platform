@@ -86,7 +86,7 @@ LLM 成為可替換的「能源」:
 
 ```js
 // 使用 Copilot
-const provider = await createCopilotProvider({ model: "gpt-4.1" });
+const provider = await createCopilotProvider({ model: "gpt-5-mini" });
 
 // 或使用 Ollama
 const provider = createOllamaProvider({ model: "llama3.1:8b" });
@@ -186,7 +186,7 @@ const provider = createOllamaProvider({
 
 ```js
 const provider = await createCopilotProvider({
-  model: "gpt-4.1",
+  model: "gpt-5-mini",
 });
 ```
 
@@ -195,7 +195,7 @@ const provider = await createCopilotProvider({
 ```js
 const provider = process.env.USE_OLLAMA
   ? createOllamaProvider({ model: "llama3.1:8b" })
-  : await createCopilotProvider({ model: "gpt-4.1" });
+  : await createCopilotProvider({ model: "gpt-5-mini" });
 ```
 
 ---

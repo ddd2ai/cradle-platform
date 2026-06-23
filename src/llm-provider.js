@@ -6,7 +6,7 @@
  *
  * @typedef {Object} LLMProvider
  * @property {string} name - Provider 名稱 (e.g., "copilot", "ollama")
- * @property {string} model - 使用的模型名稱 (e.g., "gpt-4.1", "llama3.1:8b")
+ * @property {string} model - 使用的模型名稱 (e.g., "gpt-5-mini", "llama3.1:8b")
  * @property {Function} ask - 向 LLM 提問並取得回應
  * @property {Function} [cleanup] - 清理資源 (optional)
  */

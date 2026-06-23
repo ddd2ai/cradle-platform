@@ -10,7 +10,7 @@ import { createCopilotProvider } from "./src/providers/copilot-provider.js";
 
 // 1. 建立 provider
 const provider = await createCopilotProvider({
-  model: "gpt-4.1",
+  model: "gpt-5-mini",
 });
 
 // 2. 建立 assistant
@@ -47,7 +47,7 @@ const provider = createOllamaProvider({
 ```js
 {
   name: string,          // "copilot" | "ollama" | ...
-  model: string,         // "gpt-4.1" | "llama3.1:8b" | ...
+  model: string,         // "gpt-5-mini" | "llama3.1:8b" | ...
   
   async ask({
     prompt: string,      // 完整 prompt
@@ -82,12 +82,12 @@ node examples/provider-example.js --ollama
 
 ```js
 // 方法 1: 直接指定
-const provider = await createCopilotProvider({ model: "gpt-4.1" });
+const provider = await createCopilotProvider({ model: "gpt-5-mini" });
 
 // 方法 2: 根據環境變數
 const provider = process.env.USE_OLLAMA
   ? createOllamaProvider({ model: "llama3.1:8b" })
-  : await createCopilotProvider({ model: "gpt-4.1" });
+  : await createCopilotProvider({ model: "gpt-5-mini" });
 
 // 方法 3: 根據配置檔
 const config = require("./config.json");
@@ -136,7 +136,7 @@ import { CradleCell } from "./src/cradle-cell.js";
 const cell = new CradleCell({
   id: "cell-001",
   name: "My Cell",
-  model: "gpt-4.1",
+  model: "gpt-5-mini",
 });
 
 await cell.prepare();  // 自動建立 provider

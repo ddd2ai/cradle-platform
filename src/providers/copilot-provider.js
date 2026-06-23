@@ -7,13 +7,13 @@ import { CopilotClient } from "@github/copilot-sdk";
  * 透過 Copilot CLI 連線到 GitHub Copilot 服務。
  *
  * @param {Object} options
- * @param {string} [options.model="gpt-4.1"] - 使用的模型
+ * @param {string} [options.model="gpt-5-mini"] - 使用的模型
  * @param {string} [options.cliUrl="http://localhost:4321"] - Copilot CLI URL
  * @returns {Promise<LLMProvider>}
  *
  * @example
  * const provider = await createCopilotProvider({
- *   model: "gpt-4.1",
+ *   model: "gpt-5-mini",
  * });
  *
  * const response = await provider.ask({
@@ -22,7 +22,7 @@ import { CopilotClient } from "@github/copilot-sdk";
  * });
  */
 export async function createCopilotProvider({
-  model = "gpt-4.1",
+  model = "gpt-5-mini",
   cliUrl = "http://localhost:4321",
 }) {
   const client = new CopilotClient({

@@ -48,7 +48,7 @@ providers/ollama-provider.js
 ```js
 {
   name: string,           // Provider 名稱 (e.g., "copilot", "ollama")
-  model: string,          // 模型名稱 (e.g., "gpt-4.1", "llama3.1:8b")
+  model: string,          // 模型名稱 (e.g., "gpt-5-mini", "llama3.1:8b")
 
   async ask({
     prompt,               // 完整 prompt (system + user)
@@ -72,7 +72,7 @@ import { createCradleAssistant } from "./src/cradle-ai.js";
 import { createCopilotProvider } from "./src/providers/copilot-provider.js";
 
 const provider = await createCopilotProvider({
-  model: "gpt-4.1",
+  model: "gpt-5-mini",
 });
 
 const assistant = await createCradleAssistant({
@@ -122,7 +122,7 @@ import { CradleCell } from "./src/cradle-cell.js";
 const cell = new CradleCell({
   id: "cell-001",
   name: "Seed Cell",
-  model: "gpt-4.1",
+  model: "gpt-5-mini",
 });
 
 await cell.prepare();

@@ -294,7 +294,7 @@ Cell 初始為中性生命單位。
 ```text
 Mode      : Cradle
 Role      : Engine Console
-Model     : gpt-4.1
+Model     : gpt-5-mini
 Cells     : 3
 ```
 
@@ -302,7 +302,7 @@ Cells     : 3
 
 ```text
 Cell ID   : cell-001
-Model     : gpt-4.1
+Model     : gpt-5-mini
 Status    : idle
 Maturity  : 3
 ```

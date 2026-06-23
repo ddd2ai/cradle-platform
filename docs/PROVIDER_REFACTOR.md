@@ -85,7 +85,7 @@ providers/ollama-provider.js
 ```js
 {
   name: string,    // "copilot" | "ollama" | ...
-  model: string,   // "gpt-4.1" | "llama3.1:8b" | ...
+  model: string,   // "gpt-5-mini" | "llama3.1:8b" | ...
   
   ask({
     prompt,        // 完整 prompt
@@ -109,7 +109,7 @@ import { createCradleAssistant } from "./src/cradle-ai.js";
 import { createCopilotProvider } from "./src/providers/copilot-provider.js";
 
 const provider = await createCopilotProvider({
-  model: "gpt-4.1",
+  model: "gpt-5-mini",
 });
 
 const assistant = await createCradleAssistant({

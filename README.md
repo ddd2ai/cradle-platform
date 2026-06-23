@@ -404,7 +404,7 @@ import { createCradleAssistant } from "./src/cradle-ai.js";
 import { createCopilotProvider } from "./src/providers/copilot-provider.js";
 
 const provider = await createCopilotProvider({
-  model: "gpt-4.1",
+  model: "gpt-5-mini",
 });
 
 const assistant = await createCradleAssistant({

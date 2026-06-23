@@ -1,7 +1,7 @@
 {
   "id": "cell-003",
   "name": "cell-003",
-  "model": "llama3.1:8b",
+  "model": "gpt-5-mini",
   "status": "idle",
   "maturity": 21,
   "generation": 1,
@@ -9,8 +9,8 @@
   "responsibilities": [],
   "relationships": [],
   "createdAt": "2026-06-05T02:05:01.178Z",
-  "updatedAt": "2026-06-23T12:11:26.205Z",
-  "lastStartedAt": "2026-06-23T12:11:26.202Z",
+  "updatedAt": "2026-06-23T12:27:58.124Z",
+  "lastStartedAt": "2026-06-23T12:27:58.110Z",
   "directories": {
     "root": "cells/cell-003",
     "logs": "cells/cell-003/logs",

@@ -20,7 +20,7 @@ export class CradleCell {
   constructor({
     id = "cell-001",
     name = "Cradle Cell",
-    model = "gpt-4.1",
+    model = "gpt-5-mini",
     provider = "copilot",
   } = {}) {
     this.id = id;

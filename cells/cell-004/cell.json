@@ -1,7 +1,7 @@
 {
   "id": "cell-004",
   "name": "cell-004",
-  "model": "llama3.1:8b",
+  "model": "gpt-5-mini",
   "status": "idle",
   "maturity": 22,
   "generation": 1,
@@ -9,8 +9,8 @@
   "responsibilities": [],
   "relationships": [],
   "createdAt": "2026-06-05T02:10:49.296Z",
-  "updatedAt": "2026-06-23T12:11:26.207Z",
-  "lastStartedAt": "2026-06-23T12:11:26.205Z",
+  "updatedAt": "2026-06-23T12:27:58.137Z",
+  "lastStartedAt": "2026-06-23T12:27:58.124Z",
   "directories": {
     "root": "cells/cell-004",
     "logs": "cells/cell-004/logs",
