@@ -1,4 +1,4 @@
-// dna/dna-matrix.js
+// src/dna/dna-matrix.js
 
 export const DNA_TRAITS = [
   "PERCEPTION",

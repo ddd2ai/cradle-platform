@@ -76,6 +76,15 @@ export function createCellCommands() {
     },
 
     {
+      name: "/prompt",
+      match: (input, { engine }) => input === "/prompt" && !engine.isCradleMode(),
+      execute: async ({ engine }) => {
+        const cell = engine.getActiveCell();
+        console.log(await cell.buildCellSystemPrompt());
+      },
+    },
+
+    {
       name: "/dna init",
       match: (input, { engine }) =>
         input === "/dna init" && !engine.isCradleMode(),

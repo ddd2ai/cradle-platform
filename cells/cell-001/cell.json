@@ -1,0 +1,32 @@
+{
+  "id": "cell-001",
+  "name": "cell-001",
+  "model": "llama3.1:8b",
+  "status": "idle",
+  "maturity": 2,
+  "generation": 1,
+  "parent": null,
+  "responsibilities": [],
+  "relationships": [],
+  "createdAt": "2026-06-25T12:09:44.426Z",
+  "updatedAt": "2026-06-25T12:13:24.124Z",
+  "lastStartedAt": "2026-06-25T12:12:16.588Z",
+  "directories": {
+    "root": "cells/cell-001",
+    "logs": "cells/cell-001/logs",
+    "memory": "cells/cell-001/memory",
+    "dna": "cells/cell-001/dna",
+    "workspace": "cells/cell-001/workspace",
+    "workspaceDirs": {
+      "notes": "cells/cell-001/workspace/notes",
+      "tasks": "cells/cell-001/workspace/tasks",
+      "artifacts": "cells/cell-001/workspace/artifacts",
+      "projects": "cells/cell-001/workspace/projects",
+      "research": "cells/cell-001/workspace/research",
+      "decisions": "cells/cell-001/workspace/decisions"
+    },
+    "snapshots": "cells/cell-001/snapshots",
+    "thoughts": "cells/cell-001/thoughts",
+    "inbox": "cells/cell-001/inbox"
+  }
+}

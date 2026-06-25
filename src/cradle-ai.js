@@ -1,7 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 
-const CRADLE_SYSTEM_PROMPT = `
+export const CRADLE_SYSTEM_PROMPT = `
 你是 Cradle Platform 的核心助手。
 
 請永遠使用台灣常用繁體中文回答。
@@ -18,13 +18,6 @@ const CRADLE_SYSTEM_PROMPT = `
 - Cradle Engine
 - Cradle Platform
 
-Cradle Cell 的演化由四個核心檔案決定:
-
-DNA_DEFINITION.md: 定義細胞有哪些內部能力。
-DNA_FACTORS.md: 定義細胞如何計算成熟度。
-VISION.md: 定義細胞要長成什麼系統。
-ENVIRONMENT.md: 定義細胞所在的生長環境與限制。
-
 回答時要保留 Cradle 的世界觀,但不要過度浮誇。
 `;
 
@@ -36,6 +29,7 @@ export async function createCradleAssistant({
   logDir,
   cellId = "unknown-cell",
   cellName = "Unknown Cell",
+  systemPromptBuilder = null,
 }) {
   if (!logDir) {
     throw new Error("createCradleAssistant requires logDir");
@@ -113,10 +107,14 @@ ${content}
     return refsContent;
   }
 
-  function buildPrompt({ input, skillContent = null, userContent = null }) {
+  async function buildPrompt({ input, skillContent = null, userContent = null }) {
+    const systemPrompt = systemPromptBuilder
+      ? await systemPromptBuilder({ input })
+      : CRADLE_SYSTEM_PROMPT;
+
     if (skillContent) {
       return `
-${CRADLE_SYSTEM_PROMPT}
+${systemPrompt}
 
 # Skill Context
 
@@ -129,7 +127,7 @@ ${userContent}
     }
 
     return `
-${CRADLE_SYSTEM_PROMPT}
+${systemPrompt}
 
 # User Input
 
@@ -140,7 +138,7 @@ ${input}
   async function ask(input) {
     buffer = "";
 
-    let finalPrompt = buildPrompt({ input });
+    let finalPrompt = await buildPrompt({ input });
     let usedSkill = null;
     let skillMissing = null;
 
@@ -153,7 +151,7 @@ ${input}
 
       if (skillContent) {
         usedSkill = skillName;
-        finalPrompt = buildPrompt({
+        finalPrompt = await buildPrompt({
           input,
           skillContent,
           userContent,

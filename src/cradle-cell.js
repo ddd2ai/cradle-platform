@@ -100,6 +100,7 @@ export class CradleCell {
       logDir: this.logsDir,
       cellId: this.id,
       cellName: this.name,
+      systemPromptBuilder: async () => await this.buildCellSystemPrompt(),
     });
 
     await this.updateStatus("idle");
@@ -447,26 +448,34 @@ createdAt: ${new Date().toISOString()}
     await this.updateStatus("running");
 
     try {
-      const memoryContext = await this.buildMemoryContext(input);
+      const recentHistory = await this.readRecentHistory(4000);
+      const recentThoughts = await this.readRecentThoughts(2000);
 
       const cellInput = `
-      # Cradle Cell Context
+# Cell Runtime Context
 
-      ## Cell
-      - id: ${this.id}
-      - name: ${this.name}
-      - model: ${this.model}
+- id: ${this.id}
+- name: ${this.name}
+- model: ${this.model}
 
-      ## Memory
+---
 
-      ${memoryContext}
+# Recent History
 
-      ---
+${recentHistory}
 
-      # User Input
+---
 
-      ${input}
-      `;
+# Recent Thoughts
+
+${recentThoughts}
+
+---
+
+# User Input
+
+${input}
+`;
 
       const result = await this.askWithTimeout(cellInput, 60000);
       const outputText = result?.text ?? result?.answer ?? "(response streamed)";
@@ -2429,6 +2438,93 @@ ${memoryContext}
   tail(content, maxChars = 8000) {
     if (!content) return "";
     return content.length > maxChars ? content.slice(-maxChars) : content;
+  }
+
+  async safeReadFile(file, fallback = "") {
+    try {
+      return await fs.readFile(file, "utf8");
+    } catch {
+      return fallback;
+    }
+  }
+
+  async buildCellSystemPrompt() {
+    const vision = await this.safeReadFile(this.visionFile, "# VISION\n\n(empty)");
+    const environment = await this.safeReadFile(this.environmentFile, "# ENVIRONMENT\n\n(empty)");
+    const dnaDefinition = await this.safeReadFile(this.dnaDefinitionFile, "# DNA_DEFINITION\n\n(empty)");
+    const dnaFactors = await this.safeReadFile(this.dnaFactorsFile, "# DNA_FACTORS\n\n(empty)");
+
+    const identity = await this.safeReadMemory("identity");
+    const rules = await this.safeReadMemory("rules");
+    const knowledge = await this.safeReadMemory("knowledge");
+    const dnaContext = await this.readDNAContext();
+
+    return `
+你是 Cradle Cell，不是 Cradle Platform 的核心助手。
+
+你是一個會根據 DNA、記憶、環境與願景成長的軟體生命細胞。
+
+請永遠使用台灣常用繁體中文回答。
+不要使用簡體中文。
+不要使用制式客服語氣。
+
+你的回答必須根據以下來源：
+- VISION：定義你要長成什麼系統
+- ENVIRONMENT：定義你所在的技術環境與限制
+- DNA_DEFINITION：定義你的能力維度
+- DNA_FACTORS：定義你的成熟度與成長因素
+- CELL MEMORY：定義你的身份、規則、知識與經驗
+- CELL DNA：定義你目前的能力狀態
+
+你不能假裝自己是整個 Cradle Platform。
+你只能以目前 cell 的角度回答。
+
+# VISION
+
+${vision}
+
+---
+
+# ENVIRONMENT
+
+${environment}
+
+---
+
+# DNA_DEFINITION
+
+${dnaDefinition}
+
+---
+
+# DNA_FACTORS
+
+${dnaFactors}
+
+---
+
+# CELL IDENTITY
+
+${identity}
+
+---
+
+# CELL RULES
+
+${rules}
+
+---
+
+# CELL KNOWLEDGE
+
+${knowledge}
+
+---
+
+# CELL DNA
+
+${dnaContext}
+`;
   }
 
   async listDirectoryRecursive(dir, baseDir = dir) {
