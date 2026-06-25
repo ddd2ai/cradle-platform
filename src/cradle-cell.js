@@ -4,6 +4,7 @@ import path from "path";
 import { createCradleAssistant } from "./cradle-ai.js";
 import { createCopilotProvider } from "./providers/copilot-provider.js";
 import { createOllamaProvider } from "./providers/ollama-provider.js";
+import { block } from "./utils/text.js";
 import {
   renderError,
   renderSkill,
@@ -305,34 +306,40 @@ export class CradleCell {
     `
     );
 
-    await this.appendHistory(`
-    ## ${new Date().toISOString()}
+    await this.appendHistory(
+      block([
+        `## ${new Date().toISOString()}`,
+        "",
+        "### Task",
+        task.title,
+        "",
+        "### Result",
+        outputText,
+        "",
+      ])
+    );
 
-    ### Task
-    ${task.title}
 
-    ### Result
-    ${outputText}
-    `);
-
-
-    await this.appendThought(`
-    ## ${new Date().toISOString()}
-
-    ## Task Experience
-
-    ### Task
-    ${task.title}
-
-    ### Source
-    ${task.source}
-
-    ### Result Summary
-    ${outputText}
-
-    ### Growth Impact
-    This task changed how the cell understands its environment and future work.
-    `);
+    await this.appendThought(
+      block([
+        `## ${new Date().toISOString()}`,
+        "",
+        "## Task Experience",
+        "",
+        "### Task",
+        task.title,
+        "",
+        "### Source",
+        task.source,
+        "",
+        "### Result Summary",
+        outputText,
+        "",
+        "### Growth Impact",
+        "This task changed how the cell understands its environment and future work.",
+        "",
+      ])
+    );
 
     await this.mature(1);
 
@@ -464,14 +471,18 @@ createdAt: ${new Date().toISOString()}
       const result = await this.askWithTimeout(cellInput, 60000);
       const outputText = result?.text ?? result?.answer ?? "(response streamed)";
 
-      await this.appendHistory(`## ${new Date().toISOString()}
-
-      ### User
-      ${input}
-
-      ### Result
-      ${outputText}
-      `);
+      await this.appendHistory(
+        block([
+          `## ${new Date().toISOString()}`,
+          "",
+          "### User",
+          input,
+          "",
+          "### Result",
+          outputText,
+          "",
+        ])
+      );
 
       await this.reflect({
         input,
@@ -1260,18 +1271,23 @@ TODO: define meaning from DNA_DEFINITION.md.
 
     await childCell.writeMemory(
       "history",
-      `# History
-
-      Born from ${this.id} at ${new Date().toISOString()}.
-      `
+      block([
+        "# History",
+        "",
+        `Born from ${this.id} at ${new Date().toISOString()}.`,
+        "",
+      ])
     );
 
-    await childCell.appendThought(`
-    ## ${new Date().toISOString()}
-
-    I was born from ${this.id}.
-    My inherited memory should be refined into my own growth direction.
-    `);
+    await childCell.appendThought(
+      block([
+        `## ${new Date().toISOString()}`,
+        "",
+        `I was born from ${this.id}.`,
+        "My inherited memory should be refined into my own growth direction.",
+        "",
+      ])
+    );
 
     await this.addRelationship("divided-into", childCell.id);
     await childCell.addRelationship("born-from", this.id);
@@ -1353,58 +1369,63 @@ TODO: define meaning from DNA_DEFINITION.md.
       await childCell.addResponsibility(responsibility);
     }
 
-    await childCell.appendKnowledge(`
-## Division Origin
+    await childCell.appendKnowledge(
+      block([
+        "## Division Origin",
+        "",
+        `Born from ${this.id}.`,
+        "",
+        "## Division Type",
+        "",
+        "SVD-based DNA division.",
+        "",
+        "## Role",
+        "",
+        plan.role,
+        "",
+        "## Reason",
+        "",
+        plan.reason,
+        "",
+        "## Dominant Traits",
+        "",
+        ...plan.dominantTraits.map((item) => `- ${item.name}: ${item.value.toFixed(3)}`),
+        "",
+        "## Dominant Factors",
+        "",
+        ...plan.dominantFactors.map((item) => `- ${item.name}: ${item.value.toFixed(3)}`),
+        "",
+      ])
+    );
 
-Born from ${this.id}.
+    await childCell.appendThought(
+      block([
+        `## ${new Date().toISOString()}`,
+        "",
+        "I was born through SVD-based DNA division.",
+        "",
+        `My role is ${plan.role}.`,
+        "",
+        "My inherited DNA is not a full clone.",
+        "It is a specialized projection of the parent cell's dominant DNA axis.",
+        "",
+      ])
+    );
 
-## Division Type
-
-SVD-based DNA division.
-
-## Role
-
-${plan.role}
-
-## Reason
-
-${plan.reason}
-
-## Dominant Traits
-
-${plan.dominantTraits
-  .map((item) => `- ${item.name}: ${item.value.toFixed(3)}`)
-  .join("\n")}
-
-## Dominant Factors
-
-${plan.dominantFactors
-  .map((item) => `- ${item.name}: ${item.value.toFixed(3)}`)
-  .join("\n")}
-`);
-
-    await childCell.appendThought(`
-## ${new Date().toISOString()}
-
-I was born through SVD-based DNA division.
-
-My role is ${plan.role}.
-
-My inherited DNA is not a full clone.
-It is a specialized projection of the parent cell's dominant DNA axis.
-`);
-
-    await this.appendThought(`
-## ${new Date().toISOString()}
-
-I divided into ${childCell.id} through SVD-based DNA division.
-
-Reason:
-${plan.reason}
-
-Child role:
-${plan.role}
-`);
+    await this.appendThought(
+      block([
+        `## ${new Date().toISOString()}`,
+        "",
+        `I divided into ${childCell.id} through SVD-based DNA division.`,
+        "",
+        "Reason:",
+        plan.reason,
+        "",
+        "Child role:",
+        plan.role,
+        "",
+      ])
+    );
 
     return plan;
   }
@@ -1952,15 +1973,23 @@ ${memoryContext}
 
       const timestamp = new Date().toISOString();
 
-      await this.appendThought(`## ${timestamp}
+      await this.appendThought(
+        block([
+          `## ${timestamp}`,
+          "",
+          reflection,
+          "",
+        ])
+      );
 
-      ${reflection}
-      `);
-
-      await this.appendKnowledge(`## Learned at ${timestamp}
-
-      ${reflection}
-      `);
+      await this.appendKnowledge(
+        block([
+          `## Learned at ${timestamp}`,
+          "",
+          reflection,
+          "",
+        ])
+      );
     } catch {
       // reflection 失敗不應中斷主要任務
     }
@@ -2055,10 +2084,14 @@ ${memoryContext}
       throw new Error("No thought generated.");
     }
 
-    await this.appendThought(`## ${new Date().toISOString()}
-
-    ${thought}
-    `);
+    await this.appendThought(
+      block([
+        `## ${new Date().toISOString()}`,
+        "",
+        thought,
+        "",
+      ])
+    );
 
     await this.increaseMaturity(1);
 
@@ -2116,15 +2149,23 @@ ${memoryContext}
 
   const timestamp = new Date().toISOString();
 
-  await this.appendThought(`## ${timestamp}
+  await this.appendThought(
+    block([
+      `## ${timestamp}`,
+      "",
+      summary,
+      "",
+    ])
+  );
 
-  ${summary}
-  `);
-
-  await this.appendKnowledge(`## Inbox Processed at ${timestamp}
-
-  ${summary}
-  `);
+  await this.appendKnowledge(
+    block([
+      `## Inbox Processed at ${timestamp}`,
+      "",
+      summary,
+      "",
+    ])
+  );
 
   const task = await this.addTask({
     title: `Process inbox from ${inbox.map((m) => m.from).join(", ")}`,

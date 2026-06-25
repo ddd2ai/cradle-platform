@@ -1,6 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import { renderAnswerStart } from "../cradle-console.js";
+import { block } from "../utils/text.js";
 
 export function createCellCommands() {
   return [
@@ -317,7 +318,14 @@ Reason        : ${result.reason ?? "-"}
           return;
         }
 
-        await cell.appendKnowledge(`## ${new Date().toISOString()}\n\n${content}`);
+        await cell.appendKnowledge(
+          block([
+            `## ${new Date().toISOString()}`,
+            "",
+            content,
+            "",
+          ])
+        );
         console.log("Memory updated.");
       },
     },
@@ -1170,13 +1178,16 @@ ${plan.dominantFactors
 
         await cell.addResponsibility(role);
 
-        await cell.appendKnowledge(`
-        ## Specialization
-
-        This cell has started specializing in:
-
-        ${role}
-        `);
+        await cell.appendKnowledge(
+          block([
+            "## Specialization",
+            "",
+            "This cell has started specializing in:",
+            "",
+            role,
+            "",
+          ])
+        );
 
         console.log(`Cell specialized: ${role}`);
       },
