@@ -1,0 +1,46 @@
+{
+  "id": "cell-006",
+  "name": "cell-006",
+  "model": "llama3.1:8b",
+  "status": "idle",
+  "maturity": 0,
+  "generation": 2,
+  "parent": "cell-001",
+  "responsibilities": [
+    "perception",
+    "collaboration",
+    "reflection",
+    "decomposition",
+    "decision",
+    "learning",
+    "creation",
+    "evolution"
+  ],
+  "relationships": [
+    {
+      "type": "born-from",
+      "target": "cell-001"
+    }
+  ],
+  "createdAt": "2026-06-25T05:06:04.527Z",
+  "updatedAt": "2026-06-25T05:15:28.468Z",
+  "lastStartedAt": "2026-06-25T05:15:28.467Z",
+  "directories": {
+    "root": "cells/cell-006",
+    "logs": "cells/cell-006/logs",
+    "memory": "cells/cell-006/memory",
+    "dna": "cells/cell-006/dna",
+    "workspace": "cells/cell-006/workspace",
+    "workspaceDirs": {
+      "notes": "cells/cell-006/workspace/notes",
+      "tasks": "cells/cell-006/workspace/tasks",
+      "artifacts": "cells/cell-006/workspace/artifacts",
+      "projects": "cells/cell-006/workspace/projects",
+      "research": "cells/cell-006/workspace/research",
+      "decisions": "cells/cell-006/workspace/decisions"
+    },
+    "snapshots": "cells/cell-006/snapshots",
+    "thoughts": "cells/cell-006/thoughts",
+    "inbox": "cells/cell-006/inbox"
+  }
+}

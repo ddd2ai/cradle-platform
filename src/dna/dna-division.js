@@ -11,14 +11,15 @@ import {
   rank1SVD,
 } from "./dna-svd.js";
 
-function topItems(labels, values, minValue = 0.35) {
+function topItems(labels, values, minValue = 0.35, limit = 3) {
   return labels
     .map((label, index) => ({
       name: label,
       value: Math.abs(values[index] ?? 0),
     }))
     .filter((item) => item.value >= minValue)
-    .sort((a, b) => b.value - a.value);
+    .sort((a, b) => b.value - a.value)
+    .slice(0, limit);
 }
 
 function normalizeByMax(value, max) {
@@ -27,26 +28,33 @@ function normalizeByMax(value, max) {
 }
 
 function inferRoleName(dominantTraits = []) {
-  const names = dominantTraits.map((item) => item.name);
+  const primary = dominantTraits[0]?.name;
 
-  if (names.includes("CREATION")) return "Creation Cell";
-  if (names.includes("DECOMPOSITION")) return "Decomposition Cell";
-  if (names.includes("COLLABORATION")) return "Collaboration Cell";
-  if (names.includes("PERCEPTION")) return "Perception Cell";
-  if (names.includes("DECISION")) return "Decision Cell";
-  if (names.includes("EVOLUTION")) return "Evolution Cell";
-  if (names.includes("REFLECTION")) return "Reflection Cell";
-  if (names.includes("LEARNING")) return "Learning Cell";
+  if (primary === "CREATION") return "Creation Cell";
+  if (primary === "DECOMPOSITION") return "Decomposition Cell";
+  if (primary === "COLLABORATION") return "Collaboration Cell";
+  if (primary === "PERCEPTION") return "Perception Cell";
+  if (primary === "DECISION") return "Decision Cell";
+  if (primary === "EVOLUTION") return "Evolution Cell";
+  if (primary === "REFLECTION") return "Reflection Cell";
+  if (primary === "LEARNING") return "Learning Cell";
 
   return "Specialized Cell";
 }
 
+const MUTATION_SEED_A = 12.9898;
+const MUTATION_SEED_B = 78.233;
+const MUTATION_SCALE = 43758.5453;
+
 function deterministicMutation(i, j, mutationRate) {
   const seed =
-    Math.sin((i + 1) * 12.9898 + (j + 1) * 78.233) *
-    43758.5453;
+    Math.sin(
+      (i + 1) * MUTATION_SEED_A +
+      (j + 1) * MUTATION_SEED_B
+    ) * MUTATION_SCALE;
 
-  const fraction = seed - Math.floor(seed);
+  const fraction =
+    seed - Math.floor(seed);
 
   return (fraction - 0.5) * mutationRate;
 }
@@ -54,7 +62,7 @@ function deterministicMutation(i, j, mutationRate) {
 export function createDivisionPlanFromMatrix(matrix, {
   parentId,
   childId,
-  minTraitLoad = 0.35,
+  minTraitLoad = 0.38,
   minFactorLoad = 0.2,
   inheritRate = 0.88,
   mutationRate = 0.03,
@@ -66,17 +74,13 @@ export function createDivisionPlanFromMatrix(matrix, {
     v,
   } = rank1SVD(matrix);
 
-  const dominantTraits =
-    topItems(DNA_TRAITS, u, minTraitLoad);
+  const dominantTraits = topItems(DNA_TRAITS, u, minTraitLoad, 3);
+  const dominantFactors = topItems(DNA_FACTORS, v, minFactorLoad, 4);
+  const maxTrait = dominantTraits[0]?.value ?? 1;
+  const maxFactor = dominantFactors[0]?.value ?? 1;
 
-  const dominantFactors =
-    topItems(DNA_FACTORS, v, minFactorLoad);
-
-  const maxTrait =
-    dominantTraits[0]?.value ?? 1;
-
-  const maxFactor =
-    dominantFactors[0]?.value ?? 1;
+  const childBaseRate = 0.55;
+  const childSpecializationRate = 0.45;
 
   const childMatrix = matrix.map((row, i) =>
     row.map((value, j) => {
@@ -97,7 +101,11 @@ export function createDivisionPlanFromMatrix(matrix, {
         deterministicMutation(i, j, mutationRate);
 
       return clamp01(
-        value * inheritRate * inheritance + mutation
+        value * (
+          childBaseRate +
+          childSpecializationRate * inheritance
+        ) * inheritRate +
+        mutation
       );
     })
   );

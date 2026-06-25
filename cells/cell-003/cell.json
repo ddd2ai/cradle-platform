@@ -1,16 +1,21 @@
 {
   "id": "cell-003",
   "name": "cell-003",
-  "model": "gpt-5-mini",
-  "status": "idle",
-  "maturity": 21,
-  "generation": 1,
-  "parent": null,
+  "model": "llama3.1:8b",
+  "status": "running",
+  "maturity": 0,
+  "generation": 2,
+  "parent": "cell-001",
   "responsibilities": [],
-  "relationships": [],
-  "createdAt": "2026-06-05T02:05:01.178Z",
-  "updatedAt": "2026-06-23T12:27:58.124Z",
-  "lastStartedAt": "2026-06-23T12:27:58.110Z",
+  "relationships": [
+    {
+      "type": "born-from",
+      "target": "cell-001"
+    }
+  ],
+  "createdAt": "2026-06-25T05:31:13.158Z",
+  "updatedAt": "2026-06-25T05:33:00.926Z",
+  "lastStartedAt": "2026-06-25T05:31:13.158Z",
   "directories": {
     "root": "cells/cell-003",
     "logs": "cells/cell-003/logs",

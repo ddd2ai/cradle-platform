@@ -1,0 +1,50 @@
+{
+  "PERCEPTION": {
+    "strength": 0.4794866795016287,
+    "stability": 0.6601257936482732,
+    "plasticity": 0.2924613209158869,
+    "fitness": 0.536455111747373
+  },
+  "DECISION": {
+    "strength": 0.48004002650118555,
+    "stability": 0.6611970157744852,
+    "plasticity": 0.2926654904956366,
+    "fitness": 0.4795447064781527
+  },
+  "DECOMPOSITION": {
+    "strength": 0.47994775654798494,
+    "stability": 0.6610183735474687,
+    "plasticity": 0.29263144865542695,
+    "fitness": 0.48903917473849345
+  },
+  "LEARNING": {
+    "strength": 0.48004002650118555,
+    "stability": 0.6611970157744852,
+    "plasticity": 0.2926654904956366,
+    "fitness": 0.4795447064781527
+  },
+  "COLLABORATION": {
+    "strength": 0.4797452369893378,
+    "stability": 0.6606263112227566,
+    "plasticity": 0.31206050736562235,
+    "fitness": 0.49841238825231227
+  },
+  "CREATION": {
+    "strength": 0.48004002650118555,
+    "stability": 0.6611970157744852,
+    "plasticity": 0.2926654904956366,
+    "fitness": 0.4795447064781527
+  },
+  "EVOLUTION": {
+    "strength": 0.48004002650118555,
+    "stability": 0.6611970157744852,
+    "plasticity": 0.2926654904956366,
+    "fitness": 0.4795447064781527
+  },
+  "REFLECTION": {
+    "strength": 0.47989261038163444,
+    "stability": 0.6609116133346754,
+    "plasticity": 0.302364805221127,
+    "fitness": 0.48898154499411034
+  }
+}

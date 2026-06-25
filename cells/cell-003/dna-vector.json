@@ -1,50 +1,50 @@
 {
   "PERCEPTION": {
-    "strength": 0.5,
-    "stability": 0.7,
-    "plasticity": 0.3,
-    "fitness": 0.52
+    "strength": 0.2948477630891225,
+    "stability": 0.41340594772799905,
+    "plasticity": 0.15945670013660135,
+    "fitness": 0.33266709618513324
   },
   "DECISION": {
-    "strength": 0.5,
-    "stability": 0.7,
-    "plasticity": 0.3,
-    "fitness": 0.5
+    "strength": 0.2883804915969687,
+    "stability": 0.4198474488356411,
+    "plasticity": 0.15531280066476252,
+    "fitness": 0.28825446212912037
   },
   "DECOMPOSITION": {
-    "strength": 0.5,
-    "stability": 0.7,
-    "plasticity": 0.3,
-    "fitness": 0.53
+    "strength": 0.28509111559188216,
+    "stability": 0.41897652840508876,
+    "plasticity": 0.1735174282394632,
+    "fitness": 0.2731243565106611
   },
   "LEARNING": {
-    "strength": 0.5,
-    "stability": 0.7,
-    "plasticity": 0.3,
-    "fitness": 0.5
+    "strength": 0.2796206598831724,
+    "stability": 0.4371437885590209,
+    "plasticity": 0.16495137698024104,
+    "fitness": 0.2753057846019915
   },
   "COLLABORATION": {
-    "strength": 0.5,
-    "stability": 0.7,
-    "plasticity": 0.3,
-    "fitness": 0.53
+    "strength": 0.3080193080025416,
+    "stability": 0.4258024070729719,
+    "plasticity": 0.1737577444611145,
+    "fitness": 0.2805091360206932
   },
   "CREATION": {
-    "strength": 0.5,
-    "stability": 0.7,
-    "plasticity": 0.3,
-    "fitness": 0.53
+    "strength": 0.2944331270001158,
+    "stability": 0.4267399867479195,
+    "plasticity": 0.16720830396465483,
+    "fitness": 0.31322346557689223
   },
   "EVOLUTION": {
-    "strength": 0.5,
-    "stability": 0.7,
-    "plasticity": 0.3,
-    "fitness": 0.5
+    "strength": 0.28656131447531713,
+    "stability": 0.42591603230861136,
+    "plasticity": 0.15004691167763434,
+    "fitness": 0.28493470531637693
   },
   "REFLECTION": {
-    "strength": 0.5,
-    "stability": 0.7,
-    "plasticity": 0.3,
-    "fitness": 0.5
+    "strength": 0.28715177858977875,
+    "stability": 0.42616474778440233,
+    "plasticity": 0.17175548964994727,
+    "fitness": 0.27218876889525245
   }
 }
