@@ -1,0 +1,45 @@
+{
+  "id": "cell-ABC",
+  "name": "cell-ABC",
+  "model": "llama3.1:8b",
+  "status": "idle",
+  "maturity": 0,
+  "generation": 4,
+  "parent": null,
+  "responsibilities": [],
+  "relationships": [
+    {
+      "type": "fused-from",
+      "target": "cell-A"
+    },
+    {
+      "type": "fused-from",
+      "target": "cell-B"
+    },
+    {
+      "type": "fused-from",
+      "target": "cell-C"
+    }
+  ],
+  "createdAt": "2026-06-25T08:00:37.077Z",
+  "updatedAt": "2026-06-25T08:00:37.084Z",
+  "lastStartedAt": "2026-06-25T08:00:37.077Z",
+  "directories": {
+    "root": "cells/cell-ABC",
+    "logs": "cells/cell-ABC/logs",
+    "memory": "cells/cell-ABC/memory",
+    "dna": "cells/cell-ABC/dna",
+    "workspace": "cells/cell-ABC/workspace",
+    "workspaceDirs": {
+      "notes": "cells/cell-ABC/workspace/notes",
+      "tasks": "cells/cell-ABC/workspace/tasks",
+      "artifacts": "cells/cell-ABC/workspace/artifacts",
+      "projects": "cells/cell-ABC/workspace/projects",
+      "research": "cells/cell-ABC/workspace/research",
+      "decisions": "cells/cell-ABC/workspace/decisions"
+    },
+    "snapshots": "cells/cell-ABC/snapshots",
+    "thoughts": "cells/cell-ABC/thoughts",
+    "inbox": "cells/cell-ABC/inbox"
+  }
+}

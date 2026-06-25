@@ -431,7 +431,23 @@ export class CradleEngine {
       /link <type> <cell>      Create relationship
       /graph                   Show cell graph
 
+    
+      Cell Fusion:
+      /merge <parent...> <child>
+                               Fuse multiple cells into a new child.
 
+                               Features:
+                               • DNA centroid fusion
+                               • Maturity-weighted inheritance
+                               • Responsibility inheritance
+                               • Parent memory archive
+                               • Relationship creation
+                               • Generation increment
+
+                               Example:
+                               /merge cell-001 cell-002 cell-A
+
+                               
     Cell Collaboration:
       /delegate <cell> <task>  Delegate task to another cell
       /report <cell> <file>    Report artifact to another cell

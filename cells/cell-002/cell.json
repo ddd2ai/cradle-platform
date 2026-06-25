@@ -3,7 +3,7 @@
   "name": "cell-002",
   "model": "llama3.1:8b",
   "status": "idle",
-  "maturity": 0,
+  "maturity": 1,
   "generation": 2,
   "parent": "cell-001",
   "responsibilities": [],
@@ -11,11 +11,27 @@
     {
       "type": "born-from",
       "target": "cell-001"
+    },
+    {
+      "type": "fused-into",
+      "target": "cell-009"
+    },
+    {
+      "type": "fused-into",
+      "target": "cell-A"
+    },
+    {
+      "type": "fused-into",
+      "target": "cell-B"
+    },
+    {
+      "type": "fused-into",
+      "target": "cell-012"
     }
   ],
   "createdAt": "2026-06-25T05:22:40.518Z",
-  "updatedAt": "2026-06-25T05:30:48.820Z",
-  "lastStartedAt": "2026-06-25T05:30:48.817Z",
+  "updatedAt": "2026-06-25T08:00:23.530Z",
+  "lastStartedAt": "2026-06-25T08:00:23.527Z",
   "directories": {
     "root": "cells/cell-002",
     "logs": "cells/cell-002/logs",

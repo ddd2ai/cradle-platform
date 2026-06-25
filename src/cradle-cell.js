@@ -1322,6 +1322,17 @@ TODO: define meaning from DNA_DEFINITION.md.
 
     await this.divideTo(childCell);
 
+    await childCell.writeMemory(
+      "identity",
+      `# Identity
+
+      I am ${childCell.name}.
+      My cell id is ${childCell.id}.
+
+      I was born from ${this.id} through SVD-based DNA division.
+      `
+    );
+
     await childCell.writeDNAVector(
       plan.childDNAVector
     );

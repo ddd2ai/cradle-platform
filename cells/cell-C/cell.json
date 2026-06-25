@@ -1,0 +1,45 @@
+{
+  "id": "cell-C",
+  "name": "cell-C",
+  "model": "llama3.1:8b",
+  "status": "idle",
+  "maturity": 0,
+  "generation": 3,
+  "parent": null,
+  "responsibilities": [],
+  "relationships": [
+    {
+      "type": "fused-from",
+      "target": "cell-001"
+    },
+    {
+      "type": "fused-from",
+      "target": "cell-003"
+    },
+    {
+      "type": "fused-into",
+      "target": "cell-ABC"
+    }
+  ],
+  "createdAt": "2026-06-25T07:51:06.183Z",
+  "updatedAt": "2026-06-25T08:00:23.553Z",
+  "lastStartedAt": "2026-06-25T08:00:23.551Z",
+  "directories": {
+    "root": "cells/cell-C",
+    "logs": "cells/cell-C/logs",
+    "memory": "cells/cell-C/memory",
+    "dna": "cells/cell-C/dna",
+    "workspace": "cells/cell-C/workspace",
+    "workspaceDirs": {
+      "notes": "cells/cell-C/workspace/notes",
+      "tasks": "cells/cell-C/workspace/tasks",
+      "artifacts": "cells/cell-C/workspace/artifacts",
+      "projects": "cells/cell-C/workspace/projects",
+      "research": "cells/cell-C/workspace/research",
+      "decisions": "cells/cell-C/workspace/decisions"
+    },
+    "snapshots": "cells/cell-C/snapshots",
+    "thoughts": "cells/cell-C/thoughts",
+    "inbox": "cells/cell-C/inbox"
+  }
+}

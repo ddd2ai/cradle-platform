@@ -1,6 +1,9 @@
+import fs from "fs/promises";
 import { renderAnswerStart } from "../cradle-console.js";
 import { renderColonyGraph } from "../ui/render-colony-graph.js";
 import { renderTable } from "../ui/render-table.js";
+import { dnaVectorToMatrix } from "../dna/dna-matrix.js";
+import { createCentroidFusionPlan } from "../dna/dna-centroid.js";
 
 export function createColonyCommands() {
   return [
@@ -56,6 +59,244 @@ export function createColonyCommands() {
         }
 
         console.log(`Broadcast sent to ${engine.cells.size} cells.`);
+      },
+    },
+
+    {
+      name: "/merge",
+      match: (input) => input.startsWith("/merge "),
+      execute: async ({ engine, input }) => {
+        const args = input
+          .replace("/merge ", "")
+          .trim()
+          .split(/\s+/)
+          .filter(Boolean);
+
+        if (args.length < 3) {
+          console.log("Usage: /merge <cell-a> <cell-b> <new-cell-id>");
+          return;
+        }
+
+        const parentIds = args.slice(0, -1);
+        const childId = args.at(-1);
+
+        if (engine.cells.has(childId)) {
+          console.log(`Cell already exists: ${childId}`);
+          return;
+        }
+
+        const parents = parentIds.map((id) => ({
+          id,
+          cell: engine.cells.get(id),
+        }));
+
+        const missing = parents.filter((item) => !item.cell);
+
+        if (missing.length > 0) {
+          console.log(
+            `Cell not found: ${missing.map((item) => item.id).join(", ")}`
+          );
+          return;
+        }
+
+        const items = [];
+
+        for (const { id, cell } of parents) {
+          const dnaVector = await cell.readDNAVector();
+
+          if (!dnaVector) {
+            console.log(`Cell has no DNA vector: ${id}`);
+            return;
+          }
+
+          const profile = await cell.readCellProfile();
+
+          items.push({
+            cellId: id,
+            matrix: dnaVectorToMatrix(dnaVector),
+            weight: Number(profile?.maturity ?? 1),
+            profile,
+          });
+        }
+
+        const plan = createCentroidFusionPlan({
+          parentIds,
+          childId,
+          items,
+        });
+
+        const child = await engine.createCell(childId);
+
+        const archiveDir = `${child.dir}/memory/archive`;
+        await fs.mkdir(archiveDir, { recursive: true });
+
+        await fs.writeFile(
+          child.memoryFiles.identity,
+          `# Identity
+
+          I am ${child.name}.
+          My cell id is ${child.id}.
+
+          I was born from fusion.
+
+          Parents:
+          ${parentIds.map((id) => `- ${id}`).join("\n")}
+          `,
+          "utf8"
+        );
+
+        await child.writeDNAVector(plan.fusedDNAVector);
+        await child.appendDNAHistory("centroid-fusion");
+
+        const maxGeneration = Math.max(
+          ...items.map((item) =>
+            Number(item.profile?.generation ?? 1)
+          )
+        );
+
+        await child.setGeneration(maxGeneration + 1);
+
+        for (const { id, cell } of parents) {
+          await cell.addRelationship("fused-into", childId);
+          await child.addRelationship("fused-from", id);
+        }
+
+        const responsibilities = [
+          ...new Set(
+            items.flatMap((item) =>
+              item.profile?.responsibilities ?? []
+            )
+          ),
+        ];
+
+        for (const responsibility of responsibilities) {
+          await child.addResponsibility(responsibility);
+        }
+
+        for (const { id, cell } of parents) {
+          const identity = await cell.safeReadMemory("identity");
+          const knowledge = await cell.safeReadMemory("knowledge");
+          const history = await cell.safeReadMemory("history");
+
+          await fs.writeFile(
+            `${archiveDir}/parent-${id}.md`,
+            `# Parent Memory: ${id}
+
+            ## Identity
+
+            ${identity.trim()}
+
+            ## Knowledge
+
+            ${knowledge.trim()}
+
+            ## History
+
+            ${history.trim()}
+            `,
+            "utf8"
+          );
+        }
+
+        await child.appendKnowledge(`
+        ## Fusion Origin
+
+        Born from centroid-based cell fusion.
+
+        ## Parents
+
+        ${parentIds.map((id) => `- ${id}`).join("\n")}
+
+        ## Fusion Type
+
+        Maturity-weighted DNA matrix centroid.
+
+        ## Weights
+
+        ${plan.weights
+          .map((item) => `- ${item.cellId}: ${item.weight}`)
+          .join("\n")}
+
+        ## Responsibilities
+
+        ${responsibilities.length === 0
+          ? "- none"
+          : responsibilities.map((item) => `- ${item}`).join("\n")}
+
+        ## Archived Parent Memories
+
+        Parent memories were archived for later digestion and evolution.
+
+        ${parentIds.map((id) => `- memory/archive/parent-${id}.md`).join("\n")}
+        `);
+
+
+        await child.appendHistory(`
+        ## ${new Date().toISOString()}
+
+        ### Fusion Summary
+
+        Born from:
+        ${parentIds.map((id) => `- ${id}`).join("\n")}
+
+        Fusion method:
+        Maturity-weighted DNA matrix centroid.
+
+        Knowledge inheritance:
+        Parent identity, knowledge, and history were inherited into child knowledge.
+        `);
+
+
+        await child.appendThought(`
+        ## ${new Date().toISOString()}
+
+        I was born through centroid-based cell fusion.
+
+        Parents:
+        ${parentIds.map((id) => `- ${id}`).join("\n")}
+
+        My DNA is the maturity-weighted centroid of my parent cells.
+        My parent memories were archived.
+        I should digest them through future evolution instead of copying them directly.
+        `);
+
+        for (const { cell } of parents) {
+          await cell.appendThought(`
+          ## ${new Date().toISOString()}
+
+          I participated in centroid-based fusion.
+
+          Fused into:
+          ${childId}
+          `);
+        }
+
+        engine.activeCellId = childId;
+
+        const weightLines = plan.weights.map(
+          (item) => `- ${item.cellId}: ${item.weight}`
+        );
+
+        console.log(
+          [
+            "",
+            "🧬 Cell Fusion Complete",
+            "",
+            "Parents:",
+            parentIds.join(", "),
+            "",
+            "Child:",
+            childId,
+            "",
+            "Method:",
+            "Maturity-weighted DNA matrix centroid",
+            "",
+            "Weights:",
+            ...weightLines,
+            "",
+          ].join("\n")
+        );
+
       },
     },
 

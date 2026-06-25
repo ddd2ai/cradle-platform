@@ -15,11 +15,35 @@
     {
       "type": "divided-into",
       "target": "cell-003"
+    },
+    {
+      "type": "fused-into",
+      "target": "cell-007"
+    },
+    {
+      "type": "fused-into",
+      "target": "cell-008"
+    },
+    {
+      "type": "fused-into",
+      "target": "cell-A"
+    },
+    {
+      "type": "fused-into",
+      "target": "cell-B"
+    },
+    {
+      "type": "fused-into",
+      "target": "cell-C"
+    },
+    {
+      "type": "fused-into",
+      "target": "cell-012"
     }
   ],
   "createdAt": "2026-06-25T05:17:06.772Z",
-  "updatedAt": "2026-06-25T05:30:48.816Z",
-  "lastStartedAt": "2026-06-25T05:30:48.805Z",
+  "updatedAt": "2026-06-25T08:00:23.526Z",
+  "lastStartedAt": "2026-06-25T08:00:23.516Z",
   "directories": {
     "root": "cells/cell-001",
     "logs": "cells/cell-001/logs",

@@ -1,0 +1,110 @@
+[
+  {
+    "at": "2026-06-25T08:00:37.081Z",
+    "reason": "prepare",
+    "vector": {
+      "PERCEPTION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "DECISION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "DECOMPOSITION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "LEARNING": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "COLLABORATION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "CREATION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "EVOLUTION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "REFLECTION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      }
+    }
+  },
+  {
+    "at": "2026-06-25T08:00:37.084Z",
+    "reason": "centroid-fusion",
+    "vector": {
+      "PERCEPTION": {
+        "strength": 0.44182401093795026,
+        "stability": 0.6122509628123628,
+        "plasticity": 0.2658223562395641,
+        "fitness": 0.497862785492329
+      },
+      "DECISION": {
+        "strength": 0.4413403498011309,
+        "stability": 0.6136725167588521,
+        "plasticity": 0.26542392514976465,
+        "fitness": 0.4411493143702453
+      },
+      "DECOMPOSITION": {
+        "strength": 0.4409291778004952,
+        "stability": 0.613563651705033,
+        "plasticity": 0.2676995035966022,
+        "fitness": 0.43925805116793787
+      },
+      "LEARNING": {
+        "strength": 0.44024537083690635,
+        "stability": 0.6158345592242744,
+        "plasticity": 0.2666287471891995,
+        "fitness": 0.43953072967935414
+      },
+      "COLLABORATION": {
+        "strength": 0.45989584852463306,
+        "stability": 0.6142141559378842,
+        "plasticity": 0.26769023453017654,
+        "fitness": 0.440072840192483
+      },
+      "CREATION": {
+        "strength": 0.44282191949958133,
+        "stability": 0.6143284129594548,
+        "plasticity": 0.2668709836136337,
+        "fitness": 0.4603608645612065
+      },
+      "EVOLUTION": {
+        "strength": 0.44111295266092454,
+        "stability": 0.6144310896929732,
+        "plasticity": 0.2647656890263736,
+        "fitness": 0.4407343447686523
+      },
+      "REFLECTION": {
+        "strength": 0.4411867606752322,
+        "stability": 0.6144621791274473,
+        "plasticity": 0.26747926127291277,
+        "fitness": 0.4391411027160118
+      }
+    }
+  }
+]

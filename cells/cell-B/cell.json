@@ -1,0 +1,49 @@
+{
+  "id": "cell-B",
+  "name": "cell-B",
+  "model": "llama3.1:8b",
+  "status": "idle",
+  "maturity": 0,
+  "generation": 3,
+  "parent": null,
+  "responsibilities": [],
+  "relationships": [
+    {
+      "type": "fused-from",
+      "target": "cell-001"
+    },
+    {
+      "type": "fused-from",
+      "target": "cell-002"
+    },
+    {
+      "type": "fused-into",
+      "target": "cell-AB"
+    },
+    {
+      "type": "fused-into",
+      "target": "cell-ABC"
+    }
+  ],
+  "createdAt": "2026-06-25T07:44:26.449Z",
+  "updatedAt": "2026-06-25T08:00:23.551Z",
+  "lastStartedAt": "2026-06-25T08:00:23.549Z",
+  "directories": {
+    "root": "cells/cell-B",
+    "logs": "cells/cell-B/logs",
+    "memory": "cells/cell-B/memory",
+    "dna": "cells/cell-B/dna",
+    "workspace": "cells/cell-B/workspace",
+    "workspaceDirs": {
+      "notes": "cells/cell-B/workspace/notes",
+      "tasks": "cells/cell-B/workspace/tasks",
+      "artifacts": "cells/cell-B/workspace/artifacts",
+      "projects": "cells/cell-B/workspace/projects",
+      "research": "cells/cell-B/workspace/research",
+      "decisions": "cells/cell-B/workspace/decisions"
+    },
+    "snapshots": "cells/cell-B/snapshots",
+    "thoughts": "cells/cell-B/thoughts",
+    "inbox": "cells/cell-B/inbox"
+  }
+}
