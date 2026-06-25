@@ -14,6 +14,12 @@ import {
   calculateTraitValue,
   calculateCellScore,
 } from "./dna/dna-measure.js";
+import {
+  dnaVectorToMatrix,
+} from "./dna/dna-matrix.js";
+import {
+  createDivisionPlanFromMatrix,
+} from "./dna/dna-division.js";
 
 export class CradleCell {
 
@@ -1277,6 +1283,119 @@ TODO: define meaning from DNA_DEFINITION.md.
       child: childCell.id,
       generation: parentInfo.generation + 1,
     };
+  }
+
+  async createDivisionPlanBySVD(childId) {
+    if (!childId) {
+      throw new Error("Child cell id is required.");
+    }
+
+    if (!(await this.canDivide())) {
+      throw new Error(
+        `Cell ${this.id} is not mature enough to divide. maturity=${await this.getMaturity()}`
+      );
+    }
+
+    const dnaVector =
+      await this.readDNAVector();
+
+    if (!dnaVector) {
+      throw new Error(`Cell ${this.id} has no dna-vector.json`);
+    }
+
+    const matrix =
+      dnaVectorToMatrix(dnaVector);
+
+    return createDivisionPlanFromMatrix(matrix, {
+      parentId: this.id,
+      childId,
+    });
+  }
+
+  async divideBySVD(childCell) {
+    if (!childCell) {
+      throw new Error("Child cell is required.");
+    }
+
+    const plan =
+      await this.createDivisionPlanBySVD(childCell.id);
+
+    await this.divideTo(childCell);
+
+    await childCell.writeDNAVector(
+      plan.childDNAVector
+    );
+
+    await childCell.appendDNAHistory(
+      "svd-division-inheritance"
+    );
+
+    await this.writeDNAVector(
+      plan.parentDNAVector
+    );
+
+    await this.appendDNAHistory(
+      "svd-division-attenuation"
+    );
+
+    for (const responsibility of plan.responsibilities) {
+      await childCell.addResponsibility(responsibility);
+    }
+
+    await childCell.appendKnowledge(`
+## Division Origin
+
+Born from ${this.id}.
+
+## Division Type
+
+SVD-based DNA division.
+
+## Role
+
+${plan.role}
+
+## Reason
+
+${plan.reason}
+
+## Dominant Traits
+
+${plan.dominantTraits
+  .map((item) => `- ${item.name}: ${item.value.toFixed(3)}`)
+  .join("\n")}
+
+## Dominant Factors
+
+${plan.dominantFactors
+  .map((item) => `- ${item.name}: ${item.value.toFixed(3)}`)
+  .join("\n")}
+`);
+
+    await childCell.appendThought(`
+## ${new Date().toISOString()}
+
+I was born through SVD-based DNA division.
+
+My role is ${plan.role}.
+
+My inherited DNA is not a full clone.
+It is a specialized projection of the parent cell's dominant DNA axis.
+`);
+
+    await this.appendThought(`
+## ${new Date().toISOString()}
+
+I divided into ${childCell.id} through SVD-based DNA division.
+
+Reason:
+${plan.reason}
+
+Child role:
+${plan.role}
+`);
+
+    return plan;
   }
 
   async setGeneration(generation) {

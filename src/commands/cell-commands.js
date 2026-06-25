@@ -875,6 +875,79 @@ DNA drift    : ${result.dnaDrift.length}
       },
     },
 
+    {
+      name: "/divide-svd",
+
+      match: (input, { engine }) =>
+        input.startsWith("/divide-svd") &&
+        !engine.isCradleMode(),
+
+      execute: async ({ engine, input }) => {
+        const parent =
+          engine.getActiveCell();
+
+        if (!(await parent.canDivide())) {
+          console.log(`
+Need maturity >= 5
+
+Current:
+${await parent.getMaturity()}
+`);
+          return;
+        }
+
+        const rawChildId =
+          input.replace("/divide-svd", "").trim();
+
+        const childId =
+          rawChildId ||
+          `cell-${String(engine.cells.size + 1).padStart(3, "0")}`;
+
+        if (engine.cells.has(childId)) {
+          console.log(`Cell already exists: ${childId}`);
+          return;
+        }
+
+        const child =
+          await engine.createCell(childId);
+
+        const plan =
+          await parent.divideBySVD(child);
+
+        engine.activeCellId =
+          childId;
+
+        console.log(`
+🧬 SVD Cell Division Complete
+
+Parent:
+${parent.id}
+
+Child:
+${childId}
+
+Role:
+${plan.role}
+
+Sigma:
+${plan.sigma.toFixed(4)}
+
+Reason:
+${plan.reason}
+
+Dominant Traits:
+${plan.dominantTraits
+  .map((item) => `- ${item.name}: ${item.value.toFixed(3)}`)
+  .join("\n")}
+
+Dominant Factors:
+${plan.dominantFactors
+  .map((item) => `- ${item.name}: ${item.value.toFixed(3)}`)
+  .join("\n")}
+`);
+      },
+    },
+
 
     {
       name: "/resp",

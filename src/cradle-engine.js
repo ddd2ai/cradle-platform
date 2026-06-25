@@ -422,6 +422,7 @@ export class CradleEngine {
 
       /evolve                  Increase maturity
       /divide                  Create child cell
+      /divide-svd <cell-id>    Divide current cell by SVD DNA specialization
       /specialize <name>       Specialize cell
 
       /resp add <name>         Add responsibility
