@@ -18,6 +18,7 @@ import { createCellCommands } from "./commands/cell-commands.js";
 import { createColonyCommands } from "./commands/colony-commands.js";
 import { createProductionCommands } from "./commands/production-commands.js";
 import { createExecutionCommands } from "./commands/execution-commands.js";
+import { createLifecycleCommands } from "./commands/lifecycle-commands.js";
 import dnaPlot2DCommand from "./commands/plot2d-command.js";
 
 export class CradleEngine {
@@ -45,6 +46,7 @@ export class CradleEngine {
       ...createEngineCommands(),
       ...createColonyCommands(),
       ...createCellCommands(),
+      ...createLifecycleCommands(),
       ...createProductionCommands(),
       ...createExecutionCommands(),
       dnaPlot2DCommand,
@@ -118,6 +120,26 @@ export class CradleEngine {
     await cell.prepare();
     this.cells.set(id, cell);
     this.inboxes.set(id, await cell.readInbox());
+
+    return cell;
+  }
+
+  useCell(cellId) {
+    if (!cellId) {
+      throw new Error("cellId is required");
+    }
+
+    const cell = this.cells.get(cellId);
+
+    if (!cell) {
+      throw new Error(
+        `Cell ${cellId} not found. Available cells: ${[
+          ...this.cells.keys(),
+        ].join(", ")}`
+      );
+    }
+
+    this.activeCellId = cellId;
 
     return cell;
   }
@@ -214,6 +236,10 @@ export class CradleEngine {
   }
 
   getActiveCell() {
+    if (this.isCradleMode()) {
+      throw new Error("No active cell. Use /use <cell-id> to enter a cell.");
+    }
+
     const cell = this.cells.get(this.activeCellId);
 
     if (!cell) {

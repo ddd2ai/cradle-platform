@@ -63,8 +63,67 @@ export async function createCopilotProvider({
     async ask({ prompt, onDelta, onIdle, onError } = {}) {
       let buffer = "";
       let session = null;
+      let closed = false;
 
-      const askId = `ask-${Date.now()}`;
+      const askId = `ask-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+      // Step 2: 集中清理函式（只執行一次）
+      const finishOnce = (reason = "complete") => {
+        if (closed) return;
+
+        closed = true;
+
+        // 真正移除 listener（Step 3）
+        if (session) {
+          session.off?.("assistant.message_delta", handleDelta);
+          session.off?.("session.idle", handleIdle);
+          session.off?.("error", handleError);
+          session.removeAllListeners?.();
+        }
+
+        // 清空 callback references，防止記憶體洩漏
+        onDelta = null;
+        onIdle = null;
+        onError = null;
+      };
+
+      // Step 1 & 4: 加入 closed guard 和 askId 過濾
+      const handleDelta = (event) => {
+        if (closed) return;
+
+        // Step 4: askId 過濾（如果 event 有提供 askId）
+        if (event.askId && event.askId !== askId) {
+          return;
+        }
+
+        const { delta, snapshot } = extractTextEvent(event);
+
+        if (typeof delta === "string" && delta.length > 0) {
+          buffer += delta;
+          onDelta?.(delta);
+          return;
+        }
+
+        if (typeof snapshot === "string" && snapshot.length > 0) {
+          // snapshot 是完整內容，不可以 append
+          buffer = snapshot;
+
+          // snapshot 模式下不要直接 onDelta(snapshot)，否則畫面會重複印完整內容
+          return;
+        }
+      };
+
+      const handleIdle = () => {
+        if (closed) return;
+
+        onIdle?.();
+      };
+
+      const handleError = (error) => {
+        if (closed) return;
+
+        onError?.(error);
+      };
 
       try {
         session = await client.createSession({
@@ -73,32 +132,7 @@ export async function createCopilotProvider({
           onPermissionRequest: approveAll,
         });
 
-        const handleDelta = (event) => {
-          const { delta, snapshot } = extractTextEvent(event);
-
-          if (typeof delta === "string" && delta.length > 0) {
-            buffer += delta;
-            onDelta?.(delta);
-            return;
-          }
-
-          if (typeof snapshot === "string" && snapshot.length > 0) {
-            // snapshot 是完整內容，不可以 append
-            buffer = snapshot;
-
-            // snapshot 模式下不要直接 onDelta(snapshot)，否則畫面會重複印完整內容
-            return;
-          }
-        };
-
-        const handleIdle = () => {
-          onIdle?.();
-        };
-
-        const handleError = (error) => {
-          onError?.(error);
-        };
-
+        // Step 3: 使用 named function，方便移除
         session.on?.("assistant.message_delta", handleDelta);
         session.on?.("session.idle", handleIdle);
         session.on?.("error", handleError);
@@ -119,13 +153,13 @@ export async function createCopilotProvider({
 
         return buffer;
       } catch (error) {
+        finishOnce("error");
         onError?.(error);
         throw error;
       } finally {
-        if (session) {
-          // 盡量清 listener
-          session.removeAllListeners?.();
+        finishOnce("cleanup");
 
+        if (session) {
           // 斷開本次 ask 的 session
           await session.disconnect?.();
           await session.close?.();
