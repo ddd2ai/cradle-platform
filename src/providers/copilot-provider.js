@@ -1,5 +1,4 @@
 import { CopilotClient } from "@github/copilot-sdk";
-import crypto from "crypto";
 
 /**
  * 偵測 corrupted raw response (duplicated streaming chunks)
@@ -11,7 +10,10 @@ function looksLikeDuplicatedStream(text = "") {
     "goalgoal",
     "outputsoutputs",
     "contentcontent",
+    "notesnotes",
+    "HelloHello",
     "LibraryLibrary",
+    "SpringSpring",
     "accepted accepted",
     "{{",
     '" "',
@@ -44,180 +46,95 @@ function extractTextEvent(event) {
   };
 }
 
-/**
- * Copilot Provider
- *
- * 使用 GitHub Copilot SDK 作為 LLM 來源。
- * 透過 Copilot CLI 連線到 GitHub Copilot 服務。
- *
- * @param {Object} options
- * @param {string} [options.model="gpt-5-mini"] - 使用的模型
- * @param {string} [options.cliUrl="http://localhost:4321"] - Copilot CLI URL
- * @returns {Promise<LLMProvider>}
- *
- * @example
- * const provider = await createCopilotProvider({
- *   model: "gpt-5-mini",
- * });
- *
- * const response = await provider.ask({
- *   prompt: "Hello, world!",
- *   onDelta: (chunk) => console.log(chunk),
- * });
- */
 export async function createCopilotProvider({
   model = "gpt-5-mini",
   cliUrl = "http://localhost:4321",
-}) {
+} = {}) {
   const client = new CopilotClient({
     cliUrl,
   });
 
   const approveAll = async () => ({ outcome: "approved" });
 
-  const session = await client.createSession({
-    model,
-    streaming: true,
-    onPermissionRequest: approveAll,
-  });
-
   return {
     name: "copilot",
     model,
 
-    async ask({ prompt, onDelta, onIdle, onError }) {
-      const askId = crypto.randomUUID().substring(0, 8);
+    async ask({ prompt, onDelta, onIdle, onError } = {}) {
       let buffer = "";
-      let lastBufferLength = 0;
-      let eventCount = 0;
-      let deltaCount = 0;
-      let snapshotCount = 0;
+      let session = null;
 
-      const DEBUG = process.env.COPILOT_DEBUG === "true";
-
-      if (DEBUG) {
-        console.log(`[copilot-provider] askId=${askId} start`);
-      }
-
-      const handleDelta = (event) => {
-        eventCount++;
-
-        const { delta, snapshot } = extractTextEvent(event);
-
-        // 優先處理 delta (新增內容)
-        if (typeof delta === "string" && delta.length > 0) {
-          deltaCount++;
-          buffer += delta;
-
-          if (DEBUG) {
-            console.log(
-              `[copilot-provider] askId=${askId} event#${eventCount} DELTA len=${delta.length} buffer=${buffer.length}`
-            );
-            console.log(
-              `[copilot-provider] delta preview: ${delta.substring(0, 100)}`
-            );
-          }
-
-          onDelta?.(delta);
-          lastBufferLength = buffer.length;
-          return;
-        }
-
-        // 處理 snapshot (完整內容)
-        if (typeof snapshot === "string" && snapshot.length > 0) {
-          snapshotCount++;
-          
-          // CRITICAL: snapshot 要 replace,不是 append
-          buffer = snapshot;
-
-          if (DEBUG) {
-            console.log(
-              `[copilot-provider] askId=${askId} event#${eventCount} SNAPSHOT len=${snapshot.length} buffer=${buffer.length}`
-            );
-          }
-
-          // 只通知新增的部分
-          const newContent = buffer.substring(lastBufferLength);
-          if (newContent.length > 0) {
-            onDelta?.(newContent);
-          }
-
-          lastBufferLength = buffer.length;
-          return;
-        }
-
-        // 未知的 event 格式
-        if (DEBUG) {
-          console.warn(
-            `[copilot-provider] askId=${askId} event#${eventCount} UNKNOWN format`,
-            event
-          );
-        }
-      };
-
-      const handleIdle = () => {
-        if (DEBUG) {
-          console.log(
-            `[copilot-provider] askId=${askId} idle | events=${eventCount} deltas=${deltaCount} snapshots=${snapshotCount} buffer=${buffer.length}`
-          );
-        }
-        onIdle?.();
-      };
-
-      const handleError = (error) => {
-        if (DEBUG) {
-          console.error(`[copilot-provider] askId=${askId} error:`, error);
-        }
-        onError?.(error);
-      };
-
-      session.on("assistant.message_delta", handleDelta);
-      session.on("session.idle", handleIdle);
-      session.on("error", handleError);
+      const askId = `ask-${Date.now()}`;
 
       try {
+        session = await client.createSession({
+          model,
+          streaming: true,
+          onPermissionRequest: approveAll,
+        });
+
+        const handleDelta = (event) => {
+          const { delta, snapshot } = extractTextEvent(event);
+
+          if (typeof delta === "string" && delta.length > 0) {
+            buffer += delta;
+            onDelta?.(delta);
+            return;
+          }
+
+          if (typeof snapshot === "string" && snapshot.length > 0) {
+            // snapshot 是完整內容，不可以 append
+            buffer = snapshot;
+
+            // snapshot 模式下不要直接 onDelta(snapshot)，否則畫面會重複印完整內容
+            return;
+          }
+        };
+
+        const handleIdle = () => {
+          onIdle?.();
+        };
+
+        const handleError = (error) => {
+          onError?.(error);
+        };
+
+        session.on?.("assistant.message_delta", handleDelta);
+        session.on?.("session.idle", handleIdle);
+        session.on?.("error", handleError);
+
         await session.sendAndWait({ prompt });
 
-        // 檢測 corrupted response
         if (looksLikeDuplicatedStream(buffer)) {
-          const preview = buffer.substring(0, 300);
           throw new Error(
-            `Provider raw response appears corrupted by duplicated streaming chunks. Check copilot-provider streaming handling.\n\nPreview:\n${preview}`
-          );
-        }
-
-        if (DEBUG) {
-          console.log(
-            `[copilot-provider] askId=${askId} complete | buffer=${buffer.length} chars`
-          );
-          console.log(
-            `[copilot-provider] raw response preview:\n${buffer.substring(0, 300)}`
+            [
+              "Provider raw response appears corrupted by duplicated streaming chunks.",
+              "Check copilot-provider streaming handling.",
+              "",
+              "Preview:",
+              buffer.slice(0, 1000),
+            ].join("\n")
           );
         }
 
         return buffer;
       } catch (error) {
-        handleError(error);
+        onError?.(error);
         throw error;
       } finally {
-        // 移除所有 listener,避免累積洩漏
-        session.off?.("assistant.message_delta", handleDelta);
-        session.off?.("session.idle", handleIdle);
-        session.off?.("error", handleError);
+        if (session) {
+          // 盡量清 listener
+          session.removeAllListeners?.();
 
-        // 相容 Node EventEmitter API
-        session.removeListener?.("assistant.message_delta", handleDelta);
-        session.removeListener?.("session.idle", handleIdle);
-        session.removeListener?.("error", handleError);
-
-        if (DEBUG) {
-          console.log(`[copilot-provider] askId=${askId} cleanup done`);
+          // 斷開本次 ask 的 session
+          await session.disconnect?.();
+          await session.close?.();
+          await session.dispose?.();
         }
       }
     },
 
     async cleanup() {
-      await session.disconnect?.();
       await client.stop?.();
     },
   };

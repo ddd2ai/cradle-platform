@@ -1,1 +1,0 @@
-建立單檔 Java 程式 BankTransferApp.java，使用 BigDecimal 以確保金額精度。
