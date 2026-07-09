@@ -15,13 +15,25 @@ import { ExecutionResult } from "./execution-result.js";
  * 4. 儲存 execution-result.json
  */
 export class ArtifactExecutionService {
-  constructor({ cellWorkspaceDir }) {
-    this.cellWorkspaceDir = cellWorkspaceDir;
-    this.artifactsDir = path.join(cellWorkspaceDir, "artifacts");
-    this.executionsDir = path.join(cellWorkspaceDir, "executions");
+  constructor({ productionsDir, executionsDir }) {
+    if (!productionsDir) {
+      throw new Error("ArtifactExecutionService requires productionsDir");
+    }
 
-    this.artifactStore = new ArtifactStore({ artifactsDir: this.artifactsDir });
-    this.javaExecutor = new JavaExecutor({ executionsDir: this.executionsDir });
+    if (!executionsDir) {
+      throw new Error("ArtifactExecutionService requires executionsDir");
+    }
+
+    this.productionsDir = productionsDir;
+    this.executionsDir = executionsDir;
+
+    this.artifactStore = new ArtifactStore({
+      productionsDir: this.productionsDir,
+    });
+
+    this.javaExecutor = new JavaExecutor({
+      executionsDir: this.executionsDir,
+    });
   }
 
   /**
@@ -33,7 +45,7 @@ export class ArtifactExecutionService {
   async executeArtifact(artifactId) {
     try {
       // 載入 artifact
-      const artifact = await this.artifactStore.loadArtifact(artifactId);
+      const artifact = await this.artifactStore.readArtifact(artifactId);
 
       if (!artifact) {
         throw new Error(`Artifact not found: ${artifactId}`);
@@ -49,9 +61,7 @@ export class ArtifactExecutionService {
       }
 
       // 執行
-      const result = await executor.execute({ artifact });
-
-      return result;
+      return await executor.execute({ artifact });
     } catch (error) {
       return ExecutionResult.createError({
         artifactId,

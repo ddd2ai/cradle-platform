@@ -1,0 +1,20 @@
+[
+  {
+    "id": "task-20260709-181925",
+    "title": "驗證 HelloService.java 是否存在與建置執行位置",
+    "source": "metabolism",
+    "content": "蒐集證據以確認缺失原因：1) 在執行環境列出工作目錄檔案（ls -la）並截圖/列印結果；2) 在專案中搜尋 HelloService.java（git ls-files | grep HelloService.java 或 rg/grep）；3) 檢查 build/CI 腳本確認實際應編譯的來源目錄與指令；4) 檢查檔名大小寫是否正確。將上述證據回傳以決定後續修復步驟。",
+    "status": "pending",
+    "createdAt": "2026-07-09T10:19:25.024Z",
+    "updatedAt": "2026-07-09T10:19:25.024Z"
+  },
+  {
+    "id": "task-20260709-182114",
+    "title": "驗證 BrokenService.java 編譯失敗原因",
+    "source": "metabolism",
+    "content": "驗證型任務：1) 取得並開啟 artifact 原始檔 BrokenService.java，檢查第3行內容與語法是否缺分號或有其他語法錯誤；2) 在相同環境重跑 javac BrokenService.java 並保存 stderr；3) 檢查生成該檔的 code-generator/template 與生成日誌，確認是否為生成器造成；4) 根據結果記錄根本原因並決定是否建立修復任務（如果是生成器錯誤則建立修復任務；若是單次檔案損壞則以補丁修正並重編譯）。",
+    "status": "pending",
+    "createdAt": "2026-07-09T10:21:14.716Z",
+    "updatedAt": "2026-07-09T10:21:14.716Z"
+  }
+]

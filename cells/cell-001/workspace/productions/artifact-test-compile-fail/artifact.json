@@ -1,0 +1,28 @@
+{
+  "id": "artifact-test-compile-fail",
+  "type": "executable-java",
+  "title": "Compile Failed 測試",
+  "status": "draft",
+  "goal": "建立一個會編譯失敗的 Java class",
+  "context": {
+    "cellId": "cell-001",
+    "provider": "manual",
+    "model": "manual"
+  },
+  "plan": null,
+  "outputs": [
+    {
+      "kind": "file",
+      "path": "BrokenService.java",
+      "language": "java",
+      "content": "public class BrokenService {\n    public static void main(String[] args) {\n        System.out.println(\"Hello Cradle\")\n    }\n}\n"
+    }
+  ],
+  "notes": [],
+  "review": {
+    "status": "pending",
+    "notes": []
+  },
+  "createdAt": "2026-07-09T00:00:00.000Z",
+  "updatedAt": "2026-07-09T00:00:00.000Z"
+}

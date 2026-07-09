@@ -1,0 +1,11 @@
+{
+  "artifactId": "artifact-test-pass",
+  "status": "passed",
+  "command": "java -cp src HelloService",
+  "stdout": "Hello Cradle\n",
+  "stderr": "",
+  "exitCode": 0,
+  "error": null,
+  "executionId": "execution-1783592106902",
+  "createdAt": "2026-07-09T10:15:07.118Z"
+}

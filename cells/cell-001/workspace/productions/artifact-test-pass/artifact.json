@@ -1,0 +1,32 @@
+{
+  "id": "artifact-test-pass",
+  "type": "executable-java",
+  "title": "HelloService 測試",
+  "status": "draft",
+  "goal": "寫一個 Java class，名稱為 HelloService，包含 sayHello 方法，回傳 Hello Cradle",
+  "context": {
+    "cellId": "cell-001",
+    "provider": "manual",
+    "model": "manual"
+  },
+  "plan": {
+    "summary": "建立可執行 Java 單檔",
+    "steps": ["建立 HelloService", "加入 main 方法"],
+    "markdown": "# Plan\n\n建立 HelloService。"
+  },
+  "outputs": [
+    {
+      "kind": "file",
+      "path": "HelloService.java",
+      "language": "java",
+      "content": "public class HelloService {\n    public String sayHello() {\n        return \"Hello Cradle\";\n    }\n\n    public static void main(String[] args) {\n        HelloService service = new HelloService();\n        System.out.println(service.sayHello());\n    }\n}\n"
+    }
+  ],
+  "notes": [],
+  "review": {
+    "status": "pending",
+    "notes": []
+  },
+  "createdAt": "2026-07-09T00:00:00.000Z",
+  "updatedAt": "2026-07-09T00:00:00.000Z"
+}

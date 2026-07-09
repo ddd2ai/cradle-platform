@@ -1,0 +1,11 @@
+{
+  "artifactId": "artifact-test-pass",
+  "status": "compile_failed",
+  "command": "javac HelloService.java",
+  "stdout": "",
+  "stderr": "error: file not found: cells/cell-001/workspace/executions/execution-1783590305201/src/HelloService.java\nUsage: javac <options> <source files>\nuse --help for a list of possible options\n",
+  "exitCode": 1,
+  "error": null,
+  "executionId": "execution-1783590305201",
+  "createdAt": "2026-07-09T09:45:05.287Z"
+}

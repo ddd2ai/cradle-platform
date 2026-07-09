@@ -364,6 +364,60 @@ export class CradleCell {
     };
   }
 
+  formatObservationMarkdown(observation) {
+    if (!observation) {
+      return "(empty)";
+    }
+
+    if (typeof observation === "string") {
+      return observation;
+    }
+
+    const lines = [];
+
+    lines.push("## Summary");
+    lines.push("");
+    lines.push(observation.summary ?? "(empty)");
+    lines.push("");
+
+    lines.push("## Facts");
+    lines.push("");
+    for (const item of observation.facts ?? []) {
+      lines.push(`- ${item}`);
+    }
+    lines.push("");
+
+    lines.push("## Interpretations");
+    lines.push("");
+    for (const item of observation.interpretations ?? []) {
+      lines.push(`- ${item}`);
+    }
+    lines.push("");
+
+    lines.push("## Hypotheses");
+    lines.push("");
+    for (const item of observation.hypotheses ?? []) {
+      lines.push(`- ${item}`);
+    }
+    lines.push("");
+
+    lines.push("## Unknowns");
+    lines.push("");
+    for (const item of observation.unknowns ?? []) {
+      lines.push(`- ${item}`);
+    }
+    lines.push("");
+
+    lines.push("## Next Actions");
+    lines.push("");
+    for (const item of observation.nextActions ?? []) {
+      lines.push(`- ${item}`);
+    }
+    lines.push("");
+
+    return lines.join("\n");
+  }
+
   async metabolize() {
     const stimuli = await this.readStimuli();
 
@@ -381,6 +435,25 @@ export class CradleCell {
 
 請判斷是否需要建立新的 task。
 
+# Perception Discipline
+
+Cradle Cell 可以根據 Stimuli 形成觀察、解讀與假設,但必須保持層次清楚。
+
+## Rules
+
+- Facts 必須只來自 Stimuli 中明確出現的內容。
+- Interpretations 可以基於 Facts 做合理解讀,但不可寫成已確認結論。
+- Hypotheses 可以提出可能原因,但必須標示為未確認,且不可直接變成 Task。
+- Unknowns 用來保存目前無法判斷的部分,不可用想像填補。
+- Next Actions 應該是取得更多 evidence 或驗證假設,而不是直接進行大型改善。
+- Tasks 只在 Stimuli 顯示明確失敗、風險、矛盾、壓力或未完成目標時產生。
+- 如果 Stimuli 只有成功結果,通常只形成 Observation,不建立 Task。
+- 如果需要建立 Task,應優先建立「驗證型任務」,而不是「修復型任務」。
+- 每次 metabolize 預設最多建立 1 個 Task,除非 Stimuli 明確包含多個獨立問題。
+- 如果 Stimuli 只有成功結果，通常只形成 Observation，不建立 Task。
+- 對於只有成功結果的 Stimuli，Next Actions 應保持最小化；可以是「記錄此次結果」、「作為後續比較基準」或空陣列。
+- 不可因單次成功結果，自動提出完整測試、整合測試、CI/CD、部署、合併、監控或發布相關行動，除非 Stimuli 明確提供相關上下文。
+
 # Cell Context
 
 ${await this.buildMemoryContext()}
@@ -397,7 +470,24 @@ ${s.content}
 
 格式：
 {
-  "observation": "觀察摘要",
+  "observation": {
+    "summary": "整體觀察摘要",
+    "facts": [
+      "只列出 Stimuli 明確提供的事實"
+    ],
+    "interpretations": [
+      "基於 facts 的合理解讀,不可寫成已確認結論"
+    ],
+    "hypotheses": [
+      "可能原因或可能方向,必須標示未確認"
+    ],
+    "unknowns": [
+      "目前無法判斷或 evidence 不足的部分"
+    ],
+    "nextActions": [
+      "取得更多 evidence 或驗證假設的下一步"
+    ]
+  },
   "tasks": [
     {
       "title": "任務標題",
@@ -422,7 +512,7 @@ ${s.content}
       path.join(this.observationsDir, observationFile),
       `# Observation
 
-${parsed.observation ?? "(empty)"}
+${this.formatObservationMarkdown(parsed.observation)}
 
 ---
 createdAt: ${new Date().toISOString()}
@@ -1809,6 +1899,34 @@ ${memoryContext}
     return results;
   }
 
+  async writeStimulus({ category = "signals", name, content } = {}) {
+    const allowedCategories = [
+      "signals",
+      "threats",
+      "pressures",
+      "resources",
+    ];
+
+    if (!allowedCategories.includes(category)) {
+      throw new Error(`Invalid stimulus category: ${category}`);
+    }
+
+    const filename =
+      name || `stimulus-${this.formatTimestamp(new Date())}.md`;
+
+    const dir = path.join(this.stimuliDir, category);
+
+    await fs.mkdir(dir, { recursive: true });
+
+    await fs.writeFile(path.join(dir, filename), content, "utf8");
+
+    return {
+      category,
+      file: filename,
+      path: path.join(dir, filename),
+    };
+  }
+
   async archiveStimuli(stimuli = []) {
     const processedDir = path.join(this.stimuliDir, "processed");
 
@@ -2244,13 +2362,51 @@ ${memoryContext}
   }
 
   async executeArtifact(artifactId) {
-    const { ArtifactExecutionService } = await import("./execution/artifact-execution-service.js");
+    const { ArtifactExecutionService } = await import(
+      "./execution/artifact-execution-service.js"
+    );
+
+    const { buildExecutionStimulus } = await import(
+      "./situation/execution-stimulus.js"
+    );
 
     const executionService = new ArtifactExecutionService({
-      cellWorkspaceDir: this.workspace,
+      productionsDir: this.productionsDir,
+      executionsDir: path.join(this.workspaceDir, "executions"),
     });
 
-    return await executionService.executeArtifact(artifactId);
+    const result = await executionService.executeArtifact(artifactId);
+
+    const stimulus = buildExecutionStimulus({
+      cellId: this.id,
+      artifactId,
+      executionResult: result.toJSON ? result.toJSON() : result,
+    });
+
+    const stimulusFile = await this.writeStimulus({
+      category: stimulus.category,
+      name: `execution-${artifactId}-${this.formatTimestamp(new Date())}.md`,
+      content: stimulus.content,
+    });
+
+    await this.appendHistory(
+      block([
+        `## ${new Date().toISOString()}`,
+        "",
+        "### Artifact Executed",
+        "",
+        `- artifactId: ${artifactId}`,
+        `- status: ${result.status}`,
+        `- executionId: ${result.executionId ?? "-"}`,
+        `- stimulus: ${stimulusFile.category}/${stimulusFile.file}`,
+        "",
+      ])
+    );
+
+    return {
+      result,
+      stimulus: stimulusFile,
+    };
   }
 
   // =========================

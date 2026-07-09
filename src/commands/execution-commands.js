@@ -1,5 +1,3 @@
-import { ArtifactExecutionService } from "../execution/artifact-execution-service.js";
-
 export function createExecutionCommands() {
   return [
     {
@@ -20,13 +18,16 @@ export function createExecutionCommands() {
         console.log(`\n🚀 執行 Artifact: ${artifactId}\n`);
 
         try {
-          const executionService = new ArtifactExecutionService({
-            cellWorkspaceDir: cell.workspace,
-          });
-
-          const result = await executionService.executeArtifact(artifactId);
+          const { result, stimulus } = await cell.executeArtifact(artifactId);
 
           displayExecutionResult(result);
+
+          console.log(`
+Stimulus created.
+
+Category : ${stimulus.category}
+File     : situation/stimuli/${stimulus.category}/${stimulus.file}
+`);
         } catch (error) {
           console.log("\n❌ 執行失敗\n");
           console.error(error.message);

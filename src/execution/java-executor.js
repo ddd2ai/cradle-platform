@@ -37,7 +37,7 @@ export class JavaExecutor {
     }
 
     const executionId = `execution-${Date.now()}`;
-    const executionDir = path.join(this.executionsDir, executionId);
+    const executionDir = path.resolve(this.executionsDir, executionId);
     const srcDir = path.join(executionDir, "src");
 
     await fs.mkdir(srcDir, { recursive: true });
@@ -51,7 +51,7 @@ export class JavaExecutor {
 
     // 執行 javac 編譯
     const compileCommand = `javac ${fileName}`;
-    const compile = await this.runCommand("javac", [filePath], {
+    const compile = await this.runCommand("javac", [fileName], {
       cwd: srcDir,
     });
 
