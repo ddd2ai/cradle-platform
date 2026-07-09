@@ -23,6 +23,14 @@ import {
 import {
   createDivisionPlanFromMatrix,
 } from "./dna/dna-division.js";
+import {
+  calculateDNAMaturityFromHistory,
+} from "./dna/dna-maturity.js";
+import {
+  calculateCrossTraitVariance,
+  findDominantTrait,
+  decideCellLifecycle,
+} from "./dna/dna-lifecycle.js";
 import { ArtifactProductionService } from "./production/artifact-production-service.js";
 import { StabilityStore } from "./stability/stability-store.js";
 
@@ -996,6 +1004,30 @@ TODO: define meaning from DNA_DEFINITION.md.
     );
   }
 
+  /**
+   * Append DNA history only if vector has changed
+   * This prevents false maturity from appending identical vectors
+   * which would artificially decrease temporal variance
+   * @param {string} reason - Reason for the change
+   * @returns {Promise<boolean>} True if appended, false if unchanged
+   */
+  async appendDNAHistoryIfChanged(reason = "unknown") {
+    const vector = await this.readDNAVector();
+
+    if (!vector) return false;
+
+    const history = await this.readDNAHistory();
+    const latest = history.at(-1)?.vector;
+
+    // Compare vectors using JSON stringify
+    if (JSON.stringify(latest) === JSON.stringify(vector)) {
+      return false;
+    }
+
+    await this.appendDNAHistory(reason);
+    return true;
+  }
+
   async readDNAHistory() {
     try {
       const raw = await fs.readFile(
@@ -1321,6 +1353,11 @@ TODO: define meaning from DNA_DEFINITION.md.
     }
   }
 
+  /**
+   * Legacy maturity counter (deprecated)
+   * DNA maturity is now calculated from dna-history.json
+   * Keep this for backward compatibility only
+   */
   async increaseMaturity(amount = 1) {
     try {
       const profile = await this.readCellProfile();
@@ -1344,27 +1381,142 @@ TODO: define meaning from DNA_DEFINITION.md.
     return profile?.status ?? "unknown";
   }
 
+  /**
+   * Get maturity percentage (0-100) from DNA history
+   * This replaces the old counter-based maturity in profile
+   * @returns {Promise<number>} Maturity percentage
+   */
   async getMaturity() {
-    const profile = await this.readCellProfile();
-    return Number(profile?.maturity ?? 0);
+    const maturity = await this.getMaturityInfo();
+    return maturity.percent;
   }
 
+  /**
+   * Calculate DNA maturity from dna-history.json
+   * Returns complete maturity information including:
+   * - maturity: 0-1 score (normalizedMagnitude × convergence)
+   * - percent: 0-100 percentage
+   * - state: "seed" | "growing" | "stable" | "mature" | "saturated"
+   * - sampleSize: number of DNA history entries analyzed
+   * - magnitude: raw DNA capability score
+   * - normalizedMagnitude: magnitude normalized to 0-1
+   * - temporalVariance: variance of DNA vectors over time
+   * - convergence: stability measure (1 / (1 + variance))
+   * - currentTraitScores: latest trait scores
+   */
+  async getMaturityInfo() {
+    const history = await this.readDNAHistory();
+
+    return calculateDNAMaturityFromHistory(history, {
+      windowSize: 5,
+      varianceScale: 1,
+      maxMagnitude: 8,
+    });
+  }
+
+  /**
+   * Get lifecycle decision based on DNA maturity and traits
+   * Returns action recommendation: stay / repair / divide / merge
+   * 
+   * @param {Object} options - Decision options
+   * @param {boolean} options.hasComplementaryCell - Whether complementary cell exists
+   * @param {number} options.recentFailureRate - Recent failure rate (0-1)
+   * @returns {Promise<Object>} Lifecycle decision with action, confidence, reason, detail
+   */
+  async getLifecycleDecision({
+    hasComplementaryCell = false,
+    recentFailureRate = 0,
+  } = {}) {
+    const maturityInfo = await this.getMaturityInfo();
+
+    const traitScores =
+      maturityInfo.currentTraitScores ?? {};
+
+    const crossTraitVariance =
+      calculateCrossTraitVariance(traitScores);
+
+    const dominantTrait =
+      findDominantTrait(traitScores);
+
+    return decideCellLifecycle({
+      maturityInfo,
+      crossTraitVariance,
+      dominantTrait,
+      hasComplementaryCell,
+      recentFailureRate,
+    });
+  }
+
+  /**
+   * Get current DNA maturity (no longer increases counter)
+   * DNA maturity is now calculated from dna-history.json
+   * @returns {Promise<Object>} Complete maturity information
+   */
   async mature(amount = 1) {
-    await this.increaseMaturity(amount);
-
-    return {
-      maturity: await this.getMaturity(),
-    };
+    return await this.getMaturityInfo();
   }
 
+  /**
+   * Check if cell is mature enough to divide
+   * Requirements:
+   * - sampleSize >= 5: enough DNA history
+   * - maturity >= 0.75: high enough maturity score
+   * - temporalVariance <= 0.08: stable DNA pattern
+   * - normalizedMagnitude >= 0.60: sufficient capability
+   * @returns {Promise<boolean>} Can divide or not
+   */
   async canDivide() {
-    return (await this.getMaturity()) >= 5;
+    const maturity = await this.getMaturityInfo();
+
+    return (
+      maturity.sampleSize >= 5 &&
+      maturity.maturity >= 0.75 &&
+      maturity.temporalVariance <= 0.08 &&
+      maturity.normalizedMagnitude >= 0.60
+    );
+  }
+
+  /**
+   * Assert cell can divide, throw detailed error if not
+   * This provides comprehensive diagnostic information for debugging
+   * @returns {Promise<Object>} Maturity info if can divide
+   * @throws {Error} Detailed error message with all requirements
+   */
+  async assertCanDivide() {
+    const maturity = await this.getMaturityInfo();
+
+    const passed =
+      maturity.sampleSize >= 5 &&
+      maturity.maturity >= 0.75 &&
+      maturity.temporalVariance <= 0.08 &&
+      maturity.normalizedMagnitude >= 0.60;
+
+    if (passed) {
+      return maturity;
+    }
+
+    throw new Error(
+      [
+        `Cell ${this.id} is not mature enough to divide.`,
+        "",
+        `Maturity           : ${maturity.percent}%`,
+        `State              : ${maturity.state}`,
+        `Sample Size        : ${maturity.sampleSize}`,
+        `Temporal Variance  : ${maturity.temporalVariance.toFixed(6)}`,
+        `Convergence        : ${maturity.convergence.toFixed(4)}`,
+        `NormalizedMagnitude: ${maturity.normalizedMagnitude.toFixed(4)}`,
+        "",
+        "Required:",
+        "- sampleSize >= 5",
+        "- maturity >= 75%",
+        "- temporalVariance <= 0.08",
+        "- normalizedMagnitude >= 0.60",
+      ].join("\n")
+    );
   }
 
   async divideTo(childCell) {
-    if (!(await this.canDivide())) {
-      throw new Error(`Cell ${this.id} is not mature enough to divide.`);
-    }
+    await this.assertCanDivide();
 
     const parentInfo = await this.getEvolutionInfo();
 
@@ -1410,11 +1562,7 @@ TODO: define meaning from DNA_DEFINITION.md.
       throw new Error("Child cell id is required.");
     }
 
-    if (!(await this.canDivide())) {
-      throw new Error(
-        `Cell ${this.id} is not mature enough to divide. maturity=${await this.getMaturity()}`
-      );
-    }
+    await this.assertCanDivide();
 
     const dnaVector =
       await this.readDNAVector();
@@ -2630,11 +2778,7 @@ ${memoryContext}
       throw new Error("Child cell id is required.");
     }
 
-    if (!(await this.canDivide())) {
-      throw new Error(
-        `Cell ${this.id} is not mature enough to divide. maturity=${await this.getMaturity()}`
-      );
-    }
+    await this.assertCanDivide();
 
     const childRootDir = path.join("cells", childId);
 

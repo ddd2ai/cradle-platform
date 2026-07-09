@@ -46,12 +46,18 @@ export function createEngineCommands() {
 
         for (const [id, cell] of engine.cells) {
           const profile = await cell.getEvolutionInfo();
+          const maturity = await cell.getMaturityInfo();
+          const lifecycle = await cell.getLifecycleDecision();
 
           rows.push({
             Cell: id,
             Status: profile.status ?? "unknown",
             Active: cell.isActive() ? "yes" : "no",
-            Mature: profile.maturity ?? 0,
+            Mature: `${maturity.percent}%`,
+            Life: lifecycle.action,
+            State: maturity.state,
+            Var: maturity.temporalVariance.toFixed(4),
+            Conv: maturity.convergence.toFixed(2),
             Gen: profile.generation ?? 1,
             Inbox: engine.inboxes.get(id)?.length ?? 0,
           });
@@ -60,7 +66,7 @@ export function createEngineCommands() {
         console.log("");
 
         renderTable(
-          ["Cell", "Status", "Active", "Mature", "Gen", "Inbox"],
+          ["Cell", "Status", "Active", "Mature", "Life", "State", "Var", "Conv", "Gen", "Inbox"],
           rows
         );
       },

@@ -111,12 +111,16 @@ export function createColonyCommands() {
           }
 
           const profile = await cell.readCellProfile();
+          const maturity = await cell.getMaturityInfo();
 
           items.push({
             cellId: id,
             matrix: dnaVectorToMatrix(dnaVector),
-            weight: Number(profile?.maturity ?? 1),
-            profile,
+            weight: Math.max(maturity.maturity, 0.01),
+            profile: {
+              ...profile,
+              maturityInfo: maturity,
+            },
           });
         }
 
@@ -501,13 +505,17 @@ export function createColonyCommands() {
 
         for (const [id, cell] of engine.cells) {
           const profile = await cell.getEvolutionInfo();
+          const maturity = await cell.getMaturityInfo();
           const responsibilities = await cell.listResponsibilities();
           const relationships = await cell.listRelationships();
           const inboxCount = engine.inboxes.get(id)?.length ?? 0;
 
           console.log(id);
           console.log(` ├─ status: ${profile.status ?? "unknown"}`);
-          console.log(` ├─ maturity: ${profile.maturity ?? 0}`);
+          console.log(` ├─ maturity: ${maturity.percent}% (${maturity.state})`);
+          console.log(` ├─ variance: ${maturity.temporalVariance.toFixed(6)}`);
+          console.log(` ├─ convergence: ${maturity.convergence.toFixed(4)}`);
+          console.log(` ├─ magnitude: ${maturity.normalizedMagnitude.toFixed(4)}`);
           console.log(` ├─ generation: ${profile.generation ?? 1}`);
           console.log(` ├─ parent: ${profile.parent ?? "-"}`);
           console.log(` ├─ inbox: ${inboxCount}`);
@@ -586,12 +594,18 @@ export function createColonyCommands() {
 
           for (const [id, cell] of engine.cells) {
             const profile = await cell.getEvolutionInfo();
+            const maturity = await cell.getMaturityInfo();
+            const lifecycle = await cell.getLifecycleDecision();
 
             statusRows.push({
               Cell: id,
               Status: profile.status ?? "unknown",
               Active: cell.isActive() ? "yes" : "no",
-              Mature: profile.maturity ?? 0,
+              Mature: `${maturity.percent}%`,
+              Life: lifecycle.action,
+              State: maturity.state,
+              Var: maturity.temporalVariance.toFixed(4),
+              Conv: maturity.convergence.toFixed(2),
               Gen: profile.generation ?? 1,
               Inbox: engine.inboxes.get(id)?.length ?? 0,
             });
@@ -599,7 +613,7 @@ export function createColonyCommands() {
 
           console.log("Status");
           renderTable(
-            ["Cell", "Status", "Active", "Mature", "Gen", "Inbox"],
+            ["Cell", "Status", "Active", "Mature", "Life", "State", "Var", "Conv", "Gen", "Inbox"],
             statusRows
           );
 
