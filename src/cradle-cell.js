@@ -5,6 +5,7 @@ import { createCradleAssistant } from "./cradle-ai.js";
 import { createCopilotProvider } from "./providers/copilot-provider.js";
 import { createOllamaProvider } from "./providers/ollama-provider.js";
 import { block } from "./utils/text.js";
+import { parseLooseJsonObject } from "./utils/json.js";
 import {
   renderError,
   renderSkill,
@@ -21,6 +22,7 @@ import {
 import {
   createDivisionPlanFromMatrix,
 } from "./dna/dna-division.js";
+import { ArtifactProductionService } from "./production/artifact-production-service.js";
 
 export class CradleCell {
 
@@ -50,6 +52,9 @@ export class CradleCell {
     this.stimuliDir = path.join(this.situationDir, "stimuli");
     this.observationsDir = path.join(this.situationDir, "observations");
     this.metricsDir = path.join(this.situationDir, "metrics");
+    this.productionsDir = path.join(this.workspaceDir, "productions");
+    this.reviewsDir = path.join(this.workspaceDir, "reviews");
+    this.publicationsDir = path.join(this.workspaceDir, "publications");
     this.workspaceDirs = {
       notes: path.join(this.workspaceDir, "notes"),
       tasks: path.join(this.workspaceDir, "tasks"),
@@ -57,6 +62,9 @@ export class CradleCell {
       projects: path.join(this.workspaceDir, "projects"),
       research: path.join(this.workspaceDir, "research"),
       decisions: path.join(this.workspaceDir, "decisions"),
+      productions: this.productionsDir,
+      reviews: this.reviewsDir,
+      publications: this.publicationsDir,
     };
     this.snapshotsDir = path.join(this.rootDir, "snapshots");
     this.thoughtsDir = path.join(this.rootDir, "thoughts");
@@ -101,6 +109,12 @@ export class CradleCell {
       cellId: this.id,
       cellName: this.name,
       systemPromptBuilder: async () => await this.buildCellSystemPrompt(),
+    });
+
+    this.productionService = new ArtifactProductionService({
+      cell: this,
+      assistant: this.assistant,
+      productionsDir: this.productionsDir,
     });
 
     await this.updateStatus("idle");
@@ -396,15 +410,10 @@ ${s.content}
     const raw =
       result?.text ??
       result?.answer ??
+      result ??
       "{}";
 
-    const cleaned = raw
-      .replace(/^```json\s*/i, "")
-      .replace(/^```\s*/i, "")
-      .replace(/```\s*$/i, "")
-      .trim();
-
-    const parsed = JSON.parse(cleaned);
+    const parsed = parseLooseJsonObject(raw);
 
     const observationFile =
       `observation-${this.formatTimestamp(new Date())}.md`;
@@ -543,6 +552,9 @@ ${input}
       fs.mkdir(this.workspaceDirs.projects, { recursive: true }),
       fs.mkdir(this.workspaceDirs.research, { recursive: true }),
       fs.mkdir(this.workspaceDirs.decisions, { recursive: true }),
+      fs.mkdir(this.productionsDir, { recursive: true }),
+      fs.mkdir(this.reviewsDir, { recursive: true }),
+      fs.mkdir(this.publicationsDir, { recursive: true }),
       fs.mkdir(this.snapshotsDir, { recursive: true }),
       fs.mkdir(this.thoughtsDir, { recursive: true }),
       fs.mkdir(this.inboxDir, { recursive: true }),
@@ -980,22 +992,9 @@ TODO: define meaning from DNA_DEFINITION.md.
   }
 
   parseEvolutionJson(raw = "{}") {
-    const cleaned = raw
-      .replace(/^```json\s*/i, "")
-      .replace(/^```\s*/i, "")
-      .replace(/```\s*$/i, "")
-      .trim();
-
     try {
-      return JSON.parse(cleaned);
+      return parseLooseJsonObject(raw);
     } catch {
-      const start = cleaned.indexOf("{");
-      const end = cleaned.lastIndexOf("}");
-
-      if (start >= 0 && end > start) {
-        return JSON.parse(cleaned.slice(start, end + 1));
-      }
-
       return {
         summary: "Evolution JSON parse failed.",
         dnaDrift: [],
@@ -1665,15 +1664,9 @@ ${memoryContext}
 `;
 
     const result = await this.askWithTimeout(prompt, 120000);
-    const raw = result?.text ?? result?.answer ?? "";
+    const raw = result?.text ?? result?.answer ?? result ?? "";
 
-    const cleaned = raw
-      .replace(/^```json\s*/i, "")
-      .replace(/^```\s*/i, "")
-      .replace(/```\s*$/i, "")
-      .trim();
-
-    const nextDNA = JSON.parse(cleaned);
+    const nextDNA = parseLooseJsonObject(raw);
 
     const dnaFiles = await this.getDNAFiles();
 
@@ -2236,6 +2229,28 @@ ${memoryContext}
     const file = this.resolveInside(this.workspaceDir, relativePath);
     await fs.mkdir(path.dirname(file), { recursive: true });
     await fs.appendFile(file, `\n${content}\n`, "utf8");
+  }
+
+  // =========================
+  // Production
+  // =========================
+
+  async produceArtifact(input = {}) {
+    if (!this.productionService) {
+      throw new Error(`Cell ${this.id} productionService is not ready.`);
+    }
+
+    return await this.productionService.produce(input);
+  }
+
+  async executeArtifact(artifactId) {
+    const { ArtifactExecutionService } = await import("./execution/artifact-execution-service.js");
+
+    const executionService = new ArtifactExecutionService({
+      cellWorkspaceDir: this.workspace,
+    });
+
+    return await executionService.executeArtifact(artifactId);
   }
 
   // =========================

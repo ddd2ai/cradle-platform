@@ -16,6 +16,8 @@ import { CommandRegistry } from "./commands/command-registry.js";
 import { createEngineCommands } from "./commands/engine-commands.js";
 import { createCellCommands } from "./commands/cell-commands.js";
 import { createColonyCommands } from "./commands/colony-commands.js";
+import { createProductionCommands } from "./commands/production-commands.js";
+import { createExecutionCommands } from "./commands/execution-commands.js";
 import dnaPlot2DCommand from "./commands/plot2d-command.js";
 
 export class CradleEngine {
@@ -43,6 +45,8 @@ export class CradleEngine {
       ...createEngineCommands(),
       ...createColonyCommands(),
       ...createCellCommands(),
+      ...createProductionCommands(),
+      ...createExecutionCommands(),
       dnaPlot2DCommand,
     ]);
   }
@@ -415,6 +419,21 @@ export class CradleEngine {
 
       /project-file
           <project> <file>     Create file inside project
+
+
+    Cell Production:
+      /produce <type> <goal>   Produce an artifact draft
+      /artifacts               List produced artifacts
+
+      Artifact Types:
+        code                   Source code
+        document               Markdown document
+        diagram                Mermaid / PlantUML diagram
+        sql                    SQL script
+        config                 JSON / YAML config
+        test                   Test case
+        spec                   Specification
+        generic                General artifact
 
 
     Cell Evolution:

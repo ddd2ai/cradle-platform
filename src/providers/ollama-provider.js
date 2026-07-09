@@ -1,3 +1,24 @@
+import crypto from "crypto";
+
+/**
+ * 偵測 corrupted raw response (duplicated streaming chunks)
+ */
+function looksLikeDuplicatedStream(text = "") {
+  const patterns = [
+    "typetype",
+    "titletitle",
+    "goalgoal",
+    "outputsoutputs",
+    "contentcontent",
+    "LibraryLibrary",
+    "accepted accepted",
+    "{{",
+    '" "',
+  ];
+
+  return patterns.some((pattern) => text.includes(pattern));
+}
+
 /**
  * Ollama Provider
  *
@@ -28,7 +49,15 @@ export function createOllamaProvider({
     model,
 
     async ask({ prompt, onDelta, onIdle, onError }) {
+      const askId = crypto.randomUUID().substring(0, 8);
       let buffer = "";
+      let chunkCount = 0;
+
+      const DEBUG = process.env.OLLAMA_DEBUG === "true";
+
+      if (DEBUG) {
+        console.log(`[ollama-provider] askId=${askId} start`);
+      }
 
       try {
         const response = await fetch(`${baseUrl}/api/generate`, {
@@ -44,7 +73,10 @@ export function createOllamaProvider({
         });
 
         if (!response.ok) {
-          throw new Error(`Ollama request failed: ${response.status}`);
+          const errorText = await response.text();
+          throw new Error(
+            `Ollama request failed: ${response.status} ${errorText}`
+          );
         }
 
         const reader = response.body.getReader();
@@ -63,18 +95,52 @@ export function createOllamaProvider({
               const data = JSON.parse(line);
               const text = data.response || "";
 
-              buffer += text;
-              onDelta?.(text);
+              if (text.length > 0) {
+                chunkCount++;
+                buffer += text;
+                onDelta?.(text);
+
+                if (DEBUG && chunkCount % 10 === 0) {
+                  console.log(
+                    `[ollama-provider] askId=${askId} chunk#${chunkCount} buffer=${buffer.length}`
+                  );
+                }
+              }
             } catch (parseError) {
               // 跳過無法解析的行
-              console.warn("Failed to parse Ollama response line:", line);
+              if (DEBUG) {
+                console.warn(
+                  `[ollama-provider] askId=${askId} failed to parse line:`,
+                  line
+                );
+              }
             }
           }
+        }
+
+        // 檢測 corrupted response
+        if (looksLikeDuplicatedStream(buffer)) {
+          const preview = buffer.substring(0, 300);
+          throw new Error(
+            `Provider raw response appears corrupted by duplicated streaming chunks. Check ollama-provider streaming handling.\n\nPreview:\n${preview}`
+          );
+        }
+
+        if (DEBUG) {
+          console.log(
+            `[ollama-provider] askId=${askId} complete | chunks=${chunkCount} buffer=${buffer.length} chars`
+          );
+          console.log(
+            `[ollama-provider] raw response preview:\n${buffer.substring(0, 300)}`
+          );
         }
 
         onIdle?.();
         return buffer;
       } catch (error) {
+        if (DEBUG) {
+          console.error(`[ollama-provider] askId=${askId} error:`, error);
+        }
         onError?.(error);
         throw error;
       }

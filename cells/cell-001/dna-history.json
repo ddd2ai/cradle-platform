@@ -1,6 +1,6 @@
 [
   {
-    "at": "2026-06-25T12:09:44.439Z",
+    "at": "2026-07-09T06:36:42.480Z",
     "reason": "prepare",
     "vector": {
       "PERCEPTION": {
@@ -54,7 +54,439 @@
     }
   },
   {
-    "at": "2026-06-25T12:12:16.595Z",
+    "at": "2026-07-09T06:40:14.147Z",
+    "reason": "prepare",
+    "vector": {
+      "PERCEPTION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "DECISION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "DECOMPOSITION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "LEARNING": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "COLLABORATION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "CREATION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "EVOLUTION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "REFLECTION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      }
+    }
+  },
+  {
+    "at": "2026-07-09T06:40:24.473Z",
+    "reason": "prepare",
+    "vector": {
+      "PERCEPTION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "DECISION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "DECOMPOSITION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "LEARNING": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "COLLABORATION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "CREATION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "EVOLUTION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "REFLECTION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      }
+    }
+  },
+  {
+    "at": "2026-07-09T06:42:43.875Z",
+    "reason": "prepare",
+    "vector": {
+      "PERCEPTION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "DECISION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "DECOMPOSITION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "LEARNING": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "COLLABORATION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "CREATION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "EVOLUTION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "REFLECTION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      }
+    }
+  },
+  {
+    "at": "2026-07-09T06:49:29.920Z",
+    "reason": "prepare",
+    "vector": {
+      "PERCEPTION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "DECISION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "DECOMPOSITION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "LEARNING": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "COLLABORATION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "CREATION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "EVOLUTION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "REFLECTION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      }
+    }
+  },
+  {
+    "at": "2026-07-09T06:57:33.658Z",
+    "reason": "prepare",
+    "vector": {
+      "PERCEPTION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "DECISION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "DECOMPOSITION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "LEARNING": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "COLLABORATION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "CREATION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "EVOLUTION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "REFLECTION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      }
+    }
+  },
+  {
+    "at": "2026-07-09T06:58:49.288Z",
+    "reason": "prepare",
+    "vector": {
+      "PERCEPTION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "DECISION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "DECOMPOSITION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "LEARNING": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "COLLABORATION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "CREATION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "EVOLUTION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "REFLECTION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      }
+    }
+  },
+  {
+    "at": "2026-07-09T07:03:22.324Z",
+    "reason": "prepare",
+    "vector": {
+      "PERCEPTION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "DECISION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "DECOMPOSITION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "LEARNING": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "COLLABORATION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "CREATION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "EVOLUTION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "REFLECTION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      }
+    }
+  },
+  {
+    "at": "2026-07-09T07:03:36.882Z",
+    "reason": "prepare",
+    "vector": {
+      "PERCEPTION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "DECISION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "DECOMPOSITION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "LEARNING": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "COLLABORATION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "CREATION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "EVOLUTION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      },
+      "REFLECTION": {
+        "strength": 0.5,
+        "stability": 0.7,
+        "plasticity": 0.3,
+        "fitness": 0.5
+      }
+    }
+  },
+  {
+    "at": "2026-07-09T07:15:58.223Z",
     "reason": "prepare",
     "vector": {
       "PERCEPTION": {

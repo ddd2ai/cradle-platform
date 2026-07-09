@@ -1,0 +1,1 @@
+程式為單一檔 OrderApp.java，使用 java.util 與 java.math.BigDecimal 處理金額與集合。執行流程：建立商品→建立庫存→建立訂單與項目→檢查庫存→處理訂單（計算、扣庫存）→輸出摘要。

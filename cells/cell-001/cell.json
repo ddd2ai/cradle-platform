@@ -1,16 +1,16 @@
 {
   "id": "cell-001",
   "name": "cell-001",
-  "model": "llama3.1:8b",
+  "model": "gpt-5-mini",
   "status": "idle",
-  "maturity": 2,
+  "maturity": 4,
   "generation": 1,
   "parent": null,
   "responsibilities": [],
   "relationships": [],
-  "createdAt": "2026-06-25T12:09:44.426Z",
-  "updatedAt": "2026-06-25T12:13:24.124Z",
-  "lastStartedAt": "2026-06-25T12:12:16.588Z",
+  "createdAt": "2026-07-09T06:36:42.472Z",
+  "updatedAt": "2026-07-09T07:17:12.872Z",
+  "lastStartedAt": "2026-07-09T07:15:58.215Z",
   "directories": {
     "root": "cells/cell-001",
     "logs": "cells/cell-001/logs",
@@ -23,7 +23,10 @@
       "artifacts": "cells/cell-001/workspace/artifacts",
       "projects": "cells/cell-001/workspace/projects",
       "research": "cells/cell-001/workspace/research",
-      "decisions": "cells/cell-001/workspace/decisions"
+      "decisions": "cells/cell-001/workspace/decisions",
+      "productions": "cells/cell-001/workspace/productions",
+      "reviews": "cells/cell-001/workspace/reviews",
+      "publications": "cells/cell-001/workspace/publications"
     },
     "snapshots": "cells/cell-001/snapshots",
     "thoughts": "cells/cell-001/thoughts",
