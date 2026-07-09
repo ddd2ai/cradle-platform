@@ -207,6 +207,113 @@ DNA
 
 ---
 
+---
+
+# Cell Lifecycle
+
+每一個 Cradle Cell 都遵循相同的生命週期。
+
+Cell 並不是直接產生程式碼，而是將外部需求逐步轉化為可執行、可驗證、可持續演化的軟體產物（Artifact）。
+
+每一個階段都具有明確的責任，使 Cradle 能夠在不同 LLM、不同模型能力下，仍維持穩定且一致的生產流程。
+
+```text
+                User Intent
+                     │
+                     ▼
+          ① Goal Interpretation
+                     │
+                     ▼
+          ② Production Planning
+                     │
+                     ▼
+          ③ Artifact Generation
+                     │
+                     ▼
+          ④ Artifact Parsing
+                     │
+                     ▼
+          ⑤ Artifact Normalization
+                     │
+                     ▼
+          ⑥ Artifact Validation
+                     │
+          ┌──────────┴──────────┐
+          │                     │
+          ▼                     ▼
+      Validation OK        Validation Failed
+          │                     │
+          │                ⑦ Artifact Repair
+          │                     │
+          └──────────┬──────────┘
+                     ▼
+             ⑧ Artifact Store
+                     │
+                     ▼
+          Workspace / Project
+                     │
+                     ▼
+             ⑨ Execution
+                     │
+                     ▼
+            ⑩ Execution Result
+                     │
+                     ▼
+           (Future) Reflection
+                     │
+                     ▼
+           (Future) Evolution
+```
+
+## Lifecycle Stages
+
+| Stage | Description |
+|--------|-------------|
+| **① Goal Interpretation** | 理解使用者意圖、需求與限制條件。 |
+| **② Production Planning** | 根據目標制定生產計畫。 |
+| **③ Artifact Generation** | 使用 LLM 產生結構化的 Artifact。 |
+| **④ Artifact Parsing** | 將模型輸出轉換為標準 Artifact 格式。 |
+| **⑤ Artifact Normalization** | 統一路徑、格式、語言與輸出內容。 |
+| **⑥ Artifact Validation** | 驗證 Artifact 是否符合平台規範與需求。 |
+| **⑦ Artifact Repair** | 若驗證失敗，重新修正 Artifact。 |
+| **⑧ Artifact Store** | 將 Artifact 保存至 Cell Workspace。 |
+| **⑨ Execution** | 編譯、執行或部署產出的軟體。 |
+| **⑩ Execution Result** | 收集執行結果、日誌與狀態。 |
+| **Reflection (Future)** | 分析執行成果，累積經驗。 |
+| **Evolution (Future)** | 根據經驗持續調整 DNA，提升未來能力。 |
+
+## Design Philosophy
+
+在 Cradle 中，
+
+LLM 並不是生命本身。
+
+LLM 只是協助 Cell 進行生產的一種能力來源。
+
+真正的生命週期，由 Cell 自己負責管理。
+
+因此：
+
+```text
+ User Intent
+      ↓
+    Cell
+      ↓
+  Artifact
+      ↓
+  Execution
+      ↓
+  Reflection
+      ↓
+  Evolution
+```
+
+每一個 Cell 都能夠透過相同的生命週期，不斷地生產、驗證、修正、學習與演化。
+
+> Code is only one possible artifact. The true product of a Cell is continuous evolution.
+
+---
+
 # 成熟度（Maturity）
 
 每個 Cell 都擁有自己的成熟度。
