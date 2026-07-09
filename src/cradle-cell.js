@@ -24,6 +24,7 @@ import {
   createDivisionPlanFromMatrix,
 } from "./dna/dna-division.js";
 import { ArtifactProductionService } from "./production/artifact-production-service.js";
+import { StabilityStore } from "./stability/stability-store.js";
 
 export class CradleCell {
 
@@ -116,6 +117,10 @@ export class CradleCell {
       cell: this,
       assistant: this.assistant,
       productionsDir: this.productionsDir,
+    });
+
+    this.stabilityStore = new StabilityStore({
+      rootDir: this.rootDir,
     });
 
     await this.updateStatus("idle");
@@ -2476,10 +2481,24 @@ ${memoryContext}
 
       history.push(roundRecord);
 
-      if (
-        executionResult.status === "passed" &&
-        newTasks.length === 0
-      ) {
+      // 記錄到 StabilityStore
+      const artifactState =
+        await this.stabilityStore.appendArtifactRecord(
+          artifactId,
+          {
+            round,
+            executionStatus: executionResult.status,
+            createdTasks: metabolism.created,
+            observationFile: metabolism.observationFile,
+            tasks: newTasks.map((task) => ({
+              id: task.id,
+              title: task.title,
+            })),
+          }
+        );
+
+      // 新的穩定條件：連續 2 次 passed + 連續 2 次 no task
+      if (artifactState.status === "stable") {
         await this.appendHistory(`
 ## ${new Date().toISOString()}
 
@@ -2488,12 +2507,16 @@ ${memoryContext}
 - artifactId: ${artifactId}
 - rounds: ${round}
 - status: stable
+- consecutivePassed: ${artifactState.consecutivePassed}
+- consecutiveNoTask: ${artifactState.consecutiveNoTask}
+- repairCount: ${artifactState.repairCount}
 `);
 
         return {
           stable: true,
           artifactId,
           rounds: round,
+          artifactState,
           history,
         };
       }
@@ -2505,6 +2528,7 @@ ${memoryContext}
           stable: false,
           artifactId,
           reason: "execution did not stabilize and no repair task was created",
+          artifactState,
           history,
         };
       }
@@ -2516,10 +2540,13 @@ ${memoryContext}
       });
     }
 
+    const finalState = await this.stabilityStore.getArtifactState(artifactId);
+
     return {
       stable: false,
       artifactId,
       reason: "max rounds reached",
+      artifactState: finalState,
       history,
     };
   }

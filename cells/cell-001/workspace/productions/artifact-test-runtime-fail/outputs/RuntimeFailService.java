@@ -1,9 +1,9 @@
-public class BrokenService {
+public class RuntimeFailService {
     public String sayHello() {
         return "Hello Cradle";
     }
 
     public static void main(String[] args) {
-        System.out.println(new BrokenService().sayHello());
+        System.out.println(new RuntimeFailService().sayHello());
     }
 }

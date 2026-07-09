@@ -1,0 +1,11 @@
+{
+  "artifactId": "artifact-test-runtime-fail",
+  "status": "passed",
+  "command": "java -cp src RuntimeFailService",
+  "stdout": "Hello Cradle\n",
+  "stderr": "",
+  "exitCode": 0,
+  "error": null,
+  "executionId": "execution-1783604039532",
+  "createdAt": "2026-07-09T13:33:59.759Z"
+}

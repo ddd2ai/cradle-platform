@@ -1,0 +1,136 @@
+{
+  "artifacts": {
+    "artifact-20260709-212927": {
+      "artifactId": "artifact-20260709-212927",
+      "status": "stable",
+      "consecutivePassed": 3,
+      "consecutiveNoTask": 3,
+      "repairCount": 0,
+      "records": [
+        {
+          "round": 1,
+          "executionStatus": "passed",
+          "createdTasks": 0,
+          "observationFile": "observation-20260709-213014.md",
+          "tasks": [],
+          "createdAt": "2026-07-09T13:30:14.240Z"
+        },
+        {
+          "round": 1,
+          "executionStatus": "passed",
+          "createdTasks": 0,
+          "observationFile": "observation-20260709-213042.md",
+          "tasks": [],
+          "createdAt": "2026-07-09T13:30:42.845Z"
+        },
+        {
+          "round": 1,
+          "executionStatus": "passed",
+          "createdTasks": 0,
+          "observationFile": "observation-20260709-213104.md",
+          "tasks": [],
+          "createdAt": "2026-07-09T13:31:04.048Z"
+        }
+      ],
+      "updatedAt": "2026-07-09T13:31:04.048Z",
+      "stableAt": "2026-07-09T13:31:04.048Z"
+    },
+    "artifact-test-compile-fail": {
+      "artifactId": "artifact-test-compile-fail",
+      "status": "stable",
+      "consecutivePassed": 3,
+      "consecutiveNoTask": 3,
+      "repairCount": 1,
+      "records": [
+        {
+          "round": 1,
+          "executionStatus": "compile_failed",
+          "createdTasks": 1,
+          "observationFile": "observation-20260709-213223.md",
+          "tasks": [
+            {
+              "id": "task-20260709-213223-d32952e1",
+              "title": "驗證並重現 BrokenService.java 的編譯錯誤（驗證型任務）"
+            }
+          ],
+          "createdAt": "2026-07-09T13:32:23.829Z"
+        },
+        {
+          "round": 2,
+          "executionStatus": "passed",
+          "createdTasks": 0,
+          "observationFile": "observation-20260709-213249.md",
+          "tasks": [],
+          "createdAt": "2026-07-09T13:32:49.947Z"
+        },
+        {
+          "round": 1,
+          "executionStatus": "passed",
+          "createdTasks": 0,
+          "observationFile": "observation-20260709-213708.md",
+          "tasks": [],
+          "createdAt": "2026-07-09T13:37:08.910Z"
+        },
+        {
+          "round": 1,
+          "executionStatus": "passed",
+          "createdTasks": 0,
+          "observationFile": "observation-20260709-213754.md",
+          "tasks": [],
+          "createdAt": "2026-07-09T13:37:54.062Z"
+        }
+      ],
+      "updatedAt": "2026-07-09T13:37:54.062Z",
+      "stableAt": "2026-07-09T13:37:54.062Z"
+    },
+    "artifact-test-runtime-fail": {
+      "artifactId": "artifact-test-runtime-fail",
+      "status": "stabilizing",
+      "consecutivePassed": 1,
+      "consecutiveNoTask": 1,
+      "repairCount": 1,
+      "records": [
+        {
+          "round": 1,
+          "executionStatus": "runtime_failed",
+          "createdTasks": 1,
+          "observationFile": "observation-20260709-213348.md",
+          "tasks": [
+            {
+              "id": "task-20260709-213348-6330c41d",
+              "title": "驗證並定位 RuntimeFailService 的 runtime 錯誤（驗證型任務）"
+            }
+          ],
+          "createdAt": "2026-07-09T13:33:48.855Z"
+        },
+        {
+          "round": 2,
+          "executionStatus": "passed",
+          "createdTasks": 0,
+          "observationFile": "observation-20260709-213411.md",
+          "tasks": [],
+          "createdAt": "2026-07-09T13:34:11.060Z"
+        }
+      ],
+      "updatedAt": "2026-07-09T13:34:11.060Z"
+    },
+    "artifact-test-pass": {
+      "artifactId": "artifact-test-pass",
+      "status": "stabilizing",
+      "consecutivePassed": 1,
+      "consecutiveNoTask": 1,
+      "repairCount": 0,
+      "records": [
+        {
+          "round": 1,
+          "executionStatus": "passed",
+          "createdTasks": 0,
+          "observationFile": "observation-20260709-213606.md",
+          "tasks": [],
+          "createdAt": "2026-07-09T13:36:06.346Z"
+        }
+      ],
+      "updatedAt": "2026-07-09T13:36:06.346Z"
+    }
+  }
+}

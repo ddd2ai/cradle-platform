@@ -1,0 +1,39 @@
+{
+  "id": "artifact-20260709-212927",
+  "type": "executable-java",
+  "title": "寫一個 Java class，名稱為 HelloService，包含 sayHello 方法，回傳 Hello Cradle",
+  "status": "draft",
+  "goal": "寫一個 Java class，名稱為 HelloService，包含 sayHello 方法，回傳 Hello Cradle",
+  "context": {
+    "cellId": "cell-001",
+    "provider": "copilot",
+    "model": "gpt-5-mini"
+  },
+  "plan": {
+    "summary": "產出單一可編譯執行的 HelloService.java，內含 sayHello 方法回傳固定字串，並提供 main 以便直接執行。",
+    "steps": [
+      "建立 HelloService.java 檔案",
+      "實作 public class HelloService，包含 public String sayHello() 回傳 \"Hello Cradle\"",
+      "加入 public static void main(String[] args) 以印出 sayHello() 的回傳結果"
+    ],
+    "markdown": "# 計畫\n1. 檔名與 public class 同名為 HelloService.java\n2. sayHello 方法回傳「Hello Cradle」\n3. main 方法示範執行並輸出結果\n\n使用方式：\n```bash\njavac HelloService.java\njava HelloService\n```"
+  },
+  "outputs": [
+    {
+      "kind": "file",
+      "path": "HelloService.java",
+      "language": "java",
+      "content": "public class HelloService {\n\n    public String sayHello() {\n        return \"Hello Cradle\";\n    }\n\n    public static void main(String[] args) {\n        HelloService service = new HelloService();\n        System.out.println(service.sayHello());\n    }\n}"
+    }
+  ],
+  "notes": [
+    "產物為單一可執行 Java 檔案，符合 executable-java 規範。",
+    "可使用 javac HelloService.java 編譯，並用 java HelloService 執行。"
+  ],
+  "review": {
+    "status": "pending",
+    "notes": []
+  },
+  "createdAt": "2026-07-09T13:29:27.654Z",
+  "updatedAt": "2026-07-09T13:29:27.655Z"
+}

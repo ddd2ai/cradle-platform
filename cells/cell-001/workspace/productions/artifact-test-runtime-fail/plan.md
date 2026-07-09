@@ -1,0 +1,1 @@
+修改重點：原本實作在 sayHello 裡會拋出 RuntimeException（導致 runtime_failed）。修正為直接回傳字串 "Hello Cradle"，並用 main 方法印出以便快速驗證執行結果。

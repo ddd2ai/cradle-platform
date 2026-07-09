@@ -107,6 +107,61 @@ ${result.history.map((item) => `
         }
       },
     },
+
+    {
+      name: "/stability",
+      match: (input, { engine }) =>
+        input.startsWith("/stability ") && !engine.isCradleMode(),
+
+      execute: async ({ engine, input }) => {
+        const cell = engine.getActiveCell();
+        const artifactId = input.replace("/stability ", "").trim();
+
+        if (!artifactId) {
+          console.log("❌ 請提供 artifact ID");
+          console.log("用法: /stability <artifact-id>");
+          return;
+        }
+
+        console.log(`\n📊 Artifact Stability State: ${artifactId}\n`);
+
+        try {
+          const state =
+            await cell.stabilityStore.getArtifactState(artifactId);
+
+          if (!state) {
+            console.log(`No stability state found: ${artifactId}\n`);
+            console.log("提示：使用 /stabilize <artifact-id> 來執行穩定化循環");
+            return;
+          }
+
+          console.log(`
+Status               : ${state.status}
+Consecutive Passed   : ${state.consecutivePassed}
+Consecutive No Task  : ${state.consecutiveNoTask}
+Repair Count         : ${state.repairCount}
+Updated At           : ${state.updatedAt}
+${state.stableAt ? `Stable At            : ${state.stableAt}` : ""}
+
+Recent Records (last 5):
+${state.records.slice(-5).map((record) => `
+- Round ${record.round}
+  Status     : ${record.executionStatus}
+  Tasks      : ${record.createdTasks}
+  Observation: ${record.observationFile ?? "-"}
+  Created At : ${record.createdAt}
+`).join("\n")}
+`);
+        } catch (error) {
+          console.log("\n❌ Failed to get stability state\n");
+          console.error(error.message);
+
+          if (error.stack) {
+            console.error(`\n${error.stack}`);
+          }
+        }
+      },
+    },
   ];
 }
 
