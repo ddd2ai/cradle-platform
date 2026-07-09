@@ -1,6 +1,7 @@
 // cradle-cell.js
 import fs from "fs/promises";
 import path from "path";
+import crypto from "crypto";
 import { createCradleAssistant } from "./cradle-ai.js";
 import { createCopilotProvider } from "./providers/copilot-provider.js";
 import { createOllamaProvider } from "./providers/ollama-provider.js";
@@ -741,7 +742,7 @@ ${input}
     const tasks = await this.readTasks();
 
     const task = {
-      id: `task-${this.formatTimestamp(new Date())}`,
+      id: `task-${this.formatTimestamp(new Date())}-${crypto.randomUUID().slice(0, 8)}`,
       title,
       source,
       content,
@@ -2406,6 +2407,120 @@ ${memoryContext}
     return {
       result,
       stimulus: stimulusFile,
+    };
+  }
+
+  async repairArtifactFromTask({
+    artifactId,
+    task,
+    executionResult,
+  } = {}) {
+    if (!artifactId) {
+      throw new Error("repairArtifactFromTask requires artifactId");
+    }
+
+    if (!task) {
+      throw new Error("repairArtifactFromTask requires task");
+    }
+
+    const result =
+      await this.productionService.repairArtifactFromExecution({
+        artifactId,
+        task,
+        executionResult:
+          executionResult?.toJSON?.() ??
+          executionResult,
+      });
+
+    await this.completeTask(task.id);
+
+    return result;
+  }
+
+  async stabilizeArtifact({
+    artifactId,
+    maxRounds = 3,
+  } = {}) {
+    if (!artifactId) {
+      throw new Error("stabilizeArtifact requires artifactId");
+    }
+
+    const history = [];
+
+    for (let round = 1; round <= maxRounds; round++) {
+      const beforeTasks = await this.readTasks();
+      const beforeTaskIds = new Set(beforeTasks.map((task) => task.id));
+
+      const execution = await this.executeArtifact(artifactId);
+      const executionResult = execution.result;
+
+      const metabolism = await this.metabolize();
+
+      const afterTasks = await this.readTasks();
+      const newTasks = afterTasks.filter(
+        (task) =>
+          task.status === "pending" &&
+          !beforeTaskIds.has(task.id)
+      );
+
+      const roundRecord = {
+        round,
+        executionStatus: executionResult.status,
+        createdTasks: metabolism.created,
+        observationFile: metabolism.observationFile,
+        newTasks: newTasks.map((task) => ({
+          id: task.id,
+          title: task.title,
+        })),
+      };
+
+      history.push(roundRecord);
+
+      if (
+        executionResult.status === "passed" &&
+        newTasks.length === 0
+      ) {
+        await this.appendHistory(`
+## ${new Date().toISOString()}
+
+### Artifact Stabilized
+
+- artifactId: ${artifactId}
+- rounds: ${round}
+- status: stable
+`);
+
+        return {
+          stable: true,
+          artifactId,
+          rounds: round,
+          history,
+        };
+      }
+
+      const repairTask = newTasks[0];
+
+      if (!repairTask) {
+        return {
+          stable: false,
+          artifactId,
+          reason: "execution did not stabilize and no repair task was created",
+          history,
+        };
+      }
+
+      await this.repairArtifactFromTask({
+        artifactId,
+        task: repairTask,
+        executionResult,
+      });
+    }
+
+    return {
+      stable: false,
+      artifactId,
+      reason: "max rounds reached",
+      history,
     };
   }
 

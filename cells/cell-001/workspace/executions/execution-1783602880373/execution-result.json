@@ -1,0 +1,11 @@
+{
+  "artifactId": "artifact-test-compile-fail",
+  "status": "compile_failed",
+  "command": "javac BrokenService.java",
+  "stdout": "",
+  "stderr": "BrokenService.java:3: error: ';' expected\n        System.out.println(\"Hello Cradle\")\n                                          ^\n1 error\n",
+  "exitCode": 1,
+  "error": null,
+  "executionId": "execution-1783602880373",
+  "createdAt": "2026-07-09T13:14:40.514Z"
+}

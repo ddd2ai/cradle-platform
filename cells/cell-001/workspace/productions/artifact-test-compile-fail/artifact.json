@@ -1,28 +1,48 @@
 {
   "id": "artifact-test-compile-fail",
   "type": "executable-java",
-  "title": "Compile Failed 測試",
+  "title": "BrokenService 編譯失敗驗證",
   "status": "draft",
   "goal": "建立一個會編譯失敗的 Java class",
   "context": {
     "cellId": "cell-001",
-    "provider": "manual",
-    "model": "manual"
+    "provider": "copilot",
+    "model": "gpt-5-mini"
   },
-  "plan": null,
+  "plan": {
+    "summary": "重現並紀錄 BrokenService.java 的編譯錯誤；確認是否為簡單語法錯誤並提供修復建議（但不自動修復，因為原始目標為故意產生編譯失敗）。",
+    "steps": [
+      "列出 BrokenService.java（含行號）並保存為證據。",
+      "於 Java 21 環境執行 `javac BrokenService.java`，記錄完整 stdout、stderr 與返回碼。",
+      "分析編譯錯誤訊息，判斷是否為單行缺少分號或其他語法問題。",
+      "若為簡單語法錯誤，紀錄修復建議並決定是否建立後續修復任務；若原始目標為保留編譯失敗，則不建立修復任務。"
+    ],
+    "markdown": "重現指令：\n\njavac BrokenService.java\n\n觀察到的錯誤（完整 stderr）：\n\nBrokenService.java:3: error: ';' expected\n        System.out.println(\"Hello Cradle\")\n                                          ^\n1 error\n\n診斷：第 3 行結尾缺少分號。建議修復：在第 3 行的 System.out.println(...) 後加入分號。\n\n決策：因 Original Goal 明確要求產生會編譯失敗的類，故本次僅驗證並紀錄錯誤，不建立自動修復任務。"
+  },
   "outputs": [
     {
       "kind": "file",
       "path": "BrokenService.java",
       "language": "java",
-      "content": "public class BrokenService {\n    public static void main(String[] args) {\n        System.out.println(\"Hello Cradle\")\n    }\n}\n"
+      "content": "public class BrokenService {\n    public static void main(String[] args) {\n        System.out.println(\"Hello Cradle\")\n    }\n}"
     }
   ],
-  "notes": [],
+  "notes": [
+    "重現指令: javac BrokenService.java",
+    "executionId: execution-1783602910330",
+    "執行結果: status=compile_failed, exitCode=1",
+    "stderr: \"BrokenService.java:3: error: ';' expected\\n        System.out.println(\\\"Hello Cradle\\\")\\n                                          ^\\n1 error\\n\"",
+    "檔案列出（含行號）:\n1: public class BrokenService {\n2:     public static void main(String[] args) {\n3:         System.out.println(\"Hello Cradle\")\n4:     }\n5: }",
+    "診斷: 第 3 行結尾缺少分號（語法錯誤），編譯器明確指出 \"; expected\"。",
+    "修復建議: 在第 3 行的 System.out.println(\"Hello Cradle\") 後面加入分號，變為 System.out.println(\"Hello Cradle\");",
+    "是否建立後續修復任務: 否 — 原始目標為建立一個會編譯失敗的 Java 類；本任務僅驗證並記錄錯誤。如要修復，請建立新的修復型任務。",
+    "備註: outputs 中保留故意會編譯失敗的 BrokenService.java，以符合 Original Goal。",
+    "Repaired from execution feedback: 驗證 BrokenService.java 編譯錯誤（驗證型任務）"
+  ],
   "review": {
     "status": "pending",
     "notes": []
   },
-  "createdAt": "2026-07-09T00:00:00.000Z",
-  "updatedAt": "2026-07-09T00:00:00.000Z"
+  "createdAt": "2026-07-09T13:15:46.402Z",
+  "updatedAt": "2026-07-09T13:15:46.402Z"
 }

@@ -260,3 +260,86 @@ ${context}
 不要說「已修正」。
 `;
 }
+
+export function buildArtifactExecutionRepairPrompt({
+  type,
+  goal,
+  artifact,
+  task,
+  executionResult,
+  context = "",
+} = {}) {
+  return `
+你是 Cradle Cell 的 Artifact Execution Repair 模組。
+
+剛剛產生的 Artifact 已經通過基本格式驗證,但在執行或感知後產生了修正任務。
+請根據 Task 與 Execution Result 修正 Artifact JSON。
+
+# Critical Rules
+
+1. 必須忠實遵守 Original Goal,不可改寫成其他任務。
+2. 不可任務漂移。
+3. 只修正 Task 與 Execution Result 明確指出的問題。
+4. 不可擴大修改範圍。
+5. 不可新增與 Goal 無關的功能。
+6. 必須保留 artifact type。
+7. outputs 必須是完整可落檔內容。
+8. 修正後仍必須符合 Artifact Type Policy。
+
+# Original Goal
+
+${goal}
+
+# Artifact Type
+
+${type}
+
+# Repair Task
+
+${JSON.stringify(task, null, 2)}
+
+# Execution Result
+
+${JSON.stringify(executionResult, null, 2)}
+
+# Current Artifact JSON
+
+${JSON.stringify(artifact, null, 2)}
+
+# Cell Context
+
+${context}
+
+# Output JSON Format
+
+{
+  "type": "${type}",
+  "title": "...",
+  "goal": "${goal}",
+  "plan": {
+    "summary": "...",
+    "steps": ["..."],
+    "markdown": "..."
+  },
+  "outputs": [
+    {
+      "kind": "file",
+      "path": "relative/path.ext",
+      "language": "java | javascript | markdown | sql | json | yaml | properties | xml",
+      "content": "完整檔案內容"
+    }
+  ],
+  "notes": ["..."]
+}
+
+# Critical Output Rule
+
+你的完整回覆必須只包含一個 JSON object。
+第一個字元必須是 {
+最後一個字元必須是 }
+不要 markdown code fence。
+不要額外說明。
+不要說「以下是」。
+不要說「已修正」。
+`;
+}

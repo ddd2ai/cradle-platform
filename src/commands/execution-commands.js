@@ -52,6 +52,61 @@ File     : situation/stimuli/${stimulus.category}/${stimulus.file}
         await executeArtifactCommand.execute({ ...context, input });
       },
     },
+
+    {
+      name: "/stabilize",
+      match: (input, { engine }) =>
+        input.startsWith("/stabilize ") && !engine.isCradleMode(),
+
+      execute: async ({ engine, input }) => {
+        const cell = engine.getActiveCell();
+        const artifactId = input.replace("/stabilize ", "").trim();
+
+        if (!artifactId) {
+          console.log("❌ 請提供 artifact ID");
+          console.log("用法: /stabilize <artifact-id>");
+          return;
+        }
+
+        console.log(`\n🌱 Stabilizing Artifact: ${artifactId}\n`);
+
+        try {
+          const result = await cell.stabilizeArtifact({
+            artifactId,
+            maxRounds: 3,
+          });
+
+          console.log(`
+Stabilization completed.
+
+Artifact : ${result.artifactId}
+Stable   : ${result.stable ? "yes" : "no"}
+Rounds   : ${result.rounds ?? result.history.length}
+Reason   : ${result.reason ?? "-"}
+
+History:
+${result.history.map((item) => `
+- Round ${item.round}
+  executionStatus: ${item.executionStatus}
+  createdTasks   : ${item.createdTasks}
+  observation    : ${item.observationFile ?? "-"}
+  tasks          : ${
+    item.newTasks.length === 0
+      ? "-"
+      : item.newTasks.map((task) => task.title).join(", ")
+  }
+`).join("\n")}
+`);
+        } catch (error) {
+          console.log("\n❌ Stabilization failed\n");
+          console.error(error.message);
+
+          if (error.stack) {
+            console.error(`\n${error.stack}`);
+          }
+        }
+      },
+    },
   ];
 }
 

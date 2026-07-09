@@ -4,6 +4,7 @@ import { ArtifactStore } from "./artifact-store.js";
 import {
   buildProductionPrompt,
   buildArtifactRepairPrompt,
+  buildArtifactExecutionRepairPrompt,
 } from "./production-prompts.js";
 import { ArtifactParser } from "./artifact-parser.js";
 import { ArtifactNormalizer } from "./artifact-normalizer.js";
@@ -144,6 +145,104 @@ The actual artifact MUST follow the Original Goal, not any past Vision or Histor
     ];
 
     return repaired;
+  }
+
+  async repairArtifactFromExecution({
+    artifactId,
+    task,
+    executionResult,
+  } = {}) {
+    const artifact = await this.store.readArtifact(artifactId);
+
+    if (!artifact) {
+      throw new Error(`Artifact not found: ${artifactId}`);
+    }
+
+    const environment = await this.cell.readEnvironment();
+
+    const context = `
+# Environment (Technical Stack Reference Only)
+
+${environment}
+
+Note:
+The actual artifact MUST follow the Original Goal.
+Do not replace the goal with the repair task.
+The repair task only describes what needs to be fixed.
+`;
+
+    const prompt = buildArtifactExecutionRepairPrompt({
+      type: artifact.type,
+      goal: artifact.goal,
+      artifact,
+      task,
+      executionResult,
+      context,
+    });
+
+    const result = await this.cell.askWithTimeout(prompt, 180000);
+    const raw = result?.text ?? result?.answer ?? result ?? "{}";
+
+    const parsed = this.parser.parse(raw);
+
+    let repaired = this.createArtifactFromParsed({
+      parsed,
+      type: artifact.type,
+      title: artifact.title,
+      goal: artifact.goal,
+    });
+
+    // 保留原 artifact id,讓 /execute <artifact-id> 可以繼續使用同一個 id
+    repaired.id = artifact.id;
+
+    repaired.notes = [
+      ...(repaired.notes ?? []),
+      `Repaired from execution feedback: ${task?.title ?? "(unknown task)"}`,
+    ];
+
+    repaired = this.normalizer.normalize(repaired);
+
+    this.validator.validate(repaired);
+
+    const saved = await this.store.saveArtifact(repaired);
+
+    await this.cell.appendHistory(`
+## ${new Date().toISOString()}
+
+### Repaired Artifact From Execution
+
+- id: ${repaired.id}
+- type: ${repaired.type}
+- task: ${task?.id ?? "-"} ${task?.title ?? ""}
+- executionStatus: ${executionResult?.status ?? "-"}
+`);
+
+    await this.cell.appendThought(`
+## ${new Date().toISOString()}
+
+## Artifact Execution Repair Experience
+
+### Artifact
+
+${repaired.id}
+
+### Task
+
+${task?.title ?? "(unknown task)"}
+
+### Execution Result
+
+${executionResult?.status ?? "-"}
+
+### Growth Impact
+
+This repair changed how the cell improves an artifact after real execution feedback.
+`);
+
+    return {
+      artifact: repaired,
+      saved,
+    };
   }
 
   async produce({
