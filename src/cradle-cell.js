@@ -548,7 +548,7 @@ createdAt: ${new Date().toISOString()}
       "utf8"
     );
 
-    const tasks = parsed.tasks ?? [];
+    const tasks = (parsed.tasks ?? []).slice(0, 1);
 
     for (const task of tasks) {
       await this.addTask({
@@ -2996,21 +2996,36 @@ ${memoryContext}
       const execution = await this.executeArtifact(artifactId);
       const executionResult = execution.result;
 
+      const passed = executionResult.status === "passed";
+
       const metabolism = await this.metabolize();
 
       const afterTasks = await this.readTasks();
-      const newTasks = afterTasks.filter(
+
+      const generatedTasks = afterTasks.filter(
         (task) =>
           task.status === "pending" &&
           !beforeTaskIds.has(task.id)
       );
 
+      // 成功輪次產生的建議，不是修復任務
+      const repairTasks = passed
+        ? []
+        : generatedTasks.slice(0, 1);
+
+      // 成功輪次多產生的 task 直接結束，避免殘留
+      if (passed) {
+        for (const task of generatedTasks) {
+          await this.completeTask(task.id);
+        }
+      }
+
       const roundRecord = {
         round,
         executionStatus: executionResult.status,
-        createdTasks: metabolism.created,
+        createdTasks: repairTasks.length,
         observationFile: metabolism.observationFile,
-        newTasks: newTasks.map((task) => ({
+        newTasks: repairTasks.map((task) => ({
           id: task.id,
           title: task.title,
         })),
@@ -3025,9 +3040,9 @@ ${memoryContext}
           {
             round,
             executionStatus: executionResult.status,
-            createdTasks: metabolism.created,
+            createdTasks: repairTasks.length,
             observationFile: metabolism.observationFile,
-            tasks: newTasks.map((task) => ({
+            tasks: repairTasks.map((task) => ({
               id: task.id,
               title: task.title,
             })),
@@ -3058,13 +3073,18 @@ ${memoryContext}
         };
       }
 
-      const repairTask = newTasks[0];
+      const repairTask = repairTasks[0];
 
       if (!repairTask) {
+        if (passed) {
+          // 本輪成功且沒有修復任務，繼續下一輪累積穩定條件
+          continue;
+        }
+
         return {
           stable: false,
           artifactId,
-          reason: "execution did not stabilize and no repair task was created",
+          reason: "execution failed and no repair task was created",
           artifactState,
           history,
         };
