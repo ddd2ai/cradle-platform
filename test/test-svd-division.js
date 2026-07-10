@@ -59,6 +59,8 @@ const dnaVector = {
   },
 };
 
+console.log("=== DNA Division Plan Test ===\n");
+
 const matrix =
   dnaVectorToMatrix(dnaVector);
 
@@ -68,4 +70,22 @@ const plan =
     childId: "cell-002",
   });
 
+console.log("✅ DNA Division Plan created successfully\n");
 console.log(JSON.stringify(plan, null, 2));
+
+// 驗證 Planning 是 Pure Function
+console.log("\n=== Test: Planning is Pure ===\n");
+
+const matrix2 = dnaVectorToMatrix(dnaVector);
+const plan2 = createDivisionPlanFromMatrix(matrix2, {
+  parentId: "cell-001",
+  childId: "cell-002",
+});
+
+// 驗證兩次規劃產生相同結果
+console.assert(
+  JSON.stringify(plan) === JSON.stringify(plan2),
+  "Planning should produce identical results for same input"
+);
+
+console.log("✅ Planning is pure (same input produces same output)\n");

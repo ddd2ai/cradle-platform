@@ -1617,6 +1617,12 @@ TODO: define meaning from DNA_DEFINITION.md.
     };
   }
 
+  /**
+   * 建立 DNA Division Plan（純規劃，不修改狀態）
+   * 
+   * @param {string} childId - Child Cell ID
+   * @returns {Promise<Object>} DNA Division Plan
+   */
   async createDivisionPlanBySVD(childId) {
     if (!childId) {
       throw new Error("Child cell id is required.");
@@ -1639,143 +1645,98 @@ TODO: define meaning from DNA_DEFINITION.md.
   }
 
   /**
-   * 應用 Division Plans (DNA + Living Context)
+   * 套用 DNA Division Plan（僅處理 DNA 部分）
    * 
    * @param {Object} childCell - Child Cell 實例
    * @param {Object} dnaDivisionPlan - DNA Division Plan
-   * @param {Object} livingContextDivisionPlan - Living Context Division Plan
+   * @returns {Promise<Object>} DNA Division 結果
    */
-  async applyDivisionPlanBySVD(childCell, dnaDivisionPlan, livingContextDivisionPlan) {
+  async applyDivisionPlanBySVD(childCell, dnaDivisionPlan) {
     if (!childCell) {
       throw new Error("Child cell is required.");
     }
     if (!dnaDivisionPlan) {
       throw new Error("dnaDivisionPlan is required.");
     }
-    if (!livingContextDivisionPlan) {
-      throw new Error("livingContextDivisionPlan is required.");
-    }
 
-    // 1. 執行基本出生流程
-    await this.divideTo(childCell);
-
-    // 2. 寫入 child DNA
+    // 1. 寫入 child DNA
     await childCell.writeDNAVector(dnaDivisionPlan.childDNAVector);
     await childCell.appendDNAHistory("svd-division-inheritance");
 
-    // 3. Attenuate parent DNA
+    // 2. Attenuate parent DNA
     await this.writeDNAVector(dnaDivisionPlan.parentDNAVector);
     await this.appendDNAHistory("svd-division-attenuation");
 
-    // 4. 寫入 child Living Context
-    await childCell.writeLivingContext(livingContextDivisionPlan.childLivingContext);
+    // 3. 設定 Child role（如果存在）
+    // Role 通常由 Living Context 處理，但為了向後相容保留
+    
+    // 4. 設定 generation
+    const parentInfo = await this.getEvolutionInfo();
+    await childCell.setGeneration(parentInfo.generation + 1);
 
-    // 5. 更新 parent Living Context
-    await this.writeLivingContext(livingContextDivisionPlan.revisedParentLivingContext);
+    // 5. 設定 parent relationship
+    await childCell.setParent(this.id);
 
-    // 6. 寫入 child memory seed (deterministic identity + distilled memory)
-    const childIdentity = `# Identity
+    // 6. 建立 relationships
+    await this.addRelationship("divided-into", childCell.id);
+    await childCell.addRelationship("born-from", this.id);
 
-I am ${childCell.name}.
-I was born from ${this.id}.
-My Living Context defines my specialized responsibility.
-`;
-
-    await childCell.writeMemory("identity", childIdentity);
-
-    if (livingContextDivisionPlan.childMemorySeed) {
-      const seed = livingContextDivisionPlan.childMemorySeed;
-
-      if (seed.knowledge && seed.knowledge.trim() !== "") {
-        await childCell.writeMemory("knowledge", `# Knowledge\n\n${seed.knowledge}`);
-      }
-
-      if (seed.history && seed.history.trim() !== "") {
-        await childCell.appendMemory("history", seed.history);
-      }
-
-      if (seed.thought && seed.thought.trim() !== "") {
-        await childCell.appendThought(seed.thought);
-      }
-    }
-
-    // 7. 寫入 responsibilities (從 Living Context)
-    if (livingContextDivisionPlan.childLivingContext.responsibilities) {
-      for (const responsibility of livingContextDivisionPlan.childLivingContext.responsibilities) {
-        await childCell.addResponsibility(responsibility);
-      }
-    }
-
-    // 8. 附加 DNA division 資訊到 knowledge
-    await childCell.appendKnowledge(
+    // 7. 記錄 Parent History
+    await this.appendHistory(
       block([
-        "## Division Origin",
+        `## DNA Division`,
         "",
-        `Born from ${this.id}.`,
-        "",
-        "## Division Type",
-        "",
-        "SVD-based DNA division with Living Context transformation.",
-        "",
-        "## Role",
-        "",
-        dnaDivisionPlan.role,
-        "",
-        "## Reason",
-        "",
-        dnaDivisionPlan.reason,
-        "",
-        "## Dominant Traits",
-        "",
-        ...dnaDivisionPlan.dominantTraits.map((item) => `- ${item.name}: ${item.value.toFixed(3)}`),
-        "",
-        "## Dominant Factors",
-        "",
-        ...dnaDivisionPlan.dominantFactors.map((item) => `- ${item.name}: ${item.value.toFixed(3)}`),
+        `Child: ${childCell.id}`,
+        `Reason: ${dnaDivisionPlan.reason}`,
+        `Child role: ${dnaDivisionPlan.role}`,
         "",
       ])
     );
 
-    // 9. 附加 thought
-    await childCell.appendThought(
+    // 8. 建立 Child History（基本出生記錄）
+    await childCell.writeMemory(
+      "history",
       block([
-        `## ${new Date().toISOString()}`,
+        "# History",
         "",
-        "I was born through SVD-based DNA division with Living Context transformation.",
+        `## Birth by DNA Division`,
         "",
-        `My role is ${dnaDivisionPlan.role}.`,
-        "",
-        "My inherited DNA is not a full clone.",
-        "It is a specialized projection of the parent cell's dominant DNA axis.",
-        "",
-        "My Living Context defines my responsibility boundaries.",
+        `Parent: ${this.id}`,
+        `Role: ${dnaDivisionPlan.role}`,
+        `Reason: ${dnaDivisionPlan.reason}`,
         "",
       ])
     );
 
+    // 9. Parent Thought
     await this.appendThought(
       block([
         `## ${new Date().toISOString()}`,
         "",
-        `I divided into ${childCell.id} through SVD-based DNA division.`,
+        `I divided part of my DNA into ${childCell.id}.`,
+        `Role: ${dnaDivisionPlan.role}`,
         "",
-        "Reason:",
-        dnaDivisionPlan.reason,
+      ])
+    );
+
+    // 10. Child Thought
+    await childCell.appendThought(
+      block([
+        `## ${new Date().toISOString()}`,
         "",
-        "Child role:",
-        dnaDivisionPlan.role,
+        `I was born from ${this.id} through DNA division.`,
+        `My role is ${dnaDivisionPlan.role}.`,
         "",
       ])
     );
 
     return {
       dnaPlan: dnaDivisionPlan,
-      livingContextPlan: livingContextDivisionPlan
     };
   }
 
   /**
-   * 完整的 SVD Division 流程（保留向後相容性）
+   * 完整的 SVD Division 流程（向後相容）
    * 
    * @param {Object} childCell - Child Cell 實例
    * @returns {Promise<Object>} Division plan
@@ -1787,30 +1748,7 @@ My Living Context defines my specialized responsibility.
 
     const dnaPlan = await this.createDivisionPlanBySVD(childCell.id);
 
-    // 如果沒有 Living Context Division Plan，使用簡化版本
-    // 這保證了向後相容性
-    const simpleLivingContextPlan = {
-      childLivingContext: {
-        id: `living-context-${childCell.id}`,
-        cellId: childCell.id,
-        purpose: dnaPlan.role || "",
-        responsibilities: dnaPlan.responsibilities || [],
-        owns: [],
-        excludes: [],
-        inputs: [],
-        outputs: [],
-        constraints: [],
-        relationships: []
-      },
-      revisedParentLivingContext: await this.readLivingContext(),
-      childMemorySeed: {
-        knowledge: "",
-        history: "",
-        thought: ""
-      }
-    };
-
-    await this.applyDivisionPlanBySVD(childCell, dnaPlan, simpleLivingContextPlan);
+    await this.applyDivisionPlanBySVD(childCell, dnaPlan);
 
     return dnaPlan;
   }
@@ -1898,6 +1836,30 @@ My Living Context defines my specialized responsibility.
     profile.responsibilities =
       (profile.responsibilities ?? [])
         .filter(item => item !== name);
+
+    await this.writeCellProfile(profile);
+  }
+
+  /**
+   * 設定 responsibilities（替換而非合併）
+   * 用於 Division Application，確保 Living Context 的 responsibilities 被正確同步
+   * 
+   * @param {Array<string>} responsibilities - 新的 responsibilities 列表
+   */
+  async setResponsibilities(responsibilities = []) {
+    const profile = await this.readCellProfile();
+
+    if (!profile) return;
+
+    // 過濾、去重、trim
+    const cleaned = [...new Set(
+      (responsibilities || [])
+        .map(r => String(r).trim())
+        .filter(r => r.length > 0)
+    )];
+
+    profile.responsibilities = cleaned;
+    profile.updatedAt = new Date().toISOString();
 
     await this.writeCellProfile(profile);
   }

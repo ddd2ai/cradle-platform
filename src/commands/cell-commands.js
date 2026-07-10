@@ -1019,77 +1019,38 @@ ${await parent.getMaturity()}
 
         engine.activeCellId = childId;
 
-        const { child, dnaPlan, livingContextPlan, productionResult, complete } = result;
+        const { child, dnaDivisionPlan, livingContextPlan, complete } = result;
 
         console.log(``);
-        console.log(`🧬 Living Cell Division Complete`);
+        console.log(`🧬 Living Context Division Complete`);
         console.log(``);
-        console.log(`Parent: ${parent.id}`);
-        console.log(`Child: ${child.id}`);
-        console.log(`Role: ${dnaPlan.role}`);
+        console.log(`Parent        : ${parent.id}`);
+        console.log(`Child         : ${child.id}`);
+        console.log(`Role          : ${dnaDivisionPlan.role}`);
+        console.log(`Purpose       : ${livingContextPlan.childLivingContext.purpose || "N/A"}`);
         console.log(``);
-        console.log(`--- Parent Living Context ---`);
-        console.log(`Purpose: ${livingContextPlan.revisedParentLivingContext.purpose || "N/A"}`);
-        console.log(`Responsibilities: ${livingContextPlan.revisedParentLivingContext.responsibilities.length}`);
-        console.log(``);
-        console.log(`--- Child Living Context ---`);
-        console.log(`Purpose: ${livingContextPlan.childLivingContext.purpose || "N/A"}`);
-        console.log(`Responsibilities: ${livingContextPlan.childLivingContext.responsibilities.length}`);
-        console.log(``);
-        console.log(`--- Generated Productions ---`);
-        console.log(`✅ Produced: ${productionResult.produced.length}`);
-        console.log(`❌ Failed: ${productionResult.failed.length}`);
-        console.log(`⏭️  Skipped: ${productionResult.skipped.length}`);
         
-        if (productionResult.produced.length > 0) {
-          console.log(``);
-          console.log(`Produced Artifacts:`);
-          productionResult.produced.forEach(p => {
-            console.log(`  - ${p.title} (${p.artifactId})`);
-          });
-        }
-
-        if (productionResult.failed.length > 0) {
-          console.log(``);
-          console.log(`⚠️ Failed Productions:`);
-          productionResult.failed.forEach(f => {
-            console.log(`  - ${f.title}: ${f.error}`);
-          });
-        }
-
+        console.log(`--- Parent Living Context ---`);
+        console.log(`Responsibilities: ${(livingContextPlan.revisedParentLivingContext.responsibilities || []).join(", ")}`);
         console.log(``);
-        console.log(`--- Selected Source Artifacts ---`);
-        const allSourceIds = new Set();
-        livingContextPlan.productionPlan.forEach(item => {
-          if (item.sourceArtifactIds) {
-            item.sourceArtifactIds.forEach(id => allSourceIds.add(id));
-          }
-        });
-        console.log(`Total: ${allSourceIds.size}`);
-        if (allSourceIds.size > 0) {
-          console.log(`IDs: ${Array.from(allSourceIds).join(", ")}`);
-        }
-
+        
+        console.log(`--- Child Living Context ---`);
+        console.log(`Responsibilities: ${(livingContextPlan.childLivingContext.responsibilities || []).join(", ")}`);
         console.log(``);
-        console.log(`--- DNA Division ---`);
-        console.log(`Sigma: ${dnaPlan.sigma.toFixed(4)}`);
-        console.log(`Reason: ${dnaPlan.reason}`);
-        console.log(``);
-        console.log(`Dominant Traits:`);
-        dnaPlan.dominantTraits.forEach(item => {
-          console.log(`  - ${item.name}: ${item.value.toFixed(3)}`);
-        });
-        console.log(``);
-        console.log(`Dominant Factors:`);
-        dnaPlan.dominantFactors.forEach(item => {
-          console.log(`  - ${item.name}: ${item.value.toFixed(3)}`);
-        });
+        
+        console.log(`Status        : ${complete ? "complete" : "incomplete"}`);
         console.log(``);
 
         if (!complete) {
-          console.log(`⚠️ Note: Some productions failed. Child Cell is complete but may need production retry.`);
+          console.log(`⚠️ Warning: Division application had errors`);
+          result.errors.forEach(err => {
+            console.log(`  - ${err.stage}: ${err.message}`);
+          });
           console.log(``);
         }
+
+        console.log(`Parent: ${parent.id}`);
+        console.log(`Child: ${childId}`);
       },
     },
 
