@@ -3,28 +3,37 @@
  * 
  * Cell Fusion Service
  * 整合 DNA Fusion 與 Living Context Fusion
- * 重用現有 Production Pipeline
+ * 實作 Plan-Apply 分離架構
  */
 
 import path from "path";
 import fs from "fs/promises";
-import { LivingContextFusionService } from "../living-context/living-context-fusion-service.js";
+import {
+  LivingContextFusionService,
+} from "../living-context/living-context-fusion-service.js";
+import {
+  createLivingContext,
+  normalizeLivingContext,
+} from "../living-context/living-context-schema.js";
 import { ArtifactRegenerationService } from "../production/artifact-regeneration-service.js";
-import { createLivingContext, normalizeLivingContext } from "../living-context/living-context-schema.js";
+import { block } from "../utils/text.js";
 
 export class CellFusionService {
   /**
-   * @param {object} options
+   * @param {Object} options
    * @param {Function} [options.livingContextFusionServiceFactory] - Factory for LivingContextFusionService
-   * @param {object} [options.artifactRegenerationService] - Artifact Regeneration Service
+   * @param {Object} [options.artifactRegenerationService] - Artifact Regeneration Service
    */
   constructor({
     livingContextFusionServiceFactory,
-    artifactRegenerationService
+    artifactRegenerationService,
   } = {}) {
-    this.livingContextFusionServiceFactory = livingContextFusionServiceFactory || ((requesterCell) => {
-      return new LivingContextFusionService({ requesterCell });
-    });
+    this.livingContextFusionServiceFactory =
+      livingContextFusionServiceFactory ??
+      ((requesterCell) =>
+        new LivingContextFusionService({
+          requesterCell,
+        }));
 
     this.artifactRegenerationService = 
       artifactRegenerationService ?? 
@@ -194,7 +203,12 @@ export class CellFusionService {
         }
 
         // 14. write history / thoughts
-        await this._recordFusionHistory(parentCells, child, productionResult);
+        await this._recordFusionHistory({
+          parentCells,
+          child,
+          fusionPlan,
+          productionResult
+        });
 
       } catch (error) {
         errors.push({
@@ -221,7 +235,7 @@ export class CellFusionService {
     } catch (error) {
       // Application 失敗：Child 保留，complete = false
       if (child) {
-        await this._recordIncompleteHistory(child, errors);
+        await this._recordIncompleteHistory(parentCells, child, errors);
       }
 
       return {
@@ -294,62 +308,60 @@ export class CellFusionService {
    */
   async _applyFusedMemory({ parentCells, childCell, fusionPlan }) {
     const seed = fusionPlan.fusedMemorySeed || {};
-
-    // Child Identity
-    const parentList = parentCells.map(cell => `- ${cell.id}`).join("\n");
+    const parentIds = parentCells.map(cell => cell.id);
+    const parentList = parentIds.map(id => `- ${id}`).join("\n");
     
-    const identity = `# Identity
-
-I am ${childCell.id}.
-
-I was formed through fusion of:
-${parentList}
-
-My unified responsibility is defined by my Living Context.
-`;
+    // 1. Child Identity
+    const identity = block([
+      "# Identity",
+      "",
+      `I am ${childCell.id}.`,
+      "",
+      "I was formed through fusion of:",
+      parentList,
+      "",
+      "My unified responsibility is defined by my Living Context.",
+      "",
+    ]);
 
     await childCell.writeMemory("identity", identity);
 
-    // Child Knowledge
-    if (seed.knowledge) {
-      const knowledge = `# Knowledge
-
-${seed.knowledge}
-`;
+    // 2. Child Knowledge (從 fusedMemorySeed)
+    const knowledge = block([
+      "# Knowledge",
+      "",
+      seed.knowledge ?? "",
+      "",
+    ]);
       
-      await childCell.writeMemory("knowledge", knowledge);
-    }
+    await childCell.writeMemory("knowledge", knowledge);
 
-    // Child History
+    // 3. Child History (基本出生記錄)
     const purpose = fusionPlan.fusedLivingContext.purpose || "";
-    const responsibilities = (fusionPlan.fusedLivingContext.responsibilities || [])
-      .map(r => `- ${r}`)
-      .join("\n");
-
-    const history = `# History
-
-## Birth by Cell Fusion
-
-Parents:
-${parentList}
-
-Purpose:
-${purpose}
-
-Responsibilities:
-${responsibilities}
-`;
+    
+    const history = block([
+      "# History",
+      "",
+      "## Birth by Cell Fusion",
+      "",
+      "Parents:",
+      parentList,
+      "",
+      `Purpose: ${purpose}`,
+      "",
+    ]);
 
     await childCell.writeMemory("history", history);
 
-    // Child Thought
-    let thought = `I emerged from the fusion of ${parentCells.map(c => c.id).join(" and ")}.`;
-
-    if (seed.thought) {
-      thought += `\n\n${seed.thought}`;
+    // 4. Child Thought (如果有)
+    if (
+      typeof seed.thought === "string" &&
+      seed.thought.trim() !== ""
+    ) {
+      await childCell.appendThought(
+        seed.thought.trim()
+      );
     }
-
-    await childCell.writeMemory("thoughts", thought);
   }
 
   /**
@@ -392,43 +404,44 @@ ${responsibilities}
    * 建立 Relationships
    */
   async _createRelationships({ parentCells, childCell, fusionPlan }) {
-    // 每個 Parent: fused-into
+    // 1. Parent -> Child (fused-into)
     for (const parent of parentCells) {
-      try {
-        await parent.addRelationship({
-          type: "fused-into",
-          target: childCell.id
-        });
-      } catch (error) {
-        console.warn(`  ⚠️  Failed to add fused-into relationship for ${parent.id}: ${error.message}`);
-      }
+      await parent.addRelationship(
+        "fused-into",
+        childCell.id
+      );
     }
 
-    // Child: fused-from for each parent
+    // 2. Child -> Parents (fused-from)
     for (const parent of parentCells) {
-      await childCell.addRelationship({
-        type: "fused-from",
-        target: parent.id
-      });
+      await childCell.addRelationship(
+        "fused-from",
+        parent.id
+      );
     }
 
-    // 加入 Fusion Plan 的 relationships (去重)
-    const planRelationships = fusionPlan.fusedLivingContext.relationships || [];
-    const existingKeys = new Set();
+    // 3. Living Context 中的其他 relationships
+    const relationships =
+      fusionPlan
+        .fusedLivingContext
+        .relationships ?? [];
 
-    // 先收集已有的 relationships
-    const existing = await childCell.getRelationships();
-    for (const rel of existing) {
-      existingKeys.add(`${rel.type}:${rel.target}`);
-    }
+    for (
+      const relationship of relationships
+    ) {
+      // 檢查是否已存在（避免重複）
+      const existing = await childCell.listRelationships();
+      const isDuplicate = existing.some(
+        r =>
+          r.type === relationship.type &&
+          r.target === relationship.target
+      );
 
-    // 加入新的 relationships
-    for (const rel of planRelationships) {
-      const key = `${rel.type}:${rel.target}`;
-      
-      if (!existingKeys.has(key)) {
-        await childCell.addRelationship(rel);
-        existingKeys.add(key);
+      if (!isDuplicate) {
+        await childCell.addRelationship(
+          relationship.type,
+          relationship.target
+        );
       }
     }
   }
@@ -436,58 +449,131 @@ ${responsibilities}
   /**
    * 記錄 Fusion History
    */
-  async _recordFusionHistory(parentCells, child, productionResult) {
-    const parentIds = parentCells.map(cell => cell.id).join(", ");
+  async _recordFusionHistory({ parentCells, child, fusionPlan, productionResult }) {
+    const parentIds = parentCells.map(cell => cell.id);
+    const parentList = parentIds.join(", ");
+    const purpose = fusionPlan?.fusedLivingContext?.purpose || "(not recorded)";
 
-    let historyEntry = `## Cell Fusion
+    // 1. Parent History 與 Thought
+    for (const parent of parentCells) {
+      await parent.appendHistory(
+        block([
+          `## Cell Fusion`,
+          "",
+          `Fused into: ${child.id}`,
+          "Parents:",
+          ...parentIds.map(id => `- ${id}`),
+          `Purpose: ${purpose}`,
+          "",
+        ])
+      );
 
-Fused from: ${parentIds}
-Complete: ${productionResult.complete ? "yes" : "no"}
-`;
+      await parent.appendThought(
+        block([
+          `## ${new Date().toISOString()}`,
+          "",
+          `I fused with ${parentIds.filter(id => id !== parent.id).join(", ")} to create ${child.id}.`,
+          "",
+        ])
+      );
+    }
 
-    if (productionResult.produced.length > 0) {
-      historyEntry += `\nProduced:\n`;
+    // 2. Child History (已在 _applyFusedMemory 中建立，這裡追加 production 結果)
+    const productionSummary = [];
+    
+    productionSummary.push("## Fusion Production");
+    productionSummary.push("");
+    productionSummary.push(`Complete: ${productionResult.complete ? "yes" : "no"}`);
+    productionSummary.push("");
+
+    if (productionResult.produced && productionResult.produced.length > 0) {
+      productionSummary.push("Produced:");
       productionResult.produced.forEach(artifact => {
-        historyEntry += `- ${artifact.id}\n`;
+        productionSummary.push(`- ${artifact.id}`);
       });
+      productionSummary.push("");
     }
 
-    if (productionResult.failed.length > 0) {
-      historyEntry += `\nFailed:\n`;
+    if (productionResult.failed && productionResult.failed.length > 0) {
+      productionSummary.push("Failed:");
       productionResult.failed.forEach(failure => {
-        historyEntry += `- ${failure.title}: ${failure.error}\n`;
+        productionSummary.push(`- ${failure.title}: ${failure.error}`);
       });
+      productionSummary.push("");
     }
 
-    await child.appendHistory(historyEntry);
+    await child.appendHistory(
+      block(productionSummary)
+    );
 
-    // Thought
-    let thought = `I have completed fusion from ${parentIds}.`;
+    // 3. Child Thought
+    const thoughtLines = [
+      `## ${new Date().toISOString()}`,
+      "",
+      "## Birth by Cell Fusion",
+      "",
+      "Parents:",
+      ...parentIds.map(id => `- ${id}`),
+      "",
+    ];
 
-    if (!productionResult.complete) {
-      thought = `My fusion from ${parentIds} is incomplete. Some productions failed.`;
+    if (productionResult.complete) {
+      thoughtLines.push(`I have completed fusion from ${parentList}.`);
+    } else {
+      thoughtLines.push(`My fusion from ${parentList} is incomplete. Some productions failed.`);
     }
 
-    await child.think(thought);
+    thoughtLines.push("");
+
+    await child.appendThought(
+      block(thoughtLines)
+    );
   }
 
   /**
    * 記錄 Incomplete History
    */
-  async _recordIncompleteHistory(child, errors) {
+  async _recordIncompleteHistory(parentCells, child, errors) {
     const errorList = errors.map(err => `- ${err.stage}: ${err.message}`).join("\n");
+    const parentIds = parentCells.map(cell => cell.id);
 
-    const historyEntry = `## Incomplete Cell Fusion
+    // 1. Parent History
+    for (const parent of parentCells) {
+      const historyEntry = block([
+        `## Incomplete Fusion`,
+        "",
+        `Child: ${child.id}`,
+        "Parents:",
+        ...parentIds.map(id => `- ${id}`),
+        "",
+        "Errors:",
+        errorList,
+        "",
+      ]);
 
-Status: incomplete
-Errors:
-${errorList}
-`;
+      try {
+        await parent.appendHistory(historyEntry);
+      } catch (error) {
+        console.warn(`  ⚠️  Failed to record incomplete history for ${parent.id}: ${error.message}`);
+      }
+    }
+
+    // 2. Child History
+    const childHistoryEntry = block([
+      `## Incomplete Fusion`,
+      "",
+      "Parents:",
+      ...parentIds.map(id => `- ${id}`),
+      "",
+      "Errors:",
+      errorList,
+      "",
+    ]);
 
     try {
-      await child.appendHistory(historyEntry);
+      await child.appendHistory(childHistoryEntry);
     } catch (error) {
-      console.warn(`  ⚠️  Failed to record incomplete history: ${error.message}`);
+      console.warn(`  ⚠️  Failed to record incomplete history for child: ${error.message}`);
     }
   }
 }
