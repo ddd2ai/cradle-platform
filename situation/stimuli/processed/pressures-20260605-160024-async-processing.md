@@ -1,1 +1,0 @@
-Async processing is required.

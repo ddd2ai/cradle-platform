@@ -1,0 +1,106 @@
+{
+  "id": "artifact-20260710-222035",
+  "type": "code",
+  "title": "建立一個簡易 RBAC 權限管理系統。",
+  "status": "draft",
+  "goal": "建立一個簡易 RBAC 權限管理系統。",
+  "context": {
+    "cellId": "cell-001",
+    "provider": "ollama",
+    "model": "devstral:24b"
+  },
+  "plan": {
+    "summary": "建立一個簡單的角色基礎存取控制（RBAC）權限管理系統，包含基本的使用者、角色和權限模型。",
+    "steps": [
+      "設定 Spring Boot 應用程式",
+      "建立資料庫 schema",
+      "建立資料庫實體類別",
+      "建立存取存儲庫介面與實作",
+      "建立服務層",
+      "建立控制器",
+      "配置應用程式"
+    ],
+    "markdown": ""
+  },
+  "outputs": [
+    {
+      "kind": "file",
+      "path": "pom.xml",
+      "language": "xml",
+      "content": "<project xmlns=\"http://maven.apache.org/POM/4.0.0\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n    xsi:schemaLocation=\"http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd\">\n  <modelVersion>4.0.0</modelVersion>\n  <groupId>com.example</groupId>\n  <artifactId>rbac-system</artifactId>\n  <version>1.0-SNAPSHOT</version>\n  <packaging>jar</packaging>\n\n  <parent>\n    <groupId>org.springframework.boot</groupId>\n    <artifactId>spring-boot-starter-parent</artifactId>\n    <version>3.1.2</version>\n    <relativePath /> <!-- lookup parent from repository -->\n  </parent>\n\n  <dependencies>\n    <dependency>\n      <groupId>org.springframework.boot</groupId>\n      <artifactId>spring-boot-starter-data-jpa</artifactId>\n    </dependency>\n    <dependency>\n      <groupId>org.springframework.boot</groupId>\n      <artifactId>spring-boot-starter-web</artifactId>\n    </dependency>\n    <dependency>\n      <groupId>org.springframework.boot</groupId>\n      <artifactId>spring-boot-devtools</artifactId>\n      <scope>runtime</scope>\n      <optional>true</optional>\n    </dependency>\n    <dependency>\n      <groupId>com.h2database</groupId>\n      <artifactId>h2</artifactId>\n      <scope>runtime</scope>\n    </dependency>\n    <dependency>\n      <groupId>org.springframework.boot</groupId>\n      <artifactId>spring-boot-starter-test</artifactId>\n      <scope>test</scope>\n    </dependency>\n  </dependencies>\n\n  <build>\n    <plugins>\n      <plugin>\n        <groupId>org.springframework.boot</groupId>\n        <artifactId>spring-boot-maven-plugin</artifactId>\n      </plugin>\n    </plugins>\n  </build>\n\n</project>"
+    },
+    {
+      "kind": "file",
+      "path": "src/main/java/com/example/rbac/RbacApplication.java",
+      "language": "java",
+      "content": "package com.example.rbac;\n\nimport org.springframework.boot.SpringApplication;\nimport org.springframework.boot.autoconfigure.SpringBootApplication;\n\n@SpringBootApplication\npublic class RbacApplication {\n  public static void main(String[] args) {\n    SpringApplication.run(RbacApplication.class, args);\n  }\n}"
+    },
+    {
+      "kind": "file",
+      "path": "src/main/resources/application.yml",
+      "language": "yaml",
+      "content": "spring:\n  datasource:\n    url: jdbc:h2:mem:testdb\n    driverClassName: org.h2.Driver\n    username: sa\n    password: password\n    platform: h2\n  jpa:\n    database-platform: org.hibernate.dialect.H2Dialect\n    show-sql: true\n    hibernate:\n      ddl-auto: update\n  h2:\n    console:\n      enabled: true"
+    },
+    {
+      "kind": "file",
+      "path": "src/main/java/com/example/rbac/entity/User.java",
+      "language": "java",
+      "content": "package com.example.rbac.entity;\n\nimport jakarta.persistence.Entity;\nimport jakarta.persistence.GeneratedValue;\nimport jakarta.persistence.GenerationType;\nimport jakarta.persistence.Id;\n\n@Entity\npublic class User {\n  @Id\n  @GeneratedValue(strategy = GenerationType.IDENTITY)\n  private Long id;\n  private String username;\n  private String password;\n  private String role;\n\n  // getters and setters\n}"
+    },
+    {
+      "kind": "file",
+      "path": "src/main/java/com/example/rbac/entity/Role.java",
+      "language": "java",
+      "content": "package com.example.rbac.entity;\n\nimport jakarta.persistence.Entity;\nimport jakarta.persistence.GeneratedValue;\nimport jakarta.persistence.GenerationType;\nimport jakarta.persistence.Id;\n\n@Entity\npublic class Role {\n  @Id\n  @GeneratedValue(strategy = GenerationType.IDENTITY)\n  private Long id;\n  private String name;\n  private String permissions;\n\n  // getters and setters\n}"
+    },
+    {
+      "kind": "file",
+      "path": "src/main/java/com/example/rbac/repository/UserRepository.java",
+      "language": "java",
+      "content": "package com.example.rbac.repository;\n\nimport com.example.rbac.entity.User;\nimport org.springframework.data.jpa.repository.JpaRepository;\n\npublic interface UserRepository extends JpaRepository<User, Long> {\n  // custom queries if needed\n}"
+    },
+    {
+      "kind": "file",
+      "path": "src/main/java/com/example/rbac/repository/RoleRepository.java",
+      "language": "java",
+      "content": "package com.example.rbac.repository;\n\nimport com.example.rbac.entity.Role;\nimport org.springframework.data.jpa.repository.JpaRepository;\n\npublic interface RoleRepository extends JpaRepository<Role, Long> {\n  // custom queries if needed\n}"
+    },
+    {
+      "kind": "file",
+      "path": "src/main/java/com/example/rbac/service/UserService.java",
+      "language": "java",
+      "content": "package com.example.rbac.service;\n\nimport com.example.rbac.entity.User;\nimport com.example.rbac.repository.UserRepository;\nimport org.springframework.beans.factory.annotation.Autowired;\nimport org.springframework.stereotype.Service;\n\n@Service\npublic class UserService {\n  @Autowired\n  private UserRepository userRepository;\n\n  public User createUser(User user) {\n    return userRepository.save(user);\n  }\n}"
+    },
+    {
+      "kind": "file",
+      "path": "src/main/java/com/example/rbac/service/RoleService.java",
+      "language": "java",
+      "content": "package com.example.rbac.service;\n\nimport com.example.rbac.entity.Role;\nimport com.example.rbac.repository.RoleRepository;\nimport org.springframework.beans.factory.annotation.Autowired;\nimport org.springframework.stereotype.Service;\n\n@Service\npublic class RoleService {\n  @Autowired\n  private RoleRepository roleRepository;\n\n  public Role createRole(Role role) {\n    return roleRepository.save(role);\n  }\n}"
+    },
+    {
+      "kind": "file",
+      "path": "src/main/java/com/example/rbac/controller/UserController.java",
+      "language": "java",
+      "content": "package com.example.rbac.controller;\n\nimport com.example.rbac.entity.User;\nimport com.example.rbac.service.UserService;\nimport org.springframework.beans.factory.annotation.Autowired;\nimport org.springframework.web.bind.annotation.*;\n\n@RestController\n@RequestMapping(\"/users\")\npublic class UserController {\n  @Autowired\n  private UserService userService;\n\n  @PostMapping\n  public User createUser(@RequestBody User user) {\n    return userService.createUser(user);\n  }\n}"
+    },
+    {
+      "kind": "file",
+      "path": "src/main/java/com/example/rbac/controller/RoleController.java",
+      "language": "java",
+      "content": "package com.example.rbac.controller;\n\nimport com.example.rbac.entity.Role;\nimport com.example.rbac.service.RoleService;\nimport org.springframework.beans.factory.annotation.Autowired;\nimport org.springframework.web.bind.annotation.*;\n\n@RestController\n@RequestMapping(\"/roles\")\npublic class RoleController {\n  @Autowired\n  private RoleService roleService;\n\n  @PostMapping\n  public Role createRole(@RequestBody Role role) {\n    return roleService.createRole(role);\n  }\n}"
+    },
+    {
+      "kind": "file",
+      "path": "README.md",
+      "language": "markdown",
+      "content": "# 簡易 RBAC 權限管理系統\n\n這是一個使用 Spring Boot 和 H2 資料庫的簡單角色基礎存取控制（RBAC）權限管理系統。\n\n## 功能特點\n- 使用者註冊\n- 角色分配\n- 基本的 RBAC 構架\n\n## 技術棧\n- Spring Boot\n- Spring Data JPA\n- H2 資料庫\n\n## 快速開始\n\n1. 安裝 Maven\n2. 克隆這個儲存庫\n3. 執行 `mvn clean install`\n4. 執行 `mvn spring-boot:run`\n5. 訪問 H2 Console 進行資料庫操作（http://localhost:8080/h2-console）"
+    }
+  ],
+  "notes": [],
+  "review": {
+    "status": "pending",
+    "notes": []
+  },
+  "createdAt": "2026-07-10T14:20:35.283Z",
+  "updatedAt": "2026-07-10T14:20:35.283Z"
+}

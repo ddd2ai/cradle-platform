@@ -48,7 +48,6 @@ export class MavenExecutor {
       );
 
       const args = [
-        "-q",
         "clean",
         "package",
         "-DskipTests",
@@ -230,11 +229,17 @@ export class MavenExecutor {
       }, timeoutMs);
 
       child.stdout.on("data", chunk => {
-        stdout += chunk.toString();
+        const text = chunk.toString();
+
+        stdout += text;
+        process.stdout.write(text);
       });
 
       child.stderr.on("data", chunk => {
-        stderr += chunk.toString();
+        const text = chunk.toString();
+
+        stderr += text;
+        process.stderr.write(text);
       });
 
       child.on("error", error => {

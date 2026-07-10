@@ -1,1 +1,0 @@
-Traffic is growing rapidly.
