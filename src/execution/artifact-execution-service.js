@@ -1,5 +1,5 @@
-import path from "path";
 import { JavaExecutor } from "./java-executor.js";
+import { MavenExecutor } from "./maven-executor.js";
 import { ArtifactStore } from "../production/artifact-store.js";
 import { ExecutionResult } from "./execution-result.js";
 
@@ -33,6 +33,11 @@ export class ArtifactExecutionService {
 
     this.javaExecutor = new JavaExecutor({
       executionsDir: this.executionsDir,
+    });
+
+    this.mavenExecutor = new MavenExecutor({
+      executionsDir: this.executionsDir,
+      timeoutMs: 300000,
     });
   }
 
@@ -78,12 +83,26 @@ export class ArtifactExecutionService {
    * @returns {Object|null}
    */
   selectExecutor(artifact) {
-  // 目前 JavaExecutor 只支援單檔 executable-java
+    const outputs = artifact.outputs ?? [];
+
+    // 目前 JavaExecutor 只支援單檔 executable-java
     if (artifact.type === "executable-java") {
       return this.javaExecutor;
     }
 
-    // code / Maven / 多檔 Java 目前尚未支援
+    // Maven 專案
+    const hasPom = outputs.some(
+      output =>
+        output.kind === "file" &&
+        output.path === "pom.xml"
+    );
+
+    if (artifact.type === "code" && hasPom) {
+      return this.mavenExecutor;
+    }
+
+    // 可以增加更多 executor 的判斷邏輯，例如 PythonExecutor、NodeExecutor 等
+
     return null;
   }
 }
