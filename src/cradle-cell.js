@@ -33,6 +33,10 @@ import {
 } from "./dna/dna-lifecycle.js";
 import { ArtifactProductionService } from "./production/artifact-production-service.js";
 import { StabilityStore } from "./stability/stability-store.js";
+import {
+  createLivingContext,
+  normalizeLivingContext,
+} from "./living-context/living-context-schema.js";
 
 export class CradleCell {
 
@@ -86,6 +90,8 @@ export class CradleCell {
     this.evolutionsDir = path.join(this.rootDir, "evolutions");
     this.evolutionStateFile = path.join(this.rootDir, "evolution-state.json");
     this.lifecycleEventsFile = path.join(this.rootDir, "lifecycle-events.json");
+    this.livingContextFile = path.join(this.rootDir, "living-context.json");
+    this.profileFile = path.join(this.rootDir, "profile.json");
 
     this.memoryFiles = {
       identity: path.join(this.memoryDir, "identity.md"),
@@ -109,6 +115,7 @@ export class CradleCell {
     await this.prepareDNAFiles();
     await this.prepareDNAVector();
     await this.prepareMemoryFiles();
+    await this.prepareLivingContext();
 
     const provider = await this.createProvider();
 
@@ -127,6 +134,9 @@ export class CradleCell {
       assistant: this.assistant,
       productionsDir: this.productionsDir,
     });
+
+    // 暴露 artifactStore 供其他服務使用
+    this.artifactStore = this.productionService.store;
 
     this.stabilityStore = new StabilityStore({
       rootDir: this.rootDir,
@@ -1369,6 +1379,18 @@ TODO: define meaning from DNA_DEFINITION.md.
     }
   }
 
+  async readProfile() {
+    try {
+      const raw = await fs.readFile(this.profileFile, "utf8");
+      return JSON.parse(raw);
+    } catch (error) {
+      if (error.code === "ENOENT") {
+        return null;
+      }
+      throw error;
+    }
+  }
+
   async writeCellProfile(profile) {
     await fs.writeFile(this.cellFile, JSON.stringify(profile, null, 2), "utf8");
   }
@@ -1554,11 +1576,13 @@ TODO: define meaning from DNA_DEFINITION.md.
 
     const parentInfo = await this.getEvolutionInfo();
 
-    await this.copyDirectory(this.memoryDir, childCell.memoryDir);
+    // 不再複製完整 memory，只建立結構性出生記錄
+    // Memory 將由 Living Context Division Plan 的 childMemorySeed 提供
 
     await childCell.setParent(this.id);
     await childCell.setGeneration(parentInfo.generation + 1);
 
+    // 建立最小 history
     await childCell.writeMemory(
       "history",
       block([
@@ -1569,16 +1593,18 @@ TODO: define meaning from DNA_DEFINITION.md.
       ])
     );
 
+    // 建立最小 thought
     await childCell.appendThought(
       block([
         `## ${new Date().toISOString()}`,
         "",
         `I was born from ${this.id}.`,
-        "My inherited memory should be refined into my own growth direction.",
+        "My Living Context defines my specialized responsibility.",
         "",
       ])
     );
 
+    // 建立 relationships
     await this.addRelationship("divided-into", childCell.id);
     await childCell.addRelationship("born-from", this.id);
 
@@ -1598,15 +1624,13 @@ TODO: define meaning from DNA_DEFINITION.md.
 
     await this.assertCanDivide();
 
-    const dnaVector =
-      await this.readDNAVector();
+    const dnaVector = await this.readDNAVector();
 
     if (!dnaVector) {
       throw new Error(`Cell ${this.id} has no dna-vector.json`);
     }
 
-    const matrix =
-      dnaVectorToMatrix(dnaVector);
+    const matrix = dnaVectorToMatrix(dnaVector);
 
     return createDivisionPlanFromMatrix(matrix, {
       parentId: this.id,
@@ -1614,47 +1638,75 @@ TODO: define meaning from DNA_DEFINITION.md.
     });
   }
 
-  async divideBySVD(childCell) {
+  /**
+   * 應用 Division Plans (DNA + Living Context)
+   * 
+   * @param {Object} childCell - Child Cell 實例
+   * @param {Object} dnaDivisionPlan - DNA Division Plan
+   * @param {Object} livingContextDivisionPlan - Living Context Division Plan
+   */
+  async applyDivisionPlanBySVD(childCell, dnaDivisionPlan, livingContextDivisionPlan) {
     if (!childCell) {
       throw new Error("Child cell is required.");
     }
-
-    const plan =
-      await this.createDivisionPlanBySVD(childCell.id);
-
-    await this.divideTo(childCell);
-
-    await childCell.writeMemory(
-      "identity",
-      `# Identity
-
-      I am ${childCell.name}.
-      My cell id is ${childCell.id}.
-
-      I was born from ${this.id} through SVD-based DNA division.
-      `
-    );
-
-    await childCell.writeDNAVector(
-      plan.childDNAVector
-    );
-
-    await childCell.appendDNAHistory(
-      "svd-division-inheritance"
-    );
-
-    await this.writeDNAVector(
-      plan.parentDNAVector
-    );
-
-    await this.appendDNAHistory(
-      "svd-division-attenuation"
-    );
-
-    for (const responsibility of plan.responsibilities) {
-      await childCell.addResponsibility(responsibility);
+    if (!dnaDivisionPlan) {
+      throw new Error("dnaDivisionPlan is required.");
+    }
+    if (!livingContextDivisionPlan) {
+      throw new Error("livingContextDivisionPlan is required.");
     }
 
+    // 1. 執行基本出生流程
+    await this.divideTo(childCell);
+
+    // 2. 寫入 child DNA
+    await childCell.writeDNAVector(dnaDivisionPlan.childDNAVector);
+    await childCell.appendDNAHistory("svd-division-inheritance");
+
+    // 3. Attenuate parent DNA
+    await this.writeDNAVector(dnaDivisionPlan.parentDNAVector);
+    await this.appendDNAHistory("svd-division-attenuation");
+
+    // 4. 寫入 child Living Context
+    await childCell.writeLivingContext(livingContextDivisionPlan.childLivingContext);
+
+    // 5. 更新 parent Living Context
+    await this.writeLivingContext(livingContextDivisionPlan.revisedParentLivingContext);
+
+    // 6. 寫入 child memory seed (deterministic identity + distilled memory)
+    const childIdentity = `# Identity
+
+I am ${childCell.name}.
+I was born from ${this.id}.
+My Living Context defines my specialized responsibility.
+`;
+
+    await childCell.writeMemory("identity", childIdentity);
+
+    if (livingContextDivisionPlan.childMemorySeed) {
+      const seed = livingContextDivisionPlan.childMemorySeed;
+
+      if (seed.knowledge && seed.knowledge.trim() !== "") {
+        await childCell.writeMemory("knowledge", `# Knowledge\n\n${seed.knowledge}`);
+      }
+
+      if (seed.history && seed.history.trim() !== "") {
+        await childCell.appendMemory("history", seed.history);
+      }
+
+      if (seed.thought && seed.thought.trim() !== "") {
+        await childCell.appendThought(seed.thought);
+      }
+    }
+
+    // 7. 寫入 responsibilities (從 Living Context)
+    if (livingContextDivisionPlan.childLivingContext.responsibilities) {
+      for (const responsibility of livingContextDivisionPlan.childLivingContext.responsibilities) {
+        await childCell.addResponsibility(responsibility);
+      }
+    }
+
+    // 8. 附加 DNA division 資訊到 knowledge
     await childCell.appendKnowledge(
       block([
         "## Division Origin",
@@ -1663,37 +1715,40 @@ TODO: define meaning from DNA_DEFINITION.md.
         "",
         "## Division Type",
         "",
-        "SVD-based DNA division.",
+        "SVD-based DNA division with Living Context transformation.",
         "",
         "## Role",
         "",
-        plan.role,
+        dnaDivisionPlan.role,
         "",
         "## Reason",
         "",
-        plan.reason,
+        dnaDivisionPlan.reason,
         "",
         "## Dominant Traits",
         "",
-        ...plan.dominantTraits.map((item) => `- ${item.name}: ${item.value.toFixed(3)}`),
+        ...dnaDivisionPlan.dominantTraits.map((item) => `- ${item.name}: ${item.value.toFixed(3)}`),
         "",
         "## Dominant Factors",
         "",
-        ...plan.dominantFactors.map((item) => `- ${item.name}: ${item.value.toFixed(3)}`),
+        ...dnaDivisionPlan.dominantFactors.map((item) => `- ${item.name}: ${item.value.toFixed(3)}`),
         "",
       ])
     );
 
+    // 9. 附加 thought
     await childCell.appendThought(
       block([
         `## ${new Date().toISOString()}`,
         "",
-        "I was born through SVD-based DNA division.",
+        "I was born through SVD-based DNA division with Living Context transformation.",
         "",
-        `My role is ${plan.role}.`,
+        `My role is ${dnaDivisionPlan.role}.`,
         "",
         "My inherited DNA is not a full clone.",
         "It is a specialized projection of the parent cell's dominant DNA axis.",
+        "",
+        "My Living Context defines my responsibility boundaries.",
         "",
       ])
     );
@@ -1705,15 +1760,59 @@ TODO: define meaning from DNA_DEFINITION.md.
         `I divided into ${childCell.id} through SVD-based DNA division.`,
         "",
         "Reason:",
-        plan.reason,
+        dnaDivisionPlan.reason,
         "",
         "Child role:",
-        plan.role,
+        dnaDivisionPlan.role,
         "",
       ])
     );
 
-    return plan;
+    return {
+      dnaPlan: dnaDivisionPlan,
+      livingContextPlan: livingContextDivisionPlan
+    };
+  }
+
+  /**
+   * 完整的 SVD Division 流程（保留向後相容性）
+   * 
+   * @param {Object} childCell - Child Cell 實例
+   * @returns {Promise<Object>} Division plan
+   */
+  async divideBySVD(childCell) {
+    if (!childCell) {
+      throw new Error("Child cell is required.");
+    }
+
+    const dnaPlan = await this.createDivisionPlanBySVD(childCell.id);
+
+    // 如果沒有 Living Context Division Plan，使用簡化版本
+    // 這保證了向後相容性
+    const simpleLivingContextPlan = {
+      childLivingContext: {
+        id: `living-context-${childCell.id}`,
+        cellId: childCell.id,
+        purpose: dnaPlan.role || "",
+        responsibilities: dnaPlan.responsibilities || [],
+        owns: [],
+        excludes: [],
+        inputs: [],
+        outputs: [],
+        constraints: [],
+        relationships: []
+      },
+      revisedParentLivingContext: await this.readLivingContext(),
+      childMemorySeed: {
+        knowledge: "",
+        history: "",
+        thought: ""
+      }
+    };
+
+    await this.applyDivisionPlanBySVD(childCell, dnaPlan, simpleLivingContextPlan);
+
+    return dnaPlan;
   }
 
   async setGeneration(generation) {
@@ -2311,6 +2410,132 @@ ${memoryContext}
   async writeMemory(name, content) {
     const file = this.resolveMemoryFile(name);
     await fs.writeFile(file, content, "utf8");
+  }
+
+  async appendMemory(name, content) {
+    const file = this.resolveMemoryFile(name);
+    await fs.appendFile(file, `\n${content}\n`, "utf8");
+  }
+
+  // =========================
+  // Living Context
+  // =========================
+
+  async prepareLivingContext() {
+    await fs.mkdir(this.rootDir, {
+      recursive: true,
+    });
+
+    let profile = null;
+
+    try {
+      profile = await this.readProfile();
+    } catch (error) {
+      if (error.code !== "ENOENT") {
+        throw error;
+      }
+    }
+
+    const safeProfile =
+      profile && typeof profile === "object"
+        ? profile
+        : {};
+
+    const profileResponsibilities =
+      Array.isArray(safeProfile.responsibilities)
+        ? safeProfile.responsibilities
+        : [];
+
+    const existingContext =
+      await this.readLivingContext();
+
+    // 第一次建立
+    if (!existingContext) {
+      const context = createLivingContext({
+        cellId: this.id,
+
+        purpose:
+          typeof safeProfile.purpose === "string"
+            ? safeProfile.purpose
+            : "",
+
+        responsibilities:
+          profileResponsibilities,
+      });
+
+      await this.writeLivingContext(context);
+
+      return context;
+    }
+
+    // 已存在時，只 merge responsibilities，
+    // 不覆蓋手動設定的 purpose、owns 等欄位。
+    const mergedContext =
+      normalizeLivingContext({
+        ...existingContext,
+
+        cellId: this.id,
+
+        responsibilities: [
+          ...(existingContext.responsibilities ?? []),
+          ...profileResponsibilities,
+        ],
+      });
+
+    const previousResponsibilities =
+      normalizeLivingContext({
+        ...existingContext,
+        cellId: this.id,
+      }).responsibilities;
+
+    const responsibilitiesChanged =
+      JSON.stringify(previousResponsibilities) !==
+      JSON.stringify(
+        mergedContext.responsibilities
+      );
+
+    if (responsibilitiesChanged) {
+      await this.writeLivingContext(
+        mergedContext
+      );
+    }
+
+    return mergedContext;
+  }
+
+  async readLivingContext() {
+    try {
+      const raw = await fs.readFile(
+        this.livingContextFile,
+        "utf8"
+      );
+
+      return JSON.parse(raw);
+    } catch (error) {
+      if (error.code === "ENOENT") {
+        return null;
+      }
+
+      throw error;
+    }
+  }
+
+  async writeLivingContext(context) {
+    if (!context || typeof context !== "object") {
+      throw new Error("writeLivingContext: context must be an object");
+    }
+
+    // 更新時間戳記
+    const updated = {
+      ...context,
+      updatedAt: new Date().toISOString()
+    };
+
+    await fs.writeFile(
+      this.livingContextFile,
+      JSON.stringify(updated, null, 2),
+      "utf8"
+    );
   }
 
   async appendMemory(name, content) {

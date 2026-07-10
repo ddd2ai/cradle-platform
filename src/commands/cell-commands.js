@@ -973,8 +973,10 @@ DNA drift    : ${result.dnaDrift.length}
         !engine.isCradleMode(),
 
       execute: async ({ engine, input }) => {
-        const parent =
-          engine.getActiveCell();
+        // 引入 CellDivisionService
+        const { CellDivisionService } = await import("../lifecycle/cell-division-service.js");
+
+        const parent = engine.getActiveCell();
 
         if (!(await parent.canDivide())) {
           console.log(`
@@ -986,8 +988,7 @@ ${await parent.getMaturity()}
           return;
         }
 
-        const rawChildId =
-          input.replace("/divide-svd", "").trim();
+        const rawChildId = input.replace("/divide-svd", "").trim();
 
         const childId =
           rawChildId ||
@@ -998,43 +999,97 @@ ${await parent.getMaturity()}
           return;
         }
 
-        const child =
-          await engine.createCell(childId);
+        // 使用 CellDivisionService 執行完整的 Division 流程
+        const service = new CellDivisionService();
 
-        const plan =
-          await parent.divideBySVD(child);
+        console.log(`🧬 Starting Living Context Division...`);
+        console.log(``);
 
-        engine.activeCellId =
-          childId;
+        let result;
+        try {
+          result = await service.divide({
+            engine,
+            parentCell: parent,
+            childId
+          });
+        } catch (error) {
+          console.error(`❌ Division failed:`, error.message);
+          return;
+        }
 
-        console.log(`
-🧬 SVD Cell Division Complete
+        engine.activeCellId = childId;
 
-Parent:
-${parent.id}
+        const { child, dnaPlan, livingContextPlan, productionResult, complete } = result;
 
-Child:
-${childId}
+        console.log(``);
+        console.log(`🧬 Living Cell Division Complete`);
+        console.log(``);
+        console.log(`Parent: ${parent.id}`);
+        console.log(`Child: ${child.id}`);
+        console.log(`Role: ${dnaPlan.role}`);
+        console.log(``);
+        console.log(`--- Parent Living Context ---`);
+        console.log(`Purpose: ${livingContextPlan.revisedParentLivingContext.purpose || "N/A"}`);
+        console.log(`Responsibilities: ${livingContextPlan.revisedParentLivingContext.responsibilities.length}`);
+        console.log(``);
+        console.log(`--- Child Living Context ---`);
+        console.log(`Purpose: ${livingContextPlan.childLivingContext.purpose || "N/A"}`);
+        console.log(`Responsibilities: ${livingContextPlan.childLivingContext.responsibilities.length}`);
+        console.log(``);
+        console.log(`--- Generated Productions ---`);
+        console.log(`✅ Produced: ${productionResult.produced.length}`);
+        console.log(`❌ Failed: ${productionResult.failed.length}`);
+        console.log(`⏭️  Skipped: ${productionResult.skipped.length}`);
+        
+        if (productionResult.produced.length > 0) {
+          console.log(``);
+          console.log(`Produced Artifacts:`);
+          productionResult.produced.forEach(p => {
+            console.log(`  - ${p.title} (${p.artifactId})`);
+          });
+        }
 
-Role:
-${plan.role}
+        if (productionResult.failed.length > 0) {
+          console.log(``);
+          console.log(`⚠️ Failed Productions:`);
+          productionResult.failed.forEach(f => {
+            console.log(`  - ${f.title}: ${f.error}`);
+          });
+        }
 
-Sigma:
-${plan.sigma.toFixed(4)}
+        console.log(``);
+        console.log(`--- Selected Source Artifacts ---`);
+        const allSourceIds = new Set();
+        livingContextPlan.productionPlan.forEach(item => {
+          if (item.sourceArtifactIds) {
+            item.sourceArtifactIds.forEach(id => allSourceIds.add(id));
+          }
+        });
+        console.log(`Total: ${allSourceIds.size}`);
+        if (allSourceIds.size > 0) {
+          console.log(`IDs: ${Array.from(allSourceIds).join(", ")}`);
+        }
 
-Reason:
-${plan.reason}
+        console.log(``);
+        console.log(`--- DNA Division ---`);
+        console.log(`Sigma: ${dnaPlan.sigma.toFixed(4)}`);
+        console.log(`Reason: ${dnaPlan.reason}`);
+        console.log(``);
+        console.log(`Dominant Traits:`);
+        dnaPlan.dominantTraits.forEach(item => {
+          console.log(`  - ${item.name}: ${item.value.toFixed(3)}`);
+        });
+        console.log(``);
+        console.log(`Dominant Factors:`);
+        dnaPlan.dominantFactors.forEach(item => {
+          console.log(`  - ${item.name}: ${item.value.toFixed(3)}`);
+        });
+        console.log(``);
 
-Dominant Traits:
-${plan.dominantTraits
-  .map((item) => `- ${item.name}: ${item.value.toFixed(3)}`)
-  .join("\n")}
-
-Dominant Factors:
-${plan.dominantFactors
-  .map((item) => `- ${item.name}: ${item.value.toFixed(3)}`)
-  .join("\n")}
-`);
+        if (!complete) {
+          console.log(`⚠️ Note: Some productions failed. Child Cell is complete but may need production retry.`);
+          console.log(``);
+        }
       },
     },
 

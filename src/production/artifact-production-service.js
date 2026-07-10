@@ -6,9 +6,11 @@ import {
   buildArtifactRepairPrompt,
   buildArtifactExecutionRepairPrompt,
 } from "./production-prompts.js";
+import { buildArtifactTransformationPrompt } from "./artifact-transformation-prompt.js";
 import { ArtifactParser } from "./artifact-parser.js";
 import { ArtifactNormalizer } from "./artifact-normalizer.js";
 import { ArtifactValidator } from "./artifact-validator.js";
+import { produceFromTransformation as _produceFromTransformation } from "./artifact-production-transformation.js";
 
 export class ArtifactProductionService {
   constructor({
@@ -243,6 +245,14 @@ This repair changed how the cell improves an artifact after real execution feedb
       artifact: repaired,
       saved,
     };
+  }
+
+  /**
+   * 從 Transformation Context 產生 Artifact
+   * 用於 Cell Division/Fusion 時重新生成 Artifact
+   */
+  async produceFromTransformation(options) {
+    return await _produceFromTransformation(this, options);
   }
 
   async produce({

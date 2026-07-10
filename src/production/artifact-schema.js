@@ -32,10 +32,11 @@ export function createArtifact({
   plan = null,
   outputs = [],
   notes = [],
+  origin = null,
 } = {}) {
   const now = new Date().toISOString();
 
-  return {
+  const artifact = {
     id,
     type,
     title: title || goal || "Untitled Artifact",
@@ -61,4 +62,16 @@ export function createArtifact({
     createdAt: now,
     updatedAt: now,
   };
+
+  // 加入 origin 資訊（可選）
+  if (origin) {
+    artifact.origin = {
+      mode: origin.mode || "created",
+      sourceCellIds: Array.isArray(origin.sourceCellIds) ? origin.sourceCellIds : [],
+      sourceArtifactIds: Array.isArray(origin.sourceArtifactIds) ? origin.sourceArtifactIds : [],
+      livingContextId: origin.livingContextId || null
+    };
+  }
+
+  return artifact;
 }
