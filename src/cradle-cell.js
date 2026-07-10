@@ -85,6 +85,7 @@ export class CradleCell {
     this.tasksFile = path.join(this.tasksDir, "tasks.json");
     this.evolutionsDir = path.join(this.rootDir, "evolutions");
     this.evolutionStateFile = path.join(this.rootDir, "evolution-state.json");
+    this.lifecycleEventsFile = path.join(this.rootDir, "lifecycle-events.json");
 
     this.memoryFiles = {
       identity: path.join(this.memoryDir, "identity.md"),
@@ -786,6 +787,39 @@ ${input}
   async nextPendingTask() {
     const tasks = await this.readTasks();
     return tasks.find((task) => task.status === "pending") ?? null;
+  }
+
+  /**
+   * Read lifecycle events history
+   * @returns {Promise<Array>} Array of lifecycle events
+   */
+  async readLifecycleEvents() {
+    try {
+      const raw = await fs.readFile(this.lifecycleEventsFile, "utf8");
+      return JSON.parse(raw);
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Append a lifecycle event to history
+   * @param {Object} event - Event to append
+   * @returns {Promise<void>}
+   */
+  async appendLifecycleEvent(event = {}) {
+    const events = await this.readLifecycleEvents();
+
+    events.push({
+      at: new Date().toISOString(),
+      ...event,
+    });
+
+    await fs.writeFile(
+      this.lifecycleEventsFile,
+      JSON.stringify(events, null, 2),
+      "utf8"
+    );
   }
 
   async readDNADefinition() {

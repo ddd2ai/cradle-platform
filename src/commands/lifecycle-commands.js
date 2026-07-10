@@ -55,7 +55,26 @@ function renderLifecycleApplyResult(result) {
     lines.push(`Blocked   : yes`);
   }
 
-  if (result.result) {
+  // Handle repair result details
+  if (result.result && typeof result.result === "object") {
+    const repairResult = result.result;
+    
+    if (repairResult.repairType) {
+      lines.push(`Type      : ${repairResult.repairType}`);
+    }
+    
+    if (repairResult.artifactId) {
+      lines.push(`Artifact  : ${repairResult.artifactId}`);
+    }
+    
+    if (repairResult.suggestion) {
+      lines.push(`Suggestion: ${repairResult.suggestion}`);
+    }
+    
+    if (repairResult.error) {
+      lines.push(`Error     : ${repairResult.error}`);
+    }
+  } else if (result.result) {
     lines.push(`Result    : ${result.result}`);
   }
 
@@ -82,6 +101,36 @@ function renderLifecycleApplyResult(result) {
  */
 export function createLifecycleCommands() {
   return [
+  // /lifecycle-events: view lifecycle history
+  {
+    name: "/lifecycle-events",
+    match: (input, { engine }) =>
+      input === "/lifecycle-events" && !engine.isCradleMode(),
+
+    execute: async ({ engine }) => {
+      const cell = engine.getActiveCell();
+      const events = await cell.readLifecycleEvents();
+
+      if (events.length === 0) {
+        console.log("\nNo lifecycle events recorded yet.\n");
+        return;
+      }
+
+      console.log("\nRecent Lifecycle Events\n");
+
+      const recentEvents = events.slice(-10).reverse();
+
+      for (const event of recentEvents) {
+        const date = new Date(event.at).toISOString().split('T')[0];
+        const applied = event.applied ? "applied" : event.blocked ? "blocked" : "failed";
+        
+        console.log(`${date}  ${event.action.padEnd(8)}  ${applied.padEnd(8)}  ${event.reason}`);
+      }
+
+      console.log(`\nTotal: ${events.length} events\n`);
+    },
+  },
+
   // /lifecycle-plan: create lifecycle execution plan
   {
     name: "/lifecycle-plan",
@@ -110,20 +159,27 @@ export function createLifecycleCommands() {
     },
   },
 
-  // /lifecycle-run --apply: apply execution (with safety layer)
+  // /lifecycle-run --apply [artifact-id]: apply execution (with safety layer)
   {
     name: "/lifecycle-run --apply",
     match: (input, { engine }) =>
-      input === "/lifecycle-run --apply" && !engine.isCradleMode(),
+      input.startsWith("/lifecycle-run --apply") && !engine.isCradleMode(),
 
-    execute: async ({ engine }) => {
+    execute: async ({ engine, input }) => {
       const cell = engine.getActiveCell();
+      
+      // Parse artifact-id from command
+      // /lifecycle-run --apply artifact-xxx
+      const parts = input.split(/\s+/);
+      const artifactId = parts[2] ?? null;
+
       const plan = await createLifecyclePlan(cell, engine);
 
       const result = await applyLifecyclePlan(cell, engine, plan, {
         allowRepair: true,
         allowDivide: false,
         allowMerge: false,
+        artifactId,
       });
 
       console.log(renderLifecycleApplyResult(result));

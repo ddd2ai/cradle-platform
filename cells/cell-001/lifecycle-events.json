@@ -1,0 +1,102 @@
+[
+  {
+    "at": "2026-07-10T02:40:19.520Z",
+    "action": "stay",
+    "applied": true,
+    "blocked": false,
+    "reason": "cell stays in current lifecycle state",
+    "detail": {
+      "decision": {
+        "action": "stay",
+        "confidence": "medium",
+        "reason": "cell is still growing",
+        "detail": {
+          "maturity": 0.24650332429581737,
+          "percent": 25,
+          "state": "seed",
+          "requiredMaturity": 0.6
+        }
+      },
+      "options": {
+        "allowRepair": true,
+        "allowDivide": false,
+        "allowMerge": false
+      }
+    }
+  },
+  {
+    "at": "2026-07-10T02:40:19.521Z",
+    "action": "divide",
+    "applied": false,
+    "blocked": true,
+    "reason": "divide is a structural action and is disabled for automatic apply",
+    "detail": {
+      "decision": {
+        "action": "stay",
+        "confidence": "medium",
+        "reason": "cell is still growing",
+        "detail": {
+          "maturity": 0.24650332429581737,
+          "percent": 25,
+          "state": "seed",
+          "requiredMaturity": 0.6
+        }
+      },
+      "options": {
+        "allowRepair": true,
+        "allowDivide": false,
+        "allowMerge": false
+      }
+    }
+  },
+  {
+    "at": "2026-07-10T02:41:40.011Z",
+    "action": "stay",
+    "applied": true,
+    "blocked": false,
+    "reason": "cell stays in current lifecycle state",
+    "detail": {
+      "decision": {
+        "action": "stay",
+        "confidence": "medium",
+        "reason": "cell is still growing",
+        "detail": {
+          "maturity": 0.24650332429581737,
+          "percent": 25,
+          "state": "seed",
+          "requiredMaturity": 0.6
+        }
+      },
+      "options": {
+        "allowRepair": true,
+        "allowDivide": false,
+        "allowMerge": false
+      }
+    }
+  },
+  {
+    "at": "2026-07-10T02:41:40.011Z",
+    "action": "divide",
+    "applied": false,
+    "blocked": true,
+    "reason": "divide is a structural action and is disabled for automatic apply",
+    "detail": {
+      "decision": {
+        "action": "stay",
+        "confidence": "medium",
+        "reason": "cell is still growing",
+        "detail": {
+          "maturity": 0.24650332429581737,
+          "percent": 25,
+          "state": "seed",
+          "requiredMaturity": 0.6
+        }
+      },
+      "options": {
+        "allowRepair": true,
+        "allowDivide": false,
+        "allowMerge": false
+      }
+    }
+  }
+]

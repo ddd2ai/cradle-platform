@@ -9,6 +9,7 @@
  */
 
 import { canApplyLifecycleAction } from "./lifecycle-policy.js";
+import { executeLifecycleRepair } from "./lifecycle-repair-service.js";
 
 /**
  * Create a lifecycle execution plan
@@ -82,9 +83,11 @@ export async function createLifecyclePlan(cell, engine, options = {}) {
 export async function applyLifecyclePlan(cell, engine, plan, options = {}) {
   const guard = canApplyLifecycleAction(plan.action, options);
 
+  let result;
+
   // Blocked by policy
   if (!guard.allowed) {
-    return {
+    result = {
       applied: false,
       action: plan.action,
       blocked: true,
@@ -95,8 +98,8 @@ export async function applyLifecyclePlan(cell, engine, plan, options = {}) {
   }
 
   // stay: no-op (always allowed)
-  if (plan.action === "stay") {
-    return {
+  else if (plan.action === "stay") {
+    result = {
       applied: true,
       action: "stay",
       result: "no-op",
@@ -105,23 +108,27 @@ export async function applyLifecyclePlan(cell, engine, plan, options = {}) {
     };
   }
 
-  // repair: allowed (execution can be connected later)
-  if (plan.action === "repair") {
-    // 初版先不要硬綁某個 artifact repair
-    // 如果目前沒有統一 repair 入口，可以先做成 apply record
-    // 未來可以接到 stabilize flow 或其他修復機制
-    return {
-      applied: true,
+  // repair: allowed and execute
+  else if (plan.action === "repair") {
+    const repairResult = await executeLifecycleRepair(
+      cell,
+      engine,
+      plan,
+      options
+    );
+
+    result = {
+      applied: repairResult.repaired,
       action: "repair",
-      result: "repair accepted",
-      reason: "repair action is allowed, execution can be connected to stabilize flow later",
+      result: repairResult,
+      reason: repairResult.reason,
       plan,
     };
   }
 
   // divide: blocked (structural action)
-  if (plan.action === "divide") {
-    return {
+  else if (plan.action === "divide") {
+    result = {
       applied: false,
       action: "divide",
       blocked: true,
@@ -132,8 +139,8 @@ export async function applyLifecyclePlan(cell, engine, plan, options = {}) {
   }
 
   // merge: blocked (structural action)
-  if (plan.action === "merge") {
-    return {
+  else if (plan.action === "merge") {
+    result = {
       applied: false,
       action: "merge",
       blocked: true,
@@ -144,11 +151,27 @@ export async function applyLifecyclePlan(cell, engine, plan, options = {}) {
   }
 
   // unknown action: blocked
-  return {
-    applied: false,
-    action: plan.action,
-    blocked: true,
-    reason: "structural lifecycle action is not enabled",
-    plan,
-  };
+  else {
+    result = {
+      applied: false,
+      action: plan.action,
+      blocked: true,
+      reason: "structural lifecycle action is not enabled",
+      plan,
+    };
+  }
+
+  // Log lifecycle event
+  await cell.appendLifecycleEvent({
+    action: result.action,
+    applied: result.applied,
+    blocked: result.blocked ?? false,
+    reason: result.reason,
+    detail: {
+      decision: plan.decision,
+      options,
+    },
+  });
+
+  return result;
 }
