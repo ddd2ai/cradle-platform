@@ -1,1 +1,0 @@
-public class RuntimeFailService { public String sayHello() { throw new RuntimeException("boom"); } public static void main(String[] args) { System.out.println(new RuntimeFailService().sayHello()); } }

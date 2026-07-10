@@ -604,7 +604,7 @@ ${recentThoughts}
 ${input}
 `;
 
-      const result = await this.askWithTimeout(cellInput, 60000);
+      const result = await this.askWithTimeout(cellInput, 180000);
       const outputText = result?.text ?? result?.answer ?? "(response streamed)";
 
       await this.appendHistory(
@@ -643,7 +643,7 @@ ${input}
     }
   }
 
-  async askWithTimeout(input, timeoutMs = 60000) {
+  async askWithTimeout(input, timeoutMs = 180000) {
     return await Promise.race([
       this.assistant.ask(input),
       new Promise((_, reject) =>
@@ -2803,7 +2803,7 @@ ${memoryContext}
   ${JSON.stringify(inbox, null, 2)}
   `;
 
-  const result = await this.askWithTimeout(prompt, 60000);
+  const result = await this.askWithTimeout(prompt, 180000);
   const summary = result?.text ?? result?.answer ?? "";
 
   if (!summary.trim()) {
