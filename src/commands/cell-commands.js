@@ -1019,7 +1019,7 @@ ${await parent.getMaturity()}
 
         engine.activeCellId = childId;
 
-        const { child, dnaDivisionPlan, livingContextPlan, complete } = result;
+        const { child, dnaDivisionPlan, livingContextPlan, productionResult, complete } = result;
 
         console.log(``);
         console.log(`🧬 Living Context Division Complete`);
@@ -1030,6 +1030,24 @@ ${await parent.getMaturity()}
         console.log(`Purpose       : ${livingContextPlan.childLivingContext.purpose || "N/A"}`);
         console.log(``);
         
+        // Production 狀態
+        if (productionResult) {
+          const planned = productionResult.produced.length + productionResult.failed.length;
+          console.log(`Production`);
+          console.log(`Planned       : ${planned}`);
+          console.log(`Produced      : ${productionResult.produced.length}`);
+          console.log(`Failed        : ${productionResult.failed.length}`);
+          console.log(``);
+
+          if (productionResult.produced.length > 0) {
+            console.log(`Artifacts`);
+            productionResult.produced.forEach(item => {
+              console.log(`- ${item.artifactId.substring(0, 20)}... ${item.title}`);
+            });
+            console.log(``);
+          }
+        }
+        
         console.log(`--- Parent Living Context ---`);
         console.log(`Responsibilities: ${(livingContextPlan.revisedParentLivingContext.responsibilities || []).join(", ")}`);
         console.log(``);
@@ -1038,7 +1056,15 @@ ${await parent.getMaturity()}
         console.log(`Responsibilities: ${(livingContextPlan.childLivingContext.responsibilities || []).join(", ")}`);
         console.log(``);
         
-        console.log(`Status        : ${complete ? "complete" : "incomplete"}`);
+        // 狀態判定
+        let statusText = "complete";
+        if (!complete) {
+          statusText = "incomplete";
+        } else if (productionResult && !productionResult.complete) {
+          statusText = "production-incomplete";
+        }
+        
+        console.log(`Status        : ${statusText}`);
         console.log(``);
 
         if (!complete) {

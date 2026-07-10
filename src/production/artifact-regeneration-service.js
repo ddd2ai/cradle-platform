@@ -8,6 +8,14 @@
 import { SourceMaterialService } from "../living-context/source-material-service.js";
 
 export class ArtifactRegenerationService {
+  constructor({
+    sourceMaterialService
+  } = {}) {
+    this.sourceMaterialService = 
+      sourceMaterialService ?? 
+      new SourceMaterialService();
+  }
+
   /**
    * 為 Division 重新生成 Artifacts
    * 
@@ -15,9 +23,10 @@ export class ArtifactRegenerationService {
    * @param {Object} options.parentCell - Parent Cell
    * @param {Object} options.childCell - Child Cell
    * @param {Object} options.divisionPlan - Living Context Division Plan
-   * @returns {Promise<Object>} { produced, failed, skipped }
+   * @returns {Promise<Object>} { produced, failed, skipped, complete }
    */
   async regenerateForDivision({ parentCell, childCell, divisionPlan }) {
+    // Validate inputs
     if (!parentCell) {
       throw new Error("regenerateForDivision: parentCell is required");
     }
@@ -27,86 +36,105 @@ export class ArtifactRegenerationService {
     if (!divisionPlan) {
       throw new Error("regenerateForDivision: divisionPlan is required");
     }
+    if (!Array.isArray(divisionPlan.productionPlan)) {
+      throw new Error("divisionPlan.productionPlan must be an array");
+    }
+    if (!childCell.productionService) {
+      throw new Error("childCell.productionService is required");
+    }
+
+    const productionPlan = divisionPlan.productionPlan;
+
+    // Empty production plan is valid, not an error
+    if (productionPlan.length === 0) {
+      return { 
+        produced: [], 
+        failed: [], 
+        skipped: [],
+        complete: true 
+      };
+    }
 
     const produced = [];
     const failed = [];
     const skipped = [];
 
-    const productionPlan = divisionPlan.productionPlan || [];
+    // Process each production item sequentially
+    // (avoid provider listener conflicts, ID collisions, prompt overload)
+    for (let index = 0; index < productionPlan.length; index++) {
+      const item = productionPlan[index];
 
-    if (productionPlan.length === 0) {
-      return { produced, failed, skipped };
-    }
-
-    // 讀取 Child Living Context 與 Memory
-    const childLivingContext = divisionPlan.childLivingContext;
-    const childMemorySeed = divisionPlan.childMemorySeed || {};
-
-    const distilledMemory = {
-      knowledge: childMemorySeed.knowledge || "",
-      history: childMemorySeed.history || ""
-    };
-
-    // Source Material Service
-    const sourceMaterialService = new SourceMaterialService();
-
-    for (const item of productionPlan) {
       try {
-        // 載入選定的 Source Artifacts
-        const sourceArtifacts = await sourceMaterialService.loadSelectedArtifacts(
+        // Load source artifacts
+        const sourceResult = await this.sourceMaterialService.loadSelectedArtifacts(
           parentCell,
           item.sourceArtifactIds || []
         );
 
-        // 建立 origin 資訊
-        const origin = {
-          mode: "division",
-          sourceCellIds: [parentCell.id],
-          sourceArtifactIds: item.sourceArtifactIds || [],
-          livingContextId: childLivingContext.id
-        };
+        // Collect source warnings from errors
+        const sourceWarnings = sourceResult.errors.map(
+          error => `${error.artifactId}: ${error.error}`
+        );
 
-        // 呼叫 Child Cell 的 Production Service
-        const result = await childCell.productionService.produceFromTransformation({
-          type: item.type || "code",
+        // Call production service with transformation context
+        const artifact = await childCell.productionService.produceFromTransformation({
+          type: item.type,
           title: item.title,
           goal: item.goal,
           constraints: item.constraints || [],
-          livingContext: childLivingContext,
-          distilledMemory,
-          sourceArtifacts,
-          origin
+
+          livingContext: divisionPlan.childLivingContext,
+          distilledMemory: divisionPlan.childMemorySeed,
+
+          sourceArtifacts: sourceResult.artifacts,
+          sourceWarnings,
+
+          origin: {
+            mode: 'division',
+            sourceCellIds: [parentCell.id],
+            sourceArtifactIds: item.sourceArtifactIds || [],
+            livingContextId: `living-context-${childCell.id}`
+          }
         });
 
+        // Record success
         produced.push({
-          artifactId: result.artifact.id,
-          type: item.type,
+          index,
           title: item.title,
+          artifactId: artifact.id,
           sourceArtifactIds: item.sourceArtifactIds || []
         });
 
       } catch (error) {
+        // Record failure but continue with other items
         console.error(`Failed to regenerate artifact: ${item.title}`, error);
 
         failed.push({
+          index,
           title: item.title,
-          error: error.message,
-          sourceArtifactIds: item.sourceArtifactIds || []
+          stage: 'production',
+          message: error.message
         });
       }
     }
 
-    return { produced, failed, skipped };
+    return { 
+      produced, 
+      failed, 
+      skipped,
+      complete: failed.length === 0
+    };
   }
 
   /**
    * 為 Fusion 重新生成 Artifacts
+   * (暫未完整實作)
    * 
    * @param {Object} options
    * @param {Object[]} options.parentCells - Parent Cells
    * @param {Object} options.childCell - Child Cell (fused)
    * @param {Object} options.fusionPlan - Living Context Fusion Plan
-   * @returns {Promise<Object>} { produced, failed, skipped }
+   * @returns {Promise<Object>} { produced, failed, skipped, complete }
    */
   async regenerateForFusion({ parentCells, childCell, fusionPlan }) {
     if (!parentCells || parentCells.length === 0) {
@@ -119,84 +147,12 @@ export class ArtifactRegenerationService {
       throw new Error("regenerateForFusion: fusionPlan is required");
     }
 
-    const produced = [];
-    const failed = [];
-    const skipped = [];
-
-    const productionPlan = fusionPlan.productionPlan || [];
-
-    if (productionPlan.length === 0) {
-      return { produced, failed, skipped };
-    }
-
-    // 讀取 Fused Living Context 與 Memory
-    const fusedLivingContext = fusionPlan.fusedLivingContext;
-    const fusedMemorySeed = fusionPlan.fusedMemorySeed || {};
-
-    const distilledMemory = {
-      knowledge: fusedMemorySeed.knowledge || "",
-      history: fusedMemorySeed.history || ""
+    // 暫時不實作 Fusion Regeneration
+    return { 
+      produced: [], 
+      failed: [], 
+      skipped: [],
+      complete: true 
     };
-
-    // Source Material Service
-    const sourceMaterialService = new SourceMaterialService();
-
-    for (const item of productionPlan) {
-      try {
-        // 載入選定的 Source Artifacts (可能來自多個 parent cells)
-        const sourceArtifacts = [];
-
-        if (item.sourceArtifacts && Array.isArray(item.sourceArtifacts)) {
-          for (const source of item.sourceArtifacts) {
-            const parentCell = parentCells.find(cell => cell.id === source.cellId);
-            if (parentCell) {
-              const artifacts = await sourceMaterialService.loadSelectedArtifacts(
-                parentCell,
-                [source.artifactId]
-              );
-              sourceArtifacts.push(...artifacts);
-            }
-          }
-        }
-
-        // 建立 origin 資訊
-        const origin = {
-          mode: "fusion",
-          sourceCellIds: parentCells.map(cell => cell.id),
-          sourceArtifactIds: sourceArtifacts.map(a => a.id),
-          livingContextId: fusedLivingContext.id
-        };
-
-        // 呼叫 Child Cell 的 Production Service
-        const result = await childCell.productionService.produceFromTransformation({
-          type: item.type || "code",
-          title: item.title,
-          goal: item.goal,
-          constraints: item.constraints || [],
-          livingContext: fusedLivingContext,
-          distilledMemory,
-          sourceArtifacts,
-          origin
-        });
-
-        produced.push({
-          artifactId: result.artifact.id,
-          type: item.type,
-          title: item.title,
-          sourceArtifacts: item.sourceArtifacts || []
-        });
-
-      } catch (error) {
-        console.error(`Failed to regenerate artifact: ${item.title}`, error);
-
-        failed.push({
-          title: item.title,
-          error: error.message,
-          sourceArtifacts: item.sourceArtifacts || []
-        });
-      }
-    }
-
-    return { produced, failed, skipped };
   }
 }

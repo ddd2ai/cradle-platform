@@ -24,6 +24,7 @@ export async function produceFromTransformation(service, {
   livingContext,
   distilledMemory,
   sourceArtifacts = [],
+  sourceWarnings = [],
   origin
 } = {}) {
   if (!goal?.trim()) {
@@ -47,6 +48,7 @@ export async function produceFromTransformation(service, {
     livingContext,
     distilledMemory,
     sourceArtifacts,
+    sourceWarnings,
     origin
   });
 
@@ -114,6 +116,7 @@ Attempting one repair cycle with preserved Living Context and Source Materials.
       livingContext,
       distilledMemory,
       sourceArtifacts,
+      sourceWarnings,
       origin
     });
 
@@ -181,6 +184,7 @@ async function repairTransformationArtifact(service, {
   livingContext,
   distilledMemory,
   sourceArtifacts,
+  sourceWarnings = [],
   origin
 } = {}) {
   const environment = await service.cell.readEnvironment();
@@ -198,6 +202,7 @@ async function repairTransformationArtifact(service, {
     livingContext,
     distilledMemory,
     sourceArtifacts,
+    sourceWarnings,
     origin
   });
 

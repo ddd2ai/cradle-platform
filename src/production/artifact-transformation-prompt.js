@@ -16,6 +16,7 @@ export function buildArtifactTransformationPrompt({
   livingContext,
   distilledMemory,
   sourceArtifacts = [],
+  sourceWarnings = [],
   origin
 } = {}) {
   const policy = getArtifactTypePolicy(type);
@@ -105,6 +106,17 @@ ${distilledMemory.history || "N/A"}
     });
   }
 
+  // 建立 Source Warnings 摘要
+  let sourceWarningsText = "";
+  if (sourceWarnings && sourceWarnings.length > 0) {
+    sourceWarningsText = "\n# Source Artifact Warnings\n\n";
+    sourceWarningsText += "Some source artifacts could not be loaded:\n\n";
+    sourceWarnings.forEach(warning => {
+      sourceWarningsText += `- ${warning}\n`;
+    });
+    sourceWarningsText += "\nYou may still proceed with generation based on the Living Context and available source artifacts.\n\n";
+  }
+
   // Origin 資訊
   let originText = "";
   if (origin) {
@@ -188,6 +200,8 @@ ${environment}
 ${memoryText}
 
 ${sourceArtifactsText}
+
+${sourceWarningsText}
 
 # Output JSON Format
 

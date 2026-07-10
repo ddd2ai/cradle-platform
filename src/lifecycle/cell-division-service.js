@@ -8,6 +8,7 @@
  */
 
 import { LivingContextService } from "../living-context/living-context-service.js";
+import { ArtifactRegenerationService } from "../production/artifact-regeneration-service.js";
 import { createLivingContext, normalizeLivingContext } from "../living-context/living-context-schema.js";
 import { block } from "../utils/text.js";
 
@@ -15,11 +16,19 @@ export class CellDivisionService {
   /**
    * @param {Object} options
    * @param {Function} [options.livingContextServiceFactory] - Factory for LivingContextService
+   * @param {Object} [options.artifactRegenerationService] - Artifact Regeneration Service
    */
-  constructor({ livingContextServiceFactory } = {}) {
+  constructor({ 
+    livingContextServiceFactory,
+    artifactRegenerationService 
+  } = {}) {
     this.livingContextServiceFactory = livingContextServiceFactory || ((requesterCell) => {
       return new LivingContextService({ requesterCell });
     });
+
+    this.artifactRegenerationService = 
+      artifactRegenerationService ?? 
+      new ArtifactRegenerationService();
   }
 
   /**
@@ -107,6 +116,52 @@ export class CellDivisionService {
         throw error;
       }
 
+      // 8. Regenerate Productions
+      console.log(`  Regenerating productions...`);
+      let productionResult = {
+        produced: [],
+        failed: [],
+        skipped: [],
+        complete: true
+      };
+
+      try {
+        productionResult = await this.artifactRegenerationService.regenerateForDivision({
+          parentCell,
+          childCell: child,
+          divisionPlan: livingContextPlan
+        });
+
+        if (productionResult.produced.length > 0) {
+          console.log(`  ✅ Produced ${productionResult.produced.length} artifact(s)`);
+        }
+
+        if (productionResult.failed.length > 0) {
+          console.log(`  ⚠️  ${productionResult.failed.length} artifact(s) failed`);
+        }
+
+        // 9. 記錄 Production History
+        await this._recordProductionHistory(parentCell, child, productionResult);
+
+      } catch (error) {
+        errors.push({
+          stage: "production",
+          message: error.message,
+        });
+
+        productionResult = {
+          produced: [],
+          failed: [{
+            index: -1,
+            title: "unknown",
+            stage: "production",
+            message: error.message
+          }],
+          skipped: [],
+          complete: false
+        };
+      }
+
       console.log(`  ✅ Application phase complete`);
 
       return {
@@ -114,8 +169,16 @@ export class CellDivisionService {
         child,
         dnaDivisionPlan,
         livingContextPlan,
-        complete: true,
-        errors: [],
+        productionResult,
+        complete: errors.length === 0 && productionResult.complete,
+        errors: [
+          ...errors,
+          ...productionResult.failed.map(failure => ({
+            stage: "production",
+            message: failure.message,
+            title: failure.title
+          }))
+        ],
       };
 
     } catch (error) {
@@ -159,6 +222,12 @@ export class CellDivisionService {
         child,
         dnaDivisionPlan,
         livingContextPlan,
+        productionResult: {
+          produced: [],
+          failed: [],
+          skipped: [],
+          complete: false
+        },
         complete: false,
         errors,
       };
@@ -448,6 +517,54 @@ export class CellDivisionService {
         "",
       ])
     );
+  }
+
+  /**
+   * 記錄 Production Regeneration History
+   * @private
+   */
+  async _recordProductionHistory(parentCell, childCell, productionResult) {
+    const planned = productionResult.produced.length + productionResult.failed.length;
+
+    // Child History
+    const childHistoryLines = [
+      `## Production Regeneration`,
+      "",
+      `Planned: ${planned}`,
+      `Produced: ${productionResult.produced.length}`,
+      `Failed: ${productionResult.failed.length}`,
+      "",
+    ];
+
+    if (productionResult.produced.length > 0) {
+      childHistoryLines.push(`Produced:`);
+      productionResult.produced.forEach(item => {
+        childHistoryLines.push(`- ${item.title}: ${item.artifactId}`);
+      });
+      childHistoryLines.push("");
+    }
+
+    if (productionResult.failed.length > 0) {
+      childHistoryLines.push(`Failed:`);
+      productionResult.failed.forEach(item => {
+        childHistoryLines.push(`- ${item.title}: ${item.message}`);
+      });
+      childHistoryLines.push("");
+    }
+
+    await childCell.appendHistory(block(childHistoryLines));
+
+    // Parent History
+    const parentHistoryLines = [
+      `## Child Production Regeneration`,
+      "",
+      `Child: ${childCell.id}`,
+      `Produced: ${productionResult.produced.length}`,
+      `Failed: ${productionResult.failed.length}`,
+      "",
+    ];
+
+    await parentCell.appendHistory(block(parentHistoryLines));
   }
 
   /**
