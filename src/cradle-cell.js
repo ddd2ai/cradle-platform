@@ -31,6 +31,9 @@ import {
   findDominantTrait,
   decideCellLifecycle,
 } from "./dna/dna-lifecycle.js";
+import {
+  calculateDNAMatrixCentroid,
+} from "./dna/dna-centroid.js";
 import { ArtifactProductionService } from "./production/artifact-production-service.js";
 import { StabilityStore } from "./stability/stability-store.js";
 import {
@@ -1083,6 +1086,171 @@ TODO: define meaning from DNA_DEFINITION.md.
     } catch {
       return [];
     }
+  }
+
+  /**
+   * 建立 DNA Fusion Plan
+   * 計算 Parent Cells 的 DNA 融合結果
+   * 
+   * @param {object} options
+   * @param {Array} options.parentCells - Parent Cell 陣列
+   * @param {string} options.childId - Child Cell ID
+   * @param {object} options.parentWeights - Optional weights for each parent
+   * @returns {Promise<object>} DNA Fusion Plan
+   */
+  async createFusionPlanByDNA({
+    parentCells,
+    childId,
+    parentWeights = {}
+  }) {
+    if (!Array.isArray(parentCells) || parentCells.length < 2) {
+      throw new Error("parentCells must have at least 2 items");
+    }
+
+    // 收集 Parent DNA Matrices
+    const items = [];
+
+    for (const cell of parentCells) {
+      const vector = await cell.readDNAVector();
+      
+      if (!vector) {
+        throw new Error(`Cell ${cell.id} has no DNA vector`);
+      }
+
+      const matrix = dnaVectorToMatrix(vector);
+      const weight = parentWeights[cell.id] || 1;
+
+      items.push({
+        cellId: cell.id,
+        matrix,
+        weight
+      });
+    }
+
+    // 計算 Centroid
+    const fusedMatrix = calculateDNAMatrixCentroid(items);
+
+    // 計算 Maturity (使用 Parent 平均)
+    let totalMaturity = 0;
+    let maturityCount = 0;
+
+    for (const cell of parentCells) {
+      const history = await cell.readDNAHistory();
+      
+      if (history.length > 0) {
+        const maturityInfo = calculateDNAMaturityFromHistory(history);
+        totalMaturity += maturityInfo.maturity || 0;
+        maturityCount++;
+      }
+    }
+
+    const maturity = maturityCount > 0 ? totalMaturity / maturityCount : 0.5;
+
+    // 決定 Role (使用 fused matrix)
+    const fusedVector = {};
+    
+    // 從 matrix 重建 vector (簡化版)
+    const traitNames = ["AUTONOMY", "PERSISTENCE", "REFLECTION", "COOPERATION", "ADAPTABILITY", "FOCUS", "CREATIVITY", "CONSISTENCY"];
+    const factorNames = ["strength", "stability", "plasticity"];
+    
+    traitNames.forEach((trait, i) => {
+      fusedVector[trait] = {};
+      factorNames.forEach((factor, j) => {
+        fusedVector[trait][factor] = fusedMatrix[i]?.[j] || 0.5;
+      });
+    });
+
+    const cellScore = calculateCellScore(fusedVector);
+    const dominantTrait = findDominantTrait(fusedVector);
+    const lifecycle = decideCellLifecycle({ maturity, cellScore });
+
+    let role = "Unified";
+    
+    if (maturity > 0.7) {
+      role = "Mature " + (dominantTrait?.trait || "Balanced");
+    } else if (maturity > 0.4) {
+      role = "Growing " + (dominantTrait?.trait || "Balanced");
+    } else {
+      role = "Seed";
+    }
+
+    // 收集 Dominant Traits 與 Factors
+    const dominantTraits = [];
+    const dominantFactors = [];
+
+    if (dominantTrait) {
+      dominantTraits.push(dominantTrait.trait);
+      
+      const traitVector = fusedVector[dominantTrait.trait] || {};
+      
+      Object.entries(traitVector).forEach(([factor, value]) => {
+        if (value > 0.7) {
+          dominantFactors.push(`${dominantTrait.trait}.${factor}`);
+        }
+      });
+    }
+
+    // 生成 Reason
+    const parentIds = parentCells.map(cell => cell.id).join(", ");
+    const reason = `Fused from ${parentIds} with ${maturity.toFixed(2)} maturity and ${cellScore.toFixed(2)} cell score`;
+
+    return {
+      fusedMatrix,
+      fusedVector,
+      maturity,
+      role,
+      dominantTraits,
+      dominantFactors,
+      reason,
+      parentWeights: items.map(item => ({
+        cellId: item.cellId,
+        weight: item.weight
+      }))
+    };
+  }
+
+  /**
+   * 套用 DNA Fusion Plan 到 Child Cell
+   * 
+   * @param {object} options
+   * @param {object} options.childCell - Child Cell 實例
+   * @param {Array} options.parentCells - Parent Cell 陣列
+   * @param {object} options.dnaFusionPlan - DNA Fusion Plan
+   * @returns {Promise<void>}
+   */
+  async applyFusionPlanByDNA({
+    childCell,
+    parentCells,
+    dnaFusionPlan
+  }) {
+    if (!dnaFusionPlan || !dnaFusionPlan.fusedVector) {
+      throw new Error("Invalid DNA fusion plan");
+    }
+
+    // 寫入 Fused DNA Vector
+    await childCell.writeDNAVector(dnaFusionPlan.fusedVector);
+
+    // 設定 Generation (Parent 最大 + 1)
+    let maxGeneration = 0;
+    
+    for (const parent of parentCells) {
+      const profile = await parent.readProfile();
+      const generation = profile.generation || 0;
+      maxGeneration = Math.max(maxGeneration, generation);
+    }
+
+    const profile = await childCell.readProfile();
+    profile.generation = maxGeneration + 1;
+    profile.role = dnaFusionPlan.role;
+    
+    await childCell.writeProfile(profile);
+
+    // 寫入 DNA History
+    await childCell.appendDNAHistory(
+      `fusion from ${parentCells.map(c => c.id).join(", ")}`
+    );
+
+    // 建立 Lineage Relationship (在 CellFusionService 中處理)
   }
 
   clampDNAValue(value) {

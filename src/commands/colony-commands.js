@@ -3,7 +3,7 @@ import { renderAnswerStart } from "../cradle-console.js";
 import { renderColonyGraph } from "../ui/render-colony-graph.js";
 import { renderTable } from "../ui/render-table.js";
 import { dnaVectorToMatrix } from "../dna/dna-matrix.js";
-import { createCentroidFusionPlan } from "../dna/dna-centroid.js";
+import { CellFusionService } from "../lifecycle/cell-fusion-service.js";
 import { block } from "../utils/text.js";
 
 export function createColonyCommands() {
@@ -81,237 +81,120 @@ export function createColonyCommands() {
         const parentIds = args.slice(0, -1);
         const childId = args.at(-1);
 
-        if (engine.cells.has(childId)) {
-          console.log(`Cell already exists: ${childId}`);
-          return;
+        // 找到 Parent Cells
+        const parentCells = [];
+        
+        for (const id of parentIds) {
+          const cell = engine.cells.get(id);
+          
+          if (!cell) {
+            console.log(`Cell not found: ${id}`);
+            return;
+          }
+          
+          parentCells.push(cell);
         }
 
-        const parents = parentIds.map((id) => ({
-          id,
-          cell: engine.cells.get(id),
-        }));
+        // 呼叫 CellFusionService
+        console.log("");
+        console.log("🧬 Starting Living Context Fusion...");
+        console.log("");
+        
+        const service = new CellFusionService();
+        
+        try {
+          const result = await service.fuse({
+            engine,
+            parentCells,
+            childId
+          });
 
-        const missing = parents.filter((item) => !item.cell);
-
-        if (missing.length > 0) {
-          console.log(
-            `Cell not found: ${missing.map((item) => item.id).join(", ")}`
-          );
-          return;
-        }
-
-        const items = [];
-
-        for (const { id, cell } of parents) {
-          const dnaVector = await cell.readDNAVector();
-
-          if (!dnaVector) {
-            console.log(`Cell has no DNA vector: ${id}`);
+          if (!result.success) {
+            console.log("");
+            console.log("❌ Fusion failed");
+            console.log("");
+            console.log("Errors:");
+            
+            for (const error of result.errors) {
+              console.log(`  - ${error.stage}: ${error.message}`);
+            }
+            
             return;
           }
 
-          const profile = await cell.readCellProfile();
-          const maturity = await cell.getMaturityInfo();
+          // 顯示結果
+          const child = result.child;
+          const productionResult = result.productionResult;
+          
+          // 讀取 Living Context 資訊
+          const livingContext = await child.readLivingContext();
+          const profile = await child.readProfile();
+          
+          // 計算 Capabilities
+          const fusionPlan = result.fusionPlan || {};
+          const capabilityResolutions = fusionPlan.capabilityResolutions || [];
+          
+          const inherited = capabilityResolutions.filter(c => c.strategy === "inherit").length;
+          const synthesized = capabilityResolutions.filter(c => c.strategy === "synthesize").length;
+          const discarded = capabilityResolutions.filter(c => c.strategy === "discard").length;
+          
+          // 計算 Knowledge Conflicts
+          const knowledgeConflicts = fusionPlan.knowledgeConflicts || [];
+          const conflictsCount = knowledgeConflicts.length;
+          const resolvedCount = knowledgeConflicts.filter(c => c.resolution).length;
+          
+          // 計算 Production
+          const planned = (fusionPlan.productionPlan || []).length;
+          const produced = productionResult.produced.length;
+          const failed = productionResult.failed.length;
+          
+          // 設定 active cell
+          engine.activeCellId = childId;
 
-          items.push({
-            cellId: id,
-            matrix: dnaVectorToMatrix(dnaVector),
-            weight: Math.max(maturity.maturity, 0.01),
-            profile: {
-              ...profile,
-              maturityInfo: maturity,
-            },
-          });
+          // 顯示結果
+          console.log("");
+          console.log("🧬 Living Context Fusion Complete");
+          console.log("");
+          console.log("Parents");
+          
+          for (const parent of parentCells) {
+            console.log(`  - ${parent.id}`);
+          }
+          
+          console.log("");
+          console.log(`Child          : ${childId}`);
+          console.log(`Role           : ${profile.role || "unknown"}`);
+          console.log(`Purpose        : ${livingContext.purpose || "unknown"}`);
+          console.log("");
+          console.log("Capabilities");
+          console.log(`  Inherited      : ${inherited}`);
+          console.log(`  Synthesized    : ${synthesized}`);
+          console.log(`  Discarded      : ${discarded}`);
+          console.log("");
+          console.log("Knowledge");
+          console.log(`  Conflicts      : ${conflictsCount}`);
+          console.log(`  Resolved       : ${resolvedCount}`);
+          console.log("");
+          console.log("Production");
+          console.log(`  Planned        : ${planned}`);
+          console.log(`  Produced       : ${produced}`);
+          console.log(`  Failed         : ${failed}`);
+          console.log("");
+          console.log(`Status         : ${result.complete ? "complete" : "production-incomplete"}`);
+          console.log("");
+
+        } catch (error) {
+          console.log("");
+          console.log("❌ Fusion failed");
+          console.log("");
+          console.log(error.message);
+          console.log("");
+          
+          if (error.cause) {
+            console.log("Cause:");
+            console.log(error.cause.message);
+          }
         }
-
-        const plan = createCentroidFusionPlan({
-          parentIds,
-          childId,
-          items,
-        });
-
-        const child = await engine.createCell(childId);
-
-        const archiveDir = `${child.dir}/memory/archive`;
-        await fs.mkdir(archiveDir, { recursive: true });
-
-        await fs.writeFile(
-          child.memoryFiles.identity,
-          block([
-            "# Identity",
-            "",
-            `I am ${child.name}.`,
-            `My cell id is ${child.id}.`,
-            "",
-            "I was born from fusion.",
-            "",
-            "Parents:",
-            ...parentIds.map((id) => `- ${id}`),
-            "",
-          ]),
-          "utf8"
-        );
-
-        await child.writeDNAVector(plan.fusedDNAVector);
-        await child.appendDNAHistory("centroid-fusion");
-
-        const maxGeneration = Math.max(
-          ...items.map((item) =>
-            Number(item.profile?.generation ?? 1)
-          )
-        );
-
-        await child.setGeneration(maxGeneration + 1);
-
-        for (const { id, cell } of parents) {
-          await cell.addRelationship("fused-into", childId);
-          await child.addRelationship("fused-from", id);
-        }
-
-        const responsibilities = [
-          ...new Set(
-            items.flatMap((item) =>
-              item.profile?.responsibilities ?? []
-            )
-          ),
-        ];
-
-        for (const responsibility of responsibilities) {
-          await child.addResponsibility(responsibility);
-        }
-
-        for (const { id, cell } of parents) {
-          const identity = await cell.safeReadMemory("identity");
-          const knowledge = await cell.safeReadMemory("knowledge");
-          const history = await cell.safeReadMemory("history");
-
-          await fs.writeFile(
-            `${archiveDir}/parent-${id}.md`,
-            block([
-              `# Parent Memory: ${id}`,
-              "",
-              "## Identity",
-              "",
-              identity.trim(),
-              "",
-              "## Knowledge",
-              "",
-              knowledge.trim(),
-              "",
-              "## History",
-              "",
-              history.trim(),
-              "",
-            ]),
-            "utf8"
-          );
-        }
-
-        await child.appendKnowledge(
-          block([
-            "## Fusion Origin",
-            "",
-            "Born from centroid-based cell fusion.",
-            "",
-            "## Parents",
-            "",
-            ...parentIds.map((id) => `- ${id}`),
-            "",
-            "## Fusion Type",
-            "",
-            "Maturity-weighted DNA matrix centroid.",
-            "",
-            "## Weights",
-            "",
-            ...plan.weights.map((item) => `- ${item.cellId}: ${item.weight}`),
-            "",
-            "## Responsibilities",
-            "",
-            ...(responsibilities.length === 0
-              ? ["- none"]
-              : responsibilities.map((item) => `- ${item}`)),
-            "",
-            "## Archived Parent Memories",
-            "",
-            "Parent memories were archived for later digestion and evolution.",
-            "",
-            ...parentIds.map((id) => `- memory/archive/parent-${id}.md`),
-            "",
-          ])
-        );
-
-
-        await child.appendHistory(
-          block([
-            `## ${new Date().toISOString()}`,
-            "",
-            "### Fusion Summary",
-            "",
-            "Born from:",
-            ...parentIds.map((id) => `- ${id}`),
-            "",
-            "Fusion method:",
-            "Maturity-weighted DNA matrix centroid.",
-            "",
-            "Knowledge inheritance:",
-            "Parent identity, knowledge, and history were inherited into child knowledge.",
-            "",
-          ])
-        );
-
-
-        await child.appendThought(
-          block([
-            `## ${new Date().toISOString()}`,
-            "",
-            "I was born through centroid-based cell fusion.",
-            "",
-            "Parents:",
-            ...parentIds.map((id) => `- ${id}`),
-            "",
-            "My DNA is the maturity-weighted centroid of my parent cells.",
-            "My parent memories were archived.",
-            "I should digest them through future evolution instead of copying them directly.",
-            "",
-          ])
-        );
-
-        for (const { cell } of parents) {
-          await cell.appendThought(
-            block([
-              `## ${new Date().toISOString()}`,
-              "",
-              "I participated in centroid-based fusion.",
-              "",
-              "Fused into:",
-              childId,
-              "",
-            ])
-          );
-        }
-
-        engine.activeCellId = childId;
-
-        console.log(
-          block([
-            "",
-            "🧬 Cell Fusion Complete",
-            "",
-            "Parents:",
-            parentIds.join(", "),
-            "",
-            "Child:",
-            childId,
-            "",
-            "Method:",
-            "Maturity-weighted DNA matrix centroid",
-            "",
-            "Weights:",
-            ...plan.weights.map((item) => `- ${item.cellId}: ${item.weight}`),
-            "",
-          ])
-        );
-
       },
     },
 
