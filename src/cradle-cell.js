@@ -604,7 +604,7 @@ ${recentThoughts}
 ${input}
 `;
 
-      const result = await this.askWithTimeout(cellInput, 180000);
+      const result = await this.askWithTimeout(cellInput, 300000);
       const outputText = result?.text ?? result?.answer ?? "(response streamed)";
 
       await this.appendHistory(
@@ -1465,7 +1465,7 @@ TODO: define meaning from DNA_DEFINITION.md.
       # Thoughts
 
       ${thoughtContext}
-      `, 180000);
+      `, 300000);
 
             const raw = result?.text ?? result?.answer ?? "{}";
             const evolution = this.parseEvolutionJson(raw);
@@ -2803,7 +2803,7 @@ ${memoryContext}
   ${JSON.stringify(inbox, null, 2)}
   `;
 
-  const result = await this.askWithTimeout(prompt, 180000);
+  const result = await this.askWithTimeout(prompt, 300000);
   const summary = result?.text ?? result?.answer ?? "";
 
   if (!summary.trim()) {

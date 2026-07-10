@@ -1,0 +1,11 @@
+{
+  "artifactId": "artifact-20260710-203957",
+  "status": "passed",
+  "command": "java -cp src TemperatureConverter",
+  "stdout": "25.0°C = 77.0°F\n77.0°F = 25.0°C\n",
+  "stderr": "",
+  "exitCode": 0,
+  "error": null,
+  "executionId": "execution-1783687241446",
+  "createdAt": "2026-07-10T12:40:41.794Z"
+}

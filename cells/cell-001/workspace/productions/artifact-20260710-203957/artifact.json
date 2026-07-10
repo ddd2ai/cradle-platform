@@ -1,0 +1,40 @@
+{
+  "id": "artifact-20260710-203957",
+  "type": "executable-java",
+  "title": "建立一個 TemperatureConverter 程式。程式需要提供攝氏轉華氏與華氏轉攝氏功能，並在 main 方法中各執行一次轉換後輸出結果。不得使用外部套件，所有程式碼放在同一個 Java 檔案中。",
+  "status": "draft",
+  "goal": "建立一個 TemperatureConverter 程式。程式需要提供攝氏轉華氏與華氏轉攝氏功能，並在 main 方法中各執行一次轉換後輸出結果。不得使用外部套件，所有程式碼放在同一個 Java 檔案中。",
+  "context": {
+    "cellId": "cell-001",
+    "provider": "ollama",
+    "model": "devstral:24b"
+  },
+  "plan": {
+    "summary": "建立 TemperatureConverter.java 並實作攝氏華氏互轉功能",
+    "steps": [
+      "定義 TemperatureConverter 類別",
+      "新增 celsiusToFahrenheit 方法",
+      "新增 fahrenheitToCelsius 方法",
+      "在 main 方法中測試轉換功能並輸出結果"
+    ],
+    "markdown": "# Plan\n1. 定義 TemperatureConverter 類別\n2. 新增 celsiusToFahrenheit 方法\n3. 新增 fahrenheitToCelsius 方法\n4. 在 main 方法中測試轉換功能並輸出結果"
+  },
+  "outputs": [
+    {
+      "kind": "file",
+      "path": "TemperatureConverter.java",
+      "language": "java",
+      "content": "public class TemperatureConverter {\n\n    public double celsiusToFahrenheit(double celsius) {\n        return (celsius * 9 / 5) + 32;\n    }\n\n    public double fahrenheitToCelsius(double fahrenheit) {\n        return (fahrenheit - 32) * 5 / 9;\n    }\n\n    public static void main(String[] args) {\n        TemperatureConverter converter = new TemperatureConverter();\n        double celsius = 25.0;\n        double fahrenheit = converter.celsiusToFahrenheit(celsius);\n        System.out.println(celsius + \"°C = \" + fahrenheit + \"°F\");\n\n        fahrenheit = 77.0;\n        celsius = converter.fahrenheitToCelsius(fahrenheit);\n        System.out.println(fahrenheit + \"°F = \" + celsius + \"°C\");\n    }\n}"
+    }
+  ],
+  "notes": [
+    "確保所有方法實作正確",
+    "main 方法中的測試數據可以根據需求調整"
+  ],
+  "review": {
+    "status": "pending",
+    "notes": []
+  },
+  "createdAt": "2026-07-10T12:39:57.727Z",
+  "updatedAt": "2026-07-10T12:39:57.728Z"
+}

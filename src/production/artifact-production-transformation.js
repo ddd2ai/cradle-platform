@@ -53,7 +53,7 @@ export async function produceFromTransformation(service, {
   });
 
   // Step 3: 呼叫 AI
-  const result = await service.cell.askWithTimeout(prompt, 180000);
+  const result = await service.cell.askWithTimeout(prompt, 300000);
   const raw = result?.text ?? result?.answer ?? result ?? "{}";
 
   // Step 4: Parse
@@ -206,7 +206,7 @@ async function repairTransformationArtifact(service, {
     origin
   });
 
-  const result = await service.cell.askWithTimeout(prompt, 180000);
+  const result = await service.cell.askWithTimeout(prompt, 300000);
   const raw = result?.text ?? result?.answer ?? result ?? "{}";
 
   const parsed = service.parser.parse(raw);

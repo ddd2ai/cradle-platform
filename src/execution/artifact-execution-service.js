@@ -78,25 +78,12 @@ export class ArtifactExecutionService {
    * @returns {Object|null}
    */
   selectExecutor(artifact) {
-    // 優先檢查 artifact type
+  // 目前 JavaExecutor 只支援單檔 executable-java
     if (artifact.type === "executable-java") {
       return this.javaExecutor;
     }
 
-    // 檢查 outputs 的 language
-    const hasJava = artifact.outputs?.some(
-      (output) => output.language === "java" && output.path?.endsWith(".java")
-    );
-
-    if (hasJava) {
-      return this.javaExecutor;
-    }
-
-    // 未來可以加入其他 executor
-    // if (artifact.type === "executable-python") {
-    //   return this.pythonExecutor;
-    // }
-
+    // code / Maven / 多檔 Java 目前尚未支援
     return null;
   }
 }

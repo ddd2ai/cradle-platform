@@ -77,7 +77,7 @@ export class LivingContextService {
     // 4. 呼叫 AI (timeout 180秒)
     let rawResponse;
     try {
-      rawResponse = await this.requesterCell.askWithTimeout(prompt, 180000);
+      rawResponse = await this.requesterCell.askWithTimeout(prompt, 300000);
     } catch (error) {
       throw new Error(`LivingContextService: AI division planning failed`, {
         cause: error

@@ -1,0 +1,81 @@
+{
+  "id": "artifact-20260710-205108",
+  "type": "code",
+  "title": "使用純 Java 建立一個最小 RBAC 範例。",
+  "status": "draft",
+  "goal": "使用純 Java 建立一個最小 RBAC 範例。",
+  "context": {
+    "cellId": "cell-001",
+    "provider": "ollama",
+    "model": "devstral:24b"
+  },
+  "plan": {
+    "summary": "建立一個簡單的角色-based 權限控制 (RBAC) 系統，包含角色、權限和使用者。",
+    "steps": [
+      "創建 Role 類別",
+      "創建 Permission 類別",
+      "創建 User 類別",
+      "創建 RBACService 來管理角色和權限"
+    ],
+    "markdown": "# 最小 RBAC 範例\n\n本專案展示了一個簡單的角色-based 權限控制 (RBAC) 系統。"
+  },
+  "outputs": [
+    {
+      "kind": "file",
+      "path": "pom.xml",
+      "language": "xml",
+      "content": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<project xmlns=\"http://maven.apache.org/POM/4.0.0\"\n         xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n         xsi:schemaLocation=\"http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd\">\n    <modelVersion>4.0.0</modelVersion>\n\n    <groupId>com.example</groupId>\n    <artifactId>rbac-example</artifactId>\n    <version>1.0-SNAPSHOT</version>\n\n    <parent>\n        <groupId>org.springframework.boot</groupId>\n        <artifactId>spring-boot-starter-parent</artifactId>\n        <version>3.0.0</version>\n        <relativePath/> <!-- lookup parent from repository -->\n    </parent>\n\n    <properties>\n        <java.version>21</java.version>\n    </properties>\n\n    <dependencies>\n        <dependency>\n            <groupId>org.springframework.boot</groupId>\n            <artifactId>spring-boot-starter</artifactId>\n        </dependency>\n        <dependency>\n            <groupId>org.springframework.boot</groupId>\n            <artifactId>spring-boot-starter-data-jpa</artifactId>\n        </dependency>\n    </dependencies>\n\n    <build>\n        <plugins>\n            <plugin>\n                <groupId>org.springframework.boot</groupId>\n                <artifactId>spring-boot-maven-plugin</artifactId>\n            </plugin>\n        </plugins>\n    </build>\n</project>"
+    },
+    {
+      "kind": "file",
+      "path": "src/main/java/com/example/rbacexample/RbacExampleApplication.java",
+      "language": "java",
+      "content": "package com.example.rbacexample;\n\nimport org.springframework.boot.SpringApplication;\nimport org.springframework.boot.autoconfigure.SpringBootApplication;\n\n@SpringBootApplication\npublic class RbacExampleApplication {\n    public static void main(String[] args) {\n        SpringApplication.run(RbacExampleApplication.class, args);\n    }\n}"
+    },
+    {
+      "kind": "file",
+      "path": "src/main/java/com/example/rbacexample/model/Role.java",
+      "language": "java",
+      "content": "package com.example.rbacexample.model;\n\npublic class Role {\n    private String name;\n\n    public Role(String name) {\n        this.name = name;\n    }\n\n    // getters and setters\n}"
+    },
+    {
+      "kind": "file",
+      "path": "src/main/java/com/example/rbacexample/model/Permission.java",
+      "language": "java",
+      "content": "package com.example.rbacexample.model;\n\npublic class Permission {\n    private String name;\n\n    public Permission(String name) {\n        this.name = name;\n    }\n\n    // getters and setters\n}"
+    },
+    {
+      "kind": "file",
+      "path": "src/main/java/com/example/rbacexample/model/User.java",
+      "language": "java",
+      "content": "package com.example.rbacexample.model;\n\nimport java.util.Set;\n\npublic class User {\n    private String username;\n    private Set<Role> roles;\n\n    public User(String username, Set<Role> roles) {\n        this.username = username;\n        this.roles = roles;\n    }\n\n    // getters and setters\n}"
+    },
+    {
+      "kind": "file",
+      "path": "src/main/java/com/example/rbacexample/service/RbacService.java",
+      "language": "java",
+      "content": "package com.example.rbacexample.service;\n\nimport com.example.rbacexample.model.Role;\nimport com.example.rbacexample.model.Permission;\nimport com.example.rbacexample.model.User;\n\nimport java.util.HashSet;\nimport java.util.Set;\n\npublic class RbacService {\n    public boolean hasPermission(User user, Permission permission) {\n        for (Role role : user.getRoles()) {\n            if (role.getPermissions().contains(permission)) {\n                return true;\n            }\n        }\n        return false;\n    }\n}"
+    },
+    {
+      "kind": "file",
+      "path": "src/main/resources/application.yml",
+      "language": "yaml",
+      "content": "spring:\n  datasource:\n    url: jdbc:h2:mem:testdb\n    driverClassName: org.h2.Driver\n    username: sa\n    password: password\n  jpa:\n    database-platform: org.hibernate.dialect.H2Dialect\n    hibernate.ddl-auto: update"
+    },
+    {
+      "kind": "file",
+      "path": "README.md",
+      "language": "markdown",
+      "content": "# 最小 RBAC 範例\n\n本專案展示了一個簡單的角色-based 權限控制 (RBAC) 系統。\n\n### 功能\n- 建立角色、權限和使用者\n- 檢查使用者是否擁有特定權限\n\n### 如何執行\n1. 啟動 Spring Boot 應用程式\n2. 透過 API 或測試來建立並管理 RBAC 角色、權限和使用者"
+    }
+  ],
+  "notes": [
+    "本範例只包含基本的 RBAC 模型與檢查邏輯，沒有實作資料庫存取與持久化。"
+  ],
+  "review": {
+    "status": "pending",
+    "notes": []
+  },
+  "createdAt": "2026-07-10T12:51:08.173Z",
+  "updatedAt": "2026-07-10T12:51:08.173Z"
+}

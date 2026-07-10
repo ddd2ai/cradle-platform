@@ -65,7 +65,7 @@ The actual artifact MUST follow the current Goal, not any past Vision or History
       context,
     });
 
-    const result = await this.cell.askWithTimeout(prompt, 180000);
+    const result = await this.cell.askWithTimeout(prompt, 300000);
     const raw = result?.text ?? result?.answer ?? result ?? "{}";
     
     const parsed = this.parser.parse(raw);
@@ -127,7 +127,7 @@ The actual artifact MUST follow the Original Goal, not any past Vision or Histor
       context,
     });
 
-    const result = await this.cell.askWithTimeout(prompt, 180000);
+    const result = await this.cell.askWithTimeout(prompt, 300000);
     const raw = result?.text ?? result?.answer ?? result ?? "{}";
     
     const parsed = this.parser.parse(raw);
@@ -182,7 +182,7 @@ The repair task only describes what needs to be fixed.
       context,
     });
 
-    const result = await this.cell.askWithTimeout(prompt, 180000);
+    const result = await this.cell.askWithTimeout(prompt, 300000);
     const raw = result?.text ?? result?.answer ?? result ?? "{}";
 
     const parsed = this.parser.parse(raw);
