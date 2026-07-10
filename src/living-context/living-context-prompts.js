@@ -14,206 +14,181 @@
  * @returns {string} Prompt 文字
  */
 export function buildLivingContextDivisionPrompt({ parentSource, dnaDivisionPlan, childId }) {
+  // 參數檢查
+  if (!parentSource) {
+    throw new Error('parentSource is required');
+  }
+  if (!parentSource.cellId) {
+    throw new Error('parentSource.cellId is required');
+  }
+  if (!dnaDivisionPlan) {
+    throw new Error('dnaDivisionPlan is required');
+  }
+  if (!childId) {
+    throw new Error('childId is required');
+  }
+  if (childId === parentSource.cellId) {
+    throw new Error('childId must not equal parentSource.cellId');
+  }
+
   const parentId = parentSource.cellId;
   const sigma = dnaDivisionPlan.sigma || 0.5;
   
-  // 建立 Artifact Catalog 摘要
-  let artifactCatalogText = "";
-  if (parentSource.artifactCatalog && parentSource.artifactCatalog.length > 0) {
-    artifactCatalogText = "\n\n## Available Parent Artifacts (Catalog Only)\n\n";
-    parentSource.artifactCatalog.forEach(artifact => {
-      artifactCatalogText += `### ${artifact.artifactId}\n`;
-      artifactCatalogText += `- Type: ${artifact.type}\n`;
-      artifactCatalogText += `- Title: ${artifact.title || "N/A"}\n`;
-      artifactCatalogText += `- Goal: ${artifact.goal || "N/A"}\n`;
-      artifactCatalogText += `- Status: ${artifact.status || "N/A"}\n`;
-      if (artifact.languages && artifact.languages.length > 0) {
-        artifactCatalogText += `- Languages: ${artifact.languages.join(", ")}\n`;
-      }
-      if (artifact.notes) {
-        artifactCatalogText += `- Notes: ${artifact.notes}\n`;
-      }
-      artifactCatalogText += "\n";
-    });
-  } else {
-    artifactCatalogText = "\n\n## Available Parent Artifacts\n\nNo artifacts available.\n\n";
-  }
+  // 準備資料
+  const livingContext = parentSource.livingContext || {};
+  const responsibilities = parentSource.responsibilities || [];
+  const relationships = parentSource.relationships || [];
+  const memory = parentSource.memory || {};
+  const artifactCatalog = parentSource.artifactCatalog || [];
 
-  // 建立 DNA Plan 摘要
-  const dnaTraitsText = dnaDivisionPlan.childDominantTraits
-    ? dnaDivisionPlan.childDominantTraits.map(t => `- ${t}`).join("\n")
-    : "N/A";
+  // 萃取 Memory（只保留關鍵部分，避免 Prompt 過長）
+  const distilledMemory = {
+    knowledge: memory.knowledge || "",
+    recentHistory: memory.recentHistory || memory.history || "",
+    recentThoughts: memory.recentThoughts || memory.thought || ""
+  };
 
-  const dnaFactorsText = dnaDivisionPlan.childDominantFactors
-    ? JSON.stringify(dnaDivisionPlan.childDominantFactors, null, 2)
-    : "N/A";
+  // 建立 Prompt
+  const prompt = `你是 Cradle 的 Living Context Division Planner。
 
-  const prompt = `# Cell Division: Living Context Transformation Plan
+你的任務不是切割檔案，也不是直接生成程式碼。
 
-You are tasked with creating a **Living Context Transformation Plan** for a cell division process.
+你的任務是根據：
+1. Parent Cell 的 Living Context
+2. Parent Cell 的 Memory
+3. Parent Cell 的 Artifact Catalog
+4. DNA SVD Division Plan
+5. Child 的專化方向
 
-## Context
+產生一份 Living Context Division Transformation Plan。
 
-**Parent Cell ID**: ${parentId}
-**Child Cell ID**: ${childId}
-**Division Sigma**: ${sigma}
+# 優先順序
 
-## DNA Division Plan
+請依照以下優先順序進行分析：
 
-The DNA SVD division plan indicates the following specialization direction:
+1. **DNA specialization**：DNA Division Plan 定義的專化方向
+2. **Living Context boundary**：Living Context 定義的職責與邊界
+3. **Distilled Memory**：萃取後的知識與經驗
+4. **Artifact Catalog**：現有能力的參考
 
-**Child Dominant Traits**:
-${dnaTraitsText}
+Artifact Catalog 只能用來：
+- 辨識既有能力
+- 選擇可能的 sourceArtifactIds
 
-**Child Dominant Factors**:
-\`\`\`json
-${dnaFactorsText}
-\`\`\`
+不能假設 Artifact 一定要被使用。
 
-**Reason**: ${dnaDivisionPlan.reason || "N/A"}
+# 規則
 
-## Parent Living Context
+請嚴格遵守以下規則：
 
-\`\`\`json
-${JSON.stringify(parentSource.livingContext, null, 2)}
-\`\`\`
-
-## Parent Responsibilities
-
-${parentSource.responsibilities && parentSource.responsibilities.length > 0
-  ? parentSource.responsibilities.map(r => `- ${r}`).join("\n")
-  : "None"}
-
-## Parent Memory (Distilled)
-
-### Identity
-${parentSource.memory?.identity || "N/A"}
-
-### Rules (excerpt)
-${parentSource.memory?.rules || "N/A"}
-
-### Knowledge (excerpt)
-${parentSource.memory?.knowledge || "N/A"}
-
-### Recent History (excerpt)
-${parentSource.memory?.recentHistory || "N/A"}
-
-### Recent Thoughts (excerpt)
-${parentSource.memory?.recentThoughts || "N/A"}
-
-${artifactCatalogText}
+1. **不可直接複製 Parent 全部 responsibilities 給 Child**
+2. **Child 必須有清楚的 purpose**
+3. **Parent 與 Child 的責任應有合理分工**
+4. **Parent 不應同時保留已轉移給 Child 的主要 ownership**
+5. **跨邊界依賴應放進 inputs、outputs、relationships 或 sharedContracts**
+6. **childMemorySeed 必須是萃取後的知識，不可整包複製 Parent Memory**
+7. **productionPlan 可以是空的**
+8. **sourceArtifactIds 只能引用 Artifact Catalog 中存在的 ID**
+9. **不可直接生成 Artifact JSON**
+10. **不可直接生成程式碼**
+11. **只輸出單一 JSON object**
+12. **不可使用 Markdown code fence**
+13. **不可輸出 JSON 以外文字**
 
 ---
 
-## Your Task
+# Parent Cell ID
 
-Generate a **Living Context Division Transformation Plan** in **strict JSON format**.
+${parentId}
 
-### Critical Rules
+---
 
-1. **SVD DNA Plan** represents capability specialization direction.
-2. **Living Context** represents business/functional responsibility boundaries.
-3. You MUST generate both \`revisedParentLivingContext\` and \`childLivingContext\`.
-4. **Parent** must NOT retain primary ownership that is explicitly transferred to **Child**, unless marked as a shared contract.
-5. **Child** must NOT directly inherit all of Parent's responsibilities.
-6. \`childMemorySeed\` MUST be **distilled knowledge**, NOT raw copy of entire Parent Memory.
-7. \`productionPlan\` can be an empty array.
-8. \`sourceArtifactIds\` can ONLY use artifact IDs that exist in the Parent Artifact Catalog above.
-9. Source Artifacts are **reference material only**, they must NOT override Child Living Context.
-10. Do NOT generate Artifact JSON directly; this step only generates the Transformation Plan.
+# Target Child ID
 
-### Priority Order (MUST follow)
+${childId}
 
-1. **Living Context** (defines boundaries)
-2. **Distilled Memory** (provides knowledge seed)
-3. **Selected Productions** (optional reference material)
+---
 
-### Output JSON Schema
+# DNA Division Plan
 
-You MUST output ONLY valid JSON with the following structure:
+${JSON.stringify(dnaDivisionPlan, null, 2)}
 
-\`\`\`json
+---
+
+# Parent Living Context
+
+${JSON.stringify(livingContext, null, 2)}
+
+---
+
+# Parent Responsibilities
+
+${JSON.stringify(responsibilities, null, 2)}
+
+---
+
+# Parent Relationships
+
+${JSON.stringify(relationships, null, 2)}
+
+---
+
+# Distilled Memory
+
+${JSON.stringify(distilledMemory, null, 2)}
+
+---
+
+# Artifact Catalog
+
+${JSON.stringify(artifactCatalog.map(a => ({
+  artifactId: a.artifactId,
+  type: a.type,
+  title: a.title,
+  goal: a.goal,
+  outputPaths: a.outputPaths,
+  languages: a.languages
+})), null, 2)}
+
+---
+
+# Output Schema
+
+請嚴格依照以下 JSON Schema 輸出，不可使用 Markdown code fence，不可輸出任何其他文字：
+
 {
   "type": "living-context-division",
   "parentCellId": "${parentId}",
   "childCellId": "${childId}",
-  
   "revisedParentLivingContext": {
-    "purpose": "string describing revised parent purpose",
-    "responsibilities": ["responsibility 1", "responsibility 2"],
-    "owns": ["ownership 1", "ownership 2"],
-    "excludes": ["explicitly exclude this responsibility"],
-    "inputs": ["input 1"],
-    "outputs": ["output 1"],
-    "constraints": ["constraint 1"],
-    "relationships": [
-      {
-        "type": "depends-on | provides-to | shares-with",
-        "target": "cell-id or external-system",
-        "description": "relationship description"
-      }
-    ]
+    "purpose": "",
+    "responsibilities": [],
+    "owns": [],
+    "excludes": [],
+    "inputs": [],
+    "outputs": [],
+    "constraints": [],
+    "relationships": []
   },
-  
   "childLivingContext": {
-    "purpose": "string describing child purpose",
-    "responsibilities": ["child responsibility 1", "child responsibility 2"],
-    "owns": ["child ownership 1"],
-    "excludes": ["explicitly exclude from child"],
-    "inputs": ["child input 1"],
-    "outputs": ["child output 1"],
-    "constraints": ["child constraint 1"],
-    "relationships": [
-      {
-        "type": "depends-on | provides-to | shares-with",
-        "target": "cell-id or external-system",
-        "description": "relationship description"
-      }
-    ]
+    "purpose": "",
+    "responsibilities": [],
+    "owns": [],
+    "excludes": [],
+    "inputs": [],
+    "outputs": [],
+    "constraints": [],
+    "relationships": []
   },
-  
   "childMemorySeed": {
-    "knowledge": "Markdown formatted distilled knowledge relevant to child's new responsibility",
-    "history": "Markdown formatted history explaining child's birth and specialization",
-    "thought": "Markdown formatted initial thought about child's purpose and direction"
+    "knowledge": "",
+    "history": "",
+    "thought": ""
   },
-  
-  "productionPlan": [
-    {
-      "type": "code | test | document | config | interface",
-      "title": "New production title",
-      "goal": "Clear and specific goal for this production",
-      "constraints": ["constraint 1", "constraint 2"],
-      "sourceArtifactIds": ["artifact-xxx", "artifact-yyy"],
-      "sourceUsage": "reference"
-    }
-  ],
-  
-  "sharedContracts": [
-    "Description of shared contract or interface between parent and child"
-  ],
-  
-  "assumptions": [
-    "Assumption 1 made during this plan",
-    "Assumption 2"
-  ]
-}
-\`\`\`
-
-### Important Notes
-
-- **DO NOT** just union or split responsibilities mechanically.
-- **DO NOT** copy entire Parent Memory as-is into \`childMemorySeed\`.
-- **DO NOT** list artifact IDs that don't exist in the Parent Artifact Catalog.
-- **sourceUsage** should always be \`"reference"\` - source artifacts are NOT mandatory inheritance.
-- If no Parent Artifacts are available, \`productionPlan\` can still be populated with new production goals, just leave \`sourceArtifactIds\` empty.
-- Child productions MUST be regenerated based on Child Living Context, NOT copied directly.
-- Cross-boundary dependencies should be transformed into interfaces, ports, events, contracts, or explicit inputs/outputs.
-
-### Output Format
-
-Output **ONLY** the JSON object. Do NOT include any explanation text before or after the JSON.
-`;
+  "productionPlan": [],
+  "sharedContracts": [],
+  "assumptions": []
+}`;
 
   return prompt;
 }
