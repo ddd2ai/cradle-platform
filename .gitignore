@@ -31,8 +31,16 @@ logs/
 # Cradle Platform
 # ==========================================================
 
-cells/
-situation/
+# Cell runtime data
+cells/**
+!cells/**/
+!cells/**/.gitkeep
+
+# Situation runtime data
+situation/**
+!situation/**/
+!situation/**/.gitkeep
+
 
 # ==========================================================
 # Runtime

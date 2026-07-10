@@ -1,9 +1,0 @@
-com/example/rbac/repository/UserRepository.class
-com/example/rbac/entity/User.class
-com/example/rbac/RbacApplication.class
-com/example/rbac/entity/Role.class
-com/example/rbac/service/UserService.class
-com/example/rbac/controller/UserController.class
-com/example/rbac/controller/RoleController.class
-com/example/rbac/repository/RoleRepository.class
-com/example/rbac/service/RoleService.class
