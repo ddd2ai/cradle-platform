@@ -6,6 +6,7 @@ const DEFAULT_MODELS = {
   ollama: "devstral:24b",
   copilot: "gpt-5-mini",
   gemini: "auto",
+  codex: "auto",
 };
 
 const MODEL =
