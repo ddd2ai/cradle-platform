@@ -129,21 +129,36 @@ export class LivingContextService {
    * @private
    */
   _parseDivisionPlanResponse(raw) {
+    // 已經是完整 Division Plan 物件
     if (
       raw &&
       typeof raw === "object" &&
-      !Array.isArray(raw)
+      !Array.isArray(raw) &&
+      (
+        raw.type === "living-context-division" ||
+        raw.childLivingContext ||
+        raw.revisedParentLivingContext
+      )
     ) {
       return raw;
     }
 
-    if (typeof raw !== "string") {
+    // Provider 常回傳 { text } 或 { answer }
+    const responseText =
+      typeof raw === "string"
+        ? raw
+        : raw?.text ?? raw?.answer ?? "";
+
+    if (
+      typeof responseText !== "string" ||
+      responseText.trim() === ""
+    ) {
       throw new Error(
-        "AI response must be a string or object"
+        "AI response must contain JSON text"
       );
     }
 
-    let cleaned = raw.trim();
+    let cleaned = responseText.trim();
 
     if (!cleaned) {
       throw new Error(

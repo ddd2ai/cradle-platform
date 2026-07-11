@@ -291,6 +291,38 @@ export function validateDivisionPlan(plan) {
   // 驗證 childLivingContext
   errors.push(...validateLivingContextSpec(plan.childLivingContext, 'childLivingContext'));
 
+  // 驗證 Parent Living Context 不可完全空白
+  const parent = plan.revisedParentLivingContext;
+
+  if (parent && typeof parent === "object") {
+    const hasPurpose =
+      typeof parent.purpose === "string" &&
+      parent.purpose.trim() !== "";
+
+    const hasResponsibilities =
+      Array.isArray(parent.responsibilities) &&
+      parent.responsibilities.length > 0;
+
+    const hasOwns =
+      Array.isArray(parent.owns) &&
+      parent.owns.length > 0;
+
+    const hasOutputs =
+      Array.isArray(parent.outputs) &&
+      parent.outputs.length > 0;
+
+    if (
+      !hasPurpose &&
+      !hasResponsibilities &&
+      !hasOwns &&
+      !hasOutputs
+    ) {
+      errors.push(
+        "revisedParentLivingContext must have at least one of: purpose, responsibilities, owns, outputs"
+      );
+    }
+  }
+
   // 驗證 Child Living Context 不可完全空白
   const child = plan.childLivingContext;
   if (child && typeof child === 'object') {

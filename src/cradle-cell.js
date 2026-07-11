@@ -1620,6 +1620,7 @@ TODO: define meaning from DNA_DEFINITION.md.
       throw new Error("Child cell id is required.");
     }
 
+    // TEST ONLY: temporarily bypass maturity check
     await this.assertCanDivide();
 
     const dnaVector = await this.readDNAVector();

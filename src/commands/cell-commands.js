@@ -919,57 +919,10 @@ DNA drift    : ${result.dnaDrift.length}
       name: "/divide",
 
       match: (input, { engine }) =>
-        input === "/divide" &&
-        !engine.isCradleMode(),
-
-      execute: async ({ engine }) => {
-
-        const parent =
-          engine.getActiveCell();
-
-        if (!(await parent.canDivide())) {
-
-          console.log(`
-          Need maturity >= 5
-
-          Current:
-          ${await parent.getMaturity()}
-          `);
-
-          return;
-        }
-
-        const nextNumber =
-          engine.cells.size + 1;
-
-        const childId =
-          `cell-${String(nextNumber)
-            .padStart(3, "0")}`;
-
-        const child =
-          await engine.createCell(
-            childId
-          );
-
-        await parent.divideTo(child);
-
-        console.log(`
-        🦠 Cell Division Complete
-
-        Parent :
-        ${parent.id}
-
-        Child :
-        ${childId}
-        `);
-      },
-    },
-
-    {
-      name: "/divide-svd",
-
-      match: (input, { engine }) =>
-        input.startsWith("/divide-svd") &&
+        (
+          input === "/divide" ||
+          input.startsWith("/divide ")
+        ) &&
         !engine.isCradleMode(),
 
       execute: async ({ engine, input }) => {
@@ -978,26 +931,44 @@ DNA drift    : ${result.dnaDrift.length}
 
         const parent = engine.getActiveCell();
 
-        if (!(await parent.canDivide())) {
-          console.log(`
-Need maturity >= 5
+        const args = input.trim().split(/\s+/);
 
-Current:
-${await parent.getMaturity()}
-`);
+        if (args.length > 2) {
+          console.log("Usage: /divide [child-cell-id]");
           return;
         }
 
-        const rawChildId = input.replace("/divide-svd", "").trim();
+        const rawChildId = args[1] ?? "";
 
         const childId =
           rawChildId ||
           `cell-${String(engine.cells.size + 1).padStart(3, "0")}`;
 
-        if (engine.cells.has(childId)) {
+        if (engine.hasCell(childId)) {
           console.log(`Cell already exists: ${childId}`);
           return;
         }
+
+
+        const maturity = await parent.getMaturityInfo();
+
+        const decision = await parent.getLifecycleDecision();
+
+        console.log(`
+        🧬 Division Readiness
+
+        Parent           : ${parent.id}
+        Child            : ${childId}
+        Maturity         : ${maturity.percent}%
+        State            : ${maturity.state}
+        Sample Size      : ${maturity.sampleSize}
+        Magnitude        : ${maturity.normalizedMagnitude.toFixed(4)}
+        Variance         : ${maturity.temporalVariance.toFixed(6)}
+        Convergence      : ${maturity.convergence.toFixed(4)}
+        Lifecycle Action : ${decision.action}
+        Reason           : ${decision.reason}
+        `);
+
 
         // 使用 CellDivisionService 執行完整的 Division 流程
         const service = new CellDivisionService();
@@ -1017,7 +988,17 @@ ${await parent.getMaturity()}
           return;
         }
 
-        engine.activeCellId = childId;
+        if (!result.child) {
+          console.log("");
+          console.log("❌ Division failed before child creation");
+
+          for (const error of result.errors ?? []) {
+            console.log(`- ${error.stage}: ${error.message}`);
+          }
+
+          console.log("");
+          return;
+        }
 
         const { child, dnaDivisionPlan, livingContextPlan, productionResult, complete } = result;
 
@@ -1077,6 +1058,12 @@ ${await parent.getMaturity()}
 
         console.log(`Parent: ${parent.id}`);
         console.log(`Child: ${childId}`);
+
+
+        if (complete) {
+          engine.activeCellId = child.id;
+          console.log(`Switched to ${child.id}`);
+        }
       },
     },
 

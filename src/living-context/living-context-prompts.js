@@ -94,6 +94,8 @@ Artifact Catalog 只能用來：
 11. **只輸出單一 JSON object**
 12. **不可使用 Markdown code fence**
 13. **不可輸出 JSON 以外文字**
+14. revisedParentLivingContext 不可為空；Parent 分裂後仍必須保留明確 purpose 或至少一項 responsibility、ownership、output
+15. childMemorySeed.history 必須輸出空字串；Division birth history 將由系統建立，不可複製 Parent history、CLI 指令、User 對話或 AI 回覆
 
 ---
 
