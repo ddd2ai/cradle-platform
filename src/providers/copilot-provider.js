@@ -1,34 +1,17 @@
 import { CopilotClient } from "@github/copilot-sdk";
 
 /**
- * 偵測 corrupted raw response (duplicated streaming chunks)
+ * 從 Copilot SDK event 萃取文字內容。
+ *
+ * delta:
+ *   本次新增的內容片段，可直接 append。
+ *
+ * snapshot:
+ *   目前累積的完整內容，應直接覆蓋 buffer，
+ *   不可 append，否則會造成重複。
  */
-function looksLikeDuplicatedStream(text = "") {
-  const patterns = [
-    "typetype",
-    "titletitle",
-    "goalgoal",
-    "outputsoutputs",
-    "contentcontent",
-    "notesnotes",
-    "HelloHello",
-    "LibraryLibrary",
-    "SpringSpring",
-    "accepted accepted",
-    "{{",
-    '" "',
-  ];
-
-  return patterns.some((pattern) => text.includes(pattern));
-}
-
-/**
- * 從 event 萃取文字內容
- * 自動判斷是 delta 還是 snapshot
- */
-function extractTextEvent(event) {
+function extractTextEvent(event = {}) {
   return {
-    // Delta: 新增的內容片段
     delta:
       event.deltaContent ??
       event.data?.deltaContent ??
@@ -36,7 +19,6 @@ function extractTextEvent(event) {
       event.data?.delta ??
       null,
 
-    // Snapshot: 目前累積的完整內容
     snapshot:
       event.content ??
       event.text ??
@@ -44,6 +26,23 @@ function extractTextEvent(event) {
       event.data?.text ??
       null,
   };
+}
+
+/**
+ * 安全清理單次 Copilot session。
+ *
+ * cleanup 發生錯誤時，不應覆蓋真正的模型執行錯誤。
+ */
+async function disposeSession(session) {
+  if (!session) {
+    return;
+  }
+
+  await Promise.allSettled([
+    session.disconnect?.(),
+    session.close?.(),
+    session.dispose?.(),
+  ]);
 }
 
 export async function createCopilotProvider({
@@ -54,75 +53,115 @@ export async function createCopilotProvider({
     cliUrl,
   });
 
-  const approveAll = async () => ({ outcome: "approved" });
+  const approveAll = async () => ({
+    outcome: "approved",
+  });
 
   return {
     name: "copilot",
     model,
 
-    async ask({ prompt, onDelta, onIdle, onError } = {}) {
-      let buffer = "";
+    async ask({
+      prompt,
+      onDelta,
+      onIdle,
+      onError,
+    } = {}) {
+      if (
+        typeof prompt !== "string" ||
+        !prompt.trim()
+      ) {
+        const error = new Error(
+          "CopilotProvider.ask() requires a non-empty prompt"
+        );
+
+        onError?.(error);
+        throw error;
+      }
+
       let session = null;
-      let closed = false;
+      let buffer = "";
+      let finished = false;
+      let idleNotified = false;
 
-      const askId = `ask-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-
-      // Step 2: 集中清理函式（只執行一次）
-      const finishOnce = (reason = "complete") => {
-        if (closed) return;
-
-        closed = true;
-
-        // 真正移除 listener（Step 3）
-        if (session) {
-          session.off?.("assistant.message_delta", handleDelta);
-          session.off?.("session.idle", handleIdle);
-          session.off?.("error", handleError);
-          session.removeAllListeners?.();
-        }
-
-        // 清空 callback references，防止記憶體洩漏
-        onDelta = null;
-        onIdle = null;
-        onError = null;
-      };
-
-      // Step 1 & 4: 加入 closed guard 和 askId 過濾
-      const handleDelta = (event) => {
-        if (closed) return;
-
-        // Step 4: askId 過濾（如果 event 有提供 askId）
-        if (event.askId && event.askId !== askId) {
+      const notifyIdleOnce = () => {
+        if (idleNotified) {
           return;
         }
 
-        const { delta, snapshot } = extractTextEvent(event);
+        idleNotified = true;
+        onIdle?.();
+      };
 
-        if (typeof delta === "string" && delta.length > 0) {
+      const handleDelta = (event) => {
+        if (finished) {
+          return;
+        }
+
+        const {
+          delta,
+          snapshot,
+        } = extractTextEvent(event);
+
+        if (
+          typeof delta === "string" &&
+          delta.length > 0
+        ) {
           buffer += delta;
           onDelta?.(delta);
           return;
         }
 
-        if (typeof snapshot === "string" && snapshot.length > 0) {
-          // snapshot 是完整內容，不可以 append
+        if (
+          typeof snapshot === "string" &&
+          snapshot.length > 0
+        ) {
+          /*
+           * Snapshot 是目前完整內容。
+           * 只能覆蓋，不可以 append。
+           *
+           * 這裡不呼叫 onDelta(snapshot)，
+           * 避免畫面反覆印出完整內容。
+           */
           buffer = snapshot;
-
-          // snapshot 模式下不要直接 onDelta(snapshot)，否則畫面會重複印完整內容
-          return;
         }
       };
 
       const handleIdle = () => {
-        if (closed) return;
+        if (finished) {
+          return;
+        }
 
-        onIdle?.();
+        notifyIdleOnce();
       };
 
       const handleError = (error) => {
-        if (closed) return;
+        if (finished) {
+          return;
+        }
 
         onError?.(error);
+      };
+
+      const removeListeners = () => {
+        if (!session) {
+          return;
+        }
+
+        session.off?.(
+          "assistant.message_delta",
+          handleDelta
+        );
+
+        session.off?.(
+          "session.idle",
+          handleIdle
+        );
+
+        session.off?.(
+          "error",
+          handleError
+        );
       };
 
       try {
@@ -132,39 +171,47 @@ export async function createCopilotProvider({
           onPermissionRequest: approveAll,
         });
 
-        // Step 3: 使用 named function，方便移除
-        session.on?.("assistant.message_delta", handleDelta);
-        session.on?.("session.idle", handleIdle);
-        session.on?.("error", handleError);
+        session.on?.(
+          "assistant.message_delta",
+          handleDelta
+        );
 
-        await session.sendAndWait({ prompt });
+        session.on?.(
+          "session.idle",
+          handleIdle
+        );
 
-        if (looksLikeDuplicatedStream(buffer)) {
+        session.on?.(
+          "error",
+          handleError
+        );
+
+        await session.sendAndWait({
+          prompt,
+        });
+
+        if (!buffer.trim()) {
           throw new Error(
-            [
-              "Provider raw response appears corrupted by duplicated streaming chunks.",
-              "Check copilot-provider streaming handling.",
-              "",
-              "Preview:",
-              buffer.slice(0, 1000),
-            ].join("\n")
+            "Copilot returned an empty response"
           );
         }
 
+        notifyIdleOnce();
+
         return buffer;
       } catch (error) {
-        finishOnce("error");
         onError?.(error);
         throw error;
       } finally {
-        finishOnce("cleanup");
+        finished = true;
 
-        if (session) {
-          // 斷開本次 ask 的 session
-          await session.disconnect?.();
-          await session.close?.();
-          await session.dispose?.();
-        }
+        removeListeners();
+
+        onDelta = null;
+        onIdle = null;
+        onError = null;
+
+        await disposeSession(session);
       }
     },
 
