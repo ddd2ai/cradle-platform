@@ -210,7 +210,7 @@ const fakeCell = {
     return this.productionService.store;
   },
 
-  async readProfile() {
+  async readCellProfile() {
     return {
       id: "test-cell",
       cellId: "test-cell",
@@ -271,7 +271,7 @@ const fakeCell = {
     ];
   },
 
-  async getRelationships() {
+  async listRelationships() {
     return [];
   },
 

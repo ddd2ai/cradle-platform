@@ -15,7 +15,7 @@ DNA History
     ↓
 DNA Maturity (capability × stability)
     ↓
-Lifecycle Decision (stay / repair / divide / merge)
+Lifecycle Decision (stay / repair / divide / fuse)
     ↓
 Advisory Mode (建議但不自動執行)
 ```
@@ -41,7 +41,7 @@ Advisory Mode (建議但不自動執行)
 #### `decideCellLifecycle(options)`
 - **核心決策函式**
 - 根據 maturity、trait distribution、colony 狀態
-- 回傳 action: `stay` / `repair` / `divide` / `merge`
+- 回傳 action: `stay` / `repair` / `divide` / `fuse`
 
 **決策規則**：
 
@@ -51,7 +51,7 @@ Advisory Mode (建議但不自動執行)
 | 2 | temporalVariance > 0.20 OR failureRate > 0.30 | repair | medium |
 | 3 | maturity < 0.60 | stay | medium |
 | 4 | maturity >= 0.75 AND variance <= 0.08 AND magnitude >= 0.60 AND crossTraitVariance >= 0.04 | divide | high |
-| 5 | maturity >= 0.60 AND variance <= 0.10 AND magnitude >= 0.45 AND crossTraitVariance < 0.04 AND hasComplementary | merge | medium |
+| 5 | maturity >= 0.60 AND variance <= 0.10 AND magnitude >= 0.45 AND crossTraitVariance < 0.04 AND hasComplementary | fuse | medium |
 | 6 | default | stay | medium |
 
 ---
@@ -177,7 +177,7 @@ Status
 Cell      Status  Active  Mature  Life    State   Var     Conv  Gen  Inbox
 cell-001  idle    no      25%     stay    seed    0.0000  1.00  1    0
 cell-002  idle    no      82%     divide  mature  0.0412  0.96  1    0
-cell-003  idle    no      63%     merge   stable  0.0801  0.93  1    0
+cell-003  idle    no      63%     fuse   stable  0.0801  0.93  1    0
 ```
 
 ---
@@ -215,7 +215,7 @@ requiredMaturity         : 0.600000
 ✗ Maturity >= 0.60               0.2465 (need 0.6)
 ✗ Maturity >= 0.75 (divide)      0.2465 (need 0.75)
 ✓ Variance <= 0.08               0.000000 (need 0.08)
-✓ Variance <= 0.10 (merge)       0.000000 (need 0.1)
+✓ Variance <= 0.10 (fuse)       0.000000 (need 0.1)
 ✗ Magnitude >= 0.60              0.2465 (need 0.6)
 ```
 
@@ -269,7 +269,7 @@ Next Steps     : Continue evolving and gathering DNA history
 
 ---
 
-### 4. **merge** - 適合合併
+### 4. **fuse** - 適合合併
 **條件**：
 - ✓ maturity >= 0.60（穩定成熟）
 - ✓ temporalVariance <= 0.10（穩定）
@@ -278,7 +278,7 @@ Next Steps     : Continue evolving and gathering DNA history
 - ✓ hasComplementaryCell（有互補 Cell）
 
 **行動**：
-- 執行 `/merge` 與互補 Cell 融合
+- 執行 `/fuse` 與互補 Cell 融合
 - 建立更全面的 Cell
 - 提升整體能力
 
@@ -353,7 +353,7 @@ DNA Maturity Core       ██████████ 100%
 Cell Integration        ██████████ 100%
 Lifecycle Decision      ██████████ 100%
 Division Suggestion     ██████████ 100%
-Merge Suggestion        ██████████ 100%
+Fuse Suggestion        ██████████ 100%
 Repair Suggestion       ██████████ 100%
 Advisory Display        ██████████ 100%
 Autonomous Execution    ░░░░░░░░░░   0%  (故意不實作)
@@ -366,7 +366,7 @@ Autonomous Execution    ░░░░░░░░░░   0%  (故意不實作)
 ### 1. Advisory Mode Only（僅建議模式）
 - ✅ Cell 可以判斷自己應該做什麼
 - ✅ 顯示建議在 `/status`, `/colony`, `/watch`
-- ❌ **不會**自動執行 divide / merge
+- ❌ **不會**自動執行 divide / fuse
 - ❌ **不會**自動執行 repair
 
 **原因**：
@@ -411,8 +411,8 @@ Live watch 會持續顯示每個 Cell 的 lifecycle 建議。
 # 如果建議 divide
 /divide-svd cell-002
 
-# 如果建議 merge
-/merge cell-001 cell-002 cell-003
+# 如果建議 fuse
+/fuse cell-001 cell-002 cell-003
 
 # 如果建議 repair
 # (第三輪未實作 /repair 指令，這是未來功能)
@@ -469,10 +469,10 @@ Maturity: 68% (stable)
 Variance: 0.089
 Magnitude: 0.52
 CrossTraitVar: 0.028
-Action: merge
+Action: fuse
 Reason: stable and generalized, with complementary cell
 
-→ 建議執行 /merge 與互補 Cell 融合
+→ 建議執行 /fuse 與互補 Cell 融合
 ```
 
 ---

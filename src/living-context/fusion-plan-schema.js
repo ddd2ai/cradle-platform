@@ -4,6 +4,20 @@
  * 定義 Cell Fusion 的計畫結構、正規化與驗證規則。
  */
 
+export const CAPABILITY_RESOLUTION_STRATEGIES = [
+  "inherit",
+  "synthesize",
+  "replace",
+  "discard",
+  "contract",
+];
+
+export const FUSION_SOURCE_USAGES = [
+  "reference",
+  "behavior-reference",
+  "contract-reference",
+];
+
 /**
  * 建立 Fusion Plan
  * @param {object} input
@@ -375,7 +389,7 @@ function validateCapabilityResolutions(capabilities, errors) {
     return; // Optional field
   }
   
-  const validStrategies = ["inherit", "synthesize", "replace", "discard", "contract"];
+  const validStrategies = CAPABILITY_RESOLUTION_STRATEGIES;
   
   capabilities.forEach((cap, index) => {
     if (!cap || typeof cap !== "object") {
@@ -434,7 +448,7 @@ function validateProductionPlan(plan, errors) {
     return; // productionPlan 可以為空
   }
   
-  const validUsages = ["reference", "behavior-reference", "contract-reference"];
+  const validUsages = FUSION_SOURCE_USAGES;
   
   plan.forEach((item, index) => {
     if (!item || typeof item !== "object") {

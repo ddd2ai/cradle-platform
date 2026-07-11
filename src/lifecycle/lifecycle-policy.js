@@ -7,7 +7,7 @@
  * - stay: 允許（no-op）
  * - repair: 允許（可控的修復）
  * - divide: 阻擋（結構性變更，需手動執行）
- * - merge: 阻擋（結構性變更，需手動執行）
+ * - fuse: 阻擋（結構性變更，需手動執行）
  */
 
 /**
@@ -17,7 +17,7 @@ export const LIFECYCLE_ACTIONS = {
   STAY: "stay",
   REPAIR: "repair",
   DIVIDE: "divide",
-  MERGE: "merge",
+  FUSE: "fuse",
 };
 
 /**
@@ -25,17 +25,17 @@ export const LIFECYCLE_ACTIONS = {
  *
  * 這個函式是保險絲，決定哪些 lifecycle action 可以自動執行。
  *
- * @param {string} action - Lifecycle action (stay, repair, divide, merge)
+ * @param {string} action - Lifecycle action (stay, repair, divide, fuse)
  * @param {Object} options - Policy options
  * @param {boolean} options.allowRepair - Allow repair apply (default: true)
  * @param {boolean} options.allowDivide - Allow divide apply (default: false)
- * @param {boolean} options.allowMerge - Allow merge apply (default: false)
+ * @param {boolean} options.allowFuse - Allow fuse apply (default: false)
  * @returns {Object} { allowed, reason, manualCommand }
  */
 export function canApplyLifecycleAction(action, {
   allowRepair = true,
   allowDivide = false,
-  allowMerge = false,
+  allowFuse = false,
 } = {}) {
   // stay: always allowed (no-op)
   if (action === LIFECYCLE_ACTIONS.STAY) {
@@ -64,12 +64,12 @@ export function canApplyLifecycleAction(action, {
     };
   }
 
-  // merge: blocked by default (structural change)
-  if (action === LIFECYCLE_ACTIONS.MERGE) {
+  // fuse: blocked by default (structural change)
+  if (action === LIFECYCLE_ACTIONS.FUSE) {
     return {
-      allowed: allowMerge,
-      reason: "merge is a structural action and is disabled for automatic apply",
-      manualCommand: "/merge",
+      allowed: allowFuse,
+      reason: "fuse is a structural action and is disabled for automatic apply",
+      manualCommand: "/fuse",
     };
   }
 

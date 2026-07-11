@@ -73,7 +73,7 @@ async function testLifecycleDecision() {
         value: maturity.temporalVariance.toFixed(6),
         threshold: 0.08,
       },
-      "Variance <= 0.10 (merge)": {
+      "Variance <= 0.10 (fuse)": {
         pass: maturity.temporalVariance <= 0.10,
         value: maturity.temporalVariance.toFixed(6),
         threshold: 0.10,
@@ -99,7 +99,7 @@ async function testLifecycleDecision() {
       stay: "Cell should remain stable and continue current activities",
       repair: "Cell needs to stabilize DNA or reduce failure rate",
       divide: "Cell is ready for specialization through division",
-      merge: "Cell is ready to combine with complementary cell",
+      fuse: "Cell is ready to combine with complementary cell",
     };
 
     console.log(`Action         : ${lifecycle.action}`);
@@ -139,7 +139,7 @@ function getNextSteps(action) {
     stay: "Continue evolving and gathering DNA history",
     repair: "Run /repair to stabilize DNA or reduce task failures",
     divide: "Run /divide-svd to create specialized child cell",
-    merge: "Run /merge with complementary cell",
+    fuse: "Run /fuse with complementary cell",
   };
   return steps[action] ?? "Unknown";
 }

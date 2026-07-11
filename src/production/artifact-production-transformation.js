@@ -77,6 +77,7 @@ export async function produceFromTransformation(service, {
       mode: origin.mode || "created",
       sourceCellIds: Array.isArray(origin.sourceCellIds) ? origin.sourceCellIds : [],
       sourceArtifactIds: Array.isArray(origin.sourceArtifactIds) ? origin.sourceArtifactIds : [],
+      sourceArtifactRefs: Array.isArray(origin.sourceArtifactRefs) ? origin.sourceArtifactRefs : [],
       livingContextId: origin.livingContextId || null
     } : null
   });

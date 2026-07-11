@@ -124,6 +124,40 @@ export class CradleEngine {
     return cell;
   }
 
+  hasCell(cellId) {
+    return this.cells.has(cellId);
+  }
+
+  getCell(cellId) {
+    if (!cellId) {
+      throw new Error("cellId is required");
+    }
+
+    return this.cells.get(cellId) ?? null;
+  }
+
+  requireCell(cellId) {
+    const cell = this.getCell(cellId);
+
+    if (!cell) {
+      throw new Error(
+        `Cell not found: ${cellId}. Available cells: ${[
+          ...this.cells.keys(),
+        ].join(", ")}`
+      );
+    }
+
+    return cell;
+  }
+
+  listCells() {
+    return [...this.cells.values()];
+  }
+
+  listCellIds() {
+    return [...this.cells.keys()];
+  }
+
   useCell(cellId) {
     if (!cellId) {
       throw new Error("cellId is required");
@@ -478,8 +512,11 @@ export class CradleEngine {
 
     
       Cell Fusion:
-      /merge <parent...> <child>
+      /fuse <parent...> <child>
                                Fuse multiple cells into a new child.
+
+      /merge <parent...> <child>
+                               Deprecated alias for /fuse.
 
                                Features:
                                • DNA centroid fusion
@@ -490,7 +527,7 @@ export class CradleEngine {
                                • Generation increment
 
                                Example:
-                               /merge cell-001 cell-002 cell-A
+                               /fuse cell-001 cell-002 cell-A
 
                                
     Cell Collaboration:

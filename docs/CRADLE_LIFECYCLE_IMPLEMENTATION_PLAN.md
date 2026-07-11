@@ -10,7 +10,7 @@
 Stay      維持 / 繼續成長
 Repair    修復 / 穩定化
 Divide    分裂
-Merge     合併
+Fuse     合併
 ```
 
 Cradle 的目標不是單純用次數、分數或人工規則判斷 Cell 是否成熟，而是使用經典統計方法與多變量分析，建立可解釋、可驗證、可擴充的數理模型。
@@ -484,9 +484,9 @@ Cell 已經形成穩定專化能力，可以將主導能力軸投影成新的 ch
 
 ---
 
-## 16. Merge 判斷
+## 16. Fuse 判斷
 
-Cell 應該 merge 的情況：
+Cell 應該 fuse 的情況：
 
 ```text
 sampleSize >= 5
@@ -514,7 +514,7 @@ Cell 已經穩定
   → 合併
 ```
 
-Merge 代表：
+Fuse 代表：
 
 ```text
 Cell 不一定適合獨立分裂，但可以與其他互補 Cell 形成更完整的能力結構。
@@ -530,7 +530,7 @@ Cell 不一定適合獨立分裂，但可以與其他互補 Cell 形成更完整
 | `temporalVariance > 0.20`                                                               | DNA 震盪 | `repair` |
 | `maturity < 0.60`                                                                       | 尚未成熟   | `stay`   |
 | `maturity >= 0.75` 且 `temporalVariance <= 0.08` 且 `crossTraitVariance >= 0.04`          | 穩定專化   | `divide` |
-| `maturity >= 0.60` 且 `temporalVariance <= 0.10` 且 `crossTraitVariance < 0.04` 且有互補 Cell | 穩定泛化   | `merge`  |
+| `maturity >= 0.60` 且 `temporalVariance <= 0.10` 且 `crossTraitVariance < 0.04` 且有互補 Cell | 穩定泛化   | `fuse`  |
 | 其他                                                                                      | 正常成長   | `stay`   |
 
 ---
@@ -578,12 +578,12 @@ Cell 不一定適合獨立分裂，但可以與其他互補 Cell 形成更完整
 ```text
 Minimum Sample Size      = 5
 Divide Maturity          = 0.75
-Merge Maturity           = 0.60
+Fuse Maturity           = 0.60
 Divide TemporalVariance  = 0.08
-Merge TemporalVariance   = 0.10
+Fuse TemporalVariance   = 0.10
 Repair TemporalVariance  = 0.20
 Divide Magnitude         = 0.60
-Merge Magnitude          = 0.45
+Fuse Magnitude          = 0.45
 Specialization Variance  = 0.04
 Failure Repair Rate      = 0.30
 ```
@@ -611,7 +611,7 @@ DNA Maturity
   ↓
 Lifecycle Decision
   ↓
-Stay / Repair / Divide / Merge
+Stay / Repair / Divide / Fuse
 ```
 
 核心原則：
@@ -619,7 +619,7 @@ Stay / Repair / Divide / Merge
 ```text
 Maturity 使用 temporal variance 判斷穩定性。
 Division 使用 specialization 判斷主軸。
-Merge 使用 complementarity 判斷互補性。
+Fuse 使用 complementarity 判斷互補性。
 Stay 保留成長空間。
 Repair 處理高震盪與高失敗率。
 ```
@@ -642,7 +642,7 @@ dna-maturity.js
   負責計算 maturity、variance、convergence、magnitude。
 
 dna-lifecycle.js
-  負責根據 maturityInfo 與 colony 狀態，判斷 stay / repair / divide / merge。
+  負責根據 maturityInfo 與 colony 狀態，判斷 stay / repair / divide / fuse。
 ```
 
 CradleCell 應該只負責呼叫：

@@ -15,14 +15,6 @@ class FakeEngine {
     this.createdCells = [];
   }
 
-  hasCell(childId) {
-    return this.cells.has(childId);
-  }
-
-  listCells() {
-    return Array.from(this.cells.values());
-  }
-
   async createCell(childId) {
     const cell = new FakeCell(childId);
     this.cells.set(childId, cell);
@@ -107,11 +99,11 @@ class FakeCell {
     this.dnaHistory.push({ reason, at: new Date().toISOString() });
   }
 
-  async readProfile() {
+  async readCellProfile() {
     return this.profile;
   }
 
-  async writeProfile(profile) {
+  async writeCellProfile(profile) {
     this.profile = profile;
   }
 

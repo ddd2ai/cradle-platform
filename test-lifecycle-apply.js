@@ -10,7 +10,7 @@
  * - stay: applied (no-op)
  * - repair: applied (accepted)
  * - divide: blocked (需手動執行)
- * - merge: blocked (需手動執行)
+ * - fuse: blocked (需手動執行)
  */
 
 import { CradleEngine } from "./src/cradle-engine.js";
@@ -57,7 +57,7 @@ async function testLifecycleApply() {
   const result = await applyLifecyclePlan(cell, engine, plan, {
     allowRepair: true,
     allowDivide: false,
-    allowMerge: false,
+    allowFuse: false,
   });
   
   console.log(`Action         : ${result.action}`);
@@ -90,8 +90,8 @@ async function testLifecycleApply() {
     { action: "repair", options: { allowRepair: false } },
     { action: "divide", options: { allowDivide: false } },
     { action: "divide", options: { allowDivide: true } },
-    { action: "merge", options: { allowMerge: false } },
-    { action: "merge", options: { allowMerge: true } },
+    { action: "fuse", options: { allowFuse: false } },
+    { action: "fuse", options: { allowFuse: true } },
   ];
   
   for (const testCase of testCases) {
@@ -116,7 +116,7 @@ async function testLifecycleApply() {
   const resultA = await applyLifecyclePlan(cell, engine, planA, {
     allowRepair: true,
     allowDivide: false,
-    allowMerge: false,
+    allowFuse: false,
   });
   
   console.log(`  Decision Action : ${decisionA.action}`);
@@ -139,7 +139,7 @@ async function testLifecycleApply() {
   const resultB = await applyLifecyclePlan(cell, engine, mockDividePlan, {
     allowRepair: true,
     allowDivide: false,
-    allowMerge: false,
+    allowFuse: false,
   });
   
   console.log(`  Plan Action     : ${mockDividePlan.action}`);
@@ -155,7 +155,7 @@ async function testLifecycleApply() {
   console.log("✓ Lifecycle plan creation working");
   console.log("✓ Lifecycle apply with safety layer working");
   console.log("✓ Policy guard correctly blocks structural actions");
-  console.log("✓ stay/repair actions allowed, divide/merge blocked");
+  console.log("✓ stay/repair actions allowed, divide/fuse blocked");
   console.log("");
 }
 

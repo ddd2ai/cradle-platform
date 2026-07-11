@@ -85,7 +85,7 @@ export function findDominantTrait(traitScores = {}) {
  * - stay: not ready for change (growing or insufficient data)
  * - repair: unstable or high failure rate
  * - divide: mature, stable, powerful, specialized
- * - merge: stable, generalized, has complementary cell
+ * - fuse: stable, generalized, has complementary cell
  * 
  * @param {Object} options - Decision parameters
  * @param {Object} options.maturityInfo - DNA maturity information
@@ -181,7 +181,7 @@ export function decideCellLifecycle({
     };
   }
 
-  // Rule 5: Ready to merge (stable + generalized + has complementary cell)
+  // Rule 5: Ready to fuse (stable + generalized + has complementary cell)
   if (
     maturity >= 0.60 &&
     temporalVariance <= 0.10 &&
@@ -190,7 +190,7 @@ export function decideCellLifecycle({
     hasComplementaryCell
   ) {
     return {
-      action: "merge",
+      action: "fuse",
       confidence: "medium",
       reason: "cell is stable and generalized, with complementary cell available",
       detail: {

@@ -1,3 +1,8 @@
+import {
+  CAPABILITY_RESOLUTION_STRATEGIES,
+  FUSION_SOURCE_USAGES,
+} from "./fusion-plan-schema.js";
+
 /**
  * 建立 Living Context Fusion Prompt。
  *
@@ -52,15 +57,48 @@ ${childId}
 
 ## Core Rules
 
+### Fusion Semantics
+
 - Do not merely concatenate Parent responsibilities.
 - Create one coherent purpose for the fused Cell.
-- Resolve overlapping capabilities.
-- Explicitly identify and resolve conflicting knowledge.
+- Resolve overlapping capabilities only when those capabilities are explicitly present in the Parent Source Materials.
+- Identify a knowledge conflict only when two or more Parent Source Materials contain explicitly contradictory views.
 - Parent Productions are reference material, not mandatory templates.
+- Fusion may simplify, inherit, synthesize, or contract existing Parent information, but it must not invent new domain knowledge.
+
+### Grounding Rules
+
+- Every generated field must be grounded in the DNA Fusion Plan or Parent Cell Source Materials.
+- Do not invent capabilities, responsibilities, knowledge, history, technologies, architecture styles, teams, databases, frameworks, relationships, constraints, inputs, outputs, or production requirements.
+- Do not infer a technology merely because it is commonly associated with a domain.
+- Do not introduce example technologies such as Java, Spring Boot, React, microservices, monoliths, SQL, or cloud platforms unless they explicitly appear in the supplied source materials.
+- Do not create a relationship target unless that target explicitly appears in at least one Parent Living Context, Distilled Memory, Artifact Catalog, or DNA Fusion Plan.
+- Do not create historical achievements that are not explicitly present in Parent memory.
+- Do not assign a capability to a Parent Cell unless that capability is explicitly supported by that Parent's source material.
+- Every capabilityResolutions[].sourceCellIds entry must refer only to Parent Cells that explicitly provide evidence for that capability.
+- Every knowledgeConflicts[].view must represent information explicitly found in the corresponding Parent Cell source material.
+- Every productionPlan item must be derived from an existing Parent responsibility, output, artifact, goal, or explicit fused requirement.
+- Every technology or framework in productionPlan[].constraints must explicitly appear in the supplied source materials.
+- sourceArtifacts may only reference artifacts listed in the Parent Artifact Catalogs.
+
+### Missing Evidence Rules
+
+- If there is insufficient evidence for a field, use an empty string or empty array.
+- If no explicit capability overlap exists, return an empty capabilityResolutions array.
+- If no explicit contradiction exists, return an empty knowledgeConflicts array.
+- If no production can be safely derived from the Parent materials, return an empty productionPlan array.
+- assumptions may describe missing information, but assumptions must not be converted into facts elsewhere in the Fusion Plan.
+- Empty arrays are valid and preferred over invented content.
+
+### Output Rules
+
 - Do not generate source code.
 - Do not generate Artifact JSON.
 - Return only the Fusion Plan JSON.
 - Do not use Markdown code fences.
+- Every capabilityResolutions[].strategy must be exactly one of: ${CAPABILITY_RESOLUTION_STRATEGIES.join(", ")}.
+- Every productionPlan[].sourceUsage must be exactly one of: ${FUSION_SOURCE_USAGES.join(", ")}.
+- Every fusedLivingContext.relationships[] item must be an object with string fields: { "type": "...", "target": "..." }.
 
 # DNA Fusion Plan
 
@@ -69,6 +107,35 @@ ${formatJson(dnaFusionPlan)}
 # Parent Cell Source Materials
 
 ${formattedParentSources}
+
+# Field Requirements
+
+- fusedLivingContext.purpose:
+  A concise synthesis of explicit Parent purposes and responsibilities.
+
+- fusedLivingContext.responsibilities:
+  Only responsibilities derived from one or more Parent Cells.
+
+- fusedMemorySeed.knowledge:
+  A concise synthesis of explicit Parent knowledge. Do not fabricate expertise.
+
+- fusedMemorySeed.history:
+  Only summarize actual Parent history. Leave empty when no history is available.
+
+- fusedMemorySeed.thought:
+  May express the Child's immediate interpretation of the fusion, but must remain grounded in the actual fusion result.
+
+- capabilityResolutions:
+  Include entries only for capabilities explicitly found in Parent Source Materials.
+
+- knowledgeConflicts:
+  Include entries only for directly contradictory Parent views.
+
+- productionPlan:
+  Include only productions justified by Parent responsibilities, outputs, goals, or Artifact Catalog entries.
+
+- assumptions:
+  Use only to record missing or uncertain information. Do not treat assumptions as established facts.
 
 # Required Output Format
 
@@ -178,46 +245,9 @@ function createFusionPlanExample(
       thought: "",
     },
 
-    capabilityResolutions: [
-      {
-        capability: "",
-        sourceCellIds: [],
-        strategy: "inherit",
-        resolution: "",
-      },
-    ],
-
-    knowledgeConflicts: [
-      {
-        topic: "",
-        views: [
-          {
-            cellId: "",
-            view: "",
-          },
-        ],
-        resolution: "",
-      },
-    ],
-
-    productionPlan: [
-      {
-        type: "code",
-        title: "",
-        goal: "",
-        constraints: [],
-
-        sourceArtifacts: [
-          {
-            cellId: "",
-            artifactId: "",
-          },
-        ],
-
-        sourceUsage: "reference",
-      },
-    ],
-
+    capabilityResolutions: [],
+    knowledgeConflicts: [],
+    productionPlan: [],
     assumptions: [],
   };
 }

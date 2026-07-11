@@ -38,7 +38,7 @@ export function buildLivingContextDivisionPrompt({ parentSource, dnaDivisionPlan
   const livingContext = parentSource.livingContext || {};
   const responsibilities = parentSource.responsibilities || [];
   const relationships = parentSource.relationships || [];
-  const memory = parentSource.memory || {};
+  const memory = parentSource.distilledMemory || {};
   const artifactCatalog = parentSource.artifactCatalog || [];
 
   // 萃取 Memory（只保留關鍵部分，避免 Prompt 過長）

@@ -6,7 +6,126 @@ import { dnaVectorToMatrix } from "../dna/dna-matrix.js";
 import { CellFusionService } from "../lifecycle/cell-fusion-service.js";
 import { block } from "../utils/text.js";
 
-export function createColonyCommands() {
+export async function executeFuseCommand({
+  engine,
+  input,
+  fusionServiceFactory = () => new CellFusionService(),
+}) {
+  const parts = input.trim().split(/\s+/);
+  const [command, ...args] = parts;
+
+  if (command === "/merge") {
+    console.log("/merge is deprecated. Use /fuse instead.");
+    return;
+  }
+
+  if (args.length < 3) {
+    console.log("Usage: /fuse <parent-a> <parent-b> [parent-c...] <new-cell-id>");
+    return;
+  }
+
+  const childId = args.at(-1);
+  const parentIds = args.slice(0, -1);
+
+  // Validate unique parent IDs
+  const uniqueParentIds = [...new Set(parentIds)];
+
+  if (uniqueParentIds.length !== parentIds.length) {
+    throw new Error("Parent cells must not contain duplicate IDs.");
+  }
+
+  if (parentIds.includes(childId)) {
+    throw new Error("Child ID must not equal a parent cell ID.");
+  }
+
+  if (engine.hasCell(childId)) {
+    throw new Error(`Child cell already exists: ${childId}`);
+  }
+
+  const parentCells = parentIds.map(id => engine.requireCell(id));
+
+  console.log("");
+  console.log("🧬 Starting Living Context Fusion...");
+  console.log("");
+
+  const service = fusionServiceFactory();
+
+  try {
+    const result = await service.fuse({
+      engine,
+      parentCells,
+      childId,
+    });
+
+    if (!result.success) {
+      console.log("");
+      console.log("❌ Fusion failed");
+      console.log("");
+
+      for (const error of result.errors ?? []) {
+        console.log(`  - ${error.stage}: ${error.message}`);
+      }
+
+      return;
+    }
+
+    const child = result.child;
+    const productionResult = result.productionResult;
+    const livingContext = await child.readLivingContext();
+    const profile = await child.readCellProfile();
+    const fusionPlan = result.fusionPlan || {};
+    const capabilityResolutions = fusionPlan.capabilityResolutions || [];
+    const inherited = capabilityResolutions.filter(c => c.strategy === "inherit").length;
+    const synthesized = capabilityResolutions.filter(c => c.strategy === "synthesize").length;
+    const discarded = capabilityResolutions.filter(c => c.strategy === "discard").length;
+    const knowledgeConflicts = fusionPlan.knowledgeConflicts || [];
+    const conflictsCount = knowledgeConflicts.length;
+    const resolvedCount = knowledgeConflicts.filter(c => c.resolution).length;
+    const planned = (fusionPlan.productionPlan || []).length;
+    const produced = productionResult.produced.length;
+    const failed = productionResult.failed.length;
+
+    engine.activeCellId = childId;
+
+    console.log("");
+    console.log(result.complete ? "✅ Fusion complete" : "⚠️ Fusion created but incomplete");
+    console.log("");
+    console.log(`Child          : ${result.child.id}`);
+    console.log(`Parents        : ${parentIds.join(", ")}`);
+    console.log(`Role           : ${profile.role || "unknown"}`);
+    console.log(`Purpose        : ${livingContext.purpose || "unknown"}`);
+    console.log("");
+    console.log("Capabilities");
+    console.log(`  Inherited      : ${inherited}`);
+    console.log(`  Synthesized    : ${synthesized}`);
+    console.log(`  Discarded      : ${discarded}`);
+    console.log("");
+    console.log("Knowledge");
+    console.log(`  Conflicts      : ${conflictsCount}`);
+    console.log(`  Resolved       : ${resolvedCount}`);
+    console.log("");
+    console.log("Production");
+    console.log(`  Planned        : ${planned}`);
+    console.log(`  Produced       : ${produced}`);
+    console.log(`  Failed         : ${failed}`);
+    console.log("");
+  } catch (error) {
+    console.log("");
+    console.log("❌ Fusion failed");
+    console.log("");
+    console.log(error.message);
+    console.log("");
+
+    if (error.cause) {
+      console.log("Cause:");
+      console.log(error.cause.message);
+    }
+  }
+}
+
+export function createColonyCommands({
+  fusionServiceFactory = () => new CellFusionService(),
+} = {}) {
   return [
     {
       name: "/ask",
@@ -64,137 +183,19 @@ export function createColonyCommands() {
     },
 
     {
+      name: "/fuse",
+      match: (input) => input === "/fuse" || input.startsWith("/fuse "),
+      execute: (context) => executeFuseCommand({
+        ...context,
+        fusionServiceFactory,
+      }),
+    },
+
+    {
       name: "/merge",
-      match: (input) => input.startsWith("/merge "),
-      execute: async ({ engine, input }) => {
-        const args = input
-          .replace("/merge ", "")
-          .trim()
-          .split(/\s+/)
-          .filter(Boolean);
-
-        if (args.length < 3) {
-          console.log("Usage: /merge <cell-a> <cell-b> <new-cell-id>");
-          return;
-        }
-
-        const parentIds = args.slice(0, -1);
-        const childId = args.at(-1);
-
-        // 找到 Parent Cells
-        const parentCells = [];
-        
-        for (const id of parentIds) {
-          const cell = engine.cells.get(id);
-          
-          if (!cell) {
-            console.log(`Cell not found: ${id}`);
-            return;
-          }
-          
-          parentCells.push(cell);
-        }
-
-        // 呼叫 CellFusionService
-        console.log("");
-        console.log("🧬 Starting Living Context Fusion...");
-        console.log("");
-        
-        const service = new CellFusionService();
-        
-        try {
-          const result = await service.fuse({
-            engine,
-            parentCells,
-            childId
-          });
-
-          if (!result.success) {
-            console.log("");
-            console.log("❌ Fusion failed");
-            console.log("");
-            console.log("Errors:");
-            
-            for (const error of result.errors) {
-              console.log(`  - ${error.stage}: ${error.message}`);
-            }
-            
-            return;
-          }
-
-          // 顯示結果
-          const child = result.child;
-          const productionResult = result.productionResult;
-          
-          // 讀取 Living Context 資訊
-          const livingContext = await child.readLivingContext();
-          const profile = await child.readProfile();
-          
-          // 計算 Capabilities
-          const fusionPlan = result.fusionPlan || {};
-          const capabilityResolutions = fusionPlan.capabilityResolutions || [];
-          
-          const inherited = capabilityResolutions.filter(c => c.strategy === "inherit").length;
-          const synthesized = capabilityResolutions.filter(c => c.strategy === "synthesize").length;
-          const discarded = capabilityResolutions.filter(c => c.strategy === "discard").length;
-          
-          // 計算 Knowledge Conflicts
-          const knowledgeConflicts = fusionPlan.knowledgeConflicts || [];
-          const conflictsCount = knowledgeConflicts.length;
-          const resolvedCount = knowledgeConflicts.filter(c => c.resolution).length;
-          
-          // 計算 Production
-          const planned = (fusionPlan.productionPlan || []).length;
-          const produced = productionResult.produced.length;
-          const failed = productionResult.failed.length;
-          
-          // 設定 active cell
-          engine.activeCellId = childId;
-
-          // 顯示結果
-          console.log("");
-          console.log("🧬 Living Context Fusion Complete");
-          console.log("");
-          console.log("Parents");
-          
-          for (const parent of parentCells) {
-            console.log(`  - ${parent.id}`);
-          }
-          
-          console.log("");
-          console.log(`Child          : ${childId}`);
-          console.log(`Role           : ${profile.role || "unknown"}`);
-          console.log(`Purpose        : ${livingContext.purpose || "unknown"}`);
-          console.log("");
-          console.log("Capabilities");
-          console.log(`  Inherited      : ${inherited}`);
-          console.log(`  Synthesized    : ${synthesized}`);
-          console.log(`  Discarded      : ${discarded}`);
-          console.log("");
-          console.log("Knowledge");
-          console.log(`  Conflicts      : ${conflictsCount}`);
-          console.log(`  Resolved       : ${resolvedCount}`);
-          console.log("");
-          console.log("Production");
-          console.log(`  Planned        : ${planned}`);
-          console.log(`  Produced       : ${produced}`);
-          console.log(`  Failed         : ${failed}`);
-          console.log("");
-          console.log(`Status         : ${result.complete ? "complete" : "production-incomplete"}`);
-          console.log("");
-
-        } catch (error) {
-          console.log("");
-          console.log("❌ Fusion failed");
-          console.log("");
-          console.log(error.message);
-          console.log("");
-          
-          if (error.cause) {
-            console.log("Cause:");
-            console.log(error.cause.message);
-          }
-        }
+      match: (input) => input === "/merge" || input.startsWith("/merge "),
+      execute: async () => {
+        console.log("/merge is deprecated. Use /fuse instead.");
       },
     },
 

@@ -487,6 +487,16 @@ Cradle Platform 的 LLM Provider 是 **Cradle Cell 的感知器官**。
 
 LLM 不是 Cradle 的核心，而是**可替換的能源**。
 
+## Cell Fusion CLI
+
+使用 `/fuse` 將兩個或以上的 Cell 融合為新 Cell：
+
+```text
+/fuse cell-001 cell-002 cell-fused
+```
+
+`/merge` 暫時保留為 deprecated alias，並會執行相同的融合流程。新的使用方式應統一採用 `/fuse`。
+
 ## 架構概念
 
 ```text

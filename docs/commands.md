@@ -406,6 +406,34 @@ Memory updated.
 
 ---
 
+# Cell Fusion Commands
+
+## /fuse
+
+將兩個或以上的 parent Cells 融合為一個新 Cell。最後一個參數是新 Cell ID。
+
+```text
+/fuse <parent...> <child>
+```
+
+### Example
+
+```text
+/fuse cell-001 cell-002 cell-fused
+```
+
+Fusion 會共用 parent Cells 的 DNA、Living Context、Memory 與產物資訊，並建立新的 child Cell。
+
+## /merge
+
+`/merge` 是 `/fuse` 的 deprecated alias。它暫時仍會執行相同的融合流程，但會先顯示：
+
+```text
+/merge is deprecated. Use /fuse instead.
+```
+
+---
+
 ## exit
 
 關閉 Cradle Engine。

@@ -93,7 +93,7 @@
 需要實作：
 - `buildLivingContextFusionPrompt()` in `living-context-prompts.js`
 - `CellFusionService` in `src/lifecycle/cell-fusion-service.js`
-- 修改 `colony-commands.js` 中的 `/merge` 命令
+- 修改 `colony-commands.js` 中的 `/fuse` 命令
 
 ### ⏳ 第十二階段：新增測試檔案 (待後續完成)
 
@@ -163,7 +163,7 @@ feat: synthesize living context and productions during cell fusion
 
 - Add Living Context fusion prompt and service
 - Add CellFusionService
-- Update /merge command to use CellFusionService
+- Update /fuse command to use CellFusionService
 - Add fusion tests
 ```
 

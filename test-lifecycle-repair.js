@@ -47,7 +47,7 @@ async function testLifecycleRepairExecution() {
     const result = await applyLifecyclePlan(cell, engine, plan, {
       allowRepair: true,
       allowDivide: false,
-      allowMerge: false,
+      allowFuse: false,
     });
 
     console.log(`Applied        : ${result.applied}`);
@@ -74,7 +74,7 @@ async function testLifecycleRepairExecution() {
     const result = await applyLifecyclePlan(cell, engine, plan, {
       allowRepair: true,
       allowDivide: false,
-      allowMerge: false,
+      allowFuse: false,
     });
 
     console.log(`Applied        : ${result.applied}`);
@@ -85,7 +85,7 @@ async function testLifecycleRepairExecution() {
   }
   console.log("");
 
-  // Test 5: Test divide/merge blocking
+  // Test 5: Test divide/fuse blocking
   console.log("Test 5: Structural Actions Blocking");
   
   // Create a fake divide plan to test blocking
@@ -100,7 +100,7 @@ async function testLifecycleRepairExecution() {
   const divideResult = await applyLifecyclePlan(cell, engine, dividePlan, {
     allowRepair: true,
     allowDivide: false,
-    allowMerge: false,
+    allowFuse: false,
   });
 
   console.log(`Divide Blocked : ${divideResult.blocked ? "yes" : "no"}`);

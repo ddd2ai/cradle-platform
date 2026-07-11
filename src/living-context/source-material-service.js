@@ -17,7 +17,7 @@ export class SourceMaterialService {
    */
   async buildCellSourceMaterial(cell) {
     // 讀取基本資訊
-    const profile = await cell.readProfile();
+    const profile = await cell.readCellProfile();
     const livingContext = await cell.readLivingContext();
     const dnaVector = await cell.readDNAVector();
 
@@ -29,7 +29,7 @@ export class SourceMaterialService {
       responsibilities = JSON.parse(raw);
     } catch (error) {
       // 如果沒有 responsibilities.json，從 profile 中讀取
-      if (profile.responsibilities) {
+      if (Array.isArray(profile?.responsibilities)) {
         responsibilities = profile.responsibilities;
       }
     }
@@ -43,7 +43,7 @@ export class SourceMaterialService {
     // 讀取 relationships
     let relationships = [];
     try {
-      relationships = await cell.getRelationships();
+      relationships = await cell.listRelationships();
     } catch (error) {
       // relationships 可能不存在
     }
@@ -55,7 +55,7 @@ export class SourceMaterialService {
       dnaVector,
       responsibilities,
       relationships,
-      memory,
+      distilledMemory: memory,
       artifactCatalog: catalogResult.artifacts,
       artifactCatalogErrors: catalogResult.errors
     };

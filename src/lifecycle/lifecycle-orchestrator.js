@@ -36,14 +36,14 @@ export async function createLifecyclePlan(cell, engine, options = {}) {
     };
   }
 
-  // merge: structural action (needs manual target selection)
-  if (decision.action === "merge") {
+  // fuse: structural action (needs manual target selection)
+  if (decision.action === "fuse") {
     return {
-      action: "merge",
+      action: "fuse",
       mode: "dry-run",
       command: null,
       decision,
-      reason: "merge target selection is not finalized, use /merge command manually",
+      reason: "fusion target selection is not finalized, use /fuse command manually",
     };
   }
 
@@ -138,14 +138,14 @@ export async function applyLifecyclePlan(cell, engine, plan, options = {}) {
     };
   }
 
-  // merge: blocked (structural action)
-  else if (plan.action === "merge") {
+  // fuse: blocked (structural action)
+  else if (plan.action === "fuse") {
     result = {
       applied: false,
-      action: "merge",
+      action: "fuse",
       blocked: true,
-      reason: "merge is a structural action and requires manual execution",
-      manualCommand: "/merge",
+      reason: "fuse is a structural action and requires manual execution",
+      manualCommand: "/fuse",
       plan,
     };
   }

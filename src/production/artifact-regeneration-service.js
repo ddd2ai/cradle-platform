@@ -77,7 +77,7 @@ export class ArtifactRegenerationService {
         );
 
         // Call production service with transformation context
-        const artifact = await childCell.productionService.produceFromTransformation({
+        const { artifact, saved } = await childCell.productionService.produceFromTransformation({
           type: item.type,
           title: item.title,
           goal: item.goal,
@@ -93,6 +93,7 @@ export class ArtifactRegenerationService {
             mode: 'division',
             sourceCellIds: [parentCell.id],
             sourceArtifactIds: item.sourceArtifactIds || [],
+            sourceArtifactRefs: [],
             livingContextId: `living-context-${childCell.id}`
           }
         });
@@ -102,6 +103,7 @@ export class ArtifactRegenerationService {
           index,
           title: item.title,
           artifactId: artifact.id,
+          dir: saved.dir,
           sourceArtifactIds: item.sourceArtifactIds || []
         });
 
@@ -217,7 +219,7 @@ export class ArtifactRegenerationService {
         }
 
         // Call production service with transformation context
-        const artifact = await childCell.productionService.produceFromTransformation({
+        const { artifact, saved } = await childCell.productionService.produceFromTransformation({
           type: item.type,
           title: item.title,
           goal: item.goal,
@@ -245,6 +247,7 @@ export class ArtifactRegenerationService {
           index,
           title: item.title,
           artifactId: artifact.id,
+          dir: saved.dir,
           sourceArtifactRefs: item.sourceArtifacts || []
         });
 

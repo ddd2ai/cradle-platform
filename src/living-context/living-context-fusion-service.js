@@ -204,6 +204,14 @@ export class LivingContextFusionService {
         );
       }
 
+      if (
+        typeof raw.answer === "string"
+      ) {
+        return this._parseFusionPlanResponse(
+          raw.answer
+        );
+      }
+
       return raw;
     }
 

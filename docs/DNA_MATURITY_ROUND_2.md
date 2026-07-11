@@ -125,7 +125,7 @@ await this.assertCanDivide();
 
 ---
 
-### 4. 修改 /merge 權重 ✅
+### 4. 修改 /fuse 權重 ✅
 
 **位置**：`src/commands/colony-commands.js`
 
@@ -361,7 +361,7 @@ Magnitude: 0.2465
   - 新增 `appendDNAHistoryIfChanged()`
 
 - ✅ `src/commands/colony-commands.js`
-  - `/merge` 權重改用 DNA maturity
+  - `/fuse` 權重改用 DNA maturity
   - `/colony` 顯示新 maturity 資訊
   - `/watch` Status Table 使用新 maturity
 

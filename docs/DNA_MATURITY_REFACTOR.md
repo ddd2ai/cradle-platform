@@ -332,14 +332,14 @@ Recent entries (last 5):
 **位置**：
 - `src/commands/engine-commands.js`
 
-### 7. 修改 `/merge` 權重 🔜
+### 7. 修改 `/fuse` 權重 🔜
 
 **目標**：
 - 使用 DNA maturity 作為 fusion 權重
 - 取代 `profile.maturity` counter
 
 **位置**：
-- `/merge` 指令
+- `/fuse` 指令
 
 ### 8. 降級 `mature()` 方法 🔜
 
@@ -436,7 +436,7 @@ await this.appendDNAHistoryIfChanged("evolution");
 ### 立即執行（第二輪）：
 1. ✅ 實作 `appendDNAHistoryIfChanged()`
 2. ✅ 修改 `/status` `/colony` `/watch` 顯示
-3. ✅ 修改 `/merge` 權重
+3. ✅ 修改 `/fuse` 權重
 
 ### 長期優化：
 1. 調整 `windowSize` 參數（目前是 5）
@@ -477,7 +477,7 @@ await this.appendDNAHistoryIfChanged("evolution");
 📋 **第二輪待實作**：
 - 防假成熟機制
 - UI 顯示更新
-- Merge 權重更新
+- Fuse 權重更新
 
 🎯 **成果**：
 - 成熟度不再是單純的 counter

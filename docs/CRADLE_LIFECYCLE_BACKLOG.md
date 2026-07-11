@@ -27,7 +27,7 @@ Structural lifecycle actions are intentionally disabled by default.
 
 ### Structural Safety
 
-- Require snapshot before divide / merge
+- Require snapshot before divide / fuse
 - Add rollback support
 - Add post-apply validation
 
@@ -37,8 +37,8 @@ Structural lifecycle actions are intentionally disabled by default.
 - Require dry-run success
 - Require manual or config-based opt-in
 
-### Auto Merge
+### Auto Fuse
 
 - Add compatibility score
-- Add merge plan
+- Add fuse plan
 - Require manual approval

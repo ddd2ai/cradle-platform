@@ -451,6 +451,31 @@ test("Prompt contains artifact-a", async () => {
   }
 });
 
+test("Prompt declares schema enum constraints", async () => {
+  const { parentA, parentB, sourceMaterialService } = setupService();
+  const requester = new FakeRequesterCell("cell-a", () =>
+    createValidFusionPlanResponse("cell-fused")
+  );
+  const service = new LivingContextFusionService({
+    requesterCell: requester,
+    sourceMaterialService,
+  });
+
+  await service.createFusionPlan({
+    parentCells: [parentA, parentB],
+    childId: "cell-fused",
+    dnaFusionPlan: {},
+  });
+
+  const prompt = requester.askWithTimeoutCalls[0].prompt;
+  if (!prompt.includes("inherit, synthesize, replace, discard, contract")) {
+    throw new Error("Prompt does not declare capability strategy values");
+  }
+  if (!prompt.includes("reference, behavior-reference, contract-reference")) {
+    throw new Error("Prompt does not declare source usage values");
+  }
+});
+
 test("type is forced to 'living-context-fusion'", async () => {
   const { parentA, parentB, sourceMaterialService } = setupService();
 
@@ -554,6 +579,28 @@ test("Markdown code fence JSON can be parsed", async () => {
 
   if (plan.fusedLivingContext.purpose !== "Test purpose") {
     throw new Error("Failed to parse markdown fenced JSON");
+  }
+});
+
+test("Cradle assistant answer envelope can be parsed", async () => {
+  const { parentA, parentB, sourceMaterialService } = setupService();
+  const response = createValidFusionPlanResponse("cell-fused");
+  const requester = new FakeRequesterCell("cell-a", () => ({
+    answer: response.text,
+  }));
+  const service = new LivingContextFusionService({
+    requesterCell: requester,
+    sourceMaterialService,
+  });
+
+  const plan = await service.createFusionPlan({
+    parentCells: [parentA, parentB],
+    childId: "cell-fused",
+    dnaFusionPlan: {},
+  });
+
+  if (plan.fusedLivingContext.purpose !== "Unified payment lifecycle") {
+    throw new Error("answer envelope was not unwrapped");
   }
 });
 

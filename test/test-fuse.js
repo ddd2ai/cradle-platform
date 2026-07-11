@@ -1,4 +1,4 @@
-// test/test-merge.js
+// test/test-fuse.js
 
 import {
   calculateDNAMatrixCentroid,

@@ -9,6 +9,9 @@
 import path from "path";
 import fs from "fs/promises";
 import {
+  DNAFusionService,
+} from "../dna/dna-fusion-service.js";
+import {
   LivingContextFusionService,
 } from "../living-context/living-context-fusion-service.js";
 import {
@@ -21,13 +24,19 @@ import { block } from "../utils/text.js";
 export class CellFusionService {
   /**
    * @param {Object} options
+   * @param {Object} [options.dnaFusionService] - DNA Fusion Service
    * @param {Function} [options.livingContextFusionServiceFactory] - Factory for LivingContextFusionService
    * @param {Object} [options.artifactRegenerationService] - Artifact Regeneration Service
    */
   constructor({
+    dnaFusionService,
     livingContextFusionServiceFactory,
     artifactRegenerationService,
   } = {}) {
+    this.dnaFusionService =
+      dnaFusionService ??
+      new DNAFusionService();
+
     this.livingContextFusionServiceFactory =
       livingContextFusionServiceFactory ??
       ((requesterCell) =>
@@ -66,15 +75,16 @@ export class CellFusionService {
     try {
       // 3. createFusionPlanByDNA()
       console.log(`  Planning DNA fusion...`);
-      const firstParent = parentCells[0];
       
-      dnaFusionPlan = await firstParent.createFusionPlanByDNA({
+      dnaFusionPlan = await this.dnaFusionService.createPlan({
         parentCells,
         childId
       });
 
       // 4. createFusionPlan()
       console.log(`  Planning Living Context fusion...`);
+      const firstParent = parentCells[0];
+      
       const fusionService = this.livingContextFusionServiceFactory(firstParent);
       
       fusionPlan = await fusionService.createFusionPlan({
@@ -104,11 +114,10 @@ export class CellFusionService {
       // 7. applyFusionPlanByDNA()
       console.log(`  Applying DNA fusion...`);
       try {
-        const firstParent = parentCells[0];
-        await firstParent.applyFusionPlanByDNA({
+        await this.dnaFusionService.applyPlan({
           childCell: child,
           parentCells,
-          dnaFusionPlan
+          plan: dnaFusionPlan
         });
       } catch (error) {
         errors.push({
@@ -222,13 +231,16 @@ export class CellFusionService {
 
       // 15. return result
       const complete = errors.length === 0 && productionResult.complete;
+      const status = complete ? "complete" : (child ? "incomplete" : "failed");
 
       return {
-        success: true,
+        success: status !== "failed",
+        status,
         child,
         complete,
         errors,
         productionResult,
+        dnaFusionPlan,
         fusionPlan
       };
 
@@ -238,8 +250,11 @@ export class CellFusionService {
         await this._recordIncompleteHistory(parentCells, child, errors);
       }
 
+      const status = child ? "incomplete" : "failed";
+
       return {
         success: false,
+        status,
         child,
         complete: false,
         errors,
@@ -282,8 +297,7 @@ export class CellFusionService {
    * 檢查 Child 是否已存在
    */
   _childExists(engine, childId) {
-    const cells = engine.listCells();
-    return cells.some(cell => cell.id === childId);
+    return engine.cells.has(childId);
   }
 
   /**
@@ -377,19 +391,41 @@ export class CellFusionService {
         await fs.mkdir(parentArchiveDir, { recursive: true });
 
         // Archive 每個 Memory 檔案
-        const memoryFiles = ["identity.md", "knowledge.md", "history.md", "thoughts.md"];
+        const archiveFiles = [
+          {
+            name: "identity.md",
+            source: parent.memoryFiles.identity,
+          },
+          {
+            name: "rules.md",
+            source: parent.memoryFiles.rules,
+          },
+          {
+            name: "knowledge.md",
+            source: parent.memoryFiles.knowledge,
+          },
+          {
+            name: "history.md",
+            source: parent.memoryFiles.history,
+          },
+          {
+            name: "thoughts.md",
+            source: path.join(parent.thoughtsDir, "thoughts.md"),
+          },
+        ];
 
-        for (const fileName of memoryFiles) {
+        for (const archiveFile of archiveFiles) {
           try {
-            const sourceFile = path.join(parent.memoryDir, fileName);
-            const targetFile = path.join(parentArchiveDir, fileName);
-
-            const content = await fs.readFile(sourceFile, "utf8");
-            await fs.writeFile(targetFile, content, "utf8");
+            const content = await fs.readFile(archiveFile.source, "utf8");
+            await fs.writeFile(
+              path.join(parentArchiveDir, archiveFile.name),
+              content,
+              "utf8"
+            );
           } catch (error) {
             // 單一檔案不存在時跳過
             if (error.code !== "ENOENT") {
-              console.warn(`  ⚠️  Failed to archive ${fileName} from ${parent.id}: ${error.message}`);
+              console.warn(`  ⚠️  Failed to archive ${archiveFile.name} from ${parent.id}: ${error.message}`);
             }
           }
         }

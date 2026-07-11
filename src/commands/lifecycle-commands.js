@@ -178,7 +178,7 @@ export function createLifecycleCommands() {
       const result = await applyLifecyclePlan(cell, engine, plan, {
         allowRepair: true,
         allowDivide: false,
-        allowMerge: false,
+        allowFuse: false,
         artifactId,
       });
 
@@ -187,4 +187,3 @@ export function createLifecycleCommands() {
   },
 ];
 }
-
