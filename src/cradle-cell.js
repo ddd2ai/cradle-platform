@@ -3,6 +3,7 @@ import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
 import { createCradleAssistant } from "./cradle-ai.js";
+import { createLLMProvider } from "./providers/llm-provider-factory.js";
 import { createCopilotProvider } from "./providers/copilot-provider.js";
 import { createOllamaProvider } from "./providers/ollama-provider.js";
 import { block } from "./utils/text.js";
@@ -120,7 +121,11 @@ export class CradleCell {
     await this.prepareMemoryFiles();
     await this.prepareLivingContext();
 
-    const provider = await this.createProvider();
+    const provider = await createLLMProvider({
+      provider: this.provider,
+      model: this.model,
+      cwd: process.cwd(),
+    });
 
     this.assistant = await createCradleAssistant({
       provider,
@@ -147,23 +152,7 @@ export class CradleCell {
 
     await this.updateStatus("idle");
   }
-
-  async createProvider() {
-    
-    if (this.provider === "ollama") {
-      return createOllamaProvider({
-        model: this.model,
-      });
-    }
-
-    if (this.provider === "copilot") {
-      return await createCopilotProvider({
-        model: this.model,
-      });
-    }
-
-    throw new Error(`Unsupported LLM provider: ${this.provider}`);
-  }
+  
 
   async activate() {
     if (this.active) {

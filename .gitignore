@@ -31,6 +31,9 @@ logs/
 # Cradle Platform
 # ==========================================================
 
+.env
+.env.*
+
 # Cell runtime data
 cells/**
 !cells/**/
