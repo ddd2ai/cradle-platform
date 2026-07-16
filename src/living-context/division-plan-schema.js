@@ -1,5 +1,7 @@
 import { normalizeLivingContext, validateLivingContext } from './living-context-schema.js';
 
+export const DIVISION_PRODUCTION_ACTIONS = ["keep", "transfer", "derive"];
+
 /**
  * 建立一個 Division Plan 物件
  * @param {Object} input - 輸入資料
@@ -17,9 +19,22 @@ export function createDivisionPlan(input = {}) {
       history: "",
       thought: ""
     },
-    productionPlan: input.productionPlan || [],
-    sharedContracts: input.sharedContracts || [],
-    assumptions: input.assumptions || [],
+
+    productionPlan:
+      Array.isArray(input.productionPlan)
+        ? input.productionPlan
+        : [],
+
+    sharedContracts:
+      Array.isArray(input.sharedContracts)
+        ? input.sharedContracts
+        : [],
+
+    assumptions:
+      Array.isArray(input.assumptions)
+        ? input.assumptions
+        : [],
+
     createdAt: input.createdAt || new Date().toISOString()
   };
 }
@@ -106,67 +121,102 @@ export function normalizeDivisionPlan(input) {
   // 正規化 production plan
   const normalizeProductionPlan = (arr) => {
     if (!Array.isArray(arr)) return [];
-    
+
     return arr
       .filter(item => {
         if (!item || typeof item !== 'object') return false;
-        // 必須包含 type、title、goal
-        return item.type && item.title && item.goal;
+        return item.sourceArtifactId || item.artifactId || item.id;
       })
       .map(item => {
-        // 正規化 sourceArtifactIds
-        let sourceArtifactIds = [];
-        if (Array.isArray(item.sourceArtifactIds)) {
-          sourceArtifactIds = item.sourceArtifactIds
-            .map(id => typeof id === 'string' ? id.trim() : "")
-            .filter(id => id !== "");
-          sourceArtifactIds = [...new Set(sourceArtifactIds)];
-        }
-
-        // 正規化 constraints
-        let constraints = [];
-        if (Array.isArray(item.constraints)) {
-          constraints = item.constraints
-            .map(c => typeof c === 'string' ? c.trim() : "")
-            .filter(c => c !== "");
-          constraints = [...new Set(constraints)];
-        }
+        const rawAction = trimStr(item.action || "");
+        const action =
+          rawAction === "regenerate"
+            ? "derive"
+            : rawAction === "skip"
+              ? "keep"
+              : rawAction;
 
         return {
-          type: trimStr(item.type),
-          title: trimStr(item.title),
-          goal: trimStr(item.goal),
-          constraints,
-          sourceArtifactIds,
-          sourceUsage: trimStr(item.sourceUsage || "reference")
+          sourceArtifactId: trimStr(item.sourceArtifactId || item.artifactId || item.id),
+          action: DIVISION_PRODUCTION_ACTIONS.includes(action) ? action : rawAction,
+          targetCellId: trimStr(item.targetCellId || ""),
+          type: trimStr(item.type || ""),
+          title: trimStr(item.title || ""),
+          reason: trimStr(item.reason || item.goal || "")
         };
       });
   };
 
   // 正規化 shared contracts
   const normalizeSharedContracts = (arr) => {
-    if (!Array.isArray(arr)) return [];
-    
+    if (!Array.isArray(arr)) {
+      return [];
+    }
+
     return arr
-      .filter(item => {
-        if (!item || typeof item !== 'object') return false;
-        return item.name; // 必須包含 name
-      })
-      .map(item => {
-        // 正規化 consumerCellIds
-        let consumerCellIds = [];
-        if (Array.isArray(item.consumerCellIds)) {
-          consumerCellIds = item.consumerCellIds
-            .map(id => typeof id === 'string' ? id.trim() : "")
-            .filter(id => id !== "");
-          consumerCellIds = [...new Set(consumerCellIds)];
+      .filter((item) => {
+        if (
+          !item ||
+          typeof item !== "object"
+        ) {
+          return false;
         }
 
+        return Boolean(
+          item.name
+        );
+      })
+      .map((item) => {
+        const rawConsumerCellIds =
+          Array.isArray(item.consumerCellIds)
+            ? item.consumerCellIds
+            : Array.isArray(item.consumers)
+              ? item.consumers
+              : [];
+
+        const consumerCellIds = [
+          ...new Set(
+            rawConsumerCellIds
+              .map((id) =>
+                typeof id === "string"
+                  ? id.trim()
+                  : ""
+              )
+              .filter(Boolean)
+          ),
+        ];
+
+        const inputs = Array.isArray(item.inputs)
+          ? [...new Set(item.inputs.map(value => trimStr(value)).filter(Boolean))]
+          : [];
+
+        const outputs = Array.isArray(item.outputs)
+          ? [...new Set(item.outputs.map(value => trimStr(value)).filter(Boolean))]
+          : [];
+
         return {
-          name: trimStr(item.name),
-          ownerCellId: trimStr(item.ownerCellId || ""),
+          name:
+            trimStr(item.name),
+
+          ownerCellId:
+            trimStr(
+              item.ownerCellId ??
+              item.provider ??
+              ""
+            ),
+
           consumerCellIds,
-          description: trimStr(item.description || "")
+
+          inputs,
+
+          outputs,
+
+          description:
+            trimStr(
+              item.description ??
+              item.purpose ??
+              ""
+            ),
         };
       });
   };
@@ -362,30 +412,36 @@ export function validateDivisionPlan(plan) {
         return;
       }
 
-      if (!item.type || typeof item.type !== 'string' || item.type.trim() === "") {
-        errors.push(`productionPlan[${idx}].type must be a non-empty string`);
+      if (!item.sourceArtifactId || typeof item.sourceArtifactId !== 'string' || item.sourceArtifactId.trim() === "") {
+        errors.push(`productionPlan[${idx}].sourceArtifactId must be a non-empty string`);
       }
 
-      if (!item.title || typeof item.title !== 'string' || item.title.trim() === "") {
-        errors.push(`productionPlan[${idx}].title must be a non-empty string`);
+      if (!DIVISION_PRODUCTION_ACTIONS.includes(item.action)) {
+        errors.push(`productionPlan[${idx}].action must be one of: ${DIVISION_PRODUCTION_ACTIONS.join(', ')}`);
       }
 
-      if (!item.goal || typeof item.goal !== 'string' || item.goal.trim() === "") {
-        errors.push(`productionPlan[${idx}].goal must be a non-empty string`);
+      if (!item.targetCellId || typeof item.targetCellId !== 'string' || item.targetCellId.trim() === "") {
+        errors.push(`productionPlan[${idx}].targetCellId must be a non-empty string`);
       }
 
-      if (!Array.isArray(item.constraints)) {
-        errors.push(`productionPlan[${idx}].constraints must be an array`);
+      if (item.type !== undefined && typeof item.type !== 'string') {
+        errors.push(`productionPlan[${idx}].type must be a string`);
       }
 
-      if (!Array.isArray(item.sourceArtifactIds)) {
-        errors.push(`productionPlan[${idx}].sourceArtifactIds must be an array`);
+      if (item.title !== undefined && typeof item.title !== 'string') {
+        errors.push(`productionPlan[${idx}].title must be a string`);
       }
 
-      // 驗證 sourceUsage
-      const validUsages = ['reference', 'behavior-reference', 'contract-reference'];
-      if (item.sourceUsage && !validUsages.includes(item.sourceUsage)) {
-        errors.push(`productionPlan[${idx}].sourceUsage must be one of: ${validUsages.join(', ')}`);
+      if (item.reason !== undefined && typeof item.reason !== 'string') {
+        errors.push(`productionPlan[${idx}].reason must be a string`);
+      }
+
+      if (item.action === "keep" && item.targetCellId !== plan.parentCellId) {
+        errors.push(`productionPlan[${idx}].targetCellId must be parentCellId for keep`);
+      }
+
+      if ((item.action === "transfer" || item.action === "derive") && item.targetCellId !== plan.childCellId) {
+        errors.push(`productionPlan[${idx}].targetCellId must be childCellId for ${item.action}`);
       }
     });
   }
@@ -416,11 +472,20 @@ export function validateDivisionPlan(plan) {
         errors.push(`sharedContracts[${idx}].description must be a string`);
       }
 
-      // 驗證 ownerCellId 必須等於 parentCellId 或 childCellId
-      if (item.ownerCellId && plan.parentCellId && plan.childCellId) {
-        if (item.ownerCellId !== plan.parentCellId && item.ownerCellId !== plan.childCellId) {
-          errors.push(`sharedContracts[${idx}].ownerCellId must be either parentCellId or childCellId`);
-        }
+      if (!Array.isArray(item.inputs)) {
+        errors.push(`sharedContracts[${idx}].inputs must be an array`);
+      }
+
+      if (!Array.isArray(item.outputs)) {
+        errors.push(`sharedContracts[${idx}].outputs must be an array`);
+      }
+
+      if (Array.isArray(item.inputs) && Array.isArray(item.outputs) && item.inputs.length === 0 && item.outputs.length === 0) {
+        errors.push(`sharedContracts[${idx}] must have inputs or outputs`);
+      }
+
+      if (Array.isArray(item.consumerCellIds) && item.consumerCellIds.includes(item.ownerCellId)) {
+        errors.push(`sharedContracts[${idx}].consumerCellIds must not include ownerCellId`);
       }
     });
   }

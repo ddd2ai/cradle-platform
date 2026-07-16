@@ -163,31 +163,32 @@ test('Normalize removes duplicate relationships', () => {
   );
 });
 
-// Test 6: productionPlan sourceArtifactIds 去重
-test('Normalize removes duplicate sourceArtifactIds', () => {
+// Test 6: productionPlan sourceArtifactId 正規化
+test('Normalize trims sourceArtifactId and action contract', () => {
   const plan = {
     parentCellId: "parent",
     childCellId: "child",
-    revisedParentLivingContext: {},
+    revisedParentLivingContext: {
+      purpose: "parent purpose"
+    },
     childLivingContext: {
       purpose: "child"
     },
     productionPlan: [
       {
-        type: "code",
-        title: "Service",
-        goal: "Create service",
-        sourceArtifactIds: [" artifact-1 ", " artifact-1 ", " artifact-2 ", "", "  "]
+        sourceArtifactId: " artifact-1 ",
+        action: " derive ",
+        targetCellId: " child ",
+        title: " Service ",
+        reason: " Child specialization "
       }
     ]
   };
 
   const normalized = normalizeDivisionPlan(plan);
-  assertEquals(
-    normalized.productionPlan[0].sourceArtifactIds,
-    ["artifact-1", "artifact-2"],
-    'Should remove empty and duplicate artifact IDs'
-  );
+  assert(normalized.productionPlan[0].sourceArtifactId === "artifact-1", 'Should trim sourceArtifactId');
+  assert(normalized.productionPlan[0].action === "derive", 'Should trim action');
+  assert(normalized.productionPlan[0].targetCellId === "child", 'Should trim targetCellId');
 });
 
 // Test 7: 缺少 parentCellId 失敗
@@ -195,7 +196,9 @@ test('Validation fails when parentCellId is missing', () => {
   const plan = {
     type: "living-context-division",
     childCellId: "child",
-    revisedParentLivingContext: {},
+    revisedParentLivingContext: {
+      purpose: "parent purpose"
+    },
     childLivingContext: {
       purpose: "child"
     },
@@ -281,7 +284,9 @@ test('ProductionPlan can be empty array', () => {
     type: "living-context-division",
     parentCellId: "parent",
     childCellId: "child",
-    revisedParentLivingContext: {},
+    revisedParentLivingContext: {
+      purpose: "parent purpose"
+    },
     childLivingContext: {
       purpose: "child purpose"
     },
@@ -299,8 +304,8 @@ test('ProductionPlan can be empty array', () => {
   assert(result.valid, `Should pass validation, got errors: ${result.errors.join(', ')}`);
 });
 
-// Test 12: production item 缺少 goal 失敗
-test('Validation fails when production item missing goal', () => {
+// Test 12: production item 缺少 action 失敗
+test('Validation fails when production item missing action', () => {
   const plan = {
     type: "living-context-division",
     parentCellId: "parent",
@@ -312,9 +317,9 @@ test('Validation fails when production item missing goal', () => {
     childMemorySeed: {},
     productionPlan: [
       {
-        type: "code",
-        title: "Service"
-        // missing goal
+        sourceArtifactId: "artifact-1",
+        targetCellId: "child"
+        // missing action
       }
     ]
   };
@@ -322,13 +327,13 @@ test('Validation fails when production item missing goal', () => {
   const result = validateDivisionPlan(plan);
   assert(!result.valid, 'Should fail validation');
   assert(
-    result.errors.some(e => e.includes('goal')),
-    'Should have error about missing goal'
+    result.errors.some(e => e.includes('action')),
+    'Should have error about missing action'
   );
 });
 
-// Test 13: 非法 sourceUsage 失敗
-test('Validation fails for invalid sourceUsage', () => {
+// Test 13: 非法 action 失敗
+test('Validation fails for invalid production action', () => {
   const plan = {
     type: "living-context-division",
     parentCellId: "parent",
@@ -340,12 +345,9 @@ test('Validation fails for invalid sourceUsage', () => {
     childMemorySeed: {},
     productionPlan: [
       {
-        type: "code",
-        title: "Service",
-        goal: "Create service",
-        constraints: [],
-        sourceArtifactIds: [],
-        sourceUsage: "invalid-usage"
+        sourceArtifactId: "artifact-1",
+        action: "invalid-action",
+        targetCellId: "child"
       }
     ]
   };
@@ -353,38 +355,44 @@ test('Validation fails for invalid sourceUsage', () => {
   const result = validateDivisionPlan(plan);
   assert(!result.valid, 'Should fail validation');
   assert(
-    result.errors.some(e => e.includes('sourceUsage')),
-    'Should have error about invalid sourceUsage'
+    result.errors.some(e => e.includes('action')),
+    'Should have error about invalid action'
   );
 });
 
-// Test 14: shared contract owner 不屬於 Parent 或 Child 時失敗
-test('Validation fails when contract owner is neither parent nor child', () => {
+// Test 14: shared contract owner 可為既有 Colony Cell
+test('Validation allows contract owner outside parent and child', () => {
   const plan = {
     type: "living-context-division",
     parentCellId: "parent",
     childCellId: "child",
-    revisedParentLivingContext: {},
+    revisedParentLivingContext: {
+      purpose: "parent"
+    },
     childLivingContext: {
       purpose: "child"
     },
-    childMemorySeed: {},
+    childMemorySeed: {
+      knowledge: "",
+      history: "",
+      thought: ""
+    },
+    productionPlan: [],
     sharedContracts: [
       {
         name: "Contract",
         ownerCellId: "other-cell",
-        consumerCellIds: [],
+        consumerCellIds: ["child"],
+        inputs: ["Request"],
+        outputs: [],
         description: ""
       }
-    ]
+    ],
+    assumptions: []
   };
 
   const result = validateDivisionPlan(plan);
-  assert(!result.valid, 'Should fail validation');
-  assert(
-    result.errors.some(e => e.includes('ownerCellId')),
-    'Should have error about invalid ownerCellId'
-  );
+  assert(result.valid, `Should pass validation, got errors: ${result.errors.join(', ')}`);
 });
 
 // Test 15: childMemorySeed 缺少時 normalize 會補空字串
@@ -406,8 +414,8 @@ test('Normalize adds empty childMemorySeed when missing', () => {
   assert(normalized.childMemorySeed.thought === "", 'Thought should be empty string');
 });
 
-// Test 16: productionPlan 過濾掉缺少必要欄位的項目
-test('Normalize filters out production items missing required fields', () => {
+// Test 16: productionPlan 過濾掉缺少 source artifact 的項目
+test('Normalize filters out production items missing source artifact', () => {
   const plan = {
     parentCellId: "parent",
     childCellId: "child",
@@ -417,19 +425,22 @@ test('Normalize filters out production items missing required fields', () => {
     },
     productionPlan: [
       {
-        type: "code",
+        sourceArtifactId: "artifact-1",
+        action: "derive",
+        targetCellId: "child",
         title: "Valid",
-        goal: "Create service"
+        reason: "Create service"
       },
       {
-        type: "code",
+        action: "derive",
+        targetCellId: "child",
         title: "Invalid"
-        // missing goal
+        // missing sourceArtifactId
       },
       {
-        type: "code",
-        goal: "Invalid"
-        // missing title
+        sourceArtifactId: "",
+        action: "keep",
+        targetCellId: "parent"
       }
     ]
   };

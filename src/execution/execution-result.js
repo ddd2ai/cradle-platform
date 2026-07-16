@@ -17,7 +17,7 @@ export class ExecutionResult {
     createdAt = new Date().toISOString(),
   }) {
     this.artifactId = artifactId;
-    this.status = status; // "passed" | "compile_failed" | "runtime_failed" | "error"
+    this.status = status; // "passed" | "compile_failed" | "runtime_failed" | "error" | "skipped"
     this.command = command;
     this.stdout = stdout;
     this.stderr = stderr;
@@ -67,6 +67,16 @@ export class ExecutionResult {
       status: "error",
       command: "",
       error: error.message,
+      executionId,
+    });
+  }
+
+  static createSkipped({ artifactId, reason, executionId }) {
+    return new ExecutionResult({
+      artifactId,
+      status: "skipped",
+      command: "",
+      stdout: reason,
       executionId,
     });
   }

@@ -16,7 +16,7 @@
  * @returns {string} - "signals" | "threats"
  */
 export function classifyExecutionStimulus(result) {
-  if (result.status === "passed") {
+  if (result.status === "passed" || result.status === "skipped") {
     return "signals";
   }
 
@@ -48,6 +48,10 @@ function summarizeExecutionResult(result) {
 
   if (result.status === "runtime_failed") {
     return "Artifact compiled but failed during runtime. The behavior or runtime assumptions may be incorrect.";
+  }
+
+  if (result.status === "skipped") {
+    return "Artifact is not executable. No repair task is needed for execution.";
   }
 
   if (result.status === "error") {

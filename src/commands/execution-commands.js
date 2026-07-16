@@ -171,6 +171,7 @@ function displayExecutionResult(result) {
     compile_failed: "❌",
     runtime_failed: "⚠️",
     error: "💥",
+    skipped: "⏭️",
   };
 
   const statusText = {
@@ -178,6 +179,7 @@ function displayExecutionResult(result) {
     compile_failed: "COMPILE FAILED",
     runtime_failed: "RUNTIME FAILED",
     error: "ERROR",
+    skipped: "SKIPPED",
   };
 
   const symbol = statusSymbol[result.status] || "❓";
@@ -194,6 +196,15 @@ function displayExecutionResult(result) {
 
     if (result.stdout) {
       console.log("Output:");
+      console.log(result.stdout);
+      console.log();
+    }
+  }
+
+  if (result.status === "skipped") {
+    console.log("⏭️ 此 Artifact 不需要執行\n");
+
+    if (result.stdout) {
       console.log(result.stdout);
       console.log();
     }

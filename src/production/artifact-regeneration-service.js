@@ -39,9 +39,6 @@ export class ArtifactRegenerationService {
     if (!Array.isArray(divisionPlan.productionPlan)) {
       throw new Error("divisionPlan.productionPlan must be an array");
     }
-    if (!childCell.productionService) {
-      throw new Error("childCell.productionService is required");
-    }
 
     const productionPlan = divisionPlan.productionPlan;
 
@@ -49,13 +46,23 @@ export class ArtifactRegenerationService {
     if (productionPlan.length === 0) {
       return { 
         produced: [], 
+        parentRevisions: [],
         failed: [], 
         skipped: [],
         complete: true 
       };
     }
 
+    if (!childCell.productionService) {
+      throw new Error("childCell.productionService is required");
+    }
+
+    if (!parentCell.productionService) {
+      throw new Error("parentCell.productionService is required");
+    }
+
     const produced = [];
+    const parentRevisions = [];
     const failed = [];
     const skipped = [];
 
@@ -65,10 +72,32 @@ export class ArtifactRegenerationService {
       const item = productionPlan[index];
 
       try {
+        const action = item.action || "derive";
+
+        if (action === "keep" || action === "transfer") {
+          skipped.push({
+            index,
+            title: item.title || item.sourceArtifactId,
+            sourceArtifactId: item.sourceArtifactId,
+            action,
+            targetCellId: item.targetCellId,
+            reason: item.reason || "",
+          });
+          continue;
+        }
+
+        if (action !== "derive") {
+          throw new Error(`Unsupported division production action: ${action}`);
+        }
+
+        const sourceArtifactIds = Array.isArray(item.sourceArtifactIds)
+          ? item.sourceArtifactIds
+          : [item.sourceArtifactId].filter(Boolean);
+
         // Load source artifacts
         const sourceResult = await this.sourceMaterialService.loadSelectedArtifacts(
           parentCell,
-          item.sourceArtifactIds || []
+          sourceArtifactIds
         );
 
         // Collect source warnings from errors
@@ -76,11 +105,26 @@ export class ArtifactRegenerationService {
           error => `${error.artifactId}: ${error.error}`
         );
 
+        const sourceArtifact = sourceResult.artifacts[0] || {};
+        const title =
+          item.title ||
+          (sourceArtifact.title ? `${sourceArtifact.title} Derivative` : "Derived Artifact");
+        const type = this._selectDivisionArtifactType({
+          item,
+          sourceArtifact,
+        });
+        const goal = this._buildDivisionArtifactGoal({
+          item,
+          sourceArtifact,
+          divisionPlan,
+          type,
+        });
+
         // Call production service with transformation context
-        const { artifact, saved } = await childCell.productionService.produceFromTransformation({
-          type: item.type,
-          title: item.title,
-          goal: item.goal,
+        const producedResult = await childCell.productionService.produceFromTransformation({
+          type,
+          title,
+          goal,
           constraints: item.constraints || [],
 
           livingContext: divisionPlan.childLivingContext,
@@ -92,28 +136,84 @@ export class ArtifactRegenerationService {
           origin: {
             mode: 'division',
             sourceCellIds: [parentCell.id],
-            sourceArtifactIds: item.sourceArtifactIds || [],
+            sourceArtifactIds,
             sourceArtifactRefs: [],
             livingContextId: `living-context-${childCell.id}`
           }
         });
 
+        const artifact = producedResult.artifact || producedResult;
+        const saved = producedResult.saved || {};
+
         // Record success
         produced.push({
           index,
-          title: item.title,
+          title,
+          targetCellId: childCell.id,
           artifactId: artifact.id,
           dir: saved.dir,
-          sourceArtifactIds: item.sourceArtifactIds || []
+          sourceArtifactIds
+        });
+
+        const parentRevisionTitle =
+          sourceArtifact.title
+            ? `${sourceArtifact.title} Parent Boundary Revision`
+            : `${item.sourceArtifactId} Parent Boundary Revision`;
+        const parentRevisionGoal = this._buildParentRevisionGoal({
+          item,
+          sourceArtifact,
+          divisionPlan,
+          childCell,
+          type,
+        });
+
+        const parentRevisionResult = await parentCell.productionService.produceFromTransformation({
+          type,
+          title: parentRevisionTitle,
+          goal: parentRevisionGoal,
+          constraints: [
+            ...(item.constraints || []),
+            "Parent revision after division must remove child-owned implementation details from the parent artifact.",
+            "Parent must depend on the child through an output port, API client, event, or explicit shared contract.",
+          ],
+
+          livingContext: divisionPlan.revisedParentLivingContext,
+          distilledMemory: {
+            assumptions: divisionPlan.assumptions || [],
+            sharedContracts: divisionPlan.sharedContracts || [],
+          },
+
+          sourceArtifacts: sourceResult.artifacts,
+          sourceWarnings,
+
+          origin: {
+            mode: 'division-parent-revision',
+            sourceCellIds: [parentCell.id, childCell.id],
+            sourceArtifactIds,
+            sourceArtifactRefs: [],
+            livingContextId: `living-context-${parentCell.id}`
+          }
+        });
+
+        const parentArtifact = parentRevisionResult.artifact || parentRevisionResult;
+        const parentSaved = parentRevisionResult.saved || {};
+
+        parentRevisions.push({
+          index,
+          title: parentRevisionTitle,
+          targetCellId: parentCell.id,
+          artifactId: parentArtifact.id,
+          dir: parentSaved.dir,
+          sourceArtifactIds,
         });
 
       } catch (error) {
         // Record failure but continue with other items
-        console.error(`Failed to regenerate artifact: ${item.title}`, error);
+        console.error(`Failed to regenerate artifact: ${item.title || item.sourceArtifactId}`, error);
 
         failed.push({
           index,
-          title: item.title,
+          title: item.title || item.sourceArtifactId,
           stage: 'production',
           message: error.message
         });
@@ -122,10 +222,92 @@ export class ArtifactRegenerationService {
 
     return { 
       produced, 
+      parentRevisions,
       failed, 
       skipped,
       complete: failed.length === 0
     };
+  }
+
+  _selectDivisionArtifactType({ item, sourceArtifact }) {
+    if (item.type) {
+      return item.type;
+    }
+
+    return sourceArtifact.type || "code";
+  }
+
+  _buildDivisionArtifactGoal({ item, sourceArtifact, divisionPlan, type }) {
+    const childContext = divisionPlan.childLivingContext || {};
+    const childPurpose = childContext.purpose || "the child cell specialization";
+    const childResponsibilities = Array.isArray(childContext.responsibilities)
+      ? childContext.responsibilities
+      : [];
+
+    if (type === "code") {
+      return [
+        `從 source artifact ${item.sourceArtifactId} 衍生一個同類型的完整專化 code artifact。`,
+        "若 source artifact 是 Spring Boot / Hexagonal Architecture 專案，child artifact 也必須是可落檔的 Spring Boot / Hexagonal Architecture 專案，而不是說明文件。",
+        `Child purpose: ${childPurpose}`,
+        childResponsibilities.length > 0
+          ? `Child responsibilities: ${childResponsibilities.join("; ")}`
+          : "",
+        item.reason ? `Specialization reason: ${item.reason}` : "",
+        "保留 Java 21、Spring Boot、Hexagonal Architecture、MariaDB 的技術方向，並依 Child Living Context 調整 bounded context、ports、adapters、domain model 與 contracts。",
+      ]
+        .filter(Boolean)
+        .join("\n");
+    }
+
+    return (
+      item.goal ||
+      item.reason ||
+      sourceArtifact.goal ||
+      `Derive a specialized child artifact from ${item.sourceArtifactId}`
+    );
+  }
+
+  _buildParentRevisionGoal({ item, sourceArtifact, divisionPlan, childCell, type }) {
+    const parentContext = divisionPlan.revisedParentLivingContext || {};
+    const childContext = divisionPlan.childLivingContext || {};
+    const sharedContracts = Array.isArray(divisionPlan.sharedContracts)
+      ? divisionPlan.sharedContracts
+      : [];
+
+    const contractSummary = sharedContracts.length > 0
+      ? sharedContracts.map((contract) => {
+          const consumers = Array.isArray(contract.consumerCellIds)
+            ? contract.consumerCellIds.join(", ")
+            : "";
+          return `${contract.name || "contract"} owner=${contract.ownerCellId || "-"} consumers=${consumers}`;
+        }).join("; ")
+      : "none";
+
+    if (type === "code") {
+      return [
+        `從 source artifact ${item.sourceArtifactId} 產生 Parent 分裂後的 revised code artifact。`,
+        "這不是 child artifact；這是 Parent service 在分裂後保留自身責任的新版本。",
+        `Child cell: ${childCell.id}`,
+        `Child purpose: ${childContext.purpose || "-"}`,
+        "必須移除已分裂給 Child 的 domain model、application service、repository、adapter、provider implementation 或 persistence ownership。",
+        "Parent 若仍需要 Child 能力，只能透過 output port、API client、event publisher/subscriber、或 shared contract 呼叫 Child。",
+        "若 Parent 與 Child 都是 Spring Boot service，Parent revised artifact 應保持 Spring Boot / Hexagonal Architecture 專案形狀，並加入呼叫 Child service 的 adapter，例如 REST client 或明確 contract interface。",
+        "Parent 不可直接引用 Child 的 adapter class、provider DTO、外部 provider error code 或 Child persistence model。",
+        `Parent purpose: ${parentContext.purpose || "-"}`,
+        Array.isArray(parentContext.responsibilities) && parentContext.responsibilities.length > 0
+          ? `Parent retained responsibilities: ${parentContext.responsibilities.join("; ")}`
+          : "",
+        `Shared contracts: ${contractSummary}`,
+      ]
+        .filter(Boolean)
+        .join("\n");
+    }
+
+    return [
+      `Revise parent artifact ${item.sourceArtifactId} after division.`,
+      `Remove child-owned material for ${childCell.id}.`,
+      "Keep parent responsibilities and express collaboration through explicit contracts.",
+    ].join("\n");
   }
 
   /**

@@ -41,6 +41,13 @@ class FakeProductionService {
   }
 }
 
+function makeParentCell(id = "cell-parent") {
+  return {
+    id,
+    productionService: new FakeProductionService()
+  };
+}
+
 async function runTests() {
   console.log("Testing ArtifactRegenerationService...\n");
 
@@ -75,6 +82,7 @@ async function runTests() {
     if (
       result.produced.length === 0 &&
       result.failed.length === 0 &&
+      result.parentRevisions.length === 0 &&
       result.complete === true
     ) {
       console.log("  ✅ PASS\n");
@@ -94,7 +102,7 @@ async function runTests() {
       sourceMaterialService: new FakeSourceMaterialService()
     });
 
-    const parentCell = { id: "cell-parent" };
+    const parentCell = makeParentCell("cell-parent");
     const childCell = { 
       id: "cell-child",
       productionService: fakeProductionService
@@ -132,7 +140,7 @@ async function runTests() {
       sourceMaterialService: new FakeSourceMaterialService()
     });
 
-    const parentCell = { id: "cell-parent" };
+    const parentCell = makeParentCell("cell-parent");
     const childCell = { 
       id: "cell-child",
       productionService: fakeProductionService
@@ -173,7 +181,7 @@ async function runTests() {
       sourceMaterialService: new FakeSourceMaterialService()
     });
 
-    const parentCell = { id: "cell-parent" };
+    const parentCell = makeParentCell("cell-parent");
     const childCell = { 
       id: "cell-child",
       productionService: fakeProductionService
@@ -211,7 +219,7 @@ async function runTests() {
       sourceMaterialService: new FakeSourceMaterialService()
     });
 
-    const parentCell = { id: "cell-parent-123" };
+    const parentCell = makeParentCell("cell-parent-123");
     const childCell = { 
       id: "cell-child",
       productionService: fakeProductionService
@@ -252,7 +260,7 @@ async function runTests() {
       sourceMaterialService: new FakeSourceMaterialService()
     });
 
-    const parentCell = { id: "cell-parent" };
+    const parentCell = makeParentCell("cell-parent");
     const childCell = { 
       id: "cell-child",
       productionService: fakeProductionService
@@ -298,7 +306,7 @@ async function runTests() {
       sourceMaterialService: new FakeSourceMaterialService()
     });
 
-    const parentCell = { id: "cell-parent" };
+    const parentCell = makeParentCell("cell-parent");
     const childCell = { 
       id: "cell-payment",
       productionService: fakeProductionService
@@ -338,7 +346,7 @@ async function runTests() {
       })
     });
 
-    const parentCell = { id: "cell-parent" };
+    const parentCell = makeParentCell("cell-parent");
     const childCell = { 
       id: "cell-child",
       productionService: fakeProductionService
@@ -366,6 +374,72 @@ async function runTests() {
     }
   }
 
+  // Test 8.5: Planning child preserves source code artifact type
+  {
+    console.log("Test 8.5: Planning child preserves source code artifact type");
+
+    const fakeProductionService = new FakeProductionService();
+    const service = new ArtifactRegenerationService({
+      sourceMaterialService: new FakeSourceMaterialService({
+        artifactsToReturn: [
+          {
+            id: "artifact-rbac",
+            type: "code",
+            title: "RBAC Module",
+            goal: "Implement RBAC"
+          }
+        ]
+      })
+    });
+
+    const parentCell = makeParentCell("cell-parent");
+    const childCell = {
+      id: "cell-child",
+      productionService: fakeProductionService
+    };
+    const divisionPlan = {
+      productionPlan: [
+        {
+          sourceArtifactId: "artifact-rbac",
+          action: "derive",
+          targetCellId: "cell-child",
+          title: "新能力孵化說明",
+          reason: "萃取 bounded context 與 shared contract 草案"
+        }
+      ],
+      childLivingContext: {
+        purpose: "bounded context 探索與契約規劃",
+        responsibilities: [
+          "產出新子領域分化建議與 sharedContracts 草案",
+          "不直接產生業務程式碼"
+        ]
+      },
+      childMemorySeed: {}
+    };
+
+    await service.regenerateForDivision({
+      parentCell,
+      childCell,
+      divisionPlan
+    });
+
+    const call = fakeProductionService.calls[0];
+    if (
+      call.type === "code" &&
+      call.goal.includes("Spring Boot") &&
+      call.goal.includes("Hexagonal Architecture") &&
+      parentCell.productionService.calls.length === 1 &&
+      parentCell.productionService.calls[0].goal.includes("Parent service") &&
+      parentCell.productionService.calls[0].goal.includes("output port")
+    ) {
+      console.log("  ✅ PASS\n");
+      passed++;
+    } else {
+      console.log(`  ❌ FAIL: Expected child code and parent boundary revision, got type=${call.type}, childGoal=${call.goal}, parentCalls=${parentCell.productionService.calls.length}\n`);
+      failed++;
+    }
+  }
+
   // Test 9: Source loading errors become warnings
   {
     console.log("Test 9: Source loading errors become warnings");
@@ -380,7 +454,7 @@ async function runTests() {
       })
     });
 
-    const parentCell = { id: "cell-parent" };
+    const parentCell = makeParentCell("cell-parent");
     const childCell = { 
       id: "cell-child",
       productionService: fakeProductionService
@@ -442,7 +516,7 @@ async function runTests() {
       sourceMaterialService: new FakeSourceMaterialService()
     });
 
-    const parentCell = { id: "cell-parent" };
+    const parentCell = makeParentCell("cell-parent");
     const childCell = { 
       id: "cell-child",
       productionService: failingService
@@ -492,7 +566,7 @@ async function runTests() {
       sourceMaterialService: new FakeSourceMaterialService()
     });
 
-    const parentCell = { id: "cell-parent" };
+    const parentCell = makeParentCell("cell-parent");
     const childCell = { 
       id: "cell-child",
       productionService: new AlwaysFailingService()
@@ -529,7 +603,7 @@ async function runTests() {
       sourceMaterialService: new FakeSourceMaterialService()
     });
 
-    const parentCell = { id: "cell-parent" };
+    const parentCell = makeParentCell("cell-parent");
     const childCell = { 
       id: "cell-child",
       productionService: fakeProductionService

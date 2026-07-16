@@ -19,6 +19,10 @@ class FakeEngine {
     return this.cells.has(childId);
   }
 
+  listCellIds() {
+    return [...this.cells.keys()];
+  }
+
   async createCell(childId) {
     const cell = new FakeCell(childId);
     this.cells.set(childId, cell);
@@ -176,6 +180,19 @@ class FakeLivingContextService {
         thought: "Test thought",
       },
     };
+  }
+}
+
+class FakeLivingContextServiceWithContracts extends FakeLivingContextService {
+  constructor({ requesterCell, sharedContracts }) {
+    super({ requesterCell });
+    this.sharedContracts = sharedContracts;
+  }
+
+  async createDivisionPlan(options) {
+    const plan = await super.createDivisionPlan(options);
+    plan.sharedContracts = this.sharedContracts;
+    return plan;
   }
 }
 
@@ -438,6 +455,86 @@ async function testParentMemoryNotCopied() {
   console.log("✅ Parent memory not copied");
 }
 
+async function testSharedContractExistingCellReference() {
+  console.log("\n=== Test: Shared Contract Existing Cell Reference ===\n");
+
+  const engine = new FakeEngine();
+  const parentCell = new FakeCell("parent-011");
+  engine.cells.set("cell-003", new FakeCell("cell-003"));
+
+  const service = new CellDivisionService({
+    livingContextServiceFactory: (requesterCell) => {
+      return new FakeLivingContextServiceWithContracts({
+        requesterCell,
+        sharedContracts: [
+          {
+            name: "RBAC Boundary Observation",
+            ownerCellId: "cell-003",
+            consumerCellIds: ["child-011", "parent-011"],
+            inputs: ["AuthorizationNeed"],
+            outputs: ["AuthorizationBoundary"],
+            description: "Observe existing RBAC boundary without taking ownership.",
+          },
+        ],
+      });
+    },
+  });
+
+  const result = await service.divide({
+    engine,
+    parentCell,
+    childId: "child-011",
+  });
+
+  console.assert(result.complete === true, "Division should allow existing contract owner");
+
+  console.log("✅ Shared contracts can reference existing cells");
+}
+
+async function testSharedContractUnknownCellReferenceFails() {
+  console.log("\n=== Test: Shared Contract Unknown Cell Reference Fails ===\n");
+
+  const engine = new FakeEngine();
+  const parentCell = new FakeCell("parent-012");
+
+  const service = new CellDivisionService({
+    livingContextServiceFactory: (requesterCell) => {
+      return new FakeLivingContextServiceWithContracts({
+        requesterCell,
+        sharedContracts: [
+          {
+            name: "Unknown Boundary",
+            ownerCellId: "missing-cell",
+            consumerCellIds: ["child-012"],
+            inputs: ["Need"],
+            outputs: ["Boundary"],
+            description: "Invalid reference.",
+          },
+        ],
+      });
+    },
+  });
+
+  let errorCaught = false;
+  try {
+    await service.divide({
+      engine,
+      parentCell,
+      childId: "child-012",
+    });
+  } catch (error) {
+    errorCaught = true;
+    console.assert(
+      error.message.includes("shared contract references unknown cell"),
+      "Error should mention unknown shared contract cell"
+    );
+  }
+
+  console.assert(errorCaught, "Should fail when shared contract references unknown cell");
+
+  console.log("✅ Unknown shared contract references fail during planning");
+}
+
 async function testChildAlreadyExists() {
   console.log("\n=== Test: Child Already Exists ===\n");
 
@@ -585,6 +682,8 @@ async function runAllTests() {
   await testResponsibilities();
   await testRelationships();
   await testParentMemoryNotCopied();
+  await testSharedContractExistingCellReference();
+  await testSharedContractUnknownCellReferenceFails();
 
   console.log("\n╔═══════════════════════════════════════════════════════╗");
   console.log("║   ✅ All Tests Passed                                 ║");

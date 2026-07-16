@@ -30,9 +30,10 @@ export class LivingContextService {
    * @param {Object} options.parentCell - Parent Cell
    * @param {string} options.childId - Child Cell ID
    * @param {Object} options.dnaDivisionPlan - DNA Division Plan
+   * @param {Array} [options.parentArtifacts] - Parent Artifacts
    * @returns {Promise<Object>} Division Transformation Plan
    */
-  async createDivisionPlan({ parentCell, childId, dnaDivisionPlan }) {
+  async createDivisionPlan({ parentCell, childId, dnaDivisionPlan, parentArtifacts = [] }) {
     // 1. 驗證參數
     if (!parentCell) {
       throw new Error("LivingContextService: parentCell is required");
@@ -60,13 +61,30 @@ export class LivingContextService {
       });
     }
 
-    // 3. 建立 Prompt
+    // 3. 整理 Artifact Summaries
+    const sourceArtifacts =
+      parentArtifacts.length > 0
+        ? parentArtifacts
+        : parentSource.artifactCatalog || [];
+
+    const artifactSummaries = sourceArtifacts.map((artifact) => ({
+      artifactId: artifact.artifactId ?? artifact.id,
+      type: artifact.type ?? "unknown",
+      title: artifact.title ?? artifact.name ?? "Untitled Artifact",
+      goal: artifact.goal ?? artifact.purpose ?? artifact.description ?? "",
+      status: artifact.status ?? "unknown",
+      outputPaths: Array.isArray(artifact.outputPaths) ? artifact.outputPaths : [],
+      languages: Array.isArray(artifact.languages) ? artifact.languages : [],
+    }));
+
+    // 4. 建立 Prompt
     let prompt;
     try {
       prompt = buildLivingContextDivisionPrompt({
         parentSource,
         dnaDivisionPlan,
-        childId
+        childId,
+        artifactSummaries
       });
     } catch (error) {
       throw new Error(`LivingContextService: failed to build prompt`, {
@@ -77,7 +95,7 @@ export class LivingContextService {
     // 4. 呼叫 AI (timeout 180秒)
     let rawResponse;
     try {
-      rawResponse = await this.requesterCell.askWithTimeout(prompt, 300000);
+      rawResponse = await this.requesterCell.askWithTimeout(prompt, 180000);
     } catch (error) {
       throw new Error(`LivingContextService: AI division planning failed`, {
         cause: error
@@ -99,6 +117,10 @@ export class LivingContextService {
     parsed.parentCellId = parentCell.id;
     parsed.childCellId = childId;
 
+    // History 由系統產生，不接受 AI 複製 Parent 對話或舊紀錄
+    parsed.childMemorySeed ??= {};
+    parsed.childMemorySeed.history = "";
+
     // 7. 正規化
     let normalized;
     try {
@@ -117,8 +139,8 @@ export class LivingContextService {
       );
     }
 
-    // 9. 驗證 sourceArtifactIds
-    this._validateSourceArtifactIds(normalized, parentSource);
+    // 9. 驗證 sourceArtifactId
+    this._validateSourceArtifactIds(normalized, artifactSummaries);
 
     // 10. 回傳正規化後的 Plan
     return normalized;
@@ -233,26 +255,22 @@ export class LivingContextService {
   }
 
   /**
-   * 驗證 sourceArtifactIds 是否存在於 Parent 的 Artifact Catalog
+   * 驗證 sourceArtifactId 是否存在於 Parent 的 Artifact Catalog
    * @private
    */
-  _validateSourceArtifactIds(plan, parentSource) {
+  _validateSourceArtifactIds(plan, parentArtifacts) {
     const validArtifactIds = new Set(
-      (parentSource.artifactCatalog || []).map(artifact => artifact.artifactId)
+      (parentArtifacts || []).map(artifact => artifact.artifactId).filter(Boolean)
     );
 
     const errors = [];
 
     if (Array.isArray(plan.productionPlan)) {
       plan.productionPlan.forEach((item, index) => {
-        if (Array.isArray(item.sourceArtifactIds)) {
-          item.sourceArtifactIds.forEach(artifactId => {
-            if (!validArtifactIds.has(artifactId)) {
-              errors.push(
-                `productionPlan[${index}].sourceArtifactIds contains unknown artifact: ${artifactId}`
-              );
-            }
-          });
+        if (item.sourceArtifactId && !validArtifactIds.has(item.sourceArtifactId)) {
+          errors.push(
+            `productionPlan[${index}].sourceArtifactId contains unknown artifact: ${item.sourceArtifactId}`
+          );
         }
       });
     }
@@ -262,4 +280,3 @@ export class LivingContextService {
     }
   }
 }
-

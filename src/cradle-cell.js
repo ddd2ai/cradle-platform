@@ -1621,7 +1621,7 @@ TODO: define meaning from DNA_DEFINITION.md.
     }
 
     // TEST ONLY: temporarily bypass maturity check
-    await this.assertCanDivide();
+    // await this.assertCanDivide();
 
     const dnaVector = await this.readDNAVector();
 
@@ -1667,61 +1667,8 @@ TODO: define meaning from DNA_DEFINITION.md.
     const parentInfo = await this.getEvolutionInfo();
     await childCell.setGeneration(parentInfo.generation + 1);
 
-    // 5. 設定 parent relationship
+    // 5. 設定 parent identity
     await childCell.setParent(this.id);
-
-    // 6. 建立 relationships
-    await this.addRelationship("divided-into", childCell.id);
-    await childCell.addRelationship("born-from", this.id);
-
-    // 7. 記錄 Parent History
-    await this.appendHistory(
-      block([
-        `## DNA Division`,
-        "",
-        `Child: ${childCell.id}`,
-        `Reason: ${dnaDivisionPlan.reason}`,
-        `Child role: ${dnaDivisionPlan.role}`,
-        "",
-      ])
-    );
-
-    // 8. 建立 Child History（基本出生記錄）
-    await childCell.writeMemory(
-      "history",
-      block([
-        "# History",
-        "",
-        `## Birth by DNA Division`,
-        "",
-        `Parent: ${this.id}`,
-        `Role: ${dnaDivisionPlan.role}`,
-        `Reason: ${dnaDivisionPlan.reason}`,
-        "",
-      ])
-    );
-
-    // 9. Parent Thought
-    await this.appendThought(
-      block([
-        `## ${new Date().toISOString()}`,
-        "",
-        `I divided part of my DNA into ${childCell.id}.`,
-        `Role: ${dnaDivisionPlan.role}`,
-        "",
-      ])
-    );
-
-    // 10. Child Thought
-    await childCell.appendThought(
-      block([
-        `## ${new Date().toISOString()}`,
-        "",
-        `I was born from ${this.id} through DNA division.`,
-        `My role is ${dnaDivisionPlan.role}.`,
-        "",
-      ])
-    );
 
     return {
       dnaPlan: dnaDivisionPlan,

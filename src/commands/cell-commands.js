@@ -1013,16 +1013,26 @@ DNA drift    : ${result.dnaDrift.length}
         
         // Production 狀態
         if (productionResult) {
-          const planned = productionResult.produced.length + productionResult.failed.length;
+          const parentRevisions = productionResult.parentRevisions || [];
+          const planned = productionResult.produced.length + parentRevisions.length + productionResult.failed.length;
           console.log(`Production`);
           console.log(`Planned       : ${planned}`);
-          console.log(`Produced      : ${productionResult.produced.length}`);
+          console.log(`Child Produced: ${productionResult.produced.length}`);
+          console.log(`Parent Revised: ${parentRevisions.length}`);
           console.log(`Failed        : ${productionResult.failed.length}`);
           console.log(``);
 
           if (productionResult.produced.length > 0) {
-            console.log(`Artifacts`);
+            console.log(`Child Artifacts`);
             productionResult.produced.forEach(item => {
+              console.log(`- ${item.artifactId.substring(0, 20)}... ${item.title}`);
+            });
+            console.log(``);
+          }
+
+          if (parentRevisions.length > 0) {
+            console.log(`Parent Revised Artifacts`);
+            parentRevisions.forEach(item => {
               console.log(`- ${item.artifactId.substring(0, 20)}... ${item.title}`);
             });
             console.log(``);

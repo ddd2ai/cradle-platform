@@ -56,6 +56,14 @@ export class ArtifactExecutionService {
         throw new Error(`Artifact not found: ${artifactId}`);
       }
 
+      if (this.isNonExecutableArtifact(artifact)) {
+        return ExecutionResult.createSkipped({
+          artifactId,
+          reason: `Artifact type "${artifact.type}" is not executable.`,
+          executionId: `execution-${Date.now()}`,
+        });
+      }
+
       // 根據 artifact type 或 language 選擇 executor
       const executor = this.selectExecutor(artifact);
 
@@ -104,5 +112,30 @@ export class ArtifactExecutionService {
     // 可以增加更多 executor 的判斷邏輯，例如 PythonExecutor、NodeExecutor 等
 
     return null;
+  }
+
+  isNonExecutableArtifact(artifact) {
+    const nonExecutableTypes = new Set([
+      "document",
+      "diagram",
+      "prompt",
+      "decision",
+      "research",
+      "spec",
+      "task",
+    ]);
+
+    if (nonExecutableTypes.has(artifact.type)) {
+      return true;
+    }
+
+    const outputs = artifact.outputs ?? [];
+    const fileOutputs = outputs.filter((output) => output.kind === "file");
+
+    return (
+      artifact.type === "code" &&
+      fileOutputs.length > 0 &&
+      fileOutputs.every((output) => output.language === "markdown")
+    );
   }
 }

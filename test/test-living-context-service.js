@@ -153,12 +153,11 @@ class FakeRequesterCell {
       },
       productionPlan: [
         {
-          type: "code",
+          sourceArtifactId: "artifact-payment",
+          action: "derive",
+          targetCellId: "cell-payment",
           title: "Payment Service",
-          goal: "Generate an independent payment service.",
-          constraints: [],
-          sourceArtifactIds: ["artifact-payment"],
-          sourceUsage: "reference"
+          reason: "Generate an independent payment service."
         }
       ],
       sharedContracts: [],
@@ -384,12 +383,11 @@ await test('Non-existent sourceArtifactId causes failure', async () => {
     },
     productionPlan: [
       {
-        type: "code",
+        sourceArtifactId: "non-existent-artifact",
+        action: "derive",
+        targetCellId: "cell-payment",
         title: "Service",
-        goal: "Create service",
-        constraints: [],
-        sourceArtifactIds: ["non-existent-artifact"],
-        sourceUsage: "reference"
+        reason: "Create service"
       }
     ]
   }));
