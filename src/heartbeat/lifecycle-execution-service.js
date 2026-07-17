@@ -1,9 +1,11 @@
 import { CellDivisionService } from "../lifecycle/cell-division-service.js";
 import { CellFusionService } from "../lifecycle/cell-fusion-service.js";
+import { ThreatStore } from "./threat-store.js";
 
 export class LifecycleExecutionService {
   constructor({
     engine,
+    threatStore = new ThreatStore(),
     divisionService = new CellDivisionService(),
     fusionService = new CellFusionService(),
   } = {}) {
@@ -12,6 +14,7 @@ export class LifecycleExecutionService {
     }
 
     this.engine = engine;
+    this.threatStore = threatStore;
     this.divisionService = divisionService;
     this.fusionService = fusionService;
   }
@@ -58,6 +61,35 @@ export class LifecycleExecutionService {
           artifactId: proposal.artifactId,
           maxRounds: proposal.maxRounds ?? 3,
         });
+
+        const finalStatus =
+          result?.finalExecution?.status ??
+          result?.executionResult?.status ??
+          result?.status ??
+          null;
+        const stable =
+          result?.stable === true ||
+          finalStatus === "passed";
+
+        if (!stable) {
+          return {
+            status: "failed",
+            action: "repair",
+            repairType: "artifact",
+            startedAt,
+            completedAt: new Date().toISOString(),
+            reason: "artifact repair did not reach stable state",
+            result,
+          };
+        }
+
+        if (proposal.threatId) {
+          await this.threatStore.resolve({
+            threatId: proposal.threatId,
+            resolution: "stabilized",
+            proposalId: proposal.proposalId,
+          });
+        }
 
         return {
           status: "completed",

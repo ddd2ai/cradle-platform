@@ -7,6 +7,7 @@ import { LifecycleProposalStore } from "../src/heartbeat/lifecycle-proposal-stor
 import { HeartbeatLifecyclePolicy } from "../src/heartbeat/lifecycle-policy-service.js";
 import { CradleSnapshotService } from "../src/heartbeat/cradle-snapshot-service.js";
 import { ThreatStore } from "../src/heartbeat/threat-store.js";
+import { LifecycleExecutionService } from "../src/heartbeat/lifecycle-execution-service.js";
 import { ArtifactExecutionService } from "../src/execution/artifact-execution-service.js";
 import { ExecutionResult } from "../src/execution/execution-result.js";
 import { decideCellLifecycle } from "../src/dna/dna-lifecycle.js";
@@ -110,6 +111,14 @@ class FakeCell {
 
   async writeLivingContext() {
     this.directMutations++;
+  }
+
+  async stabilizeArtifact() {
+    return {
+      stable: true,
+      artifactId: "artifact-001",
+      history: [],
+    };
   }
 }
 
@@ -611,6 +620,91 @@ try {
     assert(cellASnapshot.threatCount === 1);
     assert(cellASnapshot.recentFailures[0].artifactId === "artifact-001");
     assert(cellBSnapshot.threatCount === 0);
+  });
+
+  await test("artifact repair resolves threat after stable stabilization", async () => {
+    const threatStore = new ThreatStore({
+      dir: path.join(tmp, "resolve-threats", "threats"),
+    });
+    const threat = await threatStore.saveExecutionFailure({
+      cellId: "cell-001",
+      artifactId: "artifact-001",
+      executionResult: ExecutionResult.createCompileFailed({
+        artifactId: "artifact-001",
+        command: "javac Main.java",
+        stderr: "compile failed",
+        executionId: "execution-001",
+      }),
+    });
+    const cell = new FakeCell("cell-001");
+    const service = new LifecycleExecutionService({
+      engine: new FakeEngine([cell]),
+      threatStore,
+    });
+
+    const result = await service.execute({
+      proposalId: "proposal-001",
+      sourceCellId: "cell-001",
+      action: "repair",
+      repairType: "artifact",
+      artifactId: "artifact-001",
+      threatId: threat.threatId,
+    });
+    const unresolved = await threatStore.listUnresolvedForCell("cell-001");
+    const resolved = await threatStore.findLatestForArtifact({
+      cellId: "cell-001",
+      artifactId: "artifact-001",
+    });
+    const all = await threatStore._readAll();
+    const saved = all.find((item) => item.threatId === threat.threatId);
+
+    assert(result.status === "completed");
+    assert(unresolved.length === 0);
+    assert(resolved === null);
+    assert(saved.resolution === "stabilized");
+    assert(saved.proposalId === "proposal-001");
+  });
+
+  await test("artifact repair does not resolve threat when stabilization is not stable", async () => {
+    const threatStore = new ThreatStore({
+      dir: path.join(tmp, "unresolved-threats", "threats"),
+    });
+    const threat = await threatStore.saveExecutionFailure({
+      cellId: "cell-001",
+      artifactId: "artifact-001",
+      executionResult: ExecutionResult.createCompileFailed({
+        artifactId: "artifact-001",
+        command: "javac Main.java",
+        stderr: "compile failed",
+        executionId: "execution-001",
+      }),
+    });
+    const cell = new FakeCell("cell-001");
+    cell.stabilizeArtifact = async () => ({
+      stable: false,
+      artifactId: "artifact-001",
+      reason: "max rounds reached",
+      history: [],
+    });
+    const service = new LifecycleExecutionService({
+      engine: new FakeEngine([cell]),
+      threatStore,
+    });
+
+    const result = await service.execute({
+      proposalId: "proposal-001",
+      sourceCellId: "cell-001",
+      action: "repair",
+      repairType: "artifact",
+      artifactId: "artifact-001",
+      threatId: threat.threatId,
+    });
+    const unresolved = await threatStore.listUnresolvedForCell("cell-001");
+
+    assert(result.status === "failed");
+    assert(result.reason === "artifact repair did not reach stable state");
+    assert(unresolved.length === 1);
+    assert(unresolved[0].threatId === threat.threatId);
   });
 
   await test("cell observation is called by heartbeat", async () => {

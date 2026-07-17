@@ -91,7 +91,12 @@ export class ThreatStore {
       )[0] ?? null;
   }
 
-  async resolve({ threatId, resolution, resolvedAt = new Date().toISOString() } = {}) {
+  async resolve({
+    threatId,
+    resolution,
+    proposalId = null,
+    resolvedAt = new Date().toISOString(),
+  } = {}) {
     if (!threatId) {
       throw new Error("ThreatStore.resolve requires threatId");
     }
@@ -103,6 +108,7 @@ export class ThreatStore {
       ...threat,
       resolvedAt,
       resolution,
+      proposalId,
     };
 
     await fs.writeFile(
