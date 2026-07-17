@@ -65,6 +65,9 @@ export class HeartbeatService {
       records.push(record);
     }
 
+    const blocked = records.filter(
+      (record) => !record.policyDecision.allowed
+    );
     const selected = this.selectProposal(records);
     const saved = [];
 
@@ -81,6 +84,7 @@ export class HeartbeatService {
         mode,
         snapshot,
         observations,
+        blocked,
         saved,
       };
     }
@@ -95,6 +99,7 @@ export class HeartbeatService {
       snapshot,
       observations,
       selected: handled.record,
+      blocked,
       saved,
     };
   }

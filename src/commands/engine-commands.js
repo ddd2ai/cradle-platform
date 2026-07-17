@@ -374,6 +374,14 @@ function renderHeartbeatResult(result) {
   console.log(`Heartbeat Mode: ${result.mode}`);
   console.log("");
 
+  if (result.action === "stay" && result.blocked?.length > 0) {
+    console.log("No executable proposal.");
+    console.log("");
+    renderBlockedProposals(result.blocked);
+    console.log("");
+    return;
+  }
+
   if (!result.selected) {
     console.log("Heartbeat completed.");
     console.log(`Action: ${result.action}`);
@@ -508,4 +516,24 @@ function renderProposalRepairFields(proposal) {
 
   console.log(`Artifact    : ${proposal.artifactId ?? "-"}`);
   console.log(`Threat      : ${proposal.threatId ?? "-"}`);
+}
+
+function renderBlockedProposals(blocked = []) {
+  console.log("Blocked:");
+
+  for (const record of blocked) {
+    const proposal = record.proposal ?? {};
+    const policy = record.policyDecision ?? {};
+    const action = String(proposal.action ?? "-").toUpperCase();
+    const repairType =
+      proposal.action === "repair"
+        ? ` / ${String(proposal.repairType ?? "unknown").toUpperCase()}`
+        : "";
+
+    console.log(`- ${proposal.sourceCellId ?? "-"} ${action}${repairType}`);
+
+    if (policy.reasons?.length > 0) {
+      console.log(`  ${policy.reasons.join("; ")}`);
+    }
+  }
 }

@@ -319,6 +319,8 @@ try {
     assert(approvalCalls === 0);
     assert(result.action === "stay");
     assert(!result.selected);
+    assert(result.blocked.length === 1);
+    assert(result.blocked[0].proposal.action === "divide");
     assert(result.saved.some((item) => item.record.proposal.status === "blocked"));
   });
 
