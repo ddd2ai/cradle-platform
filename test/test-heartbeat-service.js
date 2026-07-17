@@ -624,11 +624,11 @@ try {
     assert(cellBSnapshot.threatCount === 0);
   });
 
-  await test("artifact repair resolves threat after stable stabilization", async () => {
+  await test("artifact repair resolves unresolved threats for stable artifact", async () => {
     const threatStore = new ThreatStore({
       dir: path.join(tmp, "resolve-threats", "threats"),
     });
-    const threat = await threatStore.saveExecutionFailure({
+    const olderThreat = await threatStore.saveExecutionFailure({
       cellId: "cell-001",
       artifactId: "artifact-001",
       executionResult: ExecutionResult.createCompileFailed({
@@ -636,6 +636,16 @@ try {
         command: "javac Main.java",
         stderr: "compile failed",
         executionId: "execution-001",
+      }),
+    });
+    const latestThreat = await threatStore.saveExecutionFailure({
+      cellId: "cell-001",
+      artifactId: "artifact-001",
+      executionResult: ExecutionResult.createCompileFailed({
+        artifactId: "artifact-001",
+        command: "javac Main.java",
+        stderr: "compile failed again",
+        executionId: "execution-002",
       }),
     });
     const cell = new FakeCell("cell-001");
@@ -650,7 +660,7 @@ try {
       action: "repair",
       repairType: "artifact",
       artifactId: "artifact-001",
-      threatId: threat.threatId,
+      threatId: latestThreat.threatId,
     });
     const unresolved = await threatStore.listUnresolvedForCell("cell-001");
     const resolved = await threatStore.findLatestForArtifact({
@@ -658,13 +668,17 @@ try {
       artifactId: "artifact-001",
     });
     const all = await threatStore._readAll();
-    const saved = all.find((item) => item.threatId === threat.threatId);
+    const savedOlder = all.find((item) => item.threatId === olderThreat.threatId);
+    const savedLatest = all.find((item) => item.threatId === latestThreat.threatId);
 
     assert(result.status === "completed");
+    assert(result.resolvedThreats.length === 2);
     assert(unresolved.length === 0);
     assert(resolved === null);
-    assert(saved.resolution === "stabilized");
-    assert(saved.proposalId === "proposal-001");
+    assert(savedOlder.resolution === "stabilized");
+    assert(savedOlder.proposalId === "proposal-001");
+    assert(savedLatest.resolution === "stabilized");
+    assert(savedLatest.proposalId === "proposal-001");
   });
 
   await test("artifact repair does not resolve threat when stabilization is not stable", async () => {

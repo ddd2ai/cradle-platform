@@ -83,7 +83,7 @@ function renderTagline() {
   term.gray("  |  ");
   term.brightGreen("DNA Driven Design");
   term.gray("  |  ");
-  term.brightBlue("version: v1.0");
+  term.brightBlue("version: v1.0.0");
   term("\n\n");
 }
 

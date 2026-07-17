@@ -120,6 +120,40 @@ export class ThreatStore {
     return resolved;
   }
 
+  async resolveForArtifact({
+    cellId = null,
+    artifactId,
+    resolution,
+    proposalId = null,
+    resolvedAt = new Date().toISOString(),
+  } = {}) {
+    if (!artifactId) {
+      throw new Error("ThreatStore.resolveForArtifact requires artifactId");
+    }
+
+    const threats = await this._readAll();
+    const matching = threats.filter(
+      (threat) =>
+        threat.artifactId === artifactId &&
+        (!cellId || threat.cellId === cellId) &&
+        !threat.resolvedAt
+    );
+
+    const resolved = [];
+    for (const threat of matching) {
+      resolved.push(
+        await this.resolve({
+          threatId: threat.threatId,
+          resolution,
+          proposalId,
+          resolvedAt,
+        })
+      );
+    }
+
+    return resolved;
+  }
+
   async _readAll() {
     try {
       const entries = await fs.readdir(this.dir, { withFileTypes: true });

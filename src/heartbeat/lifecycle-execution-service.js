@@ -62,14 +62,11 @@ export class LifecycleExecutionService {
           maxRounds: proposal.maxRounds ?? 3,
         });
 
-        const finalStatus =
-          result?.finalExecution?.status ??
-          result?.executionResult?.status ??
-          result?.status ??
-          null;
         const stable =
           result?.stable === true ||
-          finalStatus === "passed";
+          result?.status === "stable" ||
+          result?.artifactState?.status === "stable" ||
+          result?.finalState?.status === "stable";
 
         if (!stable) {
           return {
@@ -83,12 +80,35 @@ export class LifecycleExecutionService {
           };
         }
 
-        if (proposal.threatId) {
-          await this.threatStore.resolve({
-            threatId: proposal.threatId,
-            resolution: "stabilized",
-            proposalId: proposal.proposalId,
-          });
+        const resolvedThreats = await this.threatStore.resolveForArtifact({
+          cellId: proposal.sourceCellId,
+          artifactId: proposal.artifactId,
+          resolution: "stabilized",
+          proposalId: proposal.proposalId,
+        });
+
+        if (proposal.threatId && resolvedThreats.length === 0) {
+          resolvedThreats.push(
+            await this.threatStore.resolve({
+              threatId: proposal.threatId,
+              resolution: "stabilized",
+              proposalId: proposal.proposalId,
+            })
+          );
+        }
+
+        const proposalThreatResolved = resolvedThreats.some(
+          (threat) => threat.threatId === proposal.threatId
+        );
+
+        if (proposal.threatId && !proposalThreatResolved) {
+          resolvedThreats.push(
+            await this.threatStore.resolve({
+              threatId: proposal.threatId,
+              resolution: "stabilized",
+              proposalId: proposal.proposalId,
+            })
+          );
         }
 
         return {
@@ -98,6 +118,7 @@ export class LifecycleExecutionService {
           startedAt,
           completedAt: new Date().toISOString(),
           result,
+          resolvedThreats,
         };
       }
 
