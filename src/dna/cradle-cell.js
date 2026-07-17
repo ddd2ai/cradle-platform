@@ -42,10 +42,30 @@ import {
   normalizeLivingContext,
 } from "./living-context/living-context-schema.js";
 
-function resolveProposalRepairType(decision) {
+function findProposalArtifactFailure(observation) {
+  const recentFailure =
+    observation?.self?.recentFailures?.find?.((item) => item?.artifactId);
+
+  if (recentFailure) {
+    return recentFailure;
+  }
+
+  for (const finding of observation?.findings ?? []) {
+    const failure =
+      finding?.evidence?.find?.((item) => item?.artifactId);
+
+    if (failure) {
+      return failure;
+    }
+  }
+
+  return null;
+}
+
+function resolveProposalRepairType(decision, artifactFailure = null) {
   const detail = decision?.detail ?? {};
 
-  if (Number(detail.recentFailureRate ?? 0) > 0.30) {
+  if (artifactFailure?.artifactId) {
     return "artifact";
   }
 
@@ -1558,13 +1578,17 @@ TODO: define meaning from DNA_DEFINITION.md.
   async proposeLifecycle({ observation, snapshot } = {}) {
     const decision = observation?.lifecycleDecision;
     const action = decision?.action ?? "stay";
+    const artifactFailure =
+      action === "repair"
+        ? findProposalArtifactFailure(observation)
+        : null;
     const repairType =
       action === "repair"
-        ? resolveProposalRepairType(decision)
+        ? resolveProposalRepairType(decision, artifactFailure)
         : null;
     const artifactId =
       action === "repair" && repairType === "artifact"
-        ? decision?.detail?.artifactId ?? null
+        ? artifactFailure?.artifactId ?? null
         : null;
     const createdAt = new Date().toISOString();
     const nextCellNumber =

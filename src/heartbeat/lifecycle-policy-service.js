@@ -37,7 +37,7 @@ export class HeartbeatLifecyclePolicy {
       } else if (proposal.repairType === "environment") {
         reasons.push("environment repair strategy is not implemented");
       } else {
-        reasons.push(`unknown repair type: ${proposal.repairType}`);
+        reasons.push("repair target is unresolved");
       }
 
       return this._decision({
