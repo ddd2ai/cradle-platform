@@ -42,30 +42,10 @@ import {
   normalizeLivingContext,
 } from "./living-context/living-context-schema.js";
 
-function findProposalArtifactFailure(observation) {
-  const recentFailure =
-    observation?.self?.recentFailures?.find?.((item) => item?.artifactId);
-
-  if (recentFailure) {
-    return recentFailure;
-  }
-
-  for (const finding of observation?.findings ?? []) {
-    const failure =
-      finding?.evidence?.find?.((item) => item?.artifactId);
-
-    if (failure) {
-      return failure;
-    }
-  }
-
-  return null;
-}
-
-function resolveProposalRepairType(decision, artifactFailure = null) {
+function resolveRepairType(decision) {
   const detail = decision?.detail ?? {};
 
-  if (artifactFailure?.artifactId) {
+  if (Number(detail.recentFailureRate ?? 0) > 0.30) {
     return "artifact";
   }
 
@@ -1576,20 +1556,13 @@ TODO: define meaning from DNA_DEFINITION.md.
   }
 
   async proposeLifecycle({ observation, snapshot } = {}) {
-    const decision = observation?.lifecycleDecision;
+    const decision = observation?.lifecycleDecision ?? {};
     const action = decision?.action ?? "stay";
-    const artifactFailure =
-      action === "repair"
-        ? findProposalArtifactFailure(observation)
-        : null;
     const repairType =
       action === "repair"
-        ? resolveProposalRepairType(decision, artifactFailure)
+        ? resolveRepairType(decision)
         : null;
-    const artifactId =
-      action === "repair" && repairType === "artifact"
-        ? artifactFailure?.artifactId ?? null
-        : null;
+    const artifactId = null;
     const createdAt = new Date().toISOString();
     const nextCellNumber =
       Math.max(
