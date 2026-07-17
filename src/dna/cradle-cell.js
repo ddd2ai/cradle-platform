@@ -45,10 +45,6 @@ import {
 function resolveRepairType(decision) {
   const detail = decision?.detail ?? {};
 
-  if (Number(detail.recentFailureRate ?? 0) > 0.30) {
-    return "artifact";
-  }
-
   if (Number(detail.temporalVariance ?? 0) > 0.20) {
     return "dna";
   }
@@ -1513,9 +1509,16 @@ TODO: define meaning from DNA_DEFINITION.md.
     const observedAt = new Date().toISOString();
     const selfSnapshot =
       snapshot?.cells?.find((cell) => cell.cellId === this.id) ?? {};
+    const artifactThreats =
+      (selfSnapshot?.recentFailures ?? [])
+        .filter(
+          (threat) =>
+            threat.type === "artifact-execution-failure" &&
+            threat.artifactId
+        );
     const maturity = await this.getMaturityInfo().catch(() => null);
     const lifecycle = await this.getLifecycleDecision({
-      recentFailureRate: selfSnapshot.threatCount > 0 ? 1 : 0,
+      recentFailureRate: artifactThreats.length > 0 ? 1 : 0,
       hasComplementaryCell: false,
     }).catch(() => ({ action: "stay", confidence: "low", reason: "lifecycle decision unavailable" }));
 
@@ -1558,11 +1561,24 @@ TODO: define meaning from DNA_DEFINITION.md.
   async proposeLifecycle({ observation, snapshot } = {}) {
     const decision = observation?.lifecycleDecision ?? {};
     const action = decision?.action ?? "stay";
-    const repairType =
-      action === "repair"
-        ? resolveRepairType(decision)
-        : null;
-    const artifactId = null;
+    const latestArtifactThreat =
+      observation?.self?.recentFailures
+        ?.find(
+          (threat) =>
+            threat.type === "artifact-execution-failure" &&
+            threat.artifactId
+        ) ?? null;
+    let repairType = null;
+    let artifactId = null;
+
+    if (action === "repair") {
+      if (latestArtifactThreat) {
+        repairType = "artifact";
+        artifactId = latestArtifactThreat.artifactId;
+      } else {
+        repairType = resolveRepairType(decision);
+      }
+    }
     const createdAt = new Date().toISOString();
     const nextCellNumber =
       Math.max(
@@ -1591,6 +1607,12 @@ TODO: define meaning from DNA_DEFINITION.md.
           type: "maturity",
           value: observation?.self?.maturity ?? null,
         },
+        ...(latestArtifactThreat
+          ? [{
+              type: "artifact-execution-failure",
+              value: latestArtifactThreat,
+            }]
+          : []),
       ],
       confidence: this._normalizeLifecycleConfidence(decision?.confidence),
       status: "pending",
@@ -2796,16 +2818,22 @@ ${memoryContext}
 
   async executeArtifact(artifactId) {
     const { ArtifactExecutionService } = await import(
-      "./execution/artifact-execution-service.js"
+      "../execution/artifact-execution-service.js"
+    );
+
+    const { ThreatStore } = await import(
+      "../heartbeat/threat-store.js"
     );
 
     const { buildExecutionStimulus } = await import(
-      "./situation/execution-stimulus.js"
+      "../situation/execution-stimulus.js"
     );
 
     const executionService = new ArtifactExecutionService({
+      cellId: this.id,
       productionsDir: this.productionsDir,
       executionsDir: path.join(this.workspaceDir, "executions"),
+      threatStore: new ThreatStore(),
     });
 
     const result = await executionService.executeArtifact(artifactId);

@@ -6,6 +6,9 @@ import { HeartbeatMode, HeartbeatModeStore } from "../src/heartbeat/heartbeat-mo
 import { LifecycleProposalStore } from "../src/heartbeat/lifecycle-proposal-store.js";
 import { HeartbeatLifecyclePolicy } from "../src/heartbeat/lifecycle-policy-service.js";
 import { CradleSnapshotService } from "../src/heartbeat/cradle-snapshot-service.js";
+import { ThreatStore } from "../src/heartbeat/threat-store.js";
+import { ArtifactExecutionService } from "../src/execution/artifact-execution-service.js";
+import { ExecutionResult } from "../src/execution/execution-result.js";
 
 console.log("=== Heartbeat Service Tests ===\n");
 
@@ -46,6 +49,7 @@ class FakeCell {
       status: "pending",
     };
     this.observeCalls = 0;
+    this.lifecycleDecisionCalls = 0;
     this.directMutations = 0;
     this.artifactStore = {
       async listArtifactSummaries() {
@@ -67,6 +71,7 @@ class FakeCell {
   }
 
   async getLifecycleDecision() {
+    this.lifecycleDecisionCalls++;
     return { action: this.proposal.action, confidence: "high", reason: this.proposal.reason };
   }
 
@@ -427,6 +432,109 @@ try {
 
     assert(snapshot.cells.length === 2);
     assert(engine.getCell("cell-001").id === "cell-001");
+  });
+
+  await test("threat store saves and lists unresolved execution failures by cell", async () => {
+    const threatStore = new ThreatStore({
+      dir: path.join(tmp, "threat-store", "threats"),
+    });
+    const threat = await threatStore.saveExecutionFailure({
+      cellId: "cell-003",
+      artifactId: "artifact-001",
+      executionResult: ExecutionResult.createCompileFailed({
+        artifactId: "artifact-001",
+        command: "javac Main.java",
+        stderr: "compile failed",
+        executionId: "execution-001",
+      }),
+    });
+
+    const cellThreats = await threatStore.listUnresolvedForCell("cell-003");
+    const otherThreats = await threatStore.listUnresolvedForCell("cell-004");
+
+    assert(threat.type === "artifact-execution-failure");
+    assert(threat.cellId === "cell-003");
+    assert(threat.artifactId === "artifact-001");
+    assert(threat.executionId === "execution-001");
+    assert(cellThreats.length === 1);
+    assert(otherThreats.length === 0);
+  });
+
+  await test("artifact execution failure creates structured threat", async () => {
+    const threatStore = new ThreatStore({
+      dir: path.join(tmp, "execution-threats", "threats"),
+    });
+    const service = new ArtifactExecutionService({
+      cellId: "cell-003",
+      productionsDir: path.join(tmp, "productions"),
+      executionsDir: path.join(tmp, "executions"),
+      threatStore,
+    });
+
+    service.artifactStore = {
+      async readArtifact() {
+        return {
+          id: "artifact-001",
+          type: "executable-java",
+          outputs: [],
+        };
+      },
+    };
+    service.selectExecutor = () => ({
+      async execute({ artifact }) {
+        return ExecutionResult.createCompileFailed({
+          artifactId: artifact.id,
+          command: "javac Main.java",
+          stderr: "compile failed",
+          executionId: "execution-001",
+        });
+      },
+    });
+
+    const result = await service.executeArtifact("artifact-001");
+    const threats = await threatStore.listUnresolvedForCell("cell-003");
+
+    assert(result.status === "compile_failed");
+    assert(threats.length === 1);
+    assert(threats[0].cellId === "cell-003");
+    assert(threats[0].artifactId === "artifact-001");
+    assert(threats[0].executionId === "execution-001");
+    assert(threats[0].status === "compile_failed");
+  });
+
+  await test("snapshot reads unresolved threats without lifecycle decisions", async () => {
+    const threatStore = new ThreatStore({
+      dir: path.join(tmp, "snapshot-threats", "threats"),
+    });
+    await threatStore.saveExecutionFailure({
+      cellId: "cell-001",
+      artifactId: "artifact-001",
+      executionResult: ExecutionResult.createRuntimeFailed({
+        artifactId: "artifact-001",
+        command: "java Main",
+        stdout: "",
+        stderr: "runtime failed",
+        exitCode: 1,
+        executionId: "execution-001",
+      }),
+    });
+
+    const cellA = new FakeCell("cell-001");
+    const cellB = new FakeCell("cell-002");
+    const snapshot = await new CradleSnapshotService({
+      engine: new FakeEngine([cellA, cellB]),
+      situationDir: path.join(tmp, "snapshot-threats"),
+      threatStore,
+    }).create();
+
+    const cellASnapshot = snapshot.cells.find((cell) => cell.cellId === "cell-001");
+    const cellBSnapshot = snapshot.cells.find((cell) => cell.cellId === "cell-002");
+
+    assert(cellA.lifecycleDecisionCalls === 0);
+    assert(cellB.lifecycleDecisionCalls === 0);
+    assert(cellASnapshot.threatCount === 1);
+    assert(cellASnapshot.recentFailures[0].artifactId === "artifact-001");
+    assert(cellBSnapshot.threatCount === 0);
   });
 
   await test("cell observation is called by heartbeat", async () => {

@@ -2,6 +2,13 @@ import { JavaExecutor } from "./java-executor.js";
 import { MavenExecutor } from "./maven-executor.js";
 import { ArtifactStore } from "../production/artifact-store.js";
 import { ExecutionResult } from "./execution-result.js";
+import { ThreatStore } from "../heartbeat/threat-store.js";
+
+const FAILURE_STATUSES = new Set([
+  "compile_failed",
+  "runtime_failed",
+  "error",
+]);
 
 /**
  * ArtifactExecutionService
@@ -15,7 +22,12 @@ import { ExecutionResult } from "./execution-result.js";
  * 4. 儲存 execution-result.json
  */
 export class ArtifactExecutionService {
-  constructor({ productionsDir, executionsDir }) {
+  constructor({
+    cellId = null,
+    productionsDir,
+    executionsDir,
+    threatStore = new ThreatStore(),
+  }) {
     if (!productionsDir) {
       throw new Error("ArtifactExecutionService requires productionsDir");
     }
@@ -24,8 +36,10 @@ export class ArtifactExecutionService {
       throw new Error("ArtifactExecutionService requires executionsDir");
     }
 
+    this.cellId = cellId;
     this.productionsDir = productionsDir;
     this.executionsDir = executionsDir;
+    this.threatStore = threatStore;
 
     this.artifactStore = new ArtifactStore({
       productionsDir: this.productionsDir,
@@ -74,14 +88,44 @@ export class ArtifactExecutionService {
       }
 
       // 執行
-      return await executor.execute({ artifact });
+      const result = await executor.execute({ artifact });
+
+      await this.writeFailureThreatIfNeeded({
+        artifact,
+        result,
+      });
+
+      return result;
     } catch (error) {
-      return ExecutionResult.createError({
+      const result = ExecutionResult.createError({
         artifactId,
         error,
         executionId: `execution-${Date.now()}`,
       });
+
+      await this.writeFailureThreatIfNeeded({
+        artifact: { id: artifactId },
+        result,
+      });
+
+      return result;
     }
+  }
+
+  async writeFailureThreatIfNeeded({ artifact, result }) {
+    if (!FAILURE_STATUSES.has(result?.status)) {
+      return null;
+    }
+
+    if (!this.cellId || !this.threatStore) {
+      return null;
+    }
+
+    return await this.threatStore.saveExecutionFailure({
+      cellId: this.cellId,
+      artifactId: artifact.id,
+      executionResult: result,
+    });
   }
 
   /**

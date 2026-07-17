@@ -1,14 +1,22 @@
 import fs from "fs/promises";
 import path from "path";
+import { ThreatStore } from "./threat-store.js";
 
 export class CradleSnapshotService {
-  constructor({ engine, situationDir = "situation" } = {}) {
+  constructor({
+    engine,
+    situationDir = "situation",
+    threatStore = new ThreatStore({
+      dir: path.join(situationDir, "stimuli", "threats"),
+    }),
+  } = {}) {
     if (!engine) {
       throw new Error("CradleSnapshotService requires engine");
     }
 
     this.engine = engine;
     this.situationDir = situationDir;
+    this.threatStore = threatStore;
   }
 
   async create() {
@@ -31,12 +39,12 @@ export class CradleSnapshotService {
     const profile = await cell.readCellProfile().catch(() => null);
     const livingContext = await cell.readLivingContext().catch(() => null);
     const maturity = await cell.getMaturityInfo().catch(() => null);
-    const lifecycle = await cell.getLifecycleDecision().catch(() => null);
     const dnaVector = await cell.readDNAVector().catch(() => ({}));
     const relationships = await cell.listRelationships().catch(() => []);
     const tasks = await cell.readTasks().catch(() => []);
     const artifactSummary = await cell.artifactStore?.listArtifactSummaries?.().catch(() => ({ artifacts: [] }));
-    const recentFailures = await this._recentFailuresFor(cell.id);
+    const recentFailures =
+      await this.threatStore.listUnresolvedForCell(cell.id);
 
     return {
       cellId: cell.id,
@@ -44,7 +52,7 @@ export class CradleSnapshotService {
       responsibilities: livingContext?.responsibilities ?? profile?.responsibilities ?? [],
       owns: livingContext?.owns ?? [],
       maturity,
-      lifecycleState: lifecycle?.action ?? maturity?.state ?? null,
+      maturityState: maturity?.state ?? null,
       dnaSummary: this._summarizeDNA(dnaVector),
       relationships,
       artifactCount: artifactSummary?.artifacts?.length ?? 0,
@@ -83,24 +91,32 @@ export class CradleSnapshotService {
   async _readStimulusCategory(dir) {
     try {
       const entries = await fs.readdir(dir, { withFileTypes: true });
-      return entries
-        .filter((entry) => entry.isFile())
-        .slice(-10)
-        .map((entry) => ({
-          file: entry.name,
-        }));
+      const items = [];
+
+      for (const entry of entries) {
+        if (!entry.isFile()) {
+          continue;
+        }
+
+        const filePath = path.join(dir, entry.name);
+
+        try {
+          const raw = await fs.readFile(filePath, "utf8");
+          const data = JSON.parse(raw);
+          items.push({
+            file: entry.name,
+            ...data,
+          });
+        } catch {
+          items.push({
+            file: entry.name,
+          });
+        }
+      }
+
+      return items.slice(-10);
     } catch {
       return [];
     }
-  }
-
-  async _recentFailuresFor(cellId) {
-    const threats = await this._readStimulusCategory(
-      path.join(this.situationDir, "stimuli", "threats")
-    );
-
-    return threats
-      .filter((item) => item.file.includes(cellId) || !item.file.includes("cell-"))
-      .slice(-5);
   }
 }
