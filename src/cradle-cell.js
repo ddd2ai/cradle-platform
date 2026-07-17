@@ -42,6 +42,16 @@ import {
   normalizeLivingContext,
 } from "./living-context/living-context-schema.js";
 
+function resolveRepairType(decision) {
+  const detail = decision?.detail ?? {};
+
+  if (Number(detail.temporalVariance ?? 0) > 0.20) {
+    return "dna";
+  }
+
+  return "unknown";
+}
+
 export class CradleCell {
 
   constructor({
@@ -196,7 +206,7 @@ export class CradleCell {
   }
 
   async tick() {
-    console.log(`🫀 ${this.id} heartbeat`);
+    console.log(`⏱️ ${this.id} tick`);
 
     if (this.isTicking) {
       console.log(`  ${this.id} skipped: already ticking`);
@@ -1495,6 +1505,143 @@ TODO: define meaning from DNA_DEFINITION.md.
     });
   }
 
+  async observeCradle(snapshot) {
+    const observedAt = new Date().toISOString();
+    const selfSnapshot =
+      snapshot?.cells?.find((cell) => cell.cellId === this.id) ?? {};
+    const artifactThreats =
+      (selfSnapshot?.recentFailures ?? [])
+        .filter(
+          (threat) =>
+            threat.type === "artifact-execution-failure" &&
+            threat.artifactId
+        );
+    const maturity = await this.getMaturityInfo().catch(() => null);
+    const lifecycle = await this.getLifecycleDecision({
+      recentFailureRate: artifactThreats.length > 0 ? 1 : 0,
+      hasComplementaryCell: false,
+    }).catch(() => ({
+      action: "stay",
+      confidence: "low",
+      reason: "lifecycle decision unavailable",
+    }));
+
+    const findings = [];
+
+    if ((selfSnapshot.threatCount ?? 0) > 0) {
+      findings.push({
+        type: "recent-failures",
+        severity: "high",
+        description: "Recent threat stimuli were observed for this cell.",
+        evidence: selfSnapshot.recentFailures ?? [],
+      });
+    }
+
+    if (lifecycle.action && lifecycle.action !== "stay") {
+      findings.push({
+        type: "lifecycle-signal",
+        severity: lifecycle.action === "repair" ? "medium" : "high",
+        description: lifecycle.reason ?? `Lifecycle suggests ${lifecycle.action}.`,
+        evidence: lifecycle.detail ?? {},
+      });
+    }
+
+    return {
+      observationId: `observation-${this.id}-${this.formatTimestamp(new Date())}`,
+      observedAt,
+      observerCellId: this.id,
+      self: {
+        lifecycleState: lifecycle.action ?? selfSnapshot.lifecycleState ?? null,
+        maturity,
+        stability: maturity?.convergence ?? null,
+        recentFailures: selfSnapshot.recentFailures ?? [],
+      },
+      findings,
+      candidateActions: [lifecycle.action ?? "stay"],
+      lifecycleDecision: lifecycle,
+    };
+  }
+
+  async proposeLifecycle({ observation, snapshot } = {}) {
+    const decision = observation?.lifecycleDecision ?? {};
+    const action = decision?.action ?? "stay";
+    const latestArtifactThreat =
+      observation?.self?.recentFailures
+        ?.find(
+          (threat) =>
+            threat.type === "artifact-execution-failure" &&
+            threat.artifactId
+        ) ?? null;
+    let repairType = null;
+    let artifactId = null;
+    let threatId = null;
+
+    if (action === "repair") {
+      if (latestArtifactThreat) {
+        repairType = "artifact";
+        artifactId = latestArtifactThreat.artifactId;
+        threatId = latestArtifactThreat.threatId;
+      } else {
+        repairType = resolveRepairType(decision);
+      }
+    }
+    const createdAt = new Date().toISOString();
+    const nextCellNumber =
+      Math.max(
+        0,
+        ...(snapshot?.cells ?? [])
+          .map((cell) => Number(String(cell.cellId).match(/cell-(\d+)/)?.[1] ?? 0))
+      ) + 1;
+    const suggestedChildId = `cell-${String(nextCellNumber).padStart(3, "0")}`;
+
+    return {
+      proposalId: `proposal-${this.id}-${this.formatTimestamp(new Date())}`,
+      createdAt,
+      sourceCellId: this.id,
+      action,
+      repairType,
+      artifactId,
+      threatId,
+      targetCellIds: [],
+      suggestedChildId: action === "divide" || action === "fuse" ? suggestedChildId : null,
+      reason: decision?.reason ?? "No lifecycle change proposed.",
+      evidence: [
+        {
+          type: "observation",
+          value: observation,
+        },
+        {
+          type: "maturity",
+          value: observation?.self?.maturity ?? null,
+        },
+        ...(latestArtifactThreat
+          ? [{
+              type: "artifact-execution-failure",
+              value: latestArtifactThreat,
+            }]
+          : []),
+      ],
+      confidence: this._normalizeLifecycleConfidence(decision?.confidence),
+      status: "pending",
+    };
+  }
+
+  _normalizeLifecycleConfidence(confidence) {
+    if (typeof confidence === "number") {
+      return confidence;
+    }
+
+    if (confidence === "high") {
+      return 0.9;
+    }
+
+    if (confidence === "medium") {
+      return 0.6;
+    }
+
+    return 0.3;
+  }
+
   /**
    * Get current DNA maturity (no longer increases counter)
    * DNA maturity is now calculated from dna-history.json
@@ -2681,13 +2828,19 @@ ${memoryContext}
       "./execution/artifact-execution-service.js"
     );
 
+    const { ThreatStore } = await import(
+      "./heartbeat/threat-store.js"
+    );
+
     const { buildExecutionStimulus } = await import(
       "./situation/execution-stimulus.js"
     );
 
     const executionService = new ArtifactExecutionService({
+      cellId: this.id,
       productionsDir: this.productionsDir,
       executionsDir: path.join(this.workspaceDir, "executions"),
+      threatStore: new ThreatStore(),
     });
 
     const result = await executionService.executeArtifact(artifactId);
