@@ -30,6 +30,14 @@ export class ThreatStore {
 
     await fs.mkdir(this.dir, { recursive: true });
 
+    const existing =
+      (await this._readAll())
+        .find((threat) => threat.executionId === result.executionId);
+
+    if (existing) {
+      return existing;
+    }
+
     const createdAt = result.createdAt ?? new Date().toISOString();
     const threat = {
       threatId: this._createThreatId(createdAt),
@@ -64,7 +72,7 @@ export class ThreatStore {
           !threat.resolvedAt
       )
       .sort((a, b) =>
-        String(a.createdAt ?? "").localeCompare(String(b.createdAt ?? ""))
+        String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? ""))
       );
   }
 

@@ -9,6 +9,7 @@ import { CradleSnapshotService } from "../src/heartbeat/cradle-snapshot-service.
 import { ThreatStore } from "../src/heartbeat/threat-store.js";
 import { ArtifactExecutionService } from "../src/execution/artifact-execution-service.js";
 import { ExecutionResult } from "../src/execution/execution-result.js";
+import { decideCellLifecycle } from "../src/dna/dna-lifecycle.js";
 
 console.log("=== Heartbeat Service Tests ===\n");
 
@@ -458,6 +459,81 @@ try {
     assert(threat.executionId === "execution-001");
     assert(cellThreats.length === 1);
     assert(otherThreats.length === 0);
+  });
+
+  await test("threat store deduplicates execution id and lists newest first", async () => {
+    const threatStore = new ThreatStore({
+      dir: path.join(tmp, "threat-store-order", "threats"),
+    });
+    const older = await threatStore.saveExecutionFailure({
+      cellId: "cell-003",
+      artifactId: "artifact-001",
+      executionResult: new ExecutionResult({
+        artifactId: "artifact-001",
+        status: "compile_failed",
+        command: "javac Main.java",
+        stderr: "older",
+        executionId: "execution-001",
+        createdAt: "2026-07-17T01:00:00.000Z",
+      }),
+    });
+    const duplicate = await threatStore.saveExecutionFailure({
+      cellId: "cell-003",
+      artifactId: "artifact-001",
+      executionResult: new ExecutionResult({
+        artifactId: "artifact-001",
+        status: "compile_failed",
+        command: "javac Main.java",
+        stderr: "duplicate",
+        executionId: "execution-001",
+        createdAt: "2026-07-17T03:00:00.000Z",
+      }),
+    });
+    const newer = await threatStore.saveExecutionFailure({
+      cellId: "cell-003",
+      artifactId: "artifact-002",
+      executionResult: new ExecutionResult({
+        artifactId: "artifact-002",
+        status: "runtime_failed",
+        command: "java Main",
+        stderr: "newer",
+        executionId: "execution-002",
+        createdAt: "2026-07-17T02:00:00.000Z",
+      }),
+    });
+
+    const threats = await threatStore.listUnresolvedForCell("cell-003");
+
+    assert(duplicate.threatId === older.threatId);
+    assert(threats.length === 2);
+    assert(threats[0].threatId === newer.threatId);
+    assert(threats[1].threatId === older.threatId);
+  });
+
+  await test("dna lifecycle repair details separate artifact and dna signals", async () => {
+    const artifactDecision = decideCellLifecycle({
+      maturityInfo: {
+        sampleSize: 5,
+        temporalVariance: 0.05,
+      },
+      recentFailureRate: 1,
+    });
+    const dnaDecision = decideCellLifecycle({
+      maturityInfo: {
+        sampleSize: 5,
+        temporalVariance: 0.25,
+      },
+      recentFailureRate: 0,
+    });
+
+    assert(artifactDecision.action === "repair");
+    assert(artifactDecision.reason === "recent artifact execution failures detected");
+    assert(artifactDecision.detail.repairSignals.artifactFailures === true);
+    assert(artifactDecision.detail.repairSignals.dnaUnstable === false);
+    assert(dnaDecision.action === "repair");
+    assert(dnaDecision.reason === "dna vector is unstable");
+    assert(dnaDecision.detail.repairSignals.dnaUnstable === true);
+    assert(dnaDecision.detail.repairSignals.artifactFailures === false);
   });
 
   await test("artifact execution failure creates structured threat", async () => {

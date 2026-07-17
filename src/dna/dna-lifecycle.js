@@ -126,15 +126,23 @@ export function decideCellLifecycle({
   }
 
   // Rule 2: Unstable or high failure rate → repair
-  if (
-    temporalVariance > 0.20 ||
-    recentFailureRate > 0.30
-  ) {
+  const dnaUnstable =
+    temporalVariance > 0.20;
+  const artifactFailures =
+    recentFailureRate > 0.30;
+
+  if (dnaUnstable || artifactFailures) {
     return {
       action: "repair",
       confidence: "medium",
-      reason: "dna vector is unstable or recent failure rate is high",
+      reason: artifactFailures
+        ? "recent artifact execution failures detected"
+        : "dna vector is unstable",
       detail: {
+        repairSignals: {
+          dnaUnstable,
+          artifactFailures,
+        },
         temporalVariance,
         recentFailureRate,
         repairVarianceThreshold: 0.20,

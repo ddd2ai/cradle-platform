@@ -1570,11 +1570,13 @@ TODO: define meaning from DNA_DEFINITION.md.
         ) ?? null;
     let repairType = null;
     let artifactId = null;
+    let threatId = null;
 
     if (action === "repair") {
       if (latestArtifactThreat) {
         repairType = "artifact";
         artifactId = latestArtifactThreat.artifactId;
+        threatId = latestArtifactThreat.threatId;
       } else {
         repairType = resolveRepairType(decision);
       }
@@ -1595,6 +1597,7 @@ TODO: define meaning from DNA_DEFINITION.md.
       action,
       repairType,
       artifactId,
+      threatId,
       targetCellIds: [],
       suggestedChildId: action === "divide" || action === "fuse" ? suggestedChildId : null,
       reason: decision?.reason ?? "No lifecycle change proposed.",
