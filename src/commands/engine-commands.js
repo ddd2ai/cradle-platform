@@ -479,7 +479,10 @@ function createCliApprovalService({ engine }) {
 
       while (true) {
         const answer =
-          (await engine.rl.question(`Execute ${proposal.action}? (Yes/No): `))
+          (await askEngineQuestion(
+            engine,
+            `Execute ${proposal.action}? (Yes/No): `
+          ))
             .trim()
             .toLowerCase();
 
@@ -499,6 +502,12 @@ function createCliApprovalService({ engine }) {
       }
     }
   };
+}
+
+function askEngineQuestion(engine, question) {
+  return new Promise((resolve) => {
+    engine.rl.question(question, resolve);
+  });
 }
 
 function renderProposalRepairFields(proposal) {
