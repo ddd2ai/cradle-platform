@@ -203,7 +203,7 @@ export function createEngineCommands() {
         input === "/heartbeat",
 
       execute: async ({ engine }) => {
-        const approvalService = createCliApprovalService();
+        const approvalService = createCliApprovalService({ engine });
         const result = await new HeartbeatService({
           engine,
           approvalService,
@@ -444,11 +444,15 @@ function renderHeartbeatResult(result) {
   console.log("");
 }
 
-function createCliApprovalService() {
+function createCliApprovalService({ engine }) {
   return {
     async requestApproval({ proposal, policyDecision, mode }) {
       if (!policyDecision.allowed) {
         return false;
+      }
+
+      if (!engine?.rl) {
+        throw new Error("CLI approval requires engine readline");
       }
 
       console.log("");
@@ -473,28 +477,25 @@ function createCliApprovalService() {
         console.log("Automatic mode requires approval because policy requested it.");
       }
 
-      const rl = readline.createInterface({ input, output });
+      while (true) {
+        const answer =
+          (await engine.rl.question(`Execute ${proposal.action}? (Yes/No): `))
+            .trim()
+            .toLowerCase();
 
-      try {
-        while (true) {
-          const answer = (await rl.question(`Execute ${proposal.action}? (Yes/No): `)).trim().toLowerCase();
-
-          if (answer === "y" || answer === "yes") {
-            console.log("Proposal approved.");
-            console.log(`Starting ${proposal.action}...`);
-            return true;
-          }
-
-          if (answer === "n" || answer === "no") {
-            console.log("Proposal rejected.");
-            console.log("No colony state was changed.");
-            return false;
-          }
-
-          console.log("Please answer Yes or No.");
+        if (answer === "y" || answer === "yes") {
+          console.log("Proposal approved.");
+          console.log(`Starting ${proposal.action}...`);
+          return true;
         }
-      } finally {
-        rl.close();
+
+        if (answer === "n" || answer === "no") {
+          console.log("Proposal rejected.");
+          console.log("No colony state was changed.");
+          return false;
+        }
+
+        console.log("Please answer Yes or No.");
       }
     }
   };
