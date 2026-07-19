@@ -87,7 +87,12 @@ function renderTagline() {
   term("\n\n");
 }
 
-function renderRuntimeStatus({ provider, model }) {
+function renderRuntimeStatus({
+  provider,
+  model,
+  timeoutSeconds,
+  heartbeatMode,
+}) {
   term.gray(`
        ────────────────────────────────────────────────────────────────────────────────────
                 Provider: ${provider}   |   Model: ${model}   |   State: READY   
@@ -99,7 +104,12 @@ export function clearScreen() {
   term.clear();
 }
 
-export function renderBoot({ provider, model }) {
+export function renderBoot({
+  provider,
+  model,
+  timeoutSeconds,
+  heartbeatMode,
+}) {
 
   const LOGO_CELL_MAP = `
                 ● Customer Cell ──────── ● Payment Cell             ●
@@ -116,7 +126,12 @@ export function renderBoot({ provider, model }) {
 
   term.brightCyan(LOGO_CELL_MAP);
 
-  renderRuntimeStatus({ provider, model });
+  renderRuntimeStatus({
+    provider,
+    model,
+    timeoutSeconds,
+    heartbeatMode,
+  });
 }
 
 export async function renderSummon() {

@@ -11,7 +11,7 @@
 ## 準備
 
 ```bash
-node src/cradle.js
+node src/cradle.js start
 ```
 
 ```

@@ -50,7 +50,7 @@ produce
 ### Test 1: 簡單 Java Class (應該修復成功)
 
 ```bash
-node src/cradle.js
+node src/cradle.js start
 ```
 
 ```

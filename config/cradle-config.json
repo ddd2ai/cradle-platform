@@ -1,5 +1,7 @@
 {
   "ai": {
+    "defaultProvider": "ollama",
+    "defaultModel": "devstral-small-2:24b",
     "timeoutSeconds": 3600,
     "maxSourceArtifactOutputLength": 50000,
     "maxSourceArtifactContentLength": 30000

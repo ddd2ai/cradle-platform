@@ -55,7 +55,7 @@ console.log(result.saved.dir);
 
 ```bash
 # 1. 啟動 Cradle
-node src/cradle.js
+node src/cradle.js start
 
 # 2. 切換到 Cell
 /use cell-001

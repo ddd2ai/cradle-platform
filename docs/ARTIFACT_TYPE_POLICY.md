@@ -232,7 +232,7 @@ node test/test-artifact-validation.js
 ### 測試 1: document type
 
 ```bash
-node src/cradle.js
+node src/cradle.js start
 /use cell-001
 /produce document 建立一套電商系統
 ```

@@ -25,9 +25,13 @@ export class CradleEngine {
   constructor({ 
       model = "gpt-5-mini",
       provider = "copilot",
+      timeoutSeconds = 3600,
+      heartbeatMode = "manual",
   } = {}) {
     this.model = model;
     this.provider = provider;
+    this.timeoutSeconds = timeoutSeconds;
+    this.heartbeatMode = heartbeatMode;
 
     this.cells = new Map();
     this.inboxes = new Map();
@@ -59,6 +63,8 @@ export class CradleEngine {
     renderBoot({
       provider: this.provider,
       model: this.model,
+      timeoutSeconds: this.timeoutSeconds,
+      heartbeatMode: this.heartbeatMode,
     });
     
     await renderSummon();

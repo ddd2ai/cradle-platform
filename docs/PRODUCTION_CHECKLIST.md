@@ -96,7 +96,7 @@
 ### 1. 啟動測試
 
 ```bash
-node src/cradle.js
+node src/cradle.js start
 ```
 
 預期:正常啟動,無錯誤

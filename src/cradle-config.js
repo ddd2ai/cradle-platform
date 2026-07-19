@@ -3,6 +3,8 @@ import path from "path";
 
 const DEFAULT_CRADLE_CONFIG = Object.freeze({
   ai: Object.freeze({
+    defaultProvider: "ollama",
+    defaultModel: "devstral-small-2:24b",
     timeoutSeconds: 3600,
     maxSourceArtifactOutputLength: 8000,
     maxSourceArtifactContentLength: 30000,
@@ -82,6 +84,16 @@ export function getAiTimeoutSeconds(options = {}) {
     config.ai?.timeoutSeconds,
     "ai.timeoutSeconds"
   );
+}
+
+export function getAiDefaultProvider(options = {}) {
+  const config = readCradleConfig(options);
+  return config.ai?.defaultProvider || "ollama";
+}
+
+export function getAiDefaultModel(options = {}) {
+  const config = readCradleConfig(options);
+  return config.ai?.defaultModel || null;
 }
 
 export function getAiTimeoutMs(options = {}) {

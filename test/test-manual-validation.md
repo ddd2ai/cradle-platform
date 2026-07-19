@@ -11,7 +11,7 @@
 ### 準備
 
 ```bash
-node src/cradle.js
+node src/cradle.js start
 ```
 
 ### Test Case 1: 合法的 code artifact (小型 Java class)

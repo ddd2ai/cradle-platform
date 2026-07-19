@@ -222,7 +222,7 @@ cells/{cell-id}/workspace/
 
 ```bash
 # 1. 啟動
-node src/cradle.js
+node src/cradle.js start
 
 # 2. 切換到 Cell
 /use cell-001
