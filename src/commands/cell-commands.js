@@ -2,6 +2,7 @@ import fs from "fs/promises";
 import path from "path";
 import { renderAnswerStart } from "../cradle-console.js";
 import { block } from "../utils/text.js";
+import { getAiTimeoutMs } from "../cradle-config.js";
 
 export function createCellCommands() {
   return [
@@ -346,7 +347,7 @@ ${Object.entries(decision.detail ?? {})
 
         ${s.content}
         `).join("\n\n")}
-        `, 300000);
+        `, getAiTimeoutMs());
 
         const outputText = engine.cleanMarkdownFence(
           result?.text ?? result?.answer ?? ""

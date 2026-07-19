@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { getProviderTimeoutMs } from "../cradle-config.js";
 
 /**
  * 建立 Gemini CLI Provider
@@ -12,7 +13,7 @@ export async function createGeminiProvider({
   model = null,
   command = "gemini",
   cwd = process.cwd(),
-  timeoutMs = 180_000,
+  timeoutMs = getProviderTimeoutMs("gemini"),
 } = {}) {
   return {
     name: "gemini-cli",

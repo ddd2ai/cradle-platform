@@ -10,6 +10,10 @@ import assert from "node:assert/strict";
 import {
   SourceMaterialService,
 } from "../src/living-context/source-material-service.js";
+import {
+  getAiMaxSourceArtifactOutputLength,
+  getAiMaxSourceArtifactContentLength,
+} from "../src/cradle-config.js";
 
 console.log("Testing Source Material Service...\n");
 
@@ -526,9 +530,10 @@ const fakeCell = {
     artifact2.outputs[0];
 
   assert.ok(
-    output.content.length <= 8000,
+    output.content.length <=
+      getAiMaxSourceArtifactOutputLength(),
     [
-      "Each output should be <= 8000 chars, got",
+      "Each output should be <= runtime max chars, got",
       output.content.length,
     ].join(" ")
   );
@@ -548,9 +553,10 @@ const fakeCell = {
   }
 
   assert.ok(
-    totalContentLength <= 30000,
+    totalContentLength <=
+      getAiMaxSourceArtifactContentLength(),
     [
-      "Total content should be <= 30000 chars, got",
+      "Total content should be <= runtime max chars, got",
       totalContentLength,
     ].join(" ")
   );

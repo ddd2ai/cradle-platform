@@ -1,10 +1,11 @@
 import { spawn } from "node:child_process";
+import { getProviderTimeoutMs } from "../cradle-config.js";
 
 export async function createCodexProvider({
   model = null,
   command = "codex",
   cwd = process.cwd(),
-  timeoutMs = 300_000,
+  timeoutMs = getProviderTimeoutMs("codex"),
 } = {}) {
   return {
     name: "codex",

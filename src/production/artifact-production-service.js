@@ -11,6 +11,7 @@ import { ArtifactParser } from "./artifact-parser.js";
 import { ArtifactNormalizer } from "./artifact-normalizer.js";
 import { ArtifactValidator } from "./artifact-validator.js";
 import { produceFromTransformation as _produceFromTransformation } from "./artifact-production-transformation.js";
+import { getAiTimeoutMs } from "../cradle-config.js";
 
 export class ArtifactProductionService {
   constructor({
@@ -65,7 +66,10 @@ The actual artifact MUST follow the current Goal, not any past Vision or History
       context,
     });
 
-    const result = await this.cell.askWithTimeout(prompt, 300000);
+    const result = await this.cell.askWithTimeout(
+      prompt,
+      getAiTimeoutMs()
+    );
     const raw = result?.text ?? result?.answer ?? result ?? "{}";
     
     const parsed = this.parser.parse(raw);
@@ -127,7 +131,10 @@ The actual artifact MUST follow the Original Goal, not any past Vision or Histor
       context,
     });
 
-    const result = await this.cell.askWithTimeout(prompt, 300000);
+    const result = await this.cell.askWithTimeout(
+      prompt,
+      getAiTimeoutMs()
+    );
     const raw = result?.text ?? result?.answer ?? result ?? "{}";
     
     const parsed = this.parser.parse(raw);
@@ -182,7 +189,10 @@ The repair task only describes what needs to be fixed.
       context,
     });
 
-    const result = await this.cell.askWithTimeout(prompt, 300000);
+    const result = await this.cell.askWithTimeout(
+      prompt,
+      getAiTimeoutMs()
+    );
     const raw = result?.text ?? result?.answer ?? result ?? "{}";
 
     const parsed = this.parser.parse(raw);
@@ -357,4 +367,3 @@ This production changed how the cell transforms intent into artifact.
     };
   }
 }
-

@@ -2,11 +2,12 @@ import fs from "fs/promises";
 import path from "path";
 import { spawn } from "child_process";
 import { ExecutionResult } from "./execution-result.js";
+import { getTimeoutMs } from "../cradle-config.js";
 
 export class MavenExecutor {
   constructor({
     executionsDir,
-    timeoutMs = 300000,
+    timeoutMs = getTimeoutMs("mavenExecutionSeconds"),
   } = {}) {
     if (!executionsDir) {
       throw new Error("MavenExecutor requires executionsDir");

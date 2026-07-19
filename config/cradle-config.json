@@ -1,0 +1,28 @@
+{
+  "ai": {
+    "timeoutSeconds": 3600,
+    "maxSourceArtifactOutputLength": 50000,
+    "maxSourceArtifactContentLength": 30000
+  },
+  "providers": {
+    "ollama": {
+      "timeoutSeconds": 3600
+    },
+    "copilot": {
+      "timeoutSeconds": 3600
+    },
+    "codex": {
+      "timeoutSeconds": 3600
+    },
+    "gemini": {
+      "timeoutSeconds": 3600
+    }
+  },
+  "timeouts": {
+    "reflectionSeconds": 30,
+    "mavenExecutionSeconds": 3600
+  },
+  "heartbeat": {
+    "mode": "manual"
+  }
+}

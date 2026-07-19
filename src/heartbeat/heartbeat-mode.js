@@ -1,5 +1,9 @@
 import fs from "fs/promises";
 import path from "path";
+import {
+  getHeartbeatMode,
+  readCradleConfig,
+} from "../cradle-config.js";
 
 export const HeartbeatMode = Object.freeze({
   MANUAL: "manual",
@@ -7,13 +11,14 @@ export const HeartbeatMode = Object.freeze({
 });
 
 export class HeartbeatModeStore {
-  constructor({ file = path.join("config", "runtime.json") } = {}) {
+  constructor({ file = path.join("config", "cradle-config.json") } = {}) {
     this.file = file;
   }
 
   async getMode() {
-    const config = await this._readConfig();
-    const mode = config.heartbeat?.mode || HeartbeatMode.MANUAL;
+    const mode =
+      getHeartbeatMode({ file: this.file }) ||
+      HeartbeatMode.MANUAL;
 
     if (!Object.values(HeartbeatMode).includes(mode)) {
       return HeartbeatMode.MANUAL;
@@ -45,15 +50,8 @@ export class HeartbeatModeStore {
   }
 
   async _readConfig() {
-    try {
-      const raw = await fs.readFile(this.file, "utf8");
-      return JSON.parse(raw);
-    } catch (error) {
-      if (error.code === "ENOENT") {
-        return {};
-      }
-
-      throw error;
-    }
+    return readCradleConfig({
+      file: this.file,
+    });
   }
 }

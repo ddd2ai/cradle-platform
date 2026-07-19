@@ -7,6 +7,7 @@
 
 import { createArtifact } from "./artifact-schema.js";
 import { buildArtifactTransformationPrompt } from "./artifact-transformation-prompt.js";
+import { getAiTimeoutMs } from "../cradle-config.js";
 
 /**
  * 從 Transformation Context 產生 Artifact
@@ -53,7 +54,10 @@ export async function produceFromTransformation(service, {
   });
 
   // Step 3: 呼叫 AI
-  const result = await service.cell.askWithTimeout(prompt, 300000);
+  const result = await service.cell.askWithTimeout(
+    prompt,
+    getAiTimeoutMs()
+  );
   const raw = result?.text ?? result?.answer ?? result ?? "{}";
 
   // Step 4: Parse
@@ -207,7 +211,10 @@ async function repairTransformationArtifact(service, {
     origin
   });
 
-  const result = await service.cell.askWithTimeout(prompt, 300000);
+  const result = await service.cell.askWithTimeout(
+    prompt,
+    getAiTimeoutMs()
+  );
   const raw = result?.text ?? result?.answer ?? result ?? "{}";
 
   const parsed = service.parser.parse(raw);

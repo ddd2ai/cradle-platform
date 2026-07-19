@@ -13,6 +13,7 @@ import {
   normalizeFusionPlan,
   validateFusionPlan,
 } from "./fusion-plan-schema.js";
+import { getAiTimeoutMs } from "../cradle-config.js";
 
 export class LivingContextFusionService {
   /**
@@ -93,7 +94,7 @@ export class LivingContextFusionService {
       aiResponse =
         await requester.askWithTimeout(
           prompt,
-          300000
+          getAiTimeoutMs()
         );
     } catch (error) {
       throw new Error(

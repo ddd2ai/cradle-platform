@@ -8,6 +8,7 @@
 import { buildLivingContextDivisionPrompt } from "./living-context-prompts.js";
 import { normalizeDivisionPlan, validateDivisionPlan } from "./division-plan-schema.js";
 import { SourceMaterialService } from "./source-material-service.js";
+import { getAiTimeoutMs } from "../cradle-config.js";
 
 export class LivingContextService {
   /**
@@ -92,10 +93,13 @@ export class LivingContextService {
       });
     }
 
-    // 4. 呼叫 AI (timeout 180秒)
+    // 4. 呼叫 AI
     let rawResponse;
     try {
-      rawResponse = await this.requesterCell.askWithTimeout(prompt, 300000);
+      rawResponse = await this.requesterCell.askWithTimeout(
+        prompt,
+        getAiTimeoutMs()
+      );
     } catch (error) {
       throw new Error(`LivingContextService: AI division planning failed`, {
         cause: error

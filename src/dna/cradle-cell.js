@@ -9,6 +9,10 @@ import { createOllamaProvider } from "./providers/ollama-provider.js";
 import { block } from "./utils/text.js";
 import { parseLooseJsonObject } from "./utils/json.js";
 import {
+  getAiTimeoutMs,
+  getTimeoutMs,
+} from "../cradle-config.js";
+import {
   renderError,
   renderSkill,
   renderSkillNotFound,
@@ -317,7 +321,7 @@ export class CradleCell {
     - 任務理解
     - 執行結果
     - 下一步建議
-    `, 300000);
+    `, getAiTimeoutMs());
 
     const outputText =
       result?.text ??
@@ -522,7 +526,7 @@ ${s.content}
     }
   ]
 }
-`, 300000);
+`, getAiTimeoutMs());
 
     const raw =
       result?.text ??
@@ -603,7 +607,7 @@ ${recentThoughts}
 ${input}
 `;
 
-      const result = await this.askWithTimeout(cellInput, 300000);
+      const result = await this.askWithTimeout(cellInput, getAiTimeoutMs());
       const outputText = result?.text ?? result?.answer ?? "(response streamed)";
 
       await this.appendHistory(
@@ -642,7 +646,10 @@ ${input}
     }
   }
 
-  async askWithTimeout(input, timeoutMs = 300000) {
+  async askWithTimeout(
+    input,
+    timeoutMs = getAiTimeoutMs()
+  ) {
     return await Promise.race([
       this.assistant.ask(input),
       new Promise((_, reject) =>
@@ -1299,7 +1306,7 @@ TODO: define meaning from DNA_DEFINITION.md.
       # Thoughts
 
       ${thoughtContext}
-      `, 300000);
+      `, getAiTimeoutMs());
 
             const raw = result?.text ?? result?.answer ?? "{}";
             const evolution = this.parseEvolutionJson(raw);
@@ -2085,7 +2092,7 @@ ${dnaContext}
 ${memoryContext}
 `;
 
-    const result = await this.askWithTimeout(prompt, 300000);
+    const result = await this.askWithTimeout(prompt, getAiTimeoutMs());
     const raw = result?.text ?? result?.answer ?? result ?? "";
 
     const nextDNA = parseLooseJsonObject(raw);
@@ -2418,7 +2425,7 @@ ${memoryContext}
       ${output}
       `;
 
-      const result = await this.askWithTimeout(reflectionPrompt, 30000);
+      const result = await this.askWithTimeout(reflectionPrompt, getTimeoutMs("reflectionSeconds"));
       const reflection = result?.text ?? result?.answer ?? "";
 
       if (!reflection.trim()) return;
@@ -2655,7 +2662,7 @@ ${memoryContext}
     ${memoryContext}
     `;
 
-    const result = await this.askWithTimeout(prompt, 300000);
+    const result = await this.askWithTimeout(prompt, getAiTimeoutMs());
     const thought = result?.text ?? result?.answer ?? "";
 
     if (!thought.trim()) {
@@ -2718,7 +2725,7 @@ ${memoryContext}
   ${JSON.stringify(inbox, null, 2)}
   `;
 
-  const result = await this.askWithTimeout(prompt, 300000);
+  const result = await this.askWithTimeout(prompt, getAiTimeoutMs());
   const summary = result?.text ?? result?.answer ?? "";
 
   if (!summary.trim()) {

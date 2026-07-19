@@ -3,6 +3,7 @@ import { MavenExecutor } from "./maven-executor.js";
 import { ArtifactStore } from "../production/artifact-store.js";
 import { ExecutionResult } from "./execution-result.js";
 import { ThreatStore } from "../heartbeat/threat-store.js";
+import { getTimeoutMs } from "../cradle-config.js";
 
 const FAILURE_STATUSES = new Set([
   "compile_failed",
@@ -51,7 +52,7 @@ export class ArtifactExecutionService {
 
     this.mavenExecutor = new MavenExecutor({
       executionsDir: this.executionsDir,
-      timeoutMs: 300000,
+      timeoutMs: getTimeoutMs("mavenExecutionSeconds"),
     });
   }
 

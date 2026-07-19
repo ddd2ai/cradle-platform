@@ -7,6 +7,10 @@
 
 import path from "path";
 import fs from "fs/promises";
+import {
+  getAiMaxSourceArtifactOutputLength,
+  getAiMaxSourceArtifactContentLength,
+} from "../cradle-config.js";
 
 export class SourceMaterialService {
   /**
@@ -165,15 +169,17 @@ export class SourceMaterialService {
     const artifacts = [];
     const errors = [];
 
-    const MAX_OUTPUT_SIZE = 8000;
-    const MAX_TOTAL_CONTENT_SIZE = 30000;
+    const maxOutputSize =
+      getAiMaxSourceArtifactOutputLength();
+    const maxTotalContentSize =
+      getAiMaxSourceArtifactContentLength();
 
     let totalContentSize = 0;
 
     for (const artifactId of artifactIds) {
         if (
         totalContentSize >=
-        MAX_TOTAL_CONTENT_SIZE
+        maxTotalContentSize
         ) {
         errors.push({
             artifactId,
@@ -204,11 +210,11 @@ export class SourceMaterialService {
                 }
 
                 const remainingTotalSize =
-                MAX_TOTAL_CONTENT_SIZE -
+                maxTotalContentSize -
                 totalContentSize;
 
                 const allowedSize = Math.min(
-                MAX_OUTPUT_SIZE,
+                maxOutputSize,
                 remainingTotalSize
                 );
 

@@ -331,7 +331,7 @@ test("askWithTimeout() called exactly once", async () => {
   }
 });
 
-test("timeout is 300000", async () => {
+test("timeout is 3600000", async () => {
   const { parentA, parentB, sourceMaterialService } = setupService();
 
   const requester = new FakeRequesterCell("cell-a", () =>
@@ -350,8 +350,8 @@ test("timeout is 300000", async () => {
   });
 
   const call = requester.askWithTimeoutCalls[0];
-  if (call.timeout !== 300000) {
-    throw new Error(`Expected timeout 300000, got ${call.timeout}`);
+  if (call.timeout !== 3600000) {
+    throw new Error(`Expected timeout 3600000, got ${call.timeout}`);
   }
 });
 

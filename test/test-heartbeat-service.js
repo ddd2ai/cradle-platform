@@ -168,12 +168,12 @@ const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "cradle-heartbeat-test-"));
 
 try {
   await test("default mode is manual", async () => {
-    const store = new HeartbeatModeStore({ file: path.join(tmp, "runtime-default.json") });
+    const store = new HeartbeatModeStore({ file: path.join(tmp, "cradle-config-default.json") });
     assert((await store.getMode()) === HeartbeatMode.MANUAL);
   });
 
   await test("mode can switch and persists", async () => {
-    const file = path.join(tmp, "runtime-persist.json");
+    const file = path.join(tmp, "cradle-config-persist.json");
     const store = new HeartbeatModeStore({ file });
     await store.setMode(HeartbeatMode.AUTOMATIC);
     const reloaded = new HeartbeatModeStore({ file });
@@ -181,7 +181,7 @@ try {
   });
 
   await test("invalid mode is rejected", async () => {
-    const store = new HeartbeatModeStore({ file: path.join(tmp, "runtime-invalid.json") });
+    const store = new HeartbeatModeStore({ file: path.join(tmp, "cradle-config-invalid.json") });
     let threw = false;
     try {
       await store.setMode("invalid");
