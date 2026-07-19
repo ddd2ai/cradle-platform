@@ -4,10 +4,13 @@
   "description": "Software Life Engineering Platform",
   "type": "module",
   "main": "src/cradle.js",
+  "bin": {
+    "cradle": "./src/cradle.js"
+  },
   "scripts": {
     "copilot:ensure": "node scripts/ensure-copilot-cli.js",
-    "start": "node src/cradle.js",
-    "dev": "node src/cradle.js"
+    "start": "node src/cradle.js start",
+    "dev": "node src/cradle.js start"
   },
   "keywords": [
     "cradle",
