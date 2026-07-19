@@ -317,7 +317,7 @@ export class CradleCell {
     - 任務理解
     - 執行結果
     - 下一步建議
-    `, 120000);
+    `, 300000);
 
     const outputText =
       result?.text ??
@@ -522,7 +522,7 @@ ${s.content}
     }
   ]
 }
-`, 120000);
+`, 300000);
 
     const raw =
       result?.text ??
@@ -642,7 +642,7 @@ ${input}
     }
   }
 
-  async askWithTimeout(input, timeoutMs = 180000) {
+  async askWithTimeout(input, timeoutMs = 300000) {
     return await Promise.race([
       this.assistant.ask(input),
       new Promise((_, reject) =>
@@ -2085,7 +2085,7 @@ ${dnaContext}
 ${memoryContext}
 `;
 
-    const result = await this.askWithTimeout(prompt, 120000);
+    const result = await this.askWithTimeout(prompt, 300000);
     const raw = result?.text ?? result?.answer ?? result ?? "";
 
     const nextDNA = parseLooseJsonObject(raw);
@@ -2655,7 +2655,7 @@ ${memoryContext}
     ${memoryContext}
     `;
 
-    const result = await this.askWithTimeout(prompt, 120000);
+    const result = await this.askWithTimeout(prompt, 300000);
     const thought = result?.text ?? result?.answer ?? "";
 
     if (!thought.trim()) {

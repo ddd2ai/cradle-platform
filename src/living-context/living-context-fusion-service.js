@@ -93,7 +93,7 @@ export class LivingContextFusionService {
       aiResponse =
         await requester.askWithTimeout(
           prompt,
-          180000
+          300000
         );
     } catch (error) {
       throw new Error(

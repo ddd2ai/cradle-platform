@@ -206,8 +206,8 @@ await test('askWithTimeout is called once', async () => {
   assert(fakeRequester.callCount === 1, 'askWithTimeout should be called once');
 });
 
-// Test 3: timeout 為 180000
-await test('Timeout is 180000ms', async () => {
+// Test 3: timeout 為 300000
+await test('Timeout is 300000ms', async () => {
   const fakeSourceService = new FakeSourceMaterialService();
   const fakeRequester = new FakeRequesterCell();
   const service = new LivingContextService({
@@ -223,7 +223,7 @@ await test('Timeout is 180000ms', async () => {
     dnaDivisionPlan: fakeDnaDivisionPlan
   });
 
-  assert(fakeRequester.lastTimeout === 180000, 'Timeout should be 180000ms');
+  assert(fakeRequester.lastTimeout === 300000, 'Timeout should be 300000ms');
 });
 
 // Test 4: Prompt 包含 Parent Cell ID

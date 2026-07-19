@@ -346,7 +346,7 @@ ${Object.entries(decision.detail ?? {})
 
         ${s.content}
         `).join("\n\n")}
-        `, 120000);
+        `, 300000);
 
         const outputText = engine.cleanMarkdownFence(
           result?.text ?? result?.answer ?? ""
