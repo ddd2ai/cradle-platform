@@ -4,9 +4,8 @@ import path from "path";
 import crypto from "crypto";
 import { createCradleAssistant } from "./cradle-ai.js";
 import { createLLMProvider } from "./providers/llm-provider-factory.js";
-import { createCopilotProvider } from "./providers/copilot-provider.js";
-import { createOllamaProvider } from "./providers/ollama-provider.js";
 import { createCellPaths } from "./cell/cell-paths.js";
+import { prepareCellDirectories } from "./cell/cell-directory-preparer.js";
 import { block } from "./utils/text.js";
 import { parseLooseJsonObject } from "./utils/json.js";
 import {
@@ -626,35 +625,7 @@ ${input}
   }
 
   async prepareCellDirectory() {
-    await Promise.all([
-      fs.mkdir(this.logsDir, { recursive: true }),
-      fs.mkdir(this.memoryDir, { recursive: true }),
-      fs.mkdir(this.dnaDir, { recursive: true }),
-      fs.mkdir(this.workspaceDir, { recursive: true }),
-      fs.mkdir(this.workspaceDirs.notes, { recursive: true }),
-      fs.mkdir(this.workspaceDirs.tasks, { recursive: true }),
-      fs.mkdir(this.workspaceDirs.artifacts, { recursive: true }),
-      fs.mkdir(this.workspaceDirs.projects, { recursive: true }),
-      fs.mkdir(this.workspaceDirs.research, { recursive: true }),
-      fs.mkdir(this.workspaceDirs.decisions, { recursive: true }),
-      fs.mkdir(this.productionsDir, { recursive: true }),
-      fs.mkdir(this.reviewsDir, { recursive: true }),
-      fs.mkdir(this.publicationsDir, { recursive: true }),
-      fs.mkdir(this.snapshotsDir, { recursive: true }),
-      fs.mkdir(this.thoughtsDir, { recursive: true }),
-      fs.mkdir(this.inboxDir, { recursive: true }),
-      fs.mkdir(this.tasksDir, { recursive: true }),
-      fs.mkdir(this.evolutionsDir, { recursive: true }),
-      fs.mkdir(this.situationDir, { recursive: true }),
-      fs.mkdir(this.stimuliDir, { recursive: true }),
-      fs.mkdir(path.join(this.stimuliDir, "signals"), { recursive: true }),
-      fs.mkdir(path.join(this.stimuliDir, "threats"), { recursive: true }),
-      fs.mkdir(path.join(this.stimuliDir, "pressures"), { recursive: true }),
-      fs.mkdir(path.join(this.stimuliDir, "resources"), { recursive: true }),
-      fs.mkdir(path.join(this.stimuliDir, "processed"), { recursive: true }),
-      fs.mkdir(this.observationsDir, { recursive: true }),
-      fs.mkdir(this.metricsDir, { recursive: true }),
-    ]);
+    await prepareCellDirectories(this.paths);
 
     const now = new Date().toISOString();
 
