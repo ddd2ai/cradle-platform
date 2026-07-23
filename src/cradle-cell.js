@@ -18,6 +18,7 @@ import { CellWorkspaceStore } from "./cell/cell-workspace-store.js";
 import { CellSnapshotStore } from "./cell/cell-snapshot-store.js";
 import { block } from "./utils/text.js";
 import { parseLooseJsonObject } from "./utils/json.js";
+import { writeJsonFile } from "./utils/json-file.js";
 import {
   getAiTimeoutMs,
   getTimeoutMs,
@@ -2517,11 +2518,7 @@ ${memoryContext}
     await fs.mkdir(childProfile.directories.snapshots, { recursive: true });
     await fs.mkdir(childProfile.directories.thoughts, { recursive: true });
 
-    await fs.writeFile(
-      path.join(childRootDir, "cell.json"),
-      JSON.stringify(childProfile, null, 2),
-      "utf8"
-    );
+    await writeJsonFile(path.join(childRootDir, "cell.json"), childProfile);
 
     await this.addRelationship("divided-into", childId);
 
