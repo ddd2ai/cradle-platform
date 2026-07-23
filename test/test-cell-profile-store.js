@@ -63,6 +63,56 @@ assert.deepEqual(await store.readCellProfile(), {
   updatedAt: "2026-07-23T10:10:00.000Z",
 });
 
+currentDate = new Date("2026-07-23T10:15:00.000Z");
+await store.setGeneration(4);
+assert.equal((await store.readCellProfile()).generation, 4);
+assert.equal(
+  (await store.readCellProfile()).updatedAt,
+  "2026-07-23T10:15:00.000Z"
+);
+
+currentDate = new Date("2026-07-23T10:20:00.000Z");
+await store.setParent("cell-parent");
+assert.equal((await store.readCellProfile()).parent, "cell-parent");
+assert.equal(
+  (await store.readCellProfile()).updatedAt,
+  "2026-07-23T10:20:00.000Z"
+);
+
+await store.addResponsibility("payments");
+await store.addResponsibility("payments");
+await store.addResponsibility("orders");
+assert.deepEqual(await store.listResponsibilities(), [
+  "payments",
+  "orders",
+]);
+
+await store.removeResponsibility("payments");
+assert.deepEqual(await store.listResponsibilities(), ["orders"]);
+
+currentDate = new Date("2026-07-23T10:25:00.000Z");
+await store.setResponsibilities([
+  " billing ",
+  "",
+  "billing",
+  "support",
+]);
+assert.deepEqual(await store.listResponsibilities(), [
+  "billing",
+  "support",
+]);
+assert.equal(
+  (await store.readCellProfile()).updatedAt,
+  "2026-07-23T10:25:00.000Z"
+);
+
+await store.addRelationship("depends-on", "cell-002");
+await store.addRelationship("reports-to", "cell-003");
+assert.deepEqual(await store.listRelationships(), [
+  { type: "depends-on", target: "cell-002" },
+  { type: "reports-to", target: "cell-003" },
+]);
+
 const missingStore = new CellProfileStore({
   cellFile: path.join(tempRoot, "missing-cell.json"),
   profileFile: path.join(tempRoot, "missing-profile.json"),
@@ -71,7 +121,15 @@ const missingStore = new CellProfileStore({
 
 await missingStore.updateStatus("active");
 await missingStore.increaseMaturity(1);
+await missingStore.setGeneration(2);
+await missingStore.setParent("parent");
+await missingStore.addResponsibility("missing");
+await missingStore.removeResponsibility("missing");
+await missingStore.setResponsibilities(["missing"]);
+await missingStore.addRelationship("missing", "target");
 assert.equal(await missingStore.readCellProfile(), null);
+assert.deepEqual(await missingStore.listResponsibilities(), []);
+assert.deepEqual(await missingStore.listRelationships(), []);
 
 assert.throws(
   () => new CellProfileStore({ profileFile }),

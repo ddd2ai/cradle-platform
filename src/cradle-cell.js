@@ -1646,25 +1646,11 @@ TODO: define meaning from DNA_DEFINITION.md.
   }
 
   async setGeneration(generation) {
-    const profile = await this.readCellProfile();
-
-    if (!profile) return;
-
-    profile.generation = generation;
-    profile.updatedAt = new Date().toISOString();
-
-    await this.writeCellProfile(profile);
+    await this.profileStore.setGeneration(generation);
   }
 
   async setParent(parentId) {
-    const profile = await this.readCellProfile();
-
-    if (!profile) return;
-
-    profile.parent = parentId;
-    profile.updatedAt = new Date().toISOString();
-
-    await this.writeCellProfile(profile);
+    await this.profileStore.setParent(parentId);
   }
 
   async getEvolutionInfo() {
@@ -1701,35 +1687,11 @@ TODO: define meaning from DNA_DEFINITION.md.
   }
 
   async addResponsibility(name) {
-
-    const profile =
-      await this.readCellProfile();
-
-    if (!profile) return;
-
-    profile.responsibilities ??= [];
-
-    if (
-      !profile.responsibilities.includes(name)
-    ) {
-      profile.responsibilities.push(name);
-    }
-
-    await this.writeCellProfile(profile);
+    await this.profileStore.addResponsibility(name);
   }
 
   async removeResponsibility(name) {
-
-    const profile =
-      await this.readCellProfile();
-
-    if (!profile) return;
-
-    profile.responsibilities =
-      (profile.responsibilities ?? [])
-        .filter(item => item !== name);
-
-    await this.writeCellProfile(profile);
+    await this.profileStore.removeResponsibility(name);
   }
 
   /**
@@ -1739,57 +1701,22 @@ TODO: define meaning from DNA_DEFINITION.md.
    * @param {Array<string>} responsibilities - 新的 responsibilities 列表
    */
   async setResponsibilities(responsibilities = []) {
-    const profile = await this.readCellProfile();
-
-    if (!profile) return;
-
-    // 過濾、去重、trim
-    const cleaned = [...new Set(
-      (responsibilities || [])
-        .map(r => String(r).trim())
-        .filter(r => r.length > 0)
-    )];
-
-    profile.responsibilities = cleaned;
-    profile.updatedAt = new Date().toISOString();
-
-    await this.writeCellProfile(profile);
+    await this.profileStore.setResponsibilities(responsibilities);
   }
 
   async listResponsibilities() {
-
-    const profile =
-      await this.readCellProfile();
-
-    return profile?.responsibilities ?? [];
+    return await this.profileStore.listResponsibilities();
   }
 
   async addRelationship(
     type,
     target
   ) {
-
-    const profile =
-      await this.readCellProfile();
-
-    if (!profile) return;
-
-    profile.relationships ??= [];
-
-    profile.relationships.push({
-      type,
-      target
-    });
-
-    await this.writeCellProfile(profile);
+    await this.profileStore.addRelationship(type, target);
   }
 
   async listRelationships() {
-
-    const profile =
-      await this.readCellProfile();
-
-    return profile?.relationships ?? [];
+    return await this.profileStore.listRelationships();
   }
 
 

@@ -85,4 +85,97 @@ export class CellProfileStore {
     const profile = await this.readCellProfile();
     return profile?.status ?? "unknown";
   }
+
+  async setGeneration(generation) {
+    const profile = await this.readCellProfile();
+
+    if (!profile) return;
+
+    profile.generation = generation;
+    profile.updatedAt = this.now().toISOString();
+
+    await this.writeCellProfile(profile);
+  }
+
+  async setParent(parentId) {
+    const profile = await this.readCellProfile();
+
+    if (!profile) return;
+
+    profile.parent = parentId;
+    profile.updatedAt = this.now().toISOString();
+
+    await this.writeCellProfile(profile);
+  }
+
+  async addResponsibility(name) {
+    const profile = await this.readCellProfile();
+
+    if (!profile) return;
+
+    profile.responsibilities ??= [];
+
+    if (!profile.responsibilities.includes(name)) {
+      profile.responsibilities.push(name);
+    }
+
+    await this.writeCellProfile(profile);
+  }
+
+  async removeResponsibility(name) {
+    const profile = await this.readCellProfile();
+
+    if (!profile) return;
+
+    profile.responsibilities = (profile.responsibilities ?? [])
+      .filter((item) => item !== name);
+
+    await this.writeCellProfile(profile);
+  }
+
+  async setResponsibilities(responsibilities = []) {
+    const profile = await this.readCellProfile();
+
+    if (!profile) return;
+
+    profile.responsibilities = this.cleanResponsibilities(responsibilities);
+    profile.updatedAt = this.now().toISOString();
+
+    await this.writeCellProfile(profile);
+  }
+
+  async listResponsibilities() {
+    const profile = await this.readCellProfile();
+    return profile?.responsibilities ?? [];
+  }
+
+  async addRelationship(type, target) {
+    const profile = await this.readCellProfile();
+
+    if (!profile) return;
+
+    profile.relationships ??= [];
+
+    profile.relationships.push({
+      type,
+      target,
+    });
+
+    await this.writeCellProfile(profile);
+  }
+
+  async listRelationships() {
+    const profile = await this.readCellProfile();
+    return profile?.relationships ?? [];
+  }
+
+  cleanResponsibilities(responsibilities = []) {
+    return [
+      ...new Set(
+        (responsibilities || [])
+          .map((responsibility) => String(responsibility).trim())
+          .filter((responsibility) => responsibility.length > 0)
+      ),
+    ];
+  }
 }
