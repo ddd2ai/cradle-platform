@@ -1,5 +1,5 @@
-import fs from "fs/promises";
 import crypto from "crypto";
+import { readJsonFile, writeJsonFile } from "../utils/json-file.js";
 
 export class CellTaskStore {
   constructor({
@@ -29,21 +29,11 @@ export class CellTaskStore {
   }
 
   async readTasks() {
-    try {
-      const raw = await fs.readFile(this.tasksFile, "utf8");
-      return JSON.parse(raw);
-    } catch {
-      return [];
-    }
+    return readJsonFile(this.tasksFile, []);
   }
 
   async writeTasks(tasks = []) {
-    await fs.mkdir(this.tasksDir, { recursive: true });
-    await fs.writeFile(
-      this.tasksFile,
-      JSON.stringify(tasks, null, 2),
-      "utf8"
-    );
+    await writeJsonFile(this.tasksFile, tasks, { dir: this.tasksDir });
   }
 
   async addTask({

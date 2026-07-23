@@ -1,4 +1,4 @@
-import fs from "fs/promises";
+import { readJsonFile, writeJsonFile } from "../utils/json-file.js";
 
 export class CellInboxStore {
   constructor({
@@ -18,21 +18,11 @@ export class CellInboxStore {
   }
 
   async readInbox() {
-    try {
-      const raw = await fs.readFile(this.inboxFile, "utf8");
-      return JSON.parse(raw);
-    } catch {
-      return [];
-    }
+    return readJsonFile(this.inboxFile, []);
   }
 
   async writeInbox(messages = []) {
-    await fs.mkdir(this.inboxDir, { recursive: true });
-    await fs.writeFile(
-      this.inboxFile,
-      JSON.stringify(messages, null, 2),
-      "utf8"
-    );
+    await writeJsonFile(this.inboxFile, messages, { dir: this.inboxDir });
   }
 
   async appendInboxMessage(message) {

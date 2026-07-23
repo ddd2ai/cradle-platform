@@ -1,4 +1,4 @@
-import fs from "fs/promises";
+import { readJsonFile, writeJsonFile } from "../utils/json-file.js";
 
 export class CellLifecycleEventStore {
   constructor({
@@ -14,12 +14,7 @@ export class CellLifecycleEventStore {
   }
 
   async readLifecycleEvents() {
-    try {
-      const raw = await fs.readFile(this.lifecycleEventsFile, "utf8");
-      return JSON.parse(raw);
-    } catch {
-      return [];
-    }
+    return readJsonFile(this.lifecycleEventsFile, []);
   }
 
   async appendLifecycleEvent(event = {}) {
@@ -30,10 +25,6 @@ export class CellLifecycleEventStore {
       ...event,
     });
 
-    await fs.writeFile(
-      this.lifecycleEventsFile,
-      JSON.stringify(events, null, 2),
-      "utf8"
-    );
+    await writeJsonFile(this.lifecycleEventsFile, events);
   }
 }
