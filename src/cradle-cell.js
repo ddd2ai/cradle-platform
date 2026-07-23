@@ -7,6 +7,7 @@ import { createCellPaths } from "./cell/cell-paths.js";
 import { prepareCellDirectories } from "./cell/cell-directory-preparer.js";
 import { mergeCellProfileForStart } from "./cell/cell-profile.js";
 import { CellTaskStore } from "./cell/cell-task-store.js";
+import { CellLifecycleEventStore } from "./cell/cell-lifecycle-event-store.js";
 import { block } from "./utils/text.js";
 import { parseLooseJsonObject } from "./utils/json.js";
 import {
@@ -83,6 +84,9 @@ export class CradleCell {
       tasksDir: this.tasksDir,
       tasksFile: this.tasksFile,
       timestampFormatter: (date) => this.formatTimestamp(date),
+    });
+    this.lifecycleEventStore = new CellLifecycleEventStore({
+      lifecycleEventsFile: this.lifecycleEventsFile,
     });
 
     this.assistant = null;
@@ -674,12 +678,7 @@ ${input}
    * @returns {Promise<Array>} Array of lifecycle events
    */
   async readLifecycleEvents() {
-    try {
-      const raw = await fs.readFile(this.lifecycleEventsFile, "utf8");
-      return JSON.parse(raw);
-    } catch {
-      return [];
-    }
+    return await this.lifecycleEventStore.readLifecycleEvents();
   }
 
   /**
@@ -688,18 +687,7 @@ ${input}
    * @returns {Promise<void>}
    */
   async appendLifecycleEvent(event = {}) {
-    const events = await this.readLifecycleEvents();
-
-    events.push({
-      at: new Date().toISOString(),
-      ...event,
-    });
-
-    await fs.writeFile(
-      this.lifecycleEventsFile,
-      JSON.stringify(events, null, 2),
-      "utf8"
-    );
+    await this.lifecycleEventStore.appendLifecycleEvent(event);
   }
 
   async readDNADefinition() {
