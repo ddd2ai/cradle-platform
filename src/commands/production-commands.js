@@ -1,5 +1,6 @@
 import { renderAnswerStart } from "../cradle-console.js";
 import path from "path";
+import { splitFirstArg } from "./command-input.js";
 
 export function createProductionCommands() {
   return [
@@ -11,16 +12,7 @@ export function createProductionCommands() {
       execute: async ({ engine, input }) => {
         const cell = engine.getActiveCell();
 
-        const args = input.replace("/produce ", "").trim();
-        const firstSpaceIndex = args.indexOf(" ");
-
-        if (firstSpaceIndex === -1) {
-          console.log("Usage: /produce <type> <goal>");
-          return;
-        }
-
-        const type = args.slice(0, firstSpaceIndex).trim();
-        const goal = args.slice(firstSpaceIndex + 1).trim();
+        const { first: type, rest: goal } = splitFirstArg(input, "/produce");
 
         if (!type || !goal) {
           console.log("Usage: /produce <type> <goal>");
@@ -74,4 +66,3 @@ ${outputsList || "(no outputs)"}
     },
   ];
 }
-

@@ -1,3 +1,5 @@
+import { commandArgs } from "./command-input.js";
+
 export function createExecutionCommands() {
   return [
     {
@@ -7,7 +9,7 @@ export function createExecutionCommands() {
 
       execute: async ({ engine, input }) => {
         const cell = engine.getActiveCell();
-        const artifactId = input.replace("/execute-artifact ", "").trim();
+        const artifactId = commandArgs(input, "/execute-artifact");
 
         if (!artifactId) {
           console.log("❌ 請提供 artifact ID");
@@ -46,7 +48,7 @@ File     : situation/stimuli/${stimulus.category}/${stimulus.file}
 
       execute: async (context) => {
         // /execute 是 /execute-artifact 的簡短別名
-        const input = context.input.replace("/execute ", "/execute-artifact ");
+        const input = `/execute-artifact ${commandArgs(context.input, "/execute")}`;
         const commands = createExecutionCommands();
         const executeArtifactCommand = commands[0];
         await executeArtifactCommand.execute({ ...context, input });
@@ -60,7 +62,7 @@ File     : situation/stimuli/${stimulus.category}/${stimulus.file}
 
       execute: async ({ engine, input }) => {
         const cell = engine.getActiveCell();
-        const artifactId = input.replace("/stabilize ", "").trim();
+        const artifactId = commandArgs(input, "/stabilize");
 
         if (!artifactId) {
           console.log("❌ 請提供 artifact ID");
@@ -115,7 +117,7 @@ ${result.history.map((item) => `
 
       execute: async ({ engine, input }) => {
         const cell = engine.getActiveCell();
-        const artifactId = input.replace("/stability ", "").trim();
+        const artifactId = commandArgs(input, "/stability");
 
         if (!artifactId) {
           console.log("❌ 請提供 artifact ID");

@@ -12,6 +12,7 @@ import {
 import { HeartbeatService } from "../heartbeat/heartbeat-service.js";
 import { HeartbeatMode, HeartbeatModeStore } from "../heartbeat/heartbeat-mode.js";
 import { LifecycleProposalStore } from "../heartbeat/lifecycle-proposal-store.js";
+import { commandArgs } from "./command-input.js";
 
 export function createEngineCommands() {
   return [
@@ -79,7 +80,7 @@ export function createEngineCommands() {
       name: "/new",
       match: (input) => input.startsWith("/new "),
       execute: async ({ engine, input }) => {
-        const id = input.replace("/new ", "").trim();
+        const id = commandArgs(input, "/new");
 
         if (!id) {
           console.log("Usage: /new cell-002");
@@ -107,7 +108,7 @@ export function createEngineCommands() {
       name: "/use",
       match: (input) => input.startsWith("/use "),
       execute: async ({ engine, input }) => {
-        const id = input.replace("/use ", "").trim();
+        const id = commandArgs(input, "/use");
 
         if (id === engine.CRADLE_ID) {
           engine.activeCellId = engine.CRADLE_ID;
@@ -154,7 +155,7 @@ export function createEngineCommands() {
       name: "/activate",
       match: (input) => input.startsWith("/activate "),
       execute: async ({ engine, input }) => {
-        const cellId = input.replace("/activate ", "").trim();
+        const cellId = commandArgs(input, "/activate");
 
         if (!cellId) {
           console.log("Usage: /activate <cell-id>");
@@ -169,7 +170,7 @@ export function createEngineCommands() {
       name: "/deactivate",
       match: (input) => input.startsWith("/deactivate "),
       execute: async ({ engine, input }) => {
-        const cellId = input.replace("/deactivate ", "").trim();
+        const cellId = commandArgs(input, "/deactivate");
 
         if (!cellId) {
           console.log("Usage: /deactivate <cell-id>");
@@ -233,7 +234,7 @@ export function createEngineCommands() {
 
       execute: async ({ input }) => {
         const store = new HeartbeatModeStore();
-        const mode = input.replace("/heartbeat-mode", "").trim();
+        const mode = commandArgs(input, "/heartbeat-mode");
 
         if (!mode) {
           console.log(`Heartbeat Mode: ${await store.getMode()}`);
