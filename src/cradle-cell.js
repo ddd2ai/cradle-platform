@@ -15,6 +15,7 @@ import { CellDNAStore } from "./cell/cell-dna-store.js";
 import { CellConfigStore } from "./cell/cell-config-store.js";
 import { CellEvolutionStore } from "./cell/cell-evolution-store.js";
 import { CellWorkspaceStore } from "./cell/cell-workspace-store.js";
+import { CellSnapshotStore } from "./cell/cell-snapshot-store.js";
 import { block } from "./utils/text.js";
 import { parseLooseJsonObject } from "./utils/json.js";
 import {
@@ -128,6 +129,15 @@ export class CradleCell {
     });
     this.workspaceStore = new CellWorkspaceStore({
       workspaceDir: this.workspaceDir,
+    });
+    this.snapshotStore = new CellSnapshotStore({
+      cellId: this.id,
+      snapshotsDir: this.snapshotsDir,
+      memoryDir: this.memoryDir,
+      workspaceDir: this.workspaceDir,
+      thoughtsDir: this.thoughtsDir,
+      cellFile: this.cellFile,
+      timestampFormatter: (date) => this.formatTimestamp(date),
     });
 
     this.assistant = null;
@@ -2531,68 +2541,15 @@ ${memoryContext}
   // =========================
 
   async createSnapshot(name = null) {
-    const timestamp = this.formatTimestamp(new Date());
-    const snapshotName = name || `snapshot-${timestamp}`;
-    const snapshotDir = path.join(this.snapshotsDir, snapshotName);
-
-    await fs.mkdir(snapshotDir, { recursive: true });
-
-    await this.copyDirectory(this.memoryDir, path.join(snapshotDir, "memory"));
-    await this.copyDirectory(this.workspaceDir, path.join(snapshotDir, "workspace"));
-    await this.copyDirectory(this.thoughtsDir, path.join(snapshotDir, "thoughts"));
-
-    await fs.copyFile(this.cellFile, path.join(snapshotDir, "cell.json"));
-
-    const manifest = {
-      cellId: this.id,
-      snapshot: snapshotName,
-      createdAt: new Date().toISOString(),
-      includes: ["cell.json", "memory", "workspace", "thoughts"],
-    };
-
-    await fs.writeFile(
-      path.join(snapshotDir, "snapshot.json"),
-      JSON.stringify(manifest, null, 2),
-      "utf8"
-    );
-
-    return snapshotName;
+    return await this.snapshotStore.createSnapshot(name);
   }
 
   async listSnapshots() {
-    try {
-      const entries = await fs.readdir(this.snapshotsDir, {
-        withFileTypes: true,
-      });
-
-      return entries.filter((e) => e.isDirectory()).map((e) => e.name);
-    } catch {
-      return [];
-    }
+    return await this.snapshotStore.listSnapshots();
   }
 
   async restoreSnapshot(snapshotName) {
-    if (!snapshotName) {
-      throw new Error("Snapshot name is required.");
-    }
-
-    const snapshotDir = path.join(this.snapshotsDir, snapshotName);
-    await fs.access(snapshotDir);
-
-    await fs.rm(this.memoryDir, { recursive: true, force: true });
-    await fs.rm(this.workspaceDir, { recursive: true, force: true });
-    await fs.rm(this.thoughtsDir, { recursive: true, force: true });
-
-    await this.copyDirectory(path.join(snapshotDir, "memory"), this.memoryDir);
-    await this.copyDirectory(path.join(snapshotDir, "workspace"), this.workspaceDir);
-    await this.copyDirectory(path.join(snapshotDir, "thoughts"), this.thoughtsDir);
-
-    try {
-      await fs.copyFile(path.join(snapshotDir, "cell.json"), this.cellFile);
-    } catch {
-      // 舊 snapshot 可能沒有 cell.json
-    }
-
+    await this.snapshotStore.restoreSnapshot(snapshotName);
     await this.updateStatus("idle");
   }
 
@@ -2816,24 +2773,7 @@ ${dnaContext}
   }
 
   async copyDirectory(source, target) {
-    await fs.mkdir(target, { recursive: true });
-
-    try {
-      const entries = await fs.readdir(source, { withFileTypes: true });
-
-      for (const entry of entries) {
-        const sourcePath = path.join(source, entry.name);
-        const targetPath = path.join(target, entry.name);
-
-        if (entry.isDirectory()) {
-          await this.copyDirectory(sourcePath, targetPath);
-        } else {
-          await fs.copyFile(sourcePath, targetPath);
-        }
-      }
-    } catch {
-      // source 不存在時，建立空目錄即可
-    }
+    await this.snapshotStore.copyDirectory(source, target);
   }
 
   resolveInside(baseDir, relativePath) {
