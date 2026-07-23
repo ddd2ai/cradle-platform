@@ -494,67 +494,26 @@ export class ArtifactRegenerationService {
       const item = productionPlan[index];
 
       try {
-        // 依 Parent 分組 Source Artifacts
-        const artifactsByParent = this._groupArtifactsByParent(item.sourceArtifacts || []);
-
-        // 載入所有 Parent Artifacts
-        const allSourceArtifacts = [];
-        const allSourceWarnings = [];
-
-        for (const [parentId, artifactIds] of artifactsByParent.entries()) {
-          const parentCell = parentCells.find(cell => cell.id === parentId);
-
-          if (!parentCell) {
-            allSourceWarnings.push(`Unknown parent cell: ${parentId}`);
-            continue;
-          }
-
-          try {
-            const sourceResult = await this.sourceMaterialService.loadSelectedArtifacts(
-              parentCell,
-              artifactIds
-            );
-
-            // 為每個 artifact 增加 sourceCellId
-            const artifactsWithSource = sourceResult.artifacts.map(artifact => ({
-              ...artifact,
-              sourceCellId: parentId
-            }));
-
-            allSourceArtifacts.push(...artifactsWithSource);
-
-            // 收集 warnings
-            sourceResult.errors.forEach(error => {
-              allSourceWarnings.push(`${parentId}/${error.artifactId}: ${error.error}`);
-            });
-          } catch (error) {
-            allSourceWarnings.push(`Failed to load artifacts from ${parentId}: ${error.message}`);
-          }
-        }
+        const {
+          sourceArtifacts,
+          sourceWarnings,
+        } = await this._loadFusionSourceArtifacts({
+          parentCells,
+          sourceArtifactRefs: item.sourceArtifacts || [],
+        });
 
         // Call production service with transformation context
-        const { artifact, saved } = await childCell.productionService.produceFromTransformation({
-          type: item.type,
-          title: item.title,
-          goal: item.goal,
-          constraints: item.constraints || [],
-
-          livingContext: fusionPlan.fusedLivingContext,
-          distilledMemory: fusionPlan.fusedMemorySeed,
-
-          sourceArtifacts: allSourceArtifacts,
-          sourceWarnings: allSourceWarnings,
-
-          origin: {
-            mode: 'fusion',
-            sourceCellIds: parentCells.map(cell => cell.id),
-            sourceArtifactIds: (item.sourceArtifacts || []).map(
-              source => source.artifactId
-            ),
-            sourceArtifactRefs: item.sourceArtifacts || [],
-            livingContextId: `living-context-${childCell.id}`
-          }
-        });
+        const { artifact, saved } =
+          await childCell.productionService.produceFromTransformation(
+            this._createFusionProductionRequest({
+              item,
+              parentCells,
+              childCell,
+              fusionPlan,
+              sourceArtifacts,
+              sourceWarnings,
+            })
+          );
 
         // Record success
         produced.push({
@@ -583,6 +542,87 @@ export class ArtifactRegenerationService {
       failed, 
       skipped,
       complete: failed.length === 0
+    };
+  }
+
+  async _loadFusionSourceArtifacts({
+    parentCells,
+    sourceArtifactRefs,
+  }) {
+    // 依 Parent 分組 Source Artifacts
+    const artifactsByParent =
+      this._groupArtifactsByParent(sourceArtifactRefs);
+
+    const sourceArtifacts = [];
+    const sourceWarnings = [];
+
+    for (const [parentId, artifactIds] of artifactsByParent.entries()) {
+      const parentCell = parentCells.find(cell => cell.id === parentId);
+
+      if (!parentCell) {
+        sourceWarnings.push(`Unknown parent cell: ${parentId}`);
+        continue;
+      }
+
+      try {
+        const sourceResult =
+          await this.sourceMaterialService.loadSelectedArtifacts(
+            parentCell,
+            artifactIds
+          );
+
+        sourceArtifacts.push(
+          ...sourceResult.artifacts.map(artifact => ({
+            ...artifact,
+            sourceCellId: parentId
+          }))
+        );
+
+        sourceResult.errors.forEach(error => {
+          sourceWarnings.push(`${parentId}/${error.artifactId}: ${error.error}`);
+        });
+      } catch (error) {
+        sourceWarnings.push(`Failed to load artifacts from ${parentId}: ${error.message}`);
+      }
+    }
+
+    return {
+      sourceArtifacts,
+      sourceWarnings,
+    };
+  }
+
+  _createFusionProductionRequest({
+    item,
+    parentCells,
+    childCell,
+    fusionPlan,
+    sourceArtifacts,
+    sourceWarnings,
+  }) {
+    const sourceArtifactRefs = item.sourceArtifacts || [];
+
+    return {
+      type: item.type,
+      title: item.title,
+      goal: item.goal,
+      constraints: item.constraints || [],
+
+      livingContext: fusionPlan.fusedLivingContext,
+      distilledMemory: fusionPlan.fusedMemorySeed,
+
+      sourceArtifacts,
+      sourceWarnings,
+
+      origin: {
+        mode: 'fusion',
+        sourceCellIds: parentCells.map(cell => cell.id),
+        sourceArtifactIds: sourceArtifactRefs.map(
+          source => source.artifactId
+        ),
+        sourceArtifactRefs,
+        livingContextId: `living-context-${childCell.id}`
+      }
     };
   }
 
