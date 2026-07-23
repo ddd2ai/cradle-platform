@@ -20,7 +20,10 @@ console.log("Testing Source Material Service...\n");
 const service = new SourceMaterialService();
 
 const longKnowledge = "A".repeat(15000);
-const longContent = "X".repeat(10000);
+const longContent =
+  "X".repeat(
+    getAiMaxSourceArtifactOutputLength() + 1000
+  );
 
 const artifactMap = new Map([
   [
