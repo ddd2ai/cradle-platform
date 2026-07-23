@@ -12,6 +12,7 @@ import { CellInboxStore } from "./cell/cell-inbox-store.js";
 import { CellMemoryStore } from "./cell/cell-memory-store.js";
 import { CellProfileStore } from "./cell/cell-profile-store.js";
 import { CellDNAStore } from "./cell/cell-dna-store.js";
+import { CellConfigStore } from "./cell/cell-config-store.js";
 import { block } from "./utils/text.js";
 import { parseLooseJsonObject } from "./utils/json.js";
 import {
@@ -110,6 +111,13 @@ export class CradleCell {
     this.dnaStore = new CellDNAStore({
       dnaVectorFile: this.dnaVectorFile,
       dnaHistoryFile: this.dnaHistoryFile,
+    });
+    this.configStore = new CellConfigStore({
+      dnaDefinitionFile: this.dnaDefinitionFile,
+      dnaFactorsFile: this.dnaFactorsFile,
+      visionFile: this.visionFile,
+      environmentFile: this.environmentFile,
+      dnaDir: this.dnaDir,
     });
 
     this.assistant = null;
@@ -714,52 +722,15 @@ ${input}
   }
 
   async readDNADefinition() {
-    try {
-      const content = await fs.readFile(this.dnaDefinitionFile, "utf8");
-
-      const matches = [...content.matchAll(/^##\s+([A-Z0-9_-]+)\s*$/gm)];
-
-      return matches.map((match) => {
-        const name = match[1].trim();
-
-        return {
-          name,
-          fileName: `${name.toLowerCase()}.md`,
-        };
-      });
-    } catch {
-      return [
-        { name: "PERCEPTION", fileName: "perception.md" },
-        { name: "DECISION", fileName: "decision.md" },
-        { name: "DECOMPOSITION", fileName: "decomposition.md" },
-        { name: "LEARNING", fileName: "learning.md" },
-        { name: "COLLABORATION", fileName: "collaboration.md" },
-        { name: "CREATION", fileName: "creation.md" },
-        { name: "EVOLUTION", fileName: "evolution.md" },
-      ];
-    }
+    return await this.configStore.readDNADefinition();
   }
 
   async getDNAFiles() {
-    const definitions = await this.readDNADefinition();
-
-    return Object.fromEntries(
-      definitions.map((definition) => [
-        definition.name,
-        path.join(this.dnaDir, definition.fileName),
-      ])
-    );
+    return await this.configStore.getDNAFiles();
   }
 
   async readDNAFactors() {
-    try {
-      const content = await fs.readFile(this.dnaFactorsFile, "utf8");
-      const matches = [...content.matchAll(/^##\s+([a-zA-Z0-9_-]+)\s*$/gm)];
-
-      return matches.map((match) => match[1].trim());
-    } catch {
-      return ["strength", "stability", "plasticity"];
-    }
+    return await this.configStore.readDNAFactors();
   }
 
   async prepareMemoryFiles() {
@@ -767,60 +738,15 @@ ${input}
   }
 
   async ensureRootFiles() {
-    await this.ensureFile(
-      this.visionFile,
-      `# VISION
-
-建立一套電商系統。
-`
-    );
-
-    await this.ensureFile(
-      this.environmentFile,
-      `# ENVIRONMENT
-
-- Java 21
-- Spring Boot
-- Hexagonal Architecture
-- MariaDB
-`
-    );
+    await this.configStore.ensureRootFiles();
   }
 
   async prepareDNAFiles() {
-    const definitions = await this.readDNADefinition();
-
-    for (const definition of definitions) {
-      const file = path.join(this.dnaDir, definition.fileName);
-
-      await this.ensureFile(
-        file,
-        this.createDNASeed(definition.name)
-      );
-    }
+    await this.configStore.prepareDNAFiles();
   }
 
   createDNASeed(name) {
-    return `# ${name} DNA
-
-## Meaning
-
-TODO: define meaning from DNA_DEFINITION.md.
-
-## Traits
-
-- TODO: define traits.
-
-## Vector
-
-\`\`\`json
-{
-  "strength": 0.5,
-  "stability": 0.7,
-  "plasticity": 0.3
-}
-\`\`\`
-`;
+    return this.configStore.createDNASeed(name);
   }
 
   async prepareDNAVector() {
@@ -1849,19 +1775,11 @@ ${memoryContext}
   }
 
   async readVision() {
-    try {
-      return await fs.readFile(this.visionFile, "utf8");
-    } catch {
-      return "# VISION\n\n建立一套電商系統。";
-    }
+    return await this.configStore.readVision();
   }
 
   async readEnvironment() {
-    try {
-      return await fs.readFile(this.environmentFile, "utf8");
-    } catch {
-      return "# ENVIRONMENT\n\n- Java 21\n- Spring Boot\n- Hexagonal Architecture\n- MariaDB";
-    }
+    return await this.configStore.readEnvironment();
   }
 
   async readStimuli() {
