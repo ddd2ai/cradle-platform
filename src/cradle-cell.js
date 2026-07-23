@@ -1,12 +1,12 @@
 // cradle-cell.js
 import fs from "fs/promises";
 import path from "path";
-import crypto from "crypto";
 import { createCradleAssistant } from "./cradle-ai.js";
 import { createLLMProvider } from "./providers/llm-provider-factory.js";
 import { createCellPaths } from "./cell/cell-paths.js";
 import { prepareCellDirectories } from "./cell/cell-directory-preparer.js";
 import { mergeCellProfileForStart } from "./cell/cell-profile.js";
+import { CellTaskStore } from "./cell/cell-task-store.js";
 import { block } from "./utils/text.js";
 import { parseLooseJsonObject } from "./utils/json.js";
 import {
@@ -78,6 +78,12 @@ export class CradleCell {
       cellsDir,
     });
     Object.assign(this, this.paths);
+
+    this.taskStore = new CellTaskStore({
+      tasksDir: this.tasksDir,
+      tasksFile: this.tasksFile,
+      timestampFormatter: (date) => this.formatTimestamp(date),
+    });
 
     this.assistant = null;
 
@@ -644,58 +650,23 @@ ${input}
 
 
   async readTasks() {
-    try {
-      const raw = await fs.readFile(this.tasksFile, "utf8");
-      return JSON.parse(raw);
-    } catch {
-      return [];
-    }
+    return await this.taskStore.readTasks();
   }
 
   async writeTasks(tasks = []) {
-    await fs.mkdir(this.tasksDir, { recursive: true });
-    await fs.writeFile(
-      this.tasksFile,
-      JSON.stringify(tasks, null, 2),
-      "utf8"
-    );
+    await this.taskStore.writeTasks(tasks);
   }
 
   async addTask({ title, source = "manual", content = "" }) {
-    const tasks = await this.readTasks();
-
-    const task = {
-      id: `task-${this.formatTimestamp(new Date())}-${crypto.randomUUID().slice(0, 8)}`,
-      title,
-      source,
-      content,
-      status: "pending",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    tasks.push(task);
-    await this.writeTasks(tasks);
-
-    return task;
+    return await this.taskStore.addTask({ title, source, content });
   }
 
   async completeTask(taskId) {
-    const tasks = await this.readTasks();
-
-    for (const task of tasks) {
-      if (task.id === taskId) {
-        task.status = "done";
-        task.updatedAt = new Date().toISOString();
-      }
-    }
-
-    await this.writeTasks(tasks);
+    await this.taskStore.completeTask(taskId);
   }
 
   async nextPendingTask() {
-    const tasks = await this.readTasks();
-    return tasks.find((task) => task.status === "pending") ?? null;
+    return await this.taskStore.nextPendingTask();
   }
 
   /**
