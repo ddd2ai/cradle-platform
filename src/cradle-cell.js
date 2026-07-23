@@ -8,6 +8,7 @@ import { prepareCellDirectories } from "./cell/cell-directory-preparer.js";
 import { mergeCellProfileForStart } from "./cell/cell-profile.js";
 import { CellTaskStore } from "./cell/cell-task-store.js";
 import { CellLifecycleEventStore } from "./cell/cell-lifecycle-event-store.js";
+import { CellInboxStore } from "./cell/cell-inbox-store.js";
 import { block } from "./utils/text.js";
 import { parseLooseJsonObject } from "./utils/json.js";
 import {
@@ -87,6 +88,10 @@ export class CradleCell {
     });
     this.lifecycleEventStore = new CellLifecycleEventStore({
       lifecycleEventsFile: this.lifecycleEventsFile,
+    });
+    this.inboxStore = new CellInboxStore({
+      inboxDir: this.inboxDir,
+      inboxFile: this.inboxFile,
     });
 
     this.assistant = null;
@@ -1849,32 +1854,19 @@ TODO: define meaning from DNA_DEFINITION.md.
   // =========================
 
   async readInbox() {
-    try {
-      const raw = await fs.readFile(this.inboxFile, "utf8");
-      return JSON.parse(raw);
-    } catch {
-      return [];
-    }
+    return await this.inboxStore.readInbox();
   }
 
   async writeInbox(messages = []) {
-    await fs.mkdir(this.inboxDir, { recursive: true });
-    await fs.writeFile(
-      this.inboxFile,
-      JSON.stringify(messages, null, 2),
-      "utf8"
-    );
+    await this.inboxStore.writeInbox(messages);
   }
 
   async appendInboxMessage(message) {
-    const messages = await this.readInbox();
-    messages.push(message);
-    await this.writeInbox(messages);
-    return messages;
+    return await this.inboxStore.appendInboxMessage(message);
   }
 
   async clearInbox() {
-    await this.writeInbox([]);
+    await this.inboxStore.clearInbox();
   }
 
 
