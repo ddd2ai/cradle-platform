@@ -8,7 +8,7 @@
  * 4. /lifecycle-run --apply command
  */
 
-import { CradleEngine } from "./src/cradle-engine.js";
+import { CradleEngine } from "../src/cradle-engine.js";
 
 async function testLifecycleRepairExecution() {
   console.log("\n=== Lifecycle Repair Execution Test ===\n");
@@ -29,7 +29,7 @@ async function testLifecycleRepairExecution() {
 
   // Test 2: Create lifecycle plan (dry-run)
   console.log("Test 2: Lifecycle Plan (Dry-run)");
-  const { createLifecyclePlan } = await import("./src/lifecycle/lifecycle-orchestrator.js");
+  const { createLifecyclePlan } = await import("../src/lifecycle/lifecycle-orchestrator.js");
   
   const plan = await createLifecyclePlan(cell, engine);
   console.log(`Action         : ${plan.action}`);
@@ -42,7 +42,7 @@ async function testLifecycleRepairExecution() {
   console.log("Test 3: Repair without artifactId (safe failure)");
   
   if (decision.action === "repair") {
-    const { applyLifecyclePlan } = await import("./src/lifecycle/lifecycle-orchestrator.js");
+    const { applyLifecyclePlan } = await import("../src/lifecycle/lifecycle-orchestrator.js");
     
     const result = await applyLifecyclePlan(cell, engine, plan, {
       allowRepair: true,
@@ -69,7 +69,7 @@ async function testLifecycleRepairExecution() {
   console.log("Test 4: Stay Action (always succeeds)");
   
   if (decision.action === "stay") {
-    const { applyLifecyclePlan } = await import("./src/lifecycle/lifecycle-orchestrator.js");
+    const { applyLifecyclePlan } = await import("../src/lifecycle/lifecycle-orchestrator.js");
     
     const result = await applyLifecyclePlan(cell, engine, plan, {
       allowRepair: true,
@@ -95,7 +95,7 @@ async function testLifecycleRepairExecution() {
     decision,
   };
   
-  const { applyLifecyclePlan } = await import("./src/lifecycle/lifecycle-orchestrator.js");
+  const { applyLifecyclePlan } = await import("../src/lifecycle/lifecycle-orchestrator.js");
   
   const divideResult = await applyLifecyclePlan(cell, engine, dividePlan, {
     allowRepair: true,
@@ -128,7 +128,7 @@ async function testLifecycleRepairExecution() {
   // Test 7: Test repair type resolution
   console.log("Test 7: Repair Type Resolution");
   
-  const { resolveRepairType } = await import("./src/lifecycle/lifecycle-repair-service.js");
+  const { resolveRepairType } = await import("../src/lifecycle/lifecycle-repair-service.js");
   
   // Test high failure rate → artifact
   const artifactPlan = {

@@ -1,7 +1,7 @@
 // test-production-pipeline.js
 // 自動化測試 Production Pipeline
 
-import { CradleCell } from "./src/cradle-cell.js";
+import { CradleCell } from "../src/cradle-cell.js";
 import fs from "fs/promises";
 import path from "path";
 

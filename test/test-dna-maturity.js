@@ -1,7 +1,7 @@
 // test-dna-maturity.js
 // Test the new DNA maturity calculation model
 
-import { CradleCell } from "./src/cradle-cell.js";
+import { CradleCell } from "../src/cradle-cell.js";
 
 async function testDNAMaturity() {
   console.log("\n=== DNA Maturity Model Test ===\n");

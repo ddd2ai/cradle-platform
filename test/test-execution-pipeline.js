@@ -8,8 +8,8 @@
  * 4. 檢查執行結果
  */
 
-import { CradleCell } from "./src/cradle-cell.js";
-import { ArtifactExecutionService } from "./src/execution/artifact-execution-service.js";
+import { CradleCell } from "../src/cradle-cell.js";
+import { ArtifactExecutionService } from "../src/execution/artifact-execution-service.js";
 import fs from "fs/promises";
 import path from "path";
 

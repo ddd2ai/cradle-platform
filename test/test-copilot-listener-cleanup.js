@@ -7,7 +7,7 @@
  * 3. 連續多個請求時，只有當前請求的 listener 在工作
  */
 
-import { createCopilotProvider } from "./src/providers/copilot-provider.js";
+import { createCopilotProvider } from "../src/providers/copilot-provider.js";
 
 async function testListenerCleanup() {
   console.log("\n=== Copilot Listener Cleanup Test ===\n");

@@ -1,7 +1,7 @@
 // test-dna-maturity-integration.js
 // Test DNA maturity integration with lifecycle
 
-import { CradleCell } from "./src/cradle-cell.js";
+import { CradleCell } from "../src/cradle-cell.js";
 
 async function testIntegration() {
   console.log("\n=== DNA Maturity Integration Test ===\n");

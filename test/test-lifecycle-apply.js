@@ -13,7 +13,7 @@
  * - fuse: blocked (需手動執行)
  */
 
-import { CradleEngine } from "./src/cradle-engine.js";
+import { CradleEngine } from "../src/cradle-engine.js";
 
 async function testLifecycleApply() {
   console.log("\n=== Lifecycle Apply Safety Layer Test ===\n");
@@ -40,7 +40,7 @@ async function testLifecycleApply() {
   console.log("Test 2: Create Lifecycle Plan (Dry-run)");
   console.log("----------------------------------------");
   
-  const { createLifecyclePlan } = await import("./src/lifecycle/lifecycle-orchestrator.js");
+  const { createLifecyclePlan } = await import("../src/lifecycle/lifecycle-orchestrator.js");
   const plan = await createLifecyclePlan(cell, engine);
   
   console.log(`Action         : ${plan.action}`);
@@ -53,7 +53,7 @@ async function testLifecycleApply() {
   console.log("Test 3: Apply Lifecycle Plan");
   console.log("-----------------------------");
   
-  const { applyLifecyclePlan } = await import("./src/lifecycle/lifecycle-orchestrator.js");
+  const { applyLifecyclePlan } = await import("../src/lifecycle/lifecycle-orchestrator.js");
   const result = await applyLifecyclePlan(cell, engine, plan, {
     allowRepair: true,
     allowDivide: false,
@@ -82,7 +82,7 @@ async function testLifecycleApply() {
   console.log("Test 4: Policy Guard Behavior");
   console.log("------------------------------");
   
-  const { canApplyLifecycleAction } = await import("./src/lifecycle/lifecycle-policy.js");
+  const { canApplyLifecycleAction } = await import("../src/lifecycle/lifecycle-policy.js");
   
   const testCases = [
     { action: "stay", options: {} },

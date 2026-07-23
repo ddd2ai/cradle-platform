@@ -336,7 +336,7 @@ REFLECTION    : 0.70
 
 ### 新增檔案：
 - ✅ `src/dna/dna-lifecycle.js` - 生命週期決策模組
-- ✅ `test-dna-lifecycle.js` - 測試程式碼
+- ✅ `test/test-dna-lifecycle.js` - 測試程式碼
 
 ### 修改檔案：
 - ✅ `src/cradle-cell.js` - 新增 `getLifecycleDecision()`

@@ -248,10 +248,10 @@ async increaseMaturity(amount = 1) {
 
 ## 測試結果 ✅
 
-### 測試程式碼：`test-dna-maturity.js`
+### 測試程式碼：`test/test-dna-maturity.js`
 
 ```bash
-node test-dna-maturity.js
+node test/test-dna-maturity.js
 ```
 
 ### 測試輸出：
@@ -456,7 +456,7 @@ await this.appendDNAHistoryIfChanged("evolution");
 
 ### 新增檔案：
 - ✅ `src/dna/dna-maturity.js` - DNA 成熟度計算模組
-- ✅ `test-dna-maturity.js` - 測試程式碼
+- ✅ `test/test-dna-maturity.js` - 測試程式碼
 - ✅ `docs/DNA_MATURITY_REFACTOR.md` - 本文件
 
 ### 修改檔案：

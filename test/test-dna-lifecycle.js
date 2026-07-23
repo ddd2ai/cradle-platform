@@ -1,7 +1,7 @@
 // test-dna-lifecycle.js
 // Test DNA lifecycle decision system
 
-import { CradleCell } from "./src/cradle-cell.js";
+import { CradleCell } from "../src/cradle-cell.js";
 
 async function testLifecycleDecision() {
   console.log("\n=== DNA Lifecycle Decision Test ===\n");

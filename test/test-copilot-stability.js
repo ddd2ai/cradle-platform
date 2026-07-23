@@ -1,4 +1,4 @@
-import { createCopilotProvider } from "./src/providers/copilot-provider.js";
+import { createCopilotProvider } from "../src/providers/copilot-provider.js";
 
 const provider = await createCopilotProvider({
   model: "gpt-5-mini",

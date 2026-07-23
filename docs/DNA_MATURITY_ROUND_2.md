@@ -369,7 +369,7 @@ Magnitude: 0.2465
   - `/status` 使用新 maturity
 
 ### 測試檔案：
-- ✅ `test-dna-maturity-integration.js` - 整合測試
+- ✅ `test/test-dna-maturity-integration.js` - 整合測試
 
 ---
 
