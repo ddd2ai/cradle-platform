@@ -6,6 +6,7 @@ import { createCradleAssistant } from "./cradle-ai.js";
 import { createLLMProvider } from "./providers/llm-provider-factory.js";
 import { createCopilotProvider } from "./providers/copilot-provider.js";
 import { createOllamaProvider } from "./providers/ollama-provider.js";
+import { createCellPaths } from "./cell/cell-paths.js";
 import { block } from "./utils/text.js";
 import { parseLooseJsonObject } from "./utils/json.js";
 import {
@@ -63,60 +64,20 @@ export class CradleCell {
     name = "Cradle Cell",
     model = "gpt-5-mini",
     provider = "copilot",
+    projectRoot = process.cwd(),
+    cellsDir = "cells",
   } = {}) {
     this.id = id;
     this.name = name;
     this.model = model;
     this.provider = provider;
 
-    this.rootDir = path.join("cells", this.id);
-    this.logsDir = path.join(this.rootDir, "logs");
-    this.memoryDir = path.join(this.rootDir, "memory");
-    this.dnaDir = path.join(this.rootDir, "dna");
-    this.dnaDefinitionFile = path.join(process.cwd(), "config", "DNA_DEFINITION.md");
-    this.dnaFactorsFile = path.join(process.cwd(), "config", "DNA_FACTORS.md");
-    this.visionFile = path.join(process.cwd(), "config", "VISION.md");
-    this.environmentFile = path.join(process.cwd(), "config", "ENVIRONMENT.md");
-    this.dnaVectorFile = path.join(this.rootDir, "dna-vector.json");
-    this.dnaHistoryFile = path.join(this.rootDir, "dna-history.json");
-    this.workspaceDir = path.join(this.rootDir, "workspace");
-    this.situationDir = path.join(process.cwd(), "situation");
-    this.stimuliDir = path.join(this.situationDir, "stimuli");
-    this.observationsDir = path.join(this.situationDir, "observations");
-    this.metricsDir = path.join(this.situationDir, "metrics");
-    this.productionsDir = path.join(this.workspaceDir, "productions");
-    this.reviewsDir = path.join(this.workspaceDir, "reviews");
-    this.publicationsDir = path.join(this.workspaceDir, "publications");
-    this.workspaceDirs = {
-      notes: path.join(this.workspaceDir, "notes"),
-      tasks: path.join(this.workspaceDir, "tasks"),
-      artifacts: path.join(this.workspaceDir, "artifacts"),
-      projects: path.join(this.workspaceDir, "projects"),
-      research: path.join(this.workspaceDir, "research"),
-      decisions: path.join(this.workspaceDir, "decisions"),
-      productions: this.productionsDir,
-      reviews: this.reviewsDir,
-      publications: this.publicationsDir,
-    };
-    this.snapshotsDir = path.join(this.rootDir, "snapshots");
-    this.thoughtsDir = path.join(this.rootDir, "thoughts");
-    this.cellFile = path.join(this.rootDir, "cell.json");
-    this.inboxDir = path.join(this.rootDir, "inbox");
-    this.inboxFile = path.join(this.inboxDir, "messages.json");
-    this.tasksDir = path.join(this.rootDir, "tasks");
-    this.tasksFile = path.join(this.tasksDir, "tasks.json");
-    this.evolutionsDir = path.join(this.rootDir, "evolutions");
-    this.evolutionStateFile = path.join(this.rootDir, "evolution-state.json");
-    this.lifecycleEventsFile = path.join(this.rootDir, "lifecycle-events.json");
-    this.livingContextFile = path.join(this.rootDir, "living-context.json");
-    this.profileFile = path.join(this.rootDir, "profile.json");
-
-    this.memoryFiles = {
-      identity: path.join(this.memoryDir, "identity.md"),
-      rules: path.join(this.memoryDir, "rules.md"),
-      knowledge: path.join(this.memoryDir, "knowledge.md"),
-      history: path.join(this.memoryDir, "history.md"),
-    };
+    this.paths = createCellPaths({
+      cellId: this.id,
+      projectRoot,
+      cellsDir,
+    });
+    Object.assign(this, this.paths);
 
     this.assistant = null;
 
