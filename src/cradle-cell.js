@@ -59,6 +59,7 @@ import { LivingContextStore } from "./living-context/living-context-store.js";
 import {
   resolveRepairTypeFromDecision,
 } from "./lifecycle/repair-type.js";
+import { StimulusStore } from "./situation/stimulus-store.js";
 
 export class CradleCell {
 
@@ -126,6 +127,10 @@ export class CradleCell {
     });
     this.livingContextStore = new LivingContextStore({
       livingContextFile: this.livingContextFile,
+    });
+    this.stimulusStore = new StimulusStore({
+      stimuliDir: this.stimuliDir,
+      timestampFormatter: (date) => this.formatTimestamp(date),
     });
     this.snapshotStore = new CellSnapshotStore({
       cellId: this.id,
@@ -1837,31 +1842,11 @@ ${memoryContext}
   }
 
   async writeStimulus({ category = "signals", name, content } = {}) {
-    const allowedCategories = [
-      "signals",
-      "threats",
-      "pressures",
-      "resources",
-    ];
-
-    if (!allowedCategories.includes(category)) {
-      throw new Error(`Invalid stimulus category: ${category}`);
-    }
-
-    const filename =
-      name || `stimulus-${this.formatTimestamp(new Date())}.md`;
-
-    const dir = path.join(this.stimuliDir, category);
-
-    await fs.mkdir(dir, { recursive: true });
-
-    await fs.writeFile(path.join(dir, filename), content, "utf8");
-
-    return {
+    return await this.stimulusStore.writeStimulus({
       category,
-      file: filename,
-      path: path.join(dir, filename),
-    };
+      name,
+      content,
+    });
   }
 
   async archiveStimuli(stimuli = []) {
