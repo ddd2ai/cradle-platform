@@ -995,9 +995,9 @@ DNA drift    : ${result.dnaDrift.length}
         console.log(`Child: ${childId}`);
 
 
-        if (complete) {
-          engine.activeCellId = child.id;
-          console.log(`Switched to ${child.id}`);
+        if (result.complete) {
+          engine.activeCellId = result.child.id;
+          console.log(`Switched to ${result.child.id}`);
         }
       },
     },
