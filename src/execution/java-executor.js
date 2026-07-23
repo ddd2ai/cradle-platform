@@ -3,6 +3,7 @@ import path from "path";
 import { spawn } from "child_process";
 import { ExecutionResult } from "./execution-result.js";
 import { writeJsonFile } from "../utils/json-file.js";
+import { writeTextFile } from "../utils/text-file.js";
 
 /**
  * JavaExecutor
@@ -48,7 +49,7 @@ export class JavaExecutor {
     const mainClass = path.basename(fileName, ".java");
     const filePath = path.join(srcDir, fileName);
 
-    await fs.writeFile(filePath, output.content, "utf8");
+    await writeTextFile(filePath, output.content);
 
     // 執行 javac 編譯
     const compileCommand = `javac ${fileName}`;

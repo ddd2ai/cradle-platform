@@ -31,10 +31,9 @@ export class ArtifactStore {
     await writeJsonFile(path.join(dir, "artifact.json"), artifact);
 
     if (artifact.plan) {
-      await fs.writeFile(
+      await writeTextFile(
         path.join(dir, "plan.md"),
-        artifact.plan.markdown ?? JSON.stringify(artifact.plan, null, 2),
-        "utf8"
+        artifact.plan.markdown ?? JSON.stringify(artifact.plan, null, 2)
       );
     }
 

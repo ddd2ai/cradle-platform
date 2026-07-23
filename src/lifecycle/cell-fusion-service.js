@@ -20,6 +20,7 @@ import {
 import { ArtifactRegenerationService } from "../production/artifact-regeneration-service.js";
 import { createFusionProductionResult } from "../production/production-result.js";
 import { block } from "../utils/text.js";
+import { writeTextFile } from "../utils/text-file.js";
 import {
   logProductionResult,
   runApplicationStage,
@@ -428,10 +429,9 @@ export class CellFusionService {
     try {
       const content = await fs.readFile(archiveFile.source, "utf8");
 
-      await fs.writeFile(
+      await writeTextFile(
         path.join(parentArchiveDir, archiveFile.name),
-        content,
-        "utf8"
+        content
       );
     } catch (error) {
       // 單一檔案不存在時跳過
