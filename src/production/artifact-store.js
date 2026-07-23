@@ -1,5 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
+import { writeJsonFile } from "../utils/json-file.js";
 
 export class ArtifactStore {
   constructor({ productionsDir }) {
@@ -26,11 +27,7 @@ export class ArtifactStore {
 
     await fs.mkdir(outputsDir, { recursive: true });
 
-    await fs.writeFile(
-      path.join(dir, "artifact.json"),
-      JSON.stringify(artifact, null, 2),
-      "utf8"
-    );
+    await writeJsonFile(path.join(dir, "artifact.json"), artifact);
 
     if (artifact.plan) {
       await fs.writeFile(
