@@ -385,48 +385,62 @@ export class CellFusionService {
       try {
         await fs.mkdir(parentArchiveDir, { recursive: true });
 
-        // Archive 每個 Memory 檔案
-        const archiveFiles = [
-          {
-            name: "identity.md",
-            source: parent.memoryFiles.identity,
-          },
-          {
-            name: "rules.md",
-            source: parent.memoryFiles.rules,
-          },
-          {
-            name: "knowledge.md",
-            source: parent.memoryFiles.knowledge,
-          },
-          {
-            name: "history.md",
-            source: parent.memoryFiles.history,
-          },
-          {
-            name: "thoughts.md",
-            source: path.join(parent.thoughtsDir, "thoughts.md"),
-          },
-        ];
-
-        for (const archiveFile of archiveFiles) {
-          try {
-            const content = await fs.readFile(archiveFile.source, "utf8");
-            await fs.writeFile(
-              path.join(parentArchiveDir, archiveFile.name),
-              content,
-              "utf8"
-            );
-          } catch (error) {
-            // 單一檔案不存在時跳過
-            if (error.code !== "ENOENT") {
-              console.warn(`  ⚠️  Failed to archive ${archiveFile.name} from ${parent.id}: ${error.message}`);
-            }
-          }
+        for (const archiveFile of this._getParentMemoryArchiveFiles(parent)) {
+          await this._copyParentArchiveFile({
+            archiveFile,
+            parent,
+            parentArchiveDir,
+          });
         }
       } catch (error) {
         // Archive 錯誤記錄 warning，不阻止 Fusion
         console.warn(`  ⚠️  Failed to archive memories from ${parent.id}: ${error.message}`);
+      }
+    }
+  }
+
+  _getParentMemoryArchiveFiles(parent) {
+    return [
+      {
+        name: "identity.md",
+        source: parent.memoryFiles.identity,
+      },
+      {
+        name: "rules.md",
+        source: parent.memoryFiles.rules,
+      },
+      {
+        name: "knowledge.md",
+        source: parent.memoryFiles.knowledge,
+      },
+      {
+        name: "history.md",
+        source: parent.memoryFiles.history,
+      },
+      {
+        name: "thoughts.md",
+        source: path.join(parent.thoughtsDir, "thoughts.md"),
+      },
+    ];
+  }
+
+  async _copyParentArchiveFile({
+    archiveFile,
+    parent,
+    parentArchiveDir,
+  }) {
+    try {
+      const content = await fs.readFile(archiveFile.source, "utf8");
+
+      await fs.writeFile(
+        path.join(parentArchiveDir, archiveFile.name),
+        content,
+        "utf8"
+      );
+    } catch (error) {
+      // 單一檔案不存在時跳過
+      if (error.code !== "ENOENT") {
+        console.warn(`  ⚠️  Failed to archive ${archiveFile.name} from ${parent.id}: ${error.message}`);
       }
     }
   }
