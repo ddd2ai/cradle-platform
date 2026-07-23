@@ -14,6 +14,7 @@ import { CellProfileStore } from "./cell/cell-profile-store.js";
 import { CellDNAStore } from "./cell/cell-dna-store.js";
 import { CellConfigStore } from "./cell/cell-config-store.js";
 import { CellEvolutionStore } from "./cell/cell-evolution-store.js";
+import { CellWorkspaceStore } from "./cell/cell-workspace-store.js";
 import { block } from "./utils/text.js";
 import { parseLooseJsonObject } from "./utils/json.js";
 import {
@@ -124,6 +125,9 @@ export class CradleCell {
       thoughtsDir: this.thoughtsDir,
       evolutionStateFile: this.evolutionStateFile,
       tail: (content, maxChars) => this.tail(content, maxChars),
+    });
+    this.workspaceStore = new CellWorkspaceStore({
+      workspaceDir: this.workspaceDir,
     });
 
     this.assistant = null;
@@ -2281,46 +2285,23 @@ ${memoryContext}
   // =========================
 
   async listWorkspace() {
-    return await this.listDirectoryRecursive(this.workspaceDir);
+    return await this.workspaceStore.listWorkspace();
   }
 
   async listWorkspaceSections() {
-    const sections = [
-      "notes",
-      "tasks",
-      "artifacts",
-      "projects",
-      "research",
-      "decisions",
-    ];
-
-    const result = {};
-
-    for (const section of sections) {
-      result[section] = await this.listDirectoryRecursive(
-        path.join(this.workspaceDir, section),
-        path.join(this.workspaceDir, section)
-      );
-    }
-
-    return result;
+    return await this.workspaceStore.listWorkspaceSections();
   }
 
   async writeWorkspaceFile(relativePath, content) {
-    const file = this.resolveInside(this.workspaceDir, relativePath);
-    await fs.mkdir(path.dirname(file), { recursive: true });
-    await fs.writeFile(file, content, "utf8");
+    await this.workspaceStore.writeWorkspaceFile(relativePath, content);
   }
 
   async readWorkspaceFile(relativePath) {
-    const file = this.resolveInside(this.workspaceDir, relativePath);
-    return await fs.readFile(file, "utf8");
+    return await this.workspaceStore.readWorkspaceFile(relativePath);
   }
 
   async appendWorkspaceFile(relativePath, content) {
-    const file = this.resolveInside(this.workspaceDir, relativePath);
-    await fs.mkdir(path.dirname(file), { recursive: true });
-    await fs.appendFile(file, `\n${content}\n`, "utf8");
+    await this.workspaceStore.appendWorkspaceFile(relativePath, content);
   }
 
   // =========================
@@ -2831,27 +2812,7 @@ ${dnaContext}
   }
 
   async listDirectoryRecursive(dir, baseDir = dir) {
-    const result = [];
-
-    try {
-      const entries = await fs.readdir(dir, { withFileTypes: true });
-
-      for (const entry of entries) {
-        const fullPath = path.join(dir, entry.name);
-        const relativePath = path.relative(baseDir, fullPath);
-
-        if (entry.isDirectory()) {
-          result.push(`${relativePath}/`);
-          result.push(...(await this.listDirectoryRecursive(fullPath, baseDir)));
-        } else {
-          result.push(relativePath);
-        }
-      }
-    } catch {
-      return result;
-    }
-
-    return result;
+    return await this.workspaceStore.listDirectoryRecursive(dir, baseDir);
   }
 
   async copyDirectory(source, target) {
@@ -2876,14 +2837,7 @@ ${dnaContext}
   }
 
   resolveInside(baseDir, relativePath) {
-    const resolved = path.resolve(baseDir, relativePath);
-    const base = path.resolve(baseDir);
-
-    if (!resolved.startsWith(base + path.sep) && resolved !== base) {
-      throw new Error(`Invalid path outside cell directory: ${relativePath}`);
-    }
-
-    return resolved;
+    return this.workspaceStore.resolveInside(baseDir, relativePath);
   }
 
   formatTimestamp(date) {
