@@ -4,6 +4,7 @@ import { renderAnswerStart } from "../cradle-console.js";
 import { block } from "../utils/text.js";
 import { getAiTimeoutMs } from "../cradle-config.js";
 import { commandArgs, splitFirstArg } from "./command-input.js";
+import { writeTextFile } from "../utils/text-file.js";
 
 export function createCellCommands() {
   return [
@@ -349,10 +350,9 @@ ${Object.entries(decision.detail ?? {})
         const filename =
           `observation-${engine.formatTimestamp(new Date())}.md`;
 
-        await fs.writeFile(
+        await writeTextFile(
           path.join(cell.observationsDir, filename),
-          outputText,
-          "utf8"
+          outputText
         );
 
         console.log(`\nObservation created: situation/observations/${filename}`);
