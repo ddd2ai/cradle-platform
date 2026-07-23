@@ -12,6 +12,10 @@ import { DIVISION_PRODUCTION_ACTIONS } from "../living-context/division-plan-sch
 import { ArtifactRegenerationService } from "../production/artifact-regeneration-service.js";
 import { createLivingContext, normalizeLivingContext } from "../living-context/living-context-schema.js";
 import { block } from "../utils/text.js";
+import {
+  logProductionResult,
+  runApplicationStage,
+} from "./application-stage.js";
 
 export class CellDivisionService {
   /**
@@ -64,12 +68,12 @@ export class CellDivisionService {
       console.log(`  Creating child cell...`);
       child = await engine.createCell(childId);
 
-      await this._runApplicationStage(errors, "apply-dna", async () => {
+      await runApplicationStage(errors, "apply-dna", async () => {
         console.log(`  Applying DNA division...`);
         await parentCell.applyDivisionPlanBySVD(child, dnaDivisionPlan);
       });
 
-      await this._runApplicationStage(errors, "apply-living-context", async () => {
+      await runApplicationStage(errors, "apply-living-context", async () => {
         console.log(`  Applying Living Context transformation...`);
         await this._applyLivingContextPlan({
           parentCell,
@@ -172,18 +176,6 @@ export class CellDivisionService {
     }
   }
 
-  async _runApplicationStage(errors, stage, callback) {
-    try {
-      await callback();
-    } catch (error) {
-      errors.push({
-        stage,
-        message: error.message,
-      });
-      throw error;
-    }
-  }
-
   async _regenerateProductions({ parentCell, child, livingContextPlan, errors }) {
     console.log(`  Regenerating productions...`);
 
@@ -195,7 +187,7 @@ export class CellDivisionService {
           divisionPlan: livingContextPlan
         });
 
-      this._logProductionResult(productionResult);
+      logProductionResult(productionResult);
       await this._recordProductionHistory(parentCell, child, productionResult);
       return productionResult;
     } catch (error) {
@@ -216,16 +208,6 @@ export class CellDivisionService {
         skipped: [],
         complete: false
       };
-    }
-  }
-
-  _logProductionResult(productionResult) {
-    if (productionResult.produced.length > 0) {
-      console.log(`  ✅ Produced ${productionResult.produced.length} artifact(s)`);
-    }
-
-    if (productionResult.failed.length > 0) {
-      console.log(`  ⚠️  ${productionResult.failed.length} artifact(s) failed`);
     }
   }
 

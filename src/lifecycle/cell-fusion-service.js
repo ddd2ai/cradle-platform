@@ -16,10 +16,13 @@ import {
 } from "../living-context/living-context-fusion-service.js";
 import {
   createLivingContext,
-  normalizeLivingContext,
 } from "../living-context/living-context-schema.js";
 import { ArtifactRegenerationService } from "../production/artifact-regeneration-service.js";
 import { block } from "../utils/text.js";
+import {
+  logProductionResult,
+  runApplicationStage,
+} from "./application-stage.js";
 
 export class CellFusionService {
   /**
@@ -78,7 +81,7 @@ export class CellFusionService {
       console.log(`  Creating child cell...`);
       child = await engine.createCell(childId);
 
-      await this._runApplicationStage(errors, "apply-dna", async () => {
+      await runApplicationStage(errors, "apply-dna", async () => {
         console.log(`  Applying DNA fusion...`);
         await this.dnaFusionService.applyPlan({
           childCell: child,
@@ -87,7 +90,7 @@ export class CellFusionService {
         });
       });
 
-      await this._runApplicationStage(errors, "apply-living-context", async () => {
+      await runApplicationStage(errors, "apply-living-context", async () => {
         console.log(`  Applying Living Context fusion...`);
         await this._applyFusedLivingContext({
           parentCells,
@@ -96,7 +99,7 @@ export class CellFusionService {
         });
       });
 
-      await this._runApplicationStage(errors, "apply-memory", async () => {
+      await runApplicationStage(errors, "apply-memory", async () => {
         console.log(`  Applying fused memory...`);
         await this._applyFusedMemory({
           parentCells,
@@ -117,7 +120,7 @@ export class CellFusionService {
         console.warn(`  ⚠️  Memory archive warning: ${error.message}`);
       }
 
-      await this._runApplicationStage(errors, "relationships", async () => {
+      await runApplicationStage(errors, "relationships", async () => {
         console.log(`  Creating relationships...`);
         await this._createRelationships({
           parentCells,
@@ -201,18 +204,6 @@ export class CellFusionService {
     }
   }
 
-  async _runApplicationStage(errors, stage, callback) {
-    try {
-      await callback();
-    } catch (error) {
-      errors.push({
-        stage,
-        message: error.message
-      });
-      throw error;
-    }
-  }
-
   async _regenerateProductions({ parentCells, child, fusionPlan, errors }) {
     console.log(`  Regenerating productions...`);
 
@@ -231,7 +222,7 @@ export class CellFusionService {
           fusionPlan
         });
 
-      this._logProductionResult(productionResult);
+      logProductionResult(productionResult);
       return productionResult;
     } catch (error) {
       errors.push({
@@ -242,16 +233,6 @@ export class CellFusionService {
       // Production 失敗時 Child 保留
       console.warn(`  ⚠️  Production incomplete`);
       return defaultProductionResult;
-    }
-  }
-
-  _logProductionResult(productionResult) {
-    if (productionResult.produced.length > 0) {
-      console.log(`  ✅ Produced ${productionResult.produced.length} artifact(s)`);
-    }
-
-    if (productionResult.failed.length > 0) {
-      console.log(`  ⚠️  ${productionResult.failed.length} artifact(s) failed`);
     }
   }
 
