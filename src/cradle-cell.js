@@ -10,6 +10,7 @@ import { CellTaskStore } from "./cell/cell-task-store.js";
 import { CellLifecycleEventStore } from "./cell/cell-lifecycle-event-store.js";
 import { CellInboxStore } from "./cell/cell-inbox-store.js";
 import { CellMemoryStore } from "./cell/cell-memory-store.js";
+import { CellProfileStore } from "./cell/cell-profile-store.js";
 import { block } from "./utils/text.js";
 import { parseLooseJsonObject } from "./utils/json.js";
 import {
@@ -100,6 +101,10 @@ export class CradleCell {
       cellId: this.id,
       cellName: this.name,
       timestampFormatter: (date) => this.formatTimestamp(date),
+    });
+    this.profileStore = new CellProfileStore({
+      cellFile: this.cellFile,
+      profileFile: this.profileFile,
     });
 
     this.assistant = null;
@@ -1207,42 +1212,19 @@ TODO: define meaning from DNA_DEFINITION.md.
   }
 
   async readCellProfile() {
-    try {
-      const raw = await fs.readFile(this.cellFile, "utf8");
-      return JSON.parse(raw);
-    } catch {
-      return null;
-    }
+    return await this.profileStore.readCellProfile();
   }
 
   async readProfile() {
-    try {
-      const raw = await fs.readFile(this.profileFile, "utf8");
-      return JSON.parse(raw);
-    } catch (error) {
-      if (error.code === "ENOENT") {
-        return null;
-      }
-      throw error;
-    }
+    return await this.profileStore.readProfile();
   }
 
   async writeCellProfile(profile) {
-    await fs.writeFile(this.cellFile, JSON.stringify(profile, null, 2), "utf8");
+    await this.profileStore.writeCellProfile(profile);
   }
 
   async updateStatus(status) {
-    try {
-      const profile = await this.readCellProfile();
-      if (!profile) return;
-
-      profile.status = status;
-      profile.updatedAt = new Date().toISOString();
-
-      await this.writeCellProfile(profile);
-    } catch {
-      // cell.json 寫入失敗不應中斷 CLI
-    }
+    await this.profileStore.updateStatus(status);
   }
 
   /**
@@ -1251,26 +1233,15 @@ TODO: define meaning from DNA_DEFINITION.md.
    * Keep this for backward compatibility only
    */
   async increaseMaturity(amount = 1) {
-    try {
-      const profile = await this.readCellProfile();
-      if (!profile) return;
-
-      profile.maturity = Number(profile.maturity ?? 0) + amount;
-      profile.updatedAt = new Date().toISOString();
-
-      await this.writeCellProfile(profile);
-    } catch {
-      // maturity 更新失敗不應中斷 CLI
-    }
+    await this.profileStore.increaseMaturity(amount);
   }
 
   async getProfile() {
-    return (await this.readCellProfile()) || {};
+    return await this.profileStore.getProfile();
   }
 
   async getStatus() {
-    const profile = await this.readCellProfile();
-    return profile?.status ?? "unknown";
+    return await this.profileStore.getStatus();
   }
 
   /**
