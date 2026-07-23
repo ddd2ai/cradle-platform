@@ -1,5 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
+import { writeTextFile } from "../utils/text-file.js";
 
 export class CellMemoryStore {
   constructor({
@@ -71,7 +72,7 @@ export class CellMemoryStore {
     try {
       await fs.access(file);
     } catch {
-      await fs.writeFile(file, content, "utf8");
+      await writeTextFile(file, content);
     }
   }
 
@@ -90,7 +91,7 @@ export class CellMemoryStore {
 
   async writeMemory(name, content) {
     const file = this.resolveMemoryFile(name);
-    await fs.writeFile(file, content, "utf8");
+    await writeTextFile(file, content);
   }
 
   async appendMemory(name, content) {
@@ -112,7 +113,7 @@ export class CellMemoryStore {
       `${this.timestampFormatter(new Date())}.md`
     );
 
-    await fs.writeFile(file, content, "utf8");
+    await writeTextFile(file, content);
   }
 
   resolveMemoryFile(name) {
