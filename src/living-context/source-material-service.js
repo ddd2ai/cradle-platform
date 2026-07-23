@@ -59,6 +59,7 @@ export class SourceMaterialService {
       dnaVector,
       responsibilities,
       relationships,
+      memory,
       distilledMemory: memory,
       artifactCatalog: catalogResult.artifacts,
       artifactCatalogErrors: catalogResult.errors
@@ -77,48 +78,58 @@ export class SourceMaterialService {
       recentThoughts: ""
     };
 
-    // Identity
-    try {
-      memory.identity = await cell.readMemory("identity");
-      memory.identity = this.truncate(memory.identity, 2000);
-    } catch (error) {
-      // identity 可能不存在
-    }
+    memory.identity =
+      await this.readTruncatedMemory(cell, "identity", 2000);
 
-    // Rules
-    try {
-      memory.rules = await cell.readMemory("rules");
-      memory.rules = this.truncate(memory.rules, 3000);
-    } catch (error) {
-      // rules 可能不存在
-    }
+    memory.rules =
+      await this.readTruncatedMemory(cell, "rules", 3000);
 
-    // Knowledge (最多 12000 chars)
-    try {
-      memory.knowledge = await cell.readMemory("knowledge");
-      memory.knowledge = this.truncate(memory.knowledge, 12000);
-    } catch (error) {
-      // knowledge 可能不存在
-    }
+    memory.knowledge =
+      await this.readTruncatedMemory(cell, "knowledge", 12000);
 
-    // Recent History (最多 8000 chars)
-    try {
-      const fullHistory = await cell.readMemory("history");
-      memory.recentHistory = this.getRecentContent(fullHistory, 8000);
-    } catch (error) {
-      // history 可能不存在
-    }
+    memory.recentHistory =
+      await this.readRecentMemory(cell, "history", 8000);
 
-    // Recent Thoughts (最多 5000 chars)
-    try {
-      const thoughtsPath = path.join(cell.thoughtsDir, "thoughts.md");
-      const fullThoughts = await fs.readFile(thoughtsPath, "utf8");
-      memory.recentThoughts = this.getRecentContent(fullThoughts, 5000);
-    } catch (error) {
-      // thoughts 可能不存在
-    }
+    memory.recentThoughts =
+      await this.readRecentThoughts(cell, 5000);
 
     return memory;
+  }
+
+  async readTruncatedMemory(cell, name, maxLength) {
+    try {
+      return this.truncate(
+        await cell.readMemory(name),
+        maxLength
+      );
+    } catch (error) {
+      return "";
+    }
+  }
+
+  async readRecentMemory(cell, name, maxLength) {
+    try {
+      return this.getRecentContent(
+        await cell.readMemory(name),
+        maxLength
+      );
+    } catch (error) {
+      return "";
+    }
+  }
+
+  async readRecentThoughts(cell, maxLength) {
+    try {
+      const thoughtsPath =
+        path.join(cell.thoughtsDir, "thoughts.md");
+
+      return this.getRecentContent(
+        await fs.readFile(thoughtsPath, "utf8"),
+        maxLength
+      );
+    } catch (error) {
+      return "";
+    }
   }
 
   /**
