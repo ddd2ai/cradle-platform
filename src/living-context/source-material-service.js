@@ -188,92 +188,124 @@ export class SourceMaterialService {
     let totalContentSize = 0;
 
     for (const artifactId of artifactIds) {
-        if (
-        totalContentSize >=
-        maxTotalContentSize
-        ) {
+      if (totalContentSize >= maxTotalContentSize) {
         errors.push({
-            artifactId,
-            error:
+          artifactId,
+          error:
             "Total artifact content exceeded limit",
         });
 
         break;
-        }
+      }
 
-        try {
+      try {
         const sourceArtifact =
-            await cell.artifactStore.readArtifact(
+          await cell.artifactStore.readArtifact(
             artifactId
-            );
+          );
 
         // 避免修改 ArtifactStore 回傳的原始物件
         const artifact =
-            structuredClone(sourceArtifact);
+          structuredClone(sourceArtifact);
 
-        if (Array.isArray(artifact.outputs)) {
-            artifact.outputs =
-            artifact.outputs.map((output) => {
-                if (
-                typeof output.content !== "string"
-                ) {
-                return output;
-                }
+        const limited =
+          this.limitArtifactOutputs({
+            artifact,
+            maxOutputSize,
+            maxTotalContentSize,
+            currentTotalSize: totalContentSize,
+          });
 
-                const remainingTotalSize =
-                maxTotalContentSize -
-                totalContentSize;
-
-                const allowedSize = Math.min(
-                maxOutputSize,
-                remainingTotalSize
-                );
-
-                if (allowedSize <= 0) {
-                return {
-                    ...output,
-                    content: "",
-                    truncated: true,
-                };
-                }
-
-                const originalContent =
-                output.content;
-
-                const limitedContent =
-                this.truncate(
-                    originalContent,
-                    allowedSize
-                );
-
-                totalContentSize +=
-                limitedContent.length;
-
-                return {
-                ...output,
-                content: limitedContent,
-
-                truncated:
-                    limitedContent.length <
-                    originalContent.length,
-                };
-            });
-        }
-
+        totalContentSize = limited.totalContentSize;
         artifacts.push(artifact);
-        } catch (error) {
+      } catch (error) {
         errors.push({
-            artifactId,
-            error: error.message,
+          artifactId,
+          error: error.message,
         });
-        }
+      }
     }
 
     return {
-        artifacts,
-        errors,
+      artifacts,
+      errors,
     };
+  }
+
+  limitArtifactOutputs({
+    artifact,
+    maxOutputSize,
+    maxTotalContentSize,
+    currentTotalSize,
+  }) {
+    if (!Array.isArray(artifact.outputs)) {
+      return {
+        artifact,
+        totalContentSize: currentTotalSize,
+      };
     }
+
+    let totalContentSize = currentTotalSize;
+
+    artifact.outputs = artifact.outputs.map((output) => {
+      if (typeof output.content !== "string") {
+        return output;
+      }
+
+      const remainingTotalSize =
+        maxTotalContentSize - totalContentSize;
+
+      const allowedSize = Math.min(
+        maxOutputSize,
+        remainingTotalSize
+      );
+
+      const limitedOutput =
+        this.limitArtifactOutputContent({
+          output,
+          allowedSize,
+        });
+
+      totalContentSize +=
+        limitedOutput.content.length;
+
+      return limitedOutput;
+    });
+
+    return {
+      artifact,
+      totalContentSize,
+    };
+  }
+
+  limitArtifactOutputContent({
+    output,
+    allowedSize,
+  }) {
+    if (allowedSize <= 0) {
+      return {
+        ...output,
+        content: "",
+        truncated: true,
+      };
+    }
+
+    const originalContent = output.content;
+    const limitedContent =
+      this.truncate(
+        originalContent,
+        allowedSize
+      );
+
+    return {
+      ...output,
+      content: limitedContent,
+
+      truncated:
+        limitedContent.length <
+        originalContent.length,
+    };
+  }
 
   /**
    * 截斷文字到指定長度
