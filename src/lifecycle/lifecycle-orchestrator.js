@@ -27,45 +27,41 @@ export async function createLifecyclePlan(cell, engine, options = {}) {
 
   // divide: structural action (needs manual execution)
   if (decision.action === "divide") {
-    return {
+    return createLifecyclePlanResult({
       action: "divide",
-      mode: "dry-run",
       command: `/divide-svd ${cell.id}-child`,
       decision,
       reason: "division requires manual execution with /divide-svd",
-    };
+    });
   }
 
   // fuse: structural action (needs manual target selection)
   if (decision.action === "fuse") {
-    return {
+    return createLifecyclePlanResult({
       action: "fuse",
-      mode: "dry-run",
       command: null,
       decision,
       reason: "fusion target selection is not finalized, use /fuse command manually",
-    };
+    });
   }
 
   // repair: can be applied (connect to stabilize flow)
   if (decision.action === "repair") {
-    return {
+    return createLifecyclePlanResult({
       action: "repair",
-      mode: "dry-run",
       command: "/stabilize",
       decision,
       reason: "repair can be applied, will connect to stabilize flow",
-    };
+    });
   }
 
   // stay: no-op
-  return {
+  return createLifecyclePlanResult({
     action: "stay",
-    mode: "dry-run",
     command: null,
     decision,
     reason: "cell stays in current lifecycle state",
-  };
+  });
 }
 
 /**
@@ -87,14 +83,12 @@ export async function applyLifecyclePlan(cell, engine, plan, options = {}) {
 
   // Blocked by policy
   if (!guard.allowed) {
-    result = {
-      applied: false,
+    result = createBlockedApplyResult({
       action: plan.action,
-      blocked: true,
       reason: guard.reason,
       manualCommand: guard.manualCommand ?? null,
       plan,
-    };
+    });
   }
 
   // stay: no-op (always allowed)
@@ -128,37 +122,31 @@ export async function applyLifecyclePlan(cell, engine, plan, options = {}) {
 
   // divide: blocked (structural action)
   else if (plan.action === "divide") {
-    result = {
-      applied: false,
+    result = createBlockedApplyResult({
       action: "divide",
-      blocked: true,
       reason: "divide is a structural action and requires manual execution",
       manualCommand: "/divide-svd",
       plan,
-    };
+    });
   }
 
   // fuse: blocked (structural action)
   else if (plan.action === "fuse") {
-    result = {
-      applied: false,
+    result = createBlockedApplyResult({
       action: "fuse",
-      blocked: true,
       reason: "fuse is a structural action and requires manual execution",
       manualCommand: "/fuse",
       plan,
-    };
+    });
   }
 
   // unknown action: blocked
   else {
-    result = {
-      applied: false,
+    result = createBlockedApplyResult({
       action: plan.action,
-      blocked: true,
       reason: "structural lifecycle action is not enabled",
       plan,
-    };
+    });
   }
 
   // Log lifecycle event
@@ -172,6 +160,42 @@ export async function applyLifecyclePlan(cell, engine, plan, options = {}) {
       options,
     },
   });
+
+  return result;
+}
+
+function createLifecyclePlanResult({
+  action,
+  command,
+  decision,
+  reason,
+}) {
+  return {
+    action,
+    mode: "dry-run",
+    command,
+    decision,
+    reason,
+  };
+}
+
+function createBlockedApplyResult({
+  action,
+  reason,
+  manualCommand,
+  plan,
+}) {
+  const result = {
+    applied: false,
+    action,
+    blocked: true,
+    reason,
+    plan,
+  };
+
+  if (manualCommand !== undefined) {
+    result.manualCommand = manualCommand;
+  }
 
   return result;
 }
