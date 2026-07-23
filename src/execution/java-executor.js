@@ -2,6 +2,7 @@ import fs from "fs/promises";
 import path from "path";
 import { spawn } from "child_process";
 import { ExecutionResult } from "./execution-result.js";
+import { writeJsonFile } from "../utils/json-file.js";
 
 /**
  * JavaExecutor
@@ -131,11 +132,7 @@ export class JavaExecutor {
   async writeResult(executionDir, result) {
     const output = result.toJSON();
 
-    await fs.writeFile(
-      path.join(executionDir, "execution-result.json"),
-      JSON.stringify(output, null, 2),
-      "utf8"
-    );
+    await writeJsonFile(path.join(executionDir, "execution-result.json"), output);
 
     return output;
   }
