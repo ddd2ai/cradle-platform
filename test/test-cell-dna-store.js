@@ -68,6 +68,22 @@ assert.deepEqual(await store.readDNAHistory(), [
 await store.writeDNAHistory([]);
 assert.deepEqual(await store.readDNAHistory(), []);
 
+const dnaFiles = {
+  PERCEPTION: path.join(tempRoot, "perception.md"),
+  DECISION: path.join(tempRoot, "decision.md"),
+};
+
+await store.writeDNAFiles(dnaFiles, {
+  perception: "# Perception",
+  UNKNOWN: "# Unknown",
+});
+
+assert.equal(await fs.readFile(dnaFiles.PERCEPTION, "utf8"), "# Perception");
+await assert.rejects(
+  () => fs.readFile(dnaFiles.DECISION, "utf8"),
+  /ENOENT/
+);
+
 assert.throws(
   () => new CellDNAStore({ dnaHistoryFile }),
   /requires dnaVectorFile/

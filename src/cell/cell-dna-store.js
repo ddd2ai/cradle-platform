@@ -1,4 +1,5 @@
 import { readJsonFile, writeJsonFile } from "../utils/json-file.js";
+import { writeTextFile } from "../utils/text-file.js";
 
 export class CellDNAStore {
   constructor({
@@ -65,5 +66,16 @@ export class CellDNAStore {
 
   async writeDNAHistory(history = []) {
     await writeJsonFile(this.dnaHistoryFile, history);
+  }
+
+  async writeDNAFiles(dnaFiles = {}, contentByTrait = {}) {
+    for (const [name, content] of Object.entries(contentByTrait)) {
+      const upperKey = name.toUpperCase();
+      const file = dnaFiles[upperKey];
+
+      if (!file) continue;
+
+      await writeTextFile(file, content);
+    }
   }
 }

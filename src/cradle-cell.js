@@ -1675,12 +1675,7 @@ ${memoryContext}
     const nextDNA = parseLooseJsonObject(raw);
 
     const dnaFiles = await this.getDNAFiles();
-
-    for (const [name, content] of Object.entries(nextDNA)) {
-      const upperKey = name.toUpperCase();
-      if (!dnaFiles[upperKey]) continue;
-      await fs.writeFile(dnaFiles[upperKey], content, "utf8");
-    }
+    await this.dnaStore.writeDNAFiles(dnaFiles, nextDNA);
 
     return nextDNA;
   }
