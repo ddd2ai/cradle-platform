@@ -1,5 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
+import { writeTextFile } from "./utils/text-file.js";
 
 export const CRADLE_SYSTEM_PROMPT = `
 你是 Cradle Platform 的核心助手。
@@ -42,9 +43,7 @@ export async function createCradleAssistant({
   let buffer = "";
   const sessionFile = path.join(logDir, `session-${Date.now()}.md`);
 
-  await fs.mkdir(logDir, { recursive: true });
-
-  await fs.writeFile(
+  await writeTextFile(
     sessionFile,
     `# 🧙 Cradle Cell Session Log
 
@@ -62,7 +61,7 @@ ${logDir}
 
 ---
 `,
-    "utf8"
+    { dir: logDir }
   );
 
   async function loadSkill(skillName) {
