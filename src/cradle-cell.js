@@ -11,6 +11,7 @@ import { CellLifecycleEventStore } from "./cell/cell-lifecycle-event-store.js";
 import { CellInboxStore } from "./cell/cell-inbox-store.js";
 import { CellMemoryStore } from "./cell/cell-memory-store.js";
 import { CellProfileStore } from "./cell/cell-profile-store.js";
+import { CellDNAStore } from "./cell/cell-dna-store.js";
 import { block } from "./utils/text.js";
 import { parseLooseJsonObject } from "./utils/json.js";
 import {
@@ -105,6 +106,10 @@ export class CradleCell {
     this.profileStore = new CellProfileStore({
       cellFile: this.cellFile,
       profileFile: this.profileFile,
+    });
+    this.dnaStore = new CellDNAStore({
+      dnaVectorFile: this.dnaVectorFile,
+      dnaHistoryFile: this.dnaHistoryFile,
     });
 
     this.assistant = null;
@@ -846,47 +851,15 @@ TODO: define meaning from DNA_DEFINITION.md.
   }
 
   async readDNAVector() {
-    try {
-      const raw = await fs.readFile(this.dnaVectorFile, "utf8");
-      return JSON.parse(raw);
-    } catch {
-      return null;
-    }
+    return await this.dnaStore.readDNAVector();
   }
 
   async writeDNAVector(vector) {
-    await fs.writeFile(
-      this.dnaVectorFile,
-      JSON.stringify(vector, null, 2),
-      "utf8"
-    );
+    await this.dnaStore.writeDNAVector(vector);
   }
 
   async appendDNAHistory(reason = "unknown") {
-    const vector = await this.readDNAVector();
-
-    if (!vector) return;
-
-    let history = [];
-
-    try {
-      const raw = await fs.readFile(this.dnaHistoryFile, "utf8");
-      history = JSON.parse(raw);
-    } catch {
-      history = [];
-    }
-
-    history.push({
-      at: new Date().toISOString(),
-      reason,
-      vector,
-    });
-
-    await fs.writeFile(
-      this.dnaHistoryFile,
-      JSON.stringify(history, null, 2),
-      "utf8"
-    );
+    await this.dnaStore.appendDNAHistory(reason);
   }
 
   /**
@@ -897,33 +870,11 @@ TODO: define meaning from DNA_DEFINITION.md.
    * @returns {Promise<boolean>} True if appended, false if unchanged
    */
   async appendDNAHistoryIfChanged(reason = "unknown") {
-    const vector = await this.readDNAVector();
-
-    if (!vector) return false;
-
-    const history = await this.readDNAHistory();
-    const latest = history.at(-1)?.vector;
-
-    // Compare vectors using JSON stringify
-    if (JSON.stringify(latest) === JSON.stringify(vector)) {
-      return false;
-    }
-
-    await this.appendDNAHistory(reason);
-    return true;
+    return await this.dnaStore.appendDNAHistoryIfChanged(reason);
   }
 
   async readDNAHistory() {
-    try {
-      const raw = await fs.readFile(
-        this.dnaHistoryFile,
-        "utf8"
-      );
-
-      return JSON.parse(raw);
-    } catch {
-      return [];
-    }
+    return await this.dnaStore.readDNAHistory();
   }
 
   clampDNAValue(value) {
