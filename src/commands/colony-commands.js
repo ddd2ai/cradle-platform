@@ -16,7 +16,6 @@ export async function executeFuseCommand({
 
   if (command === "/merge") {
     console.log("/merge is deprecated. Use /fuse instead.");
-    return;
   }
 
   if (args.length < 3) {
@@ -38,11 +37,11 @@ export async function executeFuseCommand({
     throw new Error("Child ID must not equal a parent cell ID.");
   }
 
-  if (engine.hasCell(childId)) {
+  if (hasCell(engine, childId)) {
     throw new Error(`Child cell already exists: ${childId}`);
   }
 
-  const parentCells = parentIds.map(id => engine.requireCell(id));
+  const parentCells = parentIds.map(id => requireCell(engine, id));
 
   console.log("");
   console.log("🧬 Starting Living Context Fusion...");
@@ -194,9 +193,10 @@ export function createColonyCommands({
     {
       name: "/merge",
       match: (input) => input === "/merge" || input.startsWith("/merge "),
-      execute: async () => {
-        console.log("/merge is deprecated. Use /fuse instead.");
-      },
+      execute: (context) => executeFuseCommand({
+        ...context,
+        fusionServiceFactory,
+      }),
     },
 
     {
@@ -592,4 +592,26 @@ export function createColonyCommands({
 
 
   ];
+}
+
+function hasCell(engine, cellId) {
+  if (typeof engine.hasCell === "function") {
+    return engine.hasCell(cellId);
+  }
+
+  return engine.cells?.has(cellId) ?? false;
+}
+
+function requireCell(engine, cellId) {
+  if (typeof engine.requireCell === "function") {
+    return engine.requireCell(cellId);
+  }
+
+  const cell = engine.cells?.get(cellId);
+
+  if (!cell) {
+    throw new Error(`Cell not found: ${cellId}`);
+  }
+
+  return cell;
 }
