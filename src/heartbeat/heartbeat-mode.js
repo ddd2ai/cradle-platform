@@ -1,9 +1,9 @@
-import fs from "fs/promises";
 import path from "path";
 import {
   getHeartbeatMode,
   readCradleConfig,
 } from "../cradle-config.js";
+import { writeJsonFile } from "../utils/json-file.js";
 
 export const HeartbeatMode = Object.freeze({
   MANUAL: "manual",
@@ -40,8 +40,7 @@ export class HeartbeatModeStore {
       mode,
     };
 
-    await fs.mkdir(path.dirname(this.file), { recursive: true });
-    await fs.writeFile(this.file, JSON.stringify(config, null, 2), "utf8");
+    await writeJsonFile(this.file, config, { dir: path.dirname(this.file) });
 
     return {
       previous,
