@@ -9,6 +9,7 @@
 
 import { LivingContextService } from "../living-context/living-context-service.js";
 import { ArtifactRegenerationService } from "../production/artifact-regeneration-service.js";
+import { createDivisionProductionResult } from "../production/production-result.js";
 import { createLivingContext, normalizeLivingContext } from "../living-context/living-context-schema.js";
 import { deduplicateRelationships } from "../living-context/relationship-utils.js";
 import { block } from "../utils/text.js";
@@ -201,18 +202,15 @@ export class CellDivisionService {
         message: error.message,
       });
 
-      return {
-        produced: [],
-        parentRevisions: [],
+      return createDivisionProductionResult({
         failed: [{
           index: -1,
           title: "unknown",
           stage: "production",
           message: error.message
         }],
-        skipped: [],
-        complete: false
-      };
+        complete: false,
+      });
     }
   }
 
@@ -287,13 +285,9 @@ export class CellDivisionService {
   }
 
   _createFailedProductionResult() {
-    return {
-      produced: [],
-      parentRevisions: [],
-      failed: [],
-      skipped: [],
-      complete: false
-    };
+    return createDivisionProductionResult({
+      complete: false,
+    });
   }
 
   /**

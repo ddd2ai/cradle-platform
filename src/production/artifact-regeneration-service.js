@@ -6,6 +6,10 @@
  */
 
 import { SourceMaterialService } from "../living-context/source-material-service.js";
+import {
+  createDivisionProductionResult,
+  createFusionProductionResult,
+} from "./production-result.js";
 
 export class ArtifactRegenerationService {
   constructor({
@@ -44,13 +48,7 @@ export class ArtifactRegenerationService {
 
     // Empty production plan is valid, not an error
     if (productionPlan.length === 0) {
-      return { 
-        produced: [], 
-        parentRevisions: [],
-        failed: [], 
-        skipped: [],
-        complete: true 
-      };
+      return createDivisionProductionResult();
     }
 
     if (!childCell.productionService) {
@@ -477,12 +475,7 @@ export class ArtifactRegenerationService {
 
     // Empty production plan is valid, not an error
     if (productionPlan.length === 0) {
-      return { 
-        produced: [], 
-        failed: [], 
-        skipped: [],
-        complete: true 
-      };
+      return createFusionProductionResult();
     }
 
     const produced = [];

@@ -18,6 +18,7 @@ import {
   createLivingContext,
 } from "../living-context/living-context-schema.js";
 import { ArtifactRegenerationService } from "../production/artifact-regeneration-service.js";
+import { createFusionProductionResult } from "../production/production-result.js";
 import { block } from "../utils/text.js";
 import {
   logProductionResult,
@@ -207,12 +208,7 @@ export class CellFusionService {
   async _regenerateProductions({ parentCells, child, fusionPlan, errors }) {
     console.log(`  Regenerating productions...`);
 
-    const defaultProductionResult = {
-      produced: [],
-      failed: [],
-      skipped: [],
-      complete: true
-    };
+    const defaultProductionResult = createFusionProductionResult();
 
     try {
       const productionResult =
