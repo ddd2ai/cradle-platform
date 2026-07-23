@@ -72,140 +72,21 @@ export class ArtifactRegenerationService {
       const item = productionPlan[index];
 
       try {
-        const action = item.action || "derive";
+        const result = await this._processDivisionProductionItem({
+          index,
+          item,
+          parentCell,
+          childCell,
+          divisionPlan,
+        });
 
-        if (action === "keep" || action === "transfer") {
-          skipped.push({
-            index,
-            title: item.title || item.sourceArtifactId,
-            sourceArtifactId: item.sourceArtifactId,
-            action,
-            targetCellId: item.targetCellId,
-            reason: item.reason || "",
-          });
+        if (result.skipped) {
+          skipped.push(result.skipped);
           continue;
         }
 
-        if (action !== "derive") {
-          throw new Error(`Unsupported division production action: ${action}`);
-        }
-
-        const sourceArtifactIds = Array.isArray(item.sourceArtifactIds)
-          ? item.sourceArtifactIds
-          : [item.sourceArtifactId].filter(Boolean);
-
-        // Load source artifacts
-        const sourceResult = await this.sourceMaterialService.loadSelectedArtifacts(
-          parentCell,
-          sourceArtifactIds
-        );
-
-        // Collect source warnings from errors
-        const sourceWarnings = sourceResult.errors.map(
-          error => `${error.artifactId}: ${error.error}`
-        );
-
-        const sourceArtifact = sourceResult.artifacts[0] || {};
-        const title =
-          item.title ||
-          (sourceArtifact.title ? `${sourceArtifact.title} Derivative` : "Derived Artifact");
-        const type = this._selectDivisionArtifactType({
-          item,
-          sourceArtifact,
-        });
-        const goal = this._buildDivisionArtifactGoal({
-          item,
-          sourceArtifact,
-          divisionPlan,
-          type,
-        });
-
-        // Call production service with transformation context
-        const producedResult = await childCell.productionService.produceFromTransformation({
-          type,
-          title,
-          goal,
-          constraints: item.constraints || [],
-
-          livingContext: divisionPlan.childLivingContext,
-          distilledMemory: divisionPlan.childMemorySeed,
-
-          sourceArtifacts: sourceResult.artifacts,
-          sourceWarnings,
-
-          origin: {
-            mode: 'division',
-            sourceCellIds: [parentCell.id],
-            sourceArtifactIds,
-            sourceArtifactRefs: [],
-            livingContextId: `living-context-${childCell.id}`
-          }
-        });
-
-        const artifact = producedResult.artifact || producedResult;
-        const saved = producedResult.saved || {};
-
-        // Record success
-        produced.push({
-          index,
-          title,
-          targetCellId: childCell.id,
-          artifactId: artifact.id,
-          dir: saved.dir,
-          sourceArtifactIds
-        });
-
-        const parentRevisionTitle =
-          sourceArtifact.title
-            ? `${sourceArtifact.title} Parent Boundary Revision`
-            : `${item.sourceArtifactId} Parent Boundary Revision`;
-        const parentRevisionGoal = this._buildParentRevisionGoal({
-          item,
-          sourceArtifact,
-          divisionPlan,
-          childCell,
-          type,
-        });
-
-        const parentRevisionResult = await parentCell.productionService.produceFromTransformation({
-          type,
-          title: parentRevisionTitle,
-          goal: parentRevisionGoal,
-          constraints: [
-            ...(item.constraints || []),
-            "Parent revision after division must remove child-owned implementation details from the parent artifact.",
-            "Parent must depend on the child through an output port, API client, event, or explicit shared contract.",
-          ],
-
-          livingContext: divisionPlan.revisedParentLivingContext,
-          distilledMemory: {
-            assumptions: divisionPlan.assumptions || [],
-            sharedContracts: divisionPlan.sharedContracts || [],
-          },
-
-          sourceArtifacts: sourceResult.artifacts,
-          sourceWarnings,
-
-          origin: {
-            mode: 'division-parent-revision',
-            sourceCellIds: [parentCell.id, childCell.id],
-            sourceArtifactIds,
-            sourceArtifactRefs: [],
-            livingContextId: `living-context-${parentCell.id}`
-          }
-        });
-
-        const parentArtifact = parentRevisionResult.artifact || parentRevisionResult;
-        const parentSaved = parentRevisionResult.saved || {};
-
-        parentRevisions.push({
-          index,
-          title: parentRevisionTitle,
-          targetCellId: parentCell.id,
-          artifactId: parentArtifact.id,
-          dir: parentSaved.dir,
-          sourceArtifactIds,
-        });
+        produced.push(result.produced);
+        parentRevisions.push(result.parentRevision);
 
       } catch (error) {
         // Record failure but continue with other items
@@ -226,6 +107,257 @@ export class ArtifactRegenerationService {
       failed, 
       skipped,
       complete: failed.length === 0
+    };
+  }
+
+  async _processDivisionProductionItem({
+    index,
+    item,
+    parentCell,
+    childCell,
+    divisionPlan,
+  }) {
+    const action = item.action || "derive";
+
+    if (action === "keep" || action === "transfer") {
+      return {
+        skipped: {
+          index,
+          title: item.title || item.sourceArtifactId,
+          sourceArtifactId: item.sourceArtifactId,
+          action,
+          targetCellId: item.targetCellId,
+          reason: item.reason || "",
+        },
+      };
+    }
+
+    if (action !== "derive") {
+      throw new Error(`Unsupported division production action: ${action}`);
+    }
+
+    const sourceArtifactIds = this._resolveDivisionSourceArtifactIds(item);
+    const sourceResult = await this.sourceMaterialService.loadSelectedArtifacts(
+      parentCell,
+      sourceArtifactIds
+    );
+    const sourceWarnings = this._createSourceWarnings(sourceResult);
+    const sourceArtifact = sourceResult.artifacts[0] || {};
+    const title = this._resolveDivisionArtifactTitle({ item, sourceArtifact });
+    const type = this._selectDivisionArtifactType({
+      item,
+      sourceArtifact,
+    });
+    const goal = this._buildDivisionArtifactGoal({
+      item,
+      sourceArtifact,
+      divisionPlan,
+      type,
+    });
+
+    const producedResult = await childCell.productionService.produceFromTransformation(
+      this._createChildDivisionProductionRequest({
+        item,
+        parentCell,
+        childCell,
+        divisionPlan,
+        sourceResult,
+        sourceWarnings,
+        sourceArtifactIds,
+        type,
+        title,
+        goal,
+      })
+    );
+
+    const parentRevisionTitle =
+      this._resolveParentRevisionTitle({
+        item,
+        sourceArtifact,
+      });
+    const parentRevisionGoal = this._buildParentRevisionGoal({
+      item,
+      sourceArtifact,
+      divisionPlan,
+      childCell,
+      type,
+    });
+
+    const parentRevisionResult =
+      await parentCell.productionService.produceFromTransformation(
+        this._createParentRevisionProductionRequest({
+          item,
+          parentCell,
+          childCell,
+          divisionPlan,
+          sourceResult,
+          sourceWarnings,
+          sourceArtifactIds,
+          type,
+          title: parentRevisionTitle,
+          goal: parentRevisionGoal,
+        })
+      );
+
+    return {
+      produced: this._createDivisionProducedRecord({
+        index,
+        title,
+        childCell,
+        producedResult,
+        sourceArtifactIds,
+      }),
+      parentRevision: this._createParentRevisionRecord({
+        index,
+        title: parentRevisionTitle,
+        parentCell,
+        parentRevisionResult,
+        sourceArtifactIds,
+      }),
+    };
+  }
+
+  _resolveDivisionSourceArtifactIds(item) {
+    return Array.isArray(item.sourceArtifactIds)
+      ? item.sourceArtifactIds
+      : [item.sourceArtifactId].filter(Boolean);
+  }
+
+  _createSourceWarnings(sourceResult) {
+    return sourceResult.errors.map(
+      error => `${error.artifactId}: ${error.error}`
+    );
+  }
+
+  _resolveDivisionArtifactTitle({ item, sourceArtifact }) {
+    return (
+      item.title ||
+      (
+        sourceArtifact.title
+          ? `${sourceArtifact.title} Derivative`
+          : "Derived Artifact"
+      )
+    );
+  }
+
+  _resolveParentRevisionTitle({ item, sourceArtifact }) {
+    return sourceArtifact.title
+      ? `${sourceArtifact.title} Parent Boundary Revision`
+      : `${item.sourceArtifactId} Parent Boundary Revision`;
+  }
+
+  _createChildDivisionProductionRequest({
+    item,
+    parentCell,
+    childCell,
+    divisionPlan,
+    sourceResult,
+    sourceWarnings,
+    sourceArtifactIds,
+    type,
+    title,
+    goal,
+  }) {
+    return {
+      type,
+      title,
+      goal,
+      constraints: item.constraints || [],
+
+      livingContext: divisionPlan.childLivingContext,
+      distilledMemory: divisionPlan.childMemorySeed,
+
+      sourceArtifacts: sourceResult.artifacts,
+      sourceWarnings,
+
+      origin: {
+        mode: 'division',
+        sourceCellIds: [parentCell.id],
+        sourceArtifactIds,
+        sourceArtifactRefs: [],
+        livingContextId: `living-context-${childCell.id}`
+      }
+    };
+  }
+
+  _createParentRevisionProductionRequest({
+    item,
+    parentCell,
+    childCell,
+    divisionPlan,
+    sourceResult,
+    sourceWarnings,
+    sourceArtifactIds,
+    type,
+    title,
+    goal,
+  }) {
+    return {
+      type,
+      title,
+      goal,
+      constraints: [
+        ...(item.constraints || []),
+        "Parent revision after division must remove child-owned implementation details from the parent artifact.",
+        "Parent must depend on the child through an output port, API client, event, or explicit shared contract.",
+      ],
+
+      livingContext: divisionPlan.revisedParentLivingContext,
+      distilledMemory: {
+        assumptions: divisionPlan.assumptions || [],
+        sharedContracts: divisionPlan.sharedContracts || [],
+      },
+
+      sourceArtifacts: sourceResult.artifacts,
+      sourceWarnings,
+
+      origin: {
+        mode: 'division-parent-revision',
+        sourceCellIds: [parentCell.id, childCell.id],
+        sourceArtifactIds,
+        sourceArtifactRefs: [],
+        livingContextId: `living-context-${parentCell.id}`
+      }
+    };
+  }
+
+  _createDivisionProducedRecord({
+    index,
+    title,
+    childCell,
+    producedResult,
+    sourceArtifactIds,
+  }) {
+    const artifact = producedResult.artifact || producedResult;
+    const saved = producedResult.saved || {};
+
+    return {
+      index,
+      title,
+      targetCellId: childCell.id,
+      artifactId: artifact.id,
+      dir: saved.dir,
+      sourceArtifactIds
+    };
+  }
+
+  _createParentRevisionRecord({
+    index,
+    title,
+    parentCell,
+    parentRevisionResult,
+    sourceArtifactIds,
+  }) {
+    const parentArtifact = parentRevisionResult.artifact || parentRevisionResult;
+    const parentSaved = parentRevisionResult.saved || {};
+
+    return {
+      index,
+      title,
+      targetCellId: parentCell.id,
+      artifactId: parentArtifact.id,
+      dir: parentSaved.dir,
+      sourceArtifactIds,
     };
   }
 
