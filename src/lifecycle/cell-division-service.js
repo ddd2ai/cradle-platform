@@ -8,7 +8,6 @@
  */
 
 import { LivingContextService } from "../living-context/living-context-service.js";
-import { DIVISION_PRODUCTION_ACTIONS } from "../living-context/division-plan-schema.js";
 import { ArtifactRegenerationService } from "../production/artifact-regeneration-service.js";
 import { createLivingContext, normalizeLivingContext } from "../living-context/living-context-schema.js";
 import { block } from "../utils/text.js";
@@ -16,6 +15,11 @@ import {
   logProductionResult,
   runApplicationStage,
 } from "./application-stage.js";
+import {
+  validateBasicDivisionSemantics,
+  validateProductionPlan,
+  validateSharedContractReferences,
+} from "./division-plan-validator.js";
 
 export class CellDivisionService {
   /**
@@ -144,18 +148,18 @@ export class CellDivisionService {
       livingContextPlan.productionPlan ??= [];
       livingContextPlan.sharedContracts ??= [];
 
-      this._validateProductionPlan({
+      validateProductionPlan({
         parentArtifacts,
         livingContextPlan,
         parentCellId: parentCell.id,
         childId,
       });
 
-      this._validateBasicDivisionSemantics({
+      validateBasicDivisionSemantics({
         livingContextPlan,
       });
 
-      this._validateSharedContractReferences({
+      validateSharedContractReferences({
         engine,
         parentCellId: parentCell.id,
         childId,
@@ -373,296 +377,6 @@ export class CellDivisionService {
     }
 
     return artifacts;
-  }
-
-  /**
-   * 驗證 Production Plan
-   *
-   * Parent 沒有 Artifact 時，允許 productionPlan 為空。
-   * Parent 有 Artifact 時，productionPlan 不可為空。
-   *
-   * @private
-   */
-  _validateProductionPlan({
-    parentArtifacts,
-    livingContextPlan,
-    parentCellId,
-    childId,
-  }) {
-    if (!livingContextPlan) {
-      throw new Error(
-        "CellDivisionService: livingContextPlan is required"
-      );
-    }
-
-    const productionPlan =
-      livingContextPlan.productionPlan;
-
-    if (!Array.isArray(productionPlan)) {
-      throw new Error(
-        "CellDivisionService: productionPlan must be an array"
-      );
-    }
-
-    if (
-      parentArtifacts.length > 0 &&
-      productionPlan.length === 0
-    ) {
-      throw new Error(
-        "CellDivisionService: parent has artifacts but productionPlan is empty"
-      );
-    }
-
-    const allowedActions =
-      new Set(DIVISION_PRODUCTION_ACTIONS);
-
-    const parentArtifactIds =
-      parentArtifacts
-        .map(
-          (artifact) =>
-            artifact.artifactId ??
-            artifact.id
-        )
-        .filter(Boolean);
-
-    const plannedIds = [];
-
-    for (const item of productionPlan) {
-      if (
-        !item ||
-        typeof item !== "object"
-      ) {
-        throw new Error(
-          "CellDivisionService: productionPlan item must be an object"
-        );
-      }
-
-      if (
-        typeof item.sourceArtifactId !==
-          "string" ||
-        !item.sourceArtifactId.trim()
-      ) {
-        throw new Error(
-          "CellDivisionService: sourceArtifactId is required"
-        );
-      }
-
-      if (!allowedActions.has(item.action)) {
-        throw new Error(
-          `CellDivisionService: unsupported production action: ${item.action}`
-        );
-      }
-
-      if (
-        typeof item.targetCellId !== "string" ||
-        !item.targetCellId.trim()
-      ) {
-        throw new Error(
-          "CellDivisionService: targetCellId is required"
-        );
-      }
-
-      if (
-        item.action === "keep" &&
-        item.targetCellId !== parentCellId
-      ) {
-        throw new Error(
-          "CellDivisionService: keep action must target parent cell"
-        );
-      }
-
-      if (
-        (item.action === "transfer" || item.action === "derive") &&
-        item.targetCellId !== childId
-      ) {
-        throw new Error(
-          `CellDivisionService: ${item.action} action must target child cell`
-        );
-      }
-
-      plannedIds.push(
-        item.sourceArtifactId
-      );
-    }
-
-    const uniquePlannedIds =
-      new Set(plannedIds);
-
-    if (
-      uniquePlannedIds.size !==
-      plannedIds.length
-    ) {
-      throw new Error(
-        "CellDivisionService: duplicate sourceArtifactId in productionPlan"
-      );
-    }
-
-    for (const artifactId of parentArtifactIds) {
-      if (
-        !uniquePlannedIds.has(
-          artifactId
-        )
-      ) {
-        throw new Error(
-          `CellDivisionService: artifact missing from productionPlan: ${artifactId}`
-        );
-      }
-    }
-
-    for (const artifactId of plannedIds) {
-      if (
-        !parentArtifactIds.includes(
-          artifactId
-        )
-      ) {
-        throw new Error(
-          `CellDivisionService: unknown artifact in productionPlan: ${artifactId}`
-        );
-      }
-    }
-  }
-
-  /**
-   * 第一版分裂語意驗證：避免 Parent 被掏空、Parent/Child 邊界完全重疊。
-   *
-   * @private
-   */
-  _validateBasicDivisionSemantics({ livingContextPlan }) {
-    const parent = livingContextPlan.revisedParentLivingContext || {};
-    const child = livingContextPlan.childLivingContext || {};
-
-    const normalize = (values) => {
-      if (!Array.isArray(values)) {
-        return [];
-      }
-
-      return values
-        .map((value) => typeof value === "string" ? value.trim().toLowerCase() : "")
-        .filter(Boolean);
-    };
-
-    const parentResponsibilities = normalize(parent.responsibilities);
-    const childResponsibilities = normalize(child.responsibilities);
-    const parentOwns = normalize(parent.owns);
-    const childOwns = normalize(child.owns);
-
-    const genericPurposePattern =
-      /^(coordinate child cells|manage children|maintain system|coordinate children)$/i;
-
-    const hasBusinessResponsibility =
-      parentResponsibilities.length > 0 ||
-      parentOwns.length > 0 ||
-      normalize(parent.outputs).length > 0;
-
-    if (
-      typeof parent.purpose === "string" &&
-      genericPurposePattern.test(parent.purpose.trim()) &&
-      !hasBusinessResponsibility
-    ) {
-      throw new Error(
-        "CellDivisionService: parent purpose is too generic to preserve parent identity"
-      );
-    }
-
-    if (!hasBusinessResponsibility) {
-      throw new Error(
-        "CellDivisionService: parent must retain at least one responsibility, ownership, or output"
-      );
-    }
-
-    const responsibilityOverlap =
-      parentResponsibilities.filter((item) => childResponsibilities.includes(item));
-
-    if (responsibilityOverlap.length > 0) {
-      throw new Error(
-        `CellDivisionService: parent/child responsibility overlap: ${responsibilityOverlap.join(", ")}`
-      );
-    }
-
-    const ownershipOverlap =
-      parentOwns.filter((item) => childOwns.includes(item));
-
-    if (ownershipOverlap.length > 0) {
-      throw new Error(
-        `CellDivisionService: parent/child ownership overlap: ${ownershipOverlap.join(", ")}`
-      );
-    }
-  }
-
-  /**
-   * Shared contract 可引用 Parent、Child 或 Colony 中既有 Cell。
-   *
-   * @private
-   */
-  _validateSharedContractReferences({
-    engine,
-    parentCellId,
-    childId,
-    livingContextPlan,
-  }) {
-    const contracts = livingContextPlan.sharedContracts || [];
-
-    if (!Array.isArray(contracts) || contracts.length === 0) {
-      return;
-    }
-
-    const validCellIds = new Set([
-      parentCellId,
-      childId,
-    ]);
-
-    if (typeof engine.listCellIds === "function") {
-      for (const cellId of engine.listCellIds()) {
-        if (cellId) {
-          validCellIds.add(cellId);
-        }
-      }
-    } else if (engine.cells && typeof engine.cells.keys === "function") {
-      for (const cellId of engine.cells.keys()) {
-        if (cellId) {
-          validCellIds.add(cellId);
-        }
-      }
-    }
-
-    if (typeof engine.hasCell === "function") {
-      for (const contract of contracts) {
-        const referencedIds = [
-          contract.ownerCellId,
-          ...(contract.consumerCellIds || []),
-        ].filter(Boolean);
-
-        for (const cellId of referencedIds) {
-          if (
-            cellId !== parentCellId &&
-            cellId !== childId &&
-            !engine.hasCell(cellId) &&
-            !validCellIds.has(cellId)
-          ) {
-            throw new Error(
-              `CellDivisionService: shared contract references unknown cell: ${cellId}`
-            );
-          }
-        }
-      }
-
-      return;
-    }
-
-    for (const contract of contracts) {
-      const referencedIds = [
-        contract.ownerCellId,
-        ...(contract.consumerCellIds || []),
-      ].filter(Boolean);
-
-      for (const cellId of referencedIds) {
-        if (!validCellIds.has(cellId)) {
-          throw new Error(
-            `CellDivisionService: shared contract references unknown cell: ${cellId}`
-          );
-        }
-      }
-    }
   }
 
   /**
