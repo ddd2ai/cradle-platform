@@ -6,6 +6,7 @@ import { createCradleAssistant } from "./cradle-ai.js";
 import { createLLMProvider } from "./providers/llm-provider-factory.js";
 import { createCellPaths } from "./cell/cell-paths.js";
 import { prepareCellDirectories } from "./cell/cell-directory-preparer.js";
+import { mergeCellProfileForStart } from "./cell/cell-profile.js";
 import { block } from "./utils/text.js";
 import { parseLooseJsonObject } from "./utils/json.js";
 import {
@@ -628,58 +629,15 @@ ${input}
     await prepareCellDirectories(this.paths);
 
     const now = new Date().toISOString();
-
-    const defaultProfile = {
+    const existingProfile = await this.readCellProfile();
+    const nextProfile = mergeCellProfileForStart({
+      existingProfile,
       id: this.id,
       name: this.name,
       model: this.model,
-
-      status: "idle",
-      maturity: 0,
-      generation: 1,
-      parent: null,
-
-      responsibilities: [],
-      relationships: [],
-
-      createdAt: now,
-      updatedAt: now,
-      lastStartedAt: now,
-
-      directories: {
-        root: this.rootDir,
-        logs: this.logsDir,
-        memory: this.memoryDir,
-        dna: this.dnaDir,
-        workspace: this.workspaceDir,
-        workspaceDirs: this.workspaceDirs,
-        snapshots: this.snapshotsDir,
-        thoughts: this.thoughtsDir,
-        inbox: this.inboxDir,
-      },
-    };
-
-    const existingProfile = await this.readCellProfile();
-
-    const nextProfile = existingProfile
-    ? {
-        ...existingProfile,
-        name: existingProfile.name || this.name,
-        model: this.model,
-        status: "idle",
-
-        generation:
-          existingProfile.generation ?? 1,
-
-        parent:
-          existingProfile.parent ?? null,
-
-        updatedAt: now,
-        lastStartedAt: now,
-
-        directories: defaultProfile.directories,
-      }
-    : defaultProfile;
+      paths: this.paths,
+      now,
+    });
 
     await this.writeCellProfile(nextProfile);
   }
