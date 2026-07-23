@@ -260,7 +260,7 @@ export function createEngineCommands() {
         input.startsWith("/proposals "),
 
       execute: async ({ input }) => {
-        const status = input.replace("/proposals", "").trim() || null;
+        const status = commandArgs(input, "/proposals") || null;
         const proposals = await new LifecycleProposalStore().list({ status });
 
         if (proposals.length === 0) {

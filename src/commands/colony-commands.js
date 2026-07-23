@@ -5,6 +5,7 @@ import { renderTable } from "../ui/render-table.js";
 import { dnaVectorToMatrix } from "../dna/dna-matrix.js";
 import { CellFusionService } from "../lifecycle/cell-fusion-service.js";
 import { block } from "../utils/text.js";
+import { commandArgs, splitFirstArg } from "./command-input.js";
 
 export async function executeFuseCommand({
   engine,
@@ -155,25 +156,18 @@ export function createColonyCommands({
       name: "/ask",
       match: (input) => input.startsWith("/ask "),
       execute: async ({ engine, input }) => {
-        const args = input.replace("/ask ", "").trim();
-        const firstSpaceIndex = args.indexOf(" ");
+        const { first: targetCellId, rest: message } =
+          splitFirstArg(input, "/ask");
 
-        if (firstSpaceIndex === -1) {
+        if (!targetCellId || !message) {
           console.log("Usage: /ask <cell-id> <message>");
           return;
         }
 
-        const targetCellId = args.slice(0, firstSpaceIndex).trim();
-        const message = args.slice(firstSpaceIndex + 1).trim();
         const targetCell = engine.cells.get(targetCellId);
 
         if (!targetCell) {
           console.log(`Cell not found: ${targetCellId}`);
-          return;
-        }
-
-        if (!message) {
-          console.log("Usage: /ask <cell-id> <message>");
           return;
         }
 
@@ -186,7 +180,7 @@ export function createColonyCommands({
       name: "/broadcast",
       match: (input) => input.startsWith("/broadcast "),
       execute: async ({ engine, input }) => {
-        const message = input.replace("/broadcast ", "").trim();
+        const message = commandArgs(input, "/broadcast");
 
         if (!message) {
           console.log("Usage: /broadcast <message>");
@@ -228,7 +222,7 @@ export function createColonyCommands({
       name: "/run-all",
       match: (input) => input.startsWith("/run-all "),
       execute: async ({ engine, input }) => {
-        const task = input.replace("/run-all ", "").trim();
+        const task = commandArgs(input, "/run-all");
 
         if (!task) {
           console.log("Usage: /run-all <task>");
