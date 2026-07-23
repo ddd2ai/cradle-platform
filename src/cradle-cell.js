@@ -13,6 +13,7 @@ import { CellMemoryStore } from "./cell/cell-memory-store.js";
 import { CellProfileStore } from "./cell/cell-profile-store.js";
 import { CellDNAStore } from "./cell/cell-dna-store.js";
 import { CellConfigStore } from "./cell/cell-config-store.js";
+import { CellEvolutionStore } from "./cell/cell-evolution-store.js";
 import { block } from "./utils/text.js";
 import { parseLooseJsonObject } from "./utils/json.js";
 import {
@@ -118,6 +119,11 @@ export class CradleCell {
       visionFile: this.visionFile,
       environmentFile: this.environmentFile,
       dnaDir: this.dnaDir,
+    });
+    this.evolutionStore = new CellEvolutionStore({
+      thoughtsDir: this.thoughtsDir,
+      evolutionStateFile: this.evolutionStateFile,
+      tail: (content, maxChars) => this.tail(content, maxChars),
     });
 
     this.assistant = null;
@@ -1877,57 +1883,19 @@ ${memoryContext}
   }
 
   async readRecentThoughts(maxChars = 4000) {
-    try {
-      const files = await fs.readdir(this.thoughtsDir);
-      const markdownFiles = files
-        .filter((file) => file.endsWith(".md"))
-        .sort()
-        .slice(-5);
-
-      const contents = [];
-
-      for (const file of markdownFiles) {
-        const fullPath = path.join(this.thoughtsDir, file);
-        const content = await fs.readFile(fullPath, "utf8");
-        contents.push(`# ${file}\n\n${content}`);
-      }
-
-      return this.tail(contents.join("\n\n---\n\n"), maxChars);
-    } catch {
-      return "";
-    }
+    return await this.evolutionStore.readRecentThoughts(maxChars);
   }
 
   async readEvolutionState() {
-    try {
-      const raw = await fs.readFile(this.evolutionStateFile, "utf8");
-      return JSON.parse(raw);
-    } catch {
-      return {
-        evolvedThoughts: [],
-        evolutionCount: 0,
-        lastEvolvedAt: null,
-      };
-    }
+    return await this.evolutionStore.readEvolutionState();
   }
 
   async writeEvolutionState(state) {
-    await fs.writeFile(
-      this.evolutionStateFile,
-      JSON.stringify(state, null, 2),
-      "utf8"
-    );
+    await this.evolutionStore.writeEvolutionState(state);
   }
 
   async listThoughtFiles() {
-    try {
-      const files = await fs.readdir(this.thoughtsDir);
-      return files
-        .filter((file) => file.endsWith(".md"))
-        .sort();
-    } catch {
-      return [];
-    }
+    return await this.evolutionStore.listThoughtFiles();
   }
 
   async getEvolutionStatus() {
@@ -1951,28 +1919,7 @@ ${memoryContext}
   }
 
   async loadUnevolvedThoughts(limit = 5) {
-    const state = await this.readEvolutionState();
-    const files = await this.listThoughtFiles();
-
-    const unevolved = files
-      .filter((file) => !state.evolvedThoughts.includes(file))
-      .slice(0, limit);
-
-    const thoughts = [];
-
-    for (const file of unevolved) {
-      const content = await fs.readFile(
-        path.join(this.thoughtsDir, file),
-        "utf8"
-      );
-
-      thoughts.push({
-        file,
-        content,
-      });
-    }
-
-    return thoughts;
+    return await this.evolutionStore.loadUnevolvedThoughts(limit);
   }
 
   async reflect({ input, output }) {
