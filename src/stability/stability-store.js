@@ -1,5 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
+import { readJsonFile, writeJsonFile } from "../utils/json-file.js";
 
 export class StabilityStore {
   constructor({ rootDir }) {
@@ -8,22 +9,13 @@ export class StabilityStore {
   }
 
   async read() {
-    try {
-      const raw = await fs.readFile(this.file, "utf8");
-      return JSON.parse(raw);
-    } catch {
-      return {
-        artifacts: {},
-      };
-    }
+    return readJsonFile(this.file, {
+      artifacts: {},
+    });
   }
 
   async write(state) {
-    await fs.writeFile(
-      this.file,
-      JSON.stringify(state, null, 2),
-      "utf8"
-    );
+    await writeJsonFile(this.file, state);
   }
 
   async appendArtifactRecord(artifactId, record) {

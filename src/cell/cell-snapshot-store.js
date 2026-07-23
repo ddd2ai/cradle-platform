@@ -1,5 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
+import { writeJsonFile } from "../utils/json-file.js";
 
 export class CellSnapshotStore {
   constructor({
@@ -71,11 +72,7 @@ export class CellSnapshotStore {
       includes: ["cell.json", "memory", "workspace", "thoughts"],
     };
 
-    await fs.writeFile(
-      path.join(snapshotDir, "snapshot.json"),
-      JSON.stringify(manifest, null, 2),
-      "utf8"
-    );
+    await writeJsonFile(path.join(snapshotDir, "snapshot.json"), manifest);
 
     return snapshotName;
   }

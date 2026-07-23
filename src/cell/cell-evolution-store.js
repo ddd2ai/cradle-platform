@@ -1,5 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
+import { readJsonFile, writeJsonFile } from "../utils/json-file.js";
 
 export class CellEvolutionStore {
   constructor({
@@ -38,20 +39,14 @@ export class CellEvolutionStore {
   }
 
   async readEvolutionState() {
-    try {
-      const raw = await fs.readFile(this.evolutionStateFile, "utf8");
-      return JSON.parse(raw);
-    } catch {
-      return this.createDefaultEvolutionState();
-    }
+    return readJsonFile(
+      this.evolutionStateFile,
+      this.createDefaultEvolutionState()
+    );
   }
 
   async writeEvolutionState(state) {
-    await fs.writeFile(
-      this.evolutionStateFile,
-      JSON.stringify(state, null, 2),
-      "utf8"
-    );
+    await writeJsonFile(this.evolutionStateFile, state);
   }
 
   async listThoughtFiles() {

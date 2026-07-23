@@ -1,4 +1,4 @@
-import fs from "fs/promises";
+import { readJsonFile, writeJsonFile } from "../utils/json-file.js";
 
 export class CellDNAStore {
   constructor({
@@ -20,20 +20,11 @@ export class CellDNAStore {
   }
 
   async readDNAVector() {
-    try {
-      const raw = await fs.readFile(this.dnaVectorFile, "utf8");
-      return JSON.parse(raw);
-    } catch {
-      return null;
-    }
+    return readJsonFile(this.dnaVectorFile, null);
   }
 
   async writeDNAVector(vector) {
-    await fs.writeFile(
-      this.dnaVectorFile,
-      JSON.stringify(vector, null, 2),
-      "utf8"
-    );
+    await writeJsonFile(this.dnaVectorFile, vector);
   }
 
   async appendDNAHistory(reason = "unknown") {
@@ -69,23 +60,10 @@ export class CellDNAStore {
   }
 
   async readDNAHistory() {
-    try {
-      const raw = await fs.readFile(
-        this.dnaHistoryFile,
-        "utf8"
-      );
-
-      return JSON.parse(raw);
-    } catch {
-      return [];
-    }
+    return readJsonFile(this.dnaHistoryFile, []);
   }
 
   async writeDNAHistory(history = []) {
-    await fs.writeFile(
-      this.dnaHistoryFile,
-      JSON.stringify(history, null, 2),
-      "utf8"
-    );
+    await writeJsonFile(this.dnaHistoryFile, history);
   }
 }
