@@ -1,5 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
+import { readJsonFile, writeJsonFile } from "../utils/json-file.js";
 
 export class LifecycleProposalStore {
   constructor({ dir = path.join("situation", "proposals") } = {}) {
@@ -23,11 +24,7 @@ export class LifecycleProposalStore {
       savedAt: new Date().toISOString(),
     };
 
-    await fs.writeFile(
-      path.join(this.dir, file),
-      JSON.stringify(saved, null, 2),
-      "utf8"
-    );
+    await writeJsonFile(path.join(this.dir, file), saved);
 
     return {
       proposalId,
@@ -48,21 +45,16 @@ export class LifecycleProposalStore {
         continue;
       }
 
-      try {
-        const raw = await fs.readFile(path.join(this.dir, entry.name), "utf8");
-        const record = JSON.parse(raw);
+      const record = await readJsonFile(path.join(this.dir, entry.name), null);
 
-        if (status && record.proposal?.status !== status) {
-          continue;
-        }
-
-        records.push({
-          file: entry.name,
-          ...record,
-        });
-      } catch {
-        // Ignore corrupt proposal records, but keep listing usable records.
+      if (!record || (status && record.proposal?.status !== status)) {
+        continue;
       }
+
+      records.push({
+        file: entry.name,
+        ...record,
+      });
     }
 
     return records.sort((a, b) =>

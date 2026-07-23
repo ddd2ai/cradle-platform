@@ -1,5 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
+import { readJsonFile, writeJsonFile } from "../utils/json-file.js";
 
 export class ThreatStore {
   constructor({ dir = path.join("situation", "stimuli", "threats") } = {}) {
@@ -53,11 +54,7 @@ export class ThreatStore {
       resolution: null,
     };
 
-    await fs.writeFile(
-      path.join(this.dir, `${threat.threatId}.json`),
-      JSON.stringify(threat, null, 2),
-      "utf8"
-    );
+    await writeJsonFile(path.join(this.dir, `${threat.threatId}.json`), threat);
 
     return threat;
   }
@@ -111,11 +108,7 @@ export class ThreatStore {
       proposalId,
     };
 
-    await fs.writeFile(
-      filePath,
-      JSON.stringify(resolved, null, 2),
-      "utf8"
-    );
+    await writeJsonFile(filePath, resolved);
 
     return resolved;
   }
@@ -164,16 +157,16 @@ export class ThreatStore {
           continue;
         }
 
-        try {
-          const raw = await fs.readFile(path.join(this.dir, entry.name), "utf8");
-          const data = JSON.parse(raw);
-          threats.push({
-            file: entry.name,
-            ...data,
-          });
-        } catch {
-          // Ignore corrupt threat files; they should not affect heartbeat.
+        const data = await readJsonFile(path.join(this.dir, entry.name), null);
+
+        if (!data) {
+          continue;
         }
+
+        threats.push({
+          file: entry.name,
+          ...data,
+        });
       }
 
       return threats;
