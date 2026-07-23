@@ -55,16 +55,9 @@ import {
   createLivingContext,
   normalizeLivingContext,
 } from "./living-context/living-context-schema.js";
-
-function resolveRepairType(decision) {
-  const detail = decision?.detail ?? {};
-
-  if (Number(detail.temporalVariance ?? 0) > 0.20) {
-    return "dna";
-  }
-
-  return "unknown";
-}
+import {
+  resolveRepairTypeFromDecision,
+} from "./lifecycle/repair-type.js";
 
 export class CradleCell {
 
@@ -1284,7 +1277,7 @@ ${input}
         artifactId = latestArtifactThreat.artifactId;
         threatId = latestArtifactThreat.threatId;
       } else {
-        repairType = resolveRepairType(decision);
+        repairType = resolveRepairTypeFromDecision(decision);
       }
     }
     const createdAt = new Date().toISOString();

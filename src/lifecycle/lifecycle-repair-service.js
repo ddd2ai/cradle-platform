@@ -5,6 +5,10 @@
  * 不同的 repair type 會導向不同的修復策略。
  */
 
+import {
+  resolveRepairTypeFromPlan,
+} from "./repair-type.js";
+
 /**
  * 執行生命週期修復
  *
@@ -52,20 +56,7 @@ export async function executeLifecycleRepair(cell, engine, plan, options = {}) {
  * @returns {string} Repair type
  */
 export function resolveRepairType(plan) {
-  const detail = plan?.decision?.detail ?? {};
-
-  // 如果最近失敗率高，優先修復 artifact
-  if (detail.recentFailureRate > 0.30) {
-    return "artifact";
-  }
-
-  // 如果 DNA 不穩定，修復 DNA
-  if (detail.temporalVariance > 0.20) {
-    return "dna";
-  }
-
-  // 其他情況暫時返回 unknown
-  return "unknown";
+  return resolveRepairTypeFromPlan(plan);
 }
 
 /**
