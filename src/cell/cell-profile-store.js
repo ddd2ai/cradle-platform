@@ -1,4 +1,5 @@
 import fs from "fs/promises";
+import { readJsonFile, writeJsonFile } from "../utils/json-file.js";
 
 export class CellProfileStore {
   constructor({
@@ -20,12 +21,7 @@ export class CellProfileStore {
   }
 
   async readCellProfile() {
-    try {
-      const raw = await fs.readFile(this.cellFile, "utf8");
-      return JSON.parse(raw);
-    } catch {
-      return null;
-    }
+    return readJsonFile(this.cellFile, null);
   }
 
   async readProfile() {
@@ -42,39 +38,19 @@ export class CellProfileStore {
   }
 
   async writeCellProfile(profile) {
-    await fs.writeFile(
-      this.cellFile,
-      JSON.stringify(profile, null, 2),
-      "utf8"
-    );
+    await writeJsonFile(this.cellFile, profile);
   }
 
   async updateStatus(status) {
-    try {
-      const profile = await this.readCellProfile();
-      if (!profile) return;
-
+    await this.updateCellProfile((profile) => {
       profile.status = status;
-      profile.updatedAt = this.now().toISOString();
-
-      await this.writeCellProfile(profile);
-    } catch {
-      // cell.json write failures should not interrupt CLI flow.
-    }
+    }, { touch: true, silent: true });
   }
 
   async increaseMaturity(amount = 1) {
-    try {
-      const profile = await this.readCellProfile();
-      if (!profile) return;
-
+    await this.updateCellProfile((profile) => {
       profile.maturity = Number(profile.maturity ?? 0) + amount;
-      profile.updatedAt = this.now().toISOString();
-
-      await this.writeCellProfile(profile);
-    } catch {
-      // Legacy maturity updates should not interrupt CLI flow.
-    }
+    }, { touch: true, silent: true });
   }
 
   async getProfile() {
@@ -87,61 +63,38 @@ export class CellProfileStore {
   }
 
   async setGeneration(generation) {
-    const profile = await this.readCellProfile();
-
-    if (!profile) return;
-
-    profile.generation = generation;
-    profile.updatedAt = this.now().toISOString();
-
-    await this.writeCellProfile(profile);
+    await this.updateCellProfile((profile) => {
+      profile.generation = generation;
+    }, { touch: true });
   }
 
   async setParent(parentId) {
-    const profile = await this.readCellProfile();
-
-    if (!profile) return;
-
-    profile.parent = parentId;
-    profile.updatedAt = this.now().toISOString();
-
-    await this.writeCellProfile(profile);
+    await this.updateCellProfile((profile) => {
+      profile.parent = parentId;
+    }, { touch: true });
   }
 
   async addResponsibility(name) {
-    const profile = await this.readCellProfile();
+    await this.updateCellProfile((profile) => {
+      profile.responsibilities ??= [];
 
-    if (!profile) return;
-
-    profile.responsibilities ??= [];
-
-    if (!profile.responsibilities.includes(name)) {
-      profile.responsibilities.push(name);
-    }
-
-    await this.writeCellProfile(profile);
+      if (!profile.responsibilities.includes(name)) {
+        profile.responsibilities.push(name);
+      }
+    });
   }
 
   async removeResponsibility(name) {
-    const profile = await this.readCellProfile();
-
-    if (!profile) return;
-
-    profile.responsibilities = (profile.responsibilities ?? [])
-      .filter((item) => item !== name);
-
-    await this.writeCellProfile(profile);
+    await this.updateCellProfile((profile) => {
+      profile.responsibilities = (profile.responsibilities ?? [])
+        .filter((item) => item !== name);
+    });
   }
 
   async setResponsibilities(responsibilities = []) {
-    const profile = await this.readCellProfile();
-
-    if (!profile) return;
-
-    profile.responsibilities = this.cleanResponsibilities(responsibilities);
-    profile.updatedAt = this.now().toISOString();
-
-    await this.writeCellProfile(profile);
+    await this.updateCellProfile((profile) => {
+      profile.responsibilities = this.cleanResponsibilities(responsibilities);
+    }, { touch: true });
   }
 
   async listResponsibilities() {
@@ -150,18 +103,14 @@ export class CellProfileStore {
   }
 
   async addRelationship(type, target) {
-    const profile = await this.readCellProfile();
+    await this.updateCellProfile((profile) => {
+      profile.relationships ??= [];
 
-    if (!profile) return;
-
-    profile.relationships ??= [];
-
-    profile.relationships.push({
-      type,
-      target,
+      profile.relationships.push({
+        type,
+        target,
+      });
     });
-
-    await this.writeCellProfile(profile);
   }
 
   async listRelationships() {
@@ -177,5 +126,25 @@ export class CellProfileStore {
           .filter((responsibility) => responsibility.length > 0)
       ),
     ];
+  }
+
+  async updateCellProfile(mutator, { touch = false, silent = false } = {}) {
+    try {
+      const profile = await this.readCellProfile();
+
+      if (!profile) return;
+
+      mutator(profile);
+
+      if (touch) {
+        profile.updatedAt = this.now().toISOString();
+      }
+
+      await this.writeCellProfile(profile);
+    } catch (error) {
+      if (!silent) {
+        throw error;
+      }
+    }
   }
 }
