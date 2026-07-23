@@ -68,46 +68,11 @@ export async function executeFuseCommand({
       return;
     }
 
-    const child = result.child;
-    const productionResult = result.productionResult;
-    const livingContext = await child.readLivingContext();
-    const profile = await child.readCellProfile();
-    const fusionPlan = result.fusionPlan || {};
-    const capabilityResolutions = fusionPlan.capabilityResolutions || [];
-    const inherited = capabilityResolutions.filter(c => c.strategy === "inherit").length;
-    const synthesized = capabilityResolutions.filter(c => c.strategy === "synthesize").length;
-    const discarded = capabilityResolutions.filter(c => c.strategy === "discard").length;
-    const knowledgeConflicts = fusionPlan.knowledgeConflicts || [];
-    const conflictsCount = knowledgeConflicts.length;
-    const resolvedCount = knowledgeConflicts.filter(c => c.resolution).length;
-    const planned = (fusionPlan.productionPlan || []).length;
-    const produced = productionResult.produced.length;
-    const failed = productionResult.failed.length;
-
     engine.activeCellId = childId;
-
-    console.log("");
-    console.log(result.complete ? "✅ Fusion complete" : "⚠️ Fusion created but incomplete");
-    console.log("");
-    console.log(`Child          : ${result.child.id}`);
-    console.log(`Parents        : ${parentIds.join(", ")}`);
-    console.log(`Role           : ${profile.role || "unknown"}`);
-    console.log(`Purpose        : ${livingContext.purpose || "unknown"}`);
-    console.log("");
-    console.log("Capabilities");
-    console.log(`  Inherited      : ${inherited}`);
-    console.log(`  Synthesized    : ${synthesized}`);
-    console.log(`  Discarded      : ${discarded}`);
-    console.log("");
-    console.log("Knowledge");
-    console.log(`  Conflicts      : ${conflictsCount}`);
-    console.log(`  Resolved       : ${resolvedCount}`);
-    console.log("");
-    console.log("Production");
-    console.log(`  Planned        : ${planned}`);
-    console.log(`  Produced       : ${produced}`);
-    console.log(`  Failed         : ${failed}`);
-    console.log("");
+    await renderFusionResult({
+      result,
+      parentIds,
+    });
   } catch (error) {
     console.log("");
     console.log("❌ Fusion failed");
@@ -120,6 +85,66 @@ export async function executeFuseCommand({
       console.log(error.cause.message);
     }
   }
+}
+
+async function renderFusionResult({ result, parentIds }) {
+  const child = result.child;
+  const fusionPlan = result.fusionPlan || {};
+  const productionResult = result.productionResult || {};
+  const livingContext = await child.readLivingContext();
+  const profile = await child.readCellProfile();
+  const capabilities = countCapabilityResolutions(fusionPlan.capabilityResolutions);
+  const knowledge = countKnowledgeConflicts(fusionPlan.knowledgeConflicts);
+  const production = countFusionProductions({
+    fusionPlan,
+    productionResult,
+  });
+
+  console.log("");
+  console.log(result.complete ? "✅ Fusion complete" : "⚠️ Fusion created but incomplete");
+  console.log("");
+  console.log(`Child          : ${child.id}`);
+  console.log(`Parents        : ${parentIds.join(", ")}`);
+  console.log(`Role           : ${profile.role || "unknown"}`);
+  console.log(`Purpose        : ${livingContext.purpose || "unknown"}`);
+  console.log("");
+  console.log("Capabilities");
+  console.log(`  Inherited      : ${capabilities.inherited}`);
+  console.log(`  Synthesized    : ${capabilities.synthesized}`);
+  console.log(`  Discarded      : ${capabilities.discarded}`);
+  console.log("");
+  console.log("Knowledge");
+  console.log(`  Conflicts      : ${knowledge.conflicts}`);
+  console.log(`  Resolved       : ${knowledge.resolved}`);
+  console.log("");
+  console.log("Production");
+  console.log(`  Planned        : ${production.planned}`);
+  console.log(`  Produced       : ${production.produced}`);
+  console.log(`  Failed         : ${production.failed}`);
+  console.log("");
+}
+
+function countCapabilityResolutions(capabilityResolutions = []) {
+  return {
+    inherited: capabilityResolutions.filter(c => c.strategy === "inherit").length,
+    synthesized: capabilityResolutions.filter(c => c.strategy === "synthesize").length,
+    discarded: capabilityResolutions.filter(c => c.strategy === "discard").length,
+  };
+}
+
+function countKnowledgeConflicts(knowledgeConflicts = []) {
+  return {
+    conflicts: knowledgeConflicts.length,
+    resolved: knowledgeConflicts.filter(c => c.resolution).length,
+  };
+}
+
+function countFusionProductions({ fusionPlan, productionResult }) {
+  return {
+    planned: (fusionPlan.productionPlan || []).length,
+    produced: (productionResult.produced || []).length,
+    failed: (productionResult.failed || []).length,
+  };
 }
 
 export function createColonyCommands({
