@@ -1,11 +1,15 @@
 import fs from "fs/promises";
 import path from "path";
 import { readJsonFile, writeJsonFile } from "../utils/json-file.js";
+import { writeTextFile } from "../utils/text-file.js";
 
 export class CellEvolutionStore {
   constructor({
     thoughtsDir,
+    evolutionsDir,
     evolutionStateFile,
+    timestampFormatter,
+    now = () => new Date(),
     tail = (content) => content,
   } = {}) {
     if (!thoughtsDir) {
@@ -16,8 +20,19 @@ export class CellEvolutionStore {
       throw new Error("CellEvolutionStore requires evolutionStateFile");
     }
 
+    if (!evolutionsDir) {
+      throw new Error("CellEvolutionStore requires evolutionsDir");
+    }
+
+    if (!timestampFormatter) {
+      throw new Error("CellEvolutionStore requires timestampFormatter");
+    }
+
     this.thoughtsDir = thoughtsDir;
+    this.evolutionsDir = evolutionsDir;
     this.evolutionStateFile = evolutionStateFile;
+    this.timestampFormatter = timestampFormatter;
+    this.now = now;
     this.tail = tail;
   }
 
@@ -83,6 +98,40 @@ export class CellEvolutionStore {
     }
 
     return thoughts;
+  }
+
+  async writeEvolutionJournal({ evolution = {}, thoughts = [] } = {}) {
+    const current = this.now();
+    const filename = `evolution-${this.timestampFormatter(current)}.md`;
+
+    await writeTextFile(
+      path.join(this.evolutionsDir, filename),
+      `# Evolution
+
+      ## Summary
+
+      ${evolution.summary ?? "(empty)"}
+
+      ## DNA Drift
+
+      \`\`\`json
+      ${JSON.stringify(evolution.dnaDrift ?? [], null, 2)}
+      \`\`\`
+
+      ## Affinities
+
+      ${(evolution.affinities ?? []).map((item) => `- ${item}`).join("\n")}
+
+      ## Thoughts
+
+      ${thoughts.map((thought) => `- ${thought.file}`).join("\n")}
+
+      ---
+      createdAt: ${current.toISOString()}
+      `
+    );
+
+    return filename;
   }
 
   createDefaultEvolutionState() {

@@ -119,7 +119,9 @@ export class CradleCell {
     });
     this.evolutionStore = new CellEvolutionStore({
       thoughtsDir: this.thoughtsDir,
+      evolutionsDir: this.evolutionsDir,
       evolutionStateFile: this.evolutionStateFile,
+      timestampFormatter: (date) => this.formatTimestamp(date),
       tail: (content, maxChars) => this.tail(content, maxChars),
     });
     this.workspaceStore = new CellWorkspaceStore({
@@ -1044,36 +1046,10 @@ ${input}
 
             await this.applyDNADrift(evolution.dnaDrift ?? []);
 
-            const filename =
-              `evolution-${this.formatTimestamp(new Date())}.md`;
-
-            await fs.writeFile(
-              path.join(this.evolutionsDir, filename),
-              `# Evolution
-
-      ## Summary
-
-      ${evolution.summary ?? "(empty)"}
-
-      ## DNA Drift
-
-      \`\`\`json
-      ${JSON.stringify(evolution.dnaDrift ?? [], null, 2)}
-      \`\`\`
-
-      ## Affinities
-
-      ${(evolution.affinities ?? []).map((item) => `- ${item}`).join("\n")}
-
-      ## Thoughts
-
-      ${thoughts.map((thought) => `- ${thought.file}`).join("\n")}
-
-      ---
-      createdAt: ${new Date().toISOString()}
-      `,
-        "utf8"
-      );
+            const filename = await this.evolutionStore.writeEvolutionJournal({
+              evolution,
+              thoughts,
+            });
 
       const state = await this.readEvolutionState();
 
