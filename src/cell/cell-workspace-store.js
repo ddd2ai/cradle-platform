@@ -1,6 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import { resolveInsideRoot } from "../utils/safe-path.js";
+import { writeTextFile } from "../utils/text-file.js";
 
 export class CellWorkspaceStore {
   constructor({
@@ -39,8 +40,7 @@ export class CellWorkspaceStore {
 
   async writeWorkspaceFile(relativePath, content) {
     const file = this.resolveInside(this.workspaceDir, relativePath);
-    await fs.mkdir(path.dirname(file), { recursive: true });
-    await fs.writeFile(file, content, "utf8");
+    await writeTextFile(file, content);
   }
 
   async readWorkspaceFile(relativePath) {

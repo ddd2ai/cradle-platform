@@ -4,6 +4,7 @@ import { spawn } from "child_process";
 import { ExecutionResult } from "./execution-result.js";
 import { getTimeoutMs } from "../cradle-config.js";
 import { resolveInsideRoot } from "../utils/safe-path.js";
+import { writeTextFile } from "../utils/text-file.js";
 
 export class MavenExecutor {
   constructor({
@@ -142,15 +143,7 @@ export class MavenExecutor {
         output.path
       );
 
-      await fs.mkdir(path.dirname(outputPath), {
-        recursive: true,
-      });
-
-      await fs.writeFile(
-        outputPath,
-        output.content ?? "",
-        "utf8"
-      );
+      await writeTextFile(outputPath, output.content ?? "");
     }
   }
 
