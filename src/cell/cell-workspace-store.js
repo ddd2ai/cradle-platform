@@ -1,5 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
+import { resolveInsideRoot } from "../utils/safe-path.js";
 
 export class CellWorkspaceStore {
   constructor({
@@ -78,13 +79,8 @@ export class CellWorkspaceStore {
   }
 
   resolveInside(baseDir, relativePath) {
-    const resolved = path.resolve(baseDir, relativePath);
-    const base = path.resolve(baseDir);
-
-    if (!resolved.startsWith(base + path.sep) && resolved !== base) {
-      throw new Error(`Invalid path outside cell directory: ${relativePath}`);
-    }
-
-    return resolved;
+    return resolveInsideRoot(baseDir, relativePath, {
+      errorMessage: (input) => `Invalid path outside cell directory: ${input}`,
+    });
   }
 }

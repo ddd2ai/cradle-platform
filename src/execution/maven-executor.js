@@ -3,6 +3,7 @@ import path from "path";
 import { spawn } from "child_process";
 import { ExecutionResult } from "./execution-result.js";
 import { getTimeoutMs } from "../cradle-config.js";
+import { resolveInsideRoot } from "../utils/safe-path.js";
 
 export class MavenExecutor {
   constructor({
@@ -154,22 +155,9 @@ export class MavenExecutor {
   }
 
   resolveSafePath(workspaceDir, relativePath) {
-    const root = path.resolve(workspaceDir);
-    const resolved = path.resolve(
-      workspaceDir,
-      relativePath
-    );
-
-    if (
-      resolved !== root &&
-      !resolved.startsWith(`${root}${path.sep}`)
-    ) {
-      throw new Error(
-        `Artifact output escapes workspace: ${relativePath}`
-      );
-    }
-
-    return resolved;
+    return resolveInsideRoot(workspaceDir, relativePath, {
+      errorMessage: (input) => `Artifact output escapes workspace: ${input}`,
+    });
   }
 
   /**
