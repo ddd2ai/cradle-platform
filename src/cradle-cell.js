@@ -1072,14 +1072,6 @@ ${input}
     }
   }
 
-  async ensureFile(file, content = "") {
-    try {
-      await fs.access(file);
-    } catch {
-      await fs.writeFile(file, content, "utf8");
-    }
-  }
-
   async readCellProfile() {
     return await this.profileStore.readCellProfile();
   }
