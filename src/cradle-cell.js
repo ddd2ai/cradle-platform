@@ -60,6 +60,7 @@ import {
   resolveRepairTypeFromDecision,
 } from "./lifecycle/repair-type.js";
 import { StimulusStore } from "./situation/stimulus-store.js";
+import { ObservationStore } from "./situation/observation-store.js";
 
 export class CradleCell {
 
@@ -132,6 +133,10 @@ export class CradleCell {
     });
     this.stimulusStore = new StimulusStore({
       stimuliDir: this.stimuliDir,
+      timestampFormatter: (date) => this.formatTimestamp(date),
+    });
+    this.observationStore = new ObservationStore({
+      observationsDir: this.observationsDir,
       timestampFormatter: (date) => this.formatTimestamp(date),
     });
     this.snapshotStore = new CellSnapshotStore({
@@ -562,19 +567,8 @@ ${s.content}
 
     const parsed = parseLooseJsonObject(raw);
 
-    const observationFile =
-      `observation-${this.formatTimestamp(new Date())}.md`;
-
-    await fs.writeFile(
-      path.join(this.observationsDir, observationFile),
-      `# Observation
-
-${this.formatObservationMarkdown(parsed.observation)}
-
----
-createdAt: ${new Date().toISOString()}
-`,
-      "utf8"
+    const observationFile = await this.observationStore.writeObservationMarkdown(
+      this.formatObservationMarkdown(parsed.observation)
     );
 
     const tasks = (parsed.tasks ?? []).slice(0, 1);
