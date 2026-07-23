@@ -8,6 +8,24 @@
 
 import { CellFusionService } from "../src/lifecycle/cell-fusion-service.js";
 
+const successfulArtifactRegenerationService = {
+  async regenerateForFusion() {
+    return {
+      produced: [],
+      failed: [],
+      skipped: [],
+      complete: true,
+    };
+  },
+};
+
+function createCellFusionService(options = {}) {
+  return new CellFusionService({
+    artifactRegenerationService: successfulArtifactRegenerationService,
+    ...options,
+  });
+}
+
 // Fake Engine
 class FakeEngine {
   constructor() {
@@ -27,12 +45,29 @@ class FakeEngine {
 class FakeCell {
   constructor(id) {
     this.id = id;
-    this.dnaVector = {};
-    this.dnaHistory = [];
+    this.dnaVector = {
+      PERCEPTION: { strength: 0.8, stability: 0.7, plasticity: 0.6, fitness: 0.5 },
+      DECISION: { strength: 0.7, stability: 0.6, plasticity: 0.5, fitness: 0.4 },
+      DECOMPOSITION: { strength: 0.6, stability: 0.5, plasticity: 0.4, fitness: 0.3 },
+      LEARNING: { strength: 0.5, stability: 0.4, plasticity: 0.3, fitness: 0.2 },
+      COLLABORATION: { strength: 0.4, stability: 0.3, plasticity: 0.2, fitness: 0.1 },
+      CREATION: { strength: 0.3, stability: 0.2, plasticity: 0.1, fitness: 0.0 },
+      EVOLUTION: { strength: 0.2, stability: 0.1, plasticity: 0.0, fitness: 0.1 },
+      REFLECTION: { strength: 0.1, stability: 0.0, plasticity: 0.1, fitness: 0.2 },
+    };
+    this.dnaHistory = [{ vector: this.dnaVector, at: new Date().toISOString() }];
     this.livingContext = null;
     this.memory = {};
     this.history = [];
     this.thoughts = [];
+    this.memoryDir = `/tmp/cradle-platform-test/${id}/memory`;
+    this.thoughtsDir = `/tmp/cradle-platform-test/${id}/thoughts`;
+    this.memoryFiles = {
+      identity: `${this.memoryDir}/identity.md`,
+      rules: `${this.memoryDir}/rules.md`,
+      knowledge: `${this.memoryDir}/knowledge.md`,
+      history: `${this.memoryDir}/history.md`,
+    };
     this.responsibilities = [];
     this.relationships = [];
     this.generation = 1;
@@ -45,6 +80,7 @@ class FakeCell {
     this.methodCalls = {
       createFusionPlanByDNA: 0,
       applyFusionPlanByDNA: 0,
+      appendDNAHistoryIfChanged: 0,
       setResponsibilities: 0,
       writeLivingContext: 0,
       writeMemory: 0,
@@ -95,8 +131,21 @@ class FakeCell {
     this.dnaVector = vector;
   }
 
+  async readDNAVector() {
+    return this.dnaVector;
+  }
+
+  async readDNAHistory() {
+    return this.dnaHistory;
+  }
+
   async appendDNAHistory(reason) {
     this.dnaHistory.push({ reason, at: new Date().toISOString() });
+  }
+
+  async appendDNAHistoryIfChanged(reason) {
+    this.methodCalls.appendDNAHistoryIfChanged++;
+    await this.appendDNAHistory(reason);
   }
 
   async readCellProfile() {
@@ -193,7 +242,27 @@ async function test01_DNAPlanningBeforeCreateCell() {
   const parentA = new FakeCell("parent-a");
   const parentB = new FakeCell("parent-b");
 
-  const service = new CellFusionService({
+  let dnaPlanningCalled = false;
+  const service = createCellFusionService({
+    dnaFusionService: {
+      createPlan: async () => {
+        dnaPlanningCalled = true;
+        console.assert(engine.createdCells.length === 0, "Child should not exist yet");
+        return {
+          type: "dna-fusion",
+          parentCellIds: [parentA.id, parentB.id],
+          childCellId: "child-fused",
+          fusedVector: parentA.dnaVector,
+          role: "Unified Role",
+        };
+      },
+      applyPlan: async ({ childCell, plan }) => {
+        await childCell.writeDNAVector(plan.fusedVector);
+        await childCell.appendDNAHistoryIfChanged(
+          `fusion from ${plan.parentCellIds.join(", ")}`
+        );
+      },
+    },
     livingContextFusionServiceFactory: (requesterCell) => {
       return new FakeLivingContextFusionService({ requesterCell });
     },
@@ -207,7 +276,7 @@ async function test01_DNAPlanningBeforeCreateCell() {
 
   console.assert(result.success, "Fusion should succeed");
   console.assert(result.complete, "Fusion should be complete");
-  console.assert(parentA.methodCalls.createFusionPlanByDNA === 1, "createFusionPlanByDNA should be called once");
+  console.assert(dnaPlanningCalled, "DNA planning should be called once");
   
   console.log("✅ DNA planning called before createCell");
 }
@@ -221,7 +290,7 @@ async function test02_LivingContextPlanningBeforeCreateCell() {
 
   let planningCalled = false;
 
-  const service = new CellFusionService({
+  const service = createCellFusionService({
     livingContextFusionServiceFactory: (requesterCell) => {
       const fake = new FakeLivingContextFusionService({ requesterCell });
       const original = fake.createFusionPlan.bind(fake);
@@ -234,7 +303,7 @@ async function test02_LivingContextPlanningBeforeCreateCell() {
     },
   });
 
-  await service.fuse({
+  const result = await service.fuse({
     engine,
     parentCells: [parentA, parentB],
     childId: "child-fused",
@@ -251,12 +320,12 @@ async function test03_DNAPlanningFailureNoChild() {
   const parentA = new FakeCell("parent-a");
   const parentB = new FakeCell("parent-b");
 
-  // 覆寫 createFusionPlanByDNA 使其失敗
-  parentA.createFusionPlanByDNA = async () => {
-    throw new Error("DNA planning failed");
-  };
-
-  const service = new CellFusionService({
+  const service = createCellFusionService({
+    dnaFusionService: {
+      createPlan: async () => {
+        throw new Error("DNA planning failed");
+      },
+    },
     livingContextFusionServiceFactory: (requesterCell) => {
       return new FakeLivingContextFusionService({ requesterCell });
     },
@@ -287,7 +356,7 @@ async function test04_LivingContextPlanningFailureNoChild() {
   const parentA = new FakeCell("parent-a");
   const parentB = new FakeCell("parent-b");
 
-  const service = new CellFusionService({
+  const service = createCellFusionService({
     livingContextFusionServiceFactory: (requesterCell) => {
       return {
         createFusionPlan: async () => {
@@ -324,7 +393,7 @@ async function test05_ChildAlreadyExistsFails() {
   // 預先建立 Child
   await engine.createCell("child-fused");
 
-  const service = new CellFusionService({
+  const service = createCellFusionService({
     livingContextFusionServiceFactory: (requesterCell) => {
       return new FakeLivingContextFusionService({ requesterCell });
     },
@@ -354,7 +423,7 @@ async function test06_ChildSuccessfullyCreated() {
   const parentA = new FakeCell("parent-a");
   const parentB = new FakeCell("parent-b");
 
-  const service = new CellFusionService({
+  const service = createCellFusionService({
     livingContextFusionServiceFactory: (requesterCell) => {
       return new FakeLivingContextFusionService({ requesterCell });
     },
@@ -376,30 +445,30 @@ async function test06_ChildSuccessfullyCreated() {
 }
 
 async function test07_ApplyFusionPlanByDNACalled() {
-  console.log("\n=== Test 07: applyFusionPlanByDNA 被呼叫一次 ===\n");
+  console.log("\n=== Test 07: DNA apply plan 被呼叫一次 ===\n");
 
   const engine = new FakeEngine();
   const parentA = new FakeCell("parent-a");
   const parentB = new FakeCell("parent-b");
 
-  const service = new CellFusionService({
+  const service = createCellFusionService({
     livingContextFusionServiceFactory: (requesterCell) => {
       return new FakeLivingContextFusionService({ requesterCell });
     },
   });
 
-  await service.fuse({
+  const result = await service.fuse({
     engine,
     parentCells: [parentA, parentB],
     childId: "child-fused",
   });
 
   console.assert(
-    parentA.methodCalls.applyFusionPlanByDNA === 1,
-    "applyFusionPlanByDNA should be called once"
+    result.child.methodCalls.appendDNAHistoryIfChanged === 1,
+    "DNA apply should append child DNA history once"
   );
   
-  console.log("✅ applyFusionPlanByDNA called once");
+  console.log("✅ DNA apply plan called once");
 }
 
 async function test08_FusedLivingContextWritten() {
@@ -409,7 +478,7 @@ async function test08_FusedLivingContextWritten() {
   const parentA = new FakeCell("parent-a");
   const parentB = new FakeCell("parent-b");
 
-  const service = new CellFusionService({
+  const service = createCellFusionService({
     livingContextFusionServiceFactory: (requesterCell) => {
       return new FakeLivingContextFusionService({ requesterCell });
     },
@@ -440,7 +509,7 @@ async function test09_ChildResponsibilitiesReplaced() {
   const parentA = new FakeCell("parent-a");
   const parentB = new FakeCell("parent-b");
 
-  const service = new CellFusionService({
+  const service = createCellFusionService({
     livingContextFusionServiceFactory: (requesterCell) => {
       return new FakeLivingContextFusionService({ requesterCell });
     },
@@ -470,7 +539,7 @@ async function test10_FusedMemorySeedWritten() {
   const parentA = new FakeCell("parent-a");
   const parentB = new FakeCell("parent-b");
 
-  const service = new CellFusionService({
+  const service = createCellFusionService({
     livingContextFusionServiceFactory: (requesterCell) => {
       return new FakeLivingContextFusionService({ requesterCell });
     },
@@ -513,7 +582,7 @@ async function test11_ParentMemoryNotModified() {
   parentA.memory.identity = "Original A identity";
   parentB.memory.identity = "Original B identity";
 
-  const service = new CellFusionService({
+  const service = createCellFusionService({
     livingContextFusionServiceFactory: (requesterCell) => {
       return new FakeLivingContextFusionService({ requesterCell });
     },
@@ -547,7 +616,7 @@ async function test12_ParentLivingContextNotModified() {
   parentA.livingContext = { cellId: "parent-a", purpose: "Original A purpose" };
   parentB.livingContext = { cellId: "parent-b", purpose: "Original B purpose" };
 
-  const service = new CellFusionService({
+  const service = createCellFusionService({
     livingContextFusionServiceFactory: (requesterCell) => {
       return new FakeLivingContextFusionService({ requesterCell });
     },
@@ -578,7 +647,7 @@ async function test13_ParentHasFusedIntoRelationship() {
   const parentA = new FakeCell("parent-a");
   const parentB = new FakeCell("parent-b");
 
-  const service = new CellFusionService({
+  const service = createCellFusionService({
     livingContextFusionServiceFactory: (requesterCell) => {
       return new FakeLivingContextFusionService({ requesterCell });
     },
@@ -610,7 +679,7 @@ async function test14_ChildHasFusedFromRelationship() {
   const parentA = new FakeCell("parent-a");
   const parentB = new FakeCell("parent-b");
 
-  const service = new CellFusionService({
+  const service = createCellFusionService({
     livingContextFusionServiceFactory: (requesterCell) => {
       return new FakeLivingContextFusionService({ requesterCell });
     },
@@ -644,12 +713,19 @@ async function test15_ApplicationFailureCompleteFalse() {
   const parentA = new FakeCell("parent-a");
   const parentB = new FakeCell("parent-b");
 
-  // 覆寫 applyFusionPlanByDNA 使其失敗
-  parentA.applyFusionPlanByDNA = async () => {
-    throw new Error("Apply DNA failed");
-  };
-
-  const service = new CellFusionService({
+  const service = createCellFusionService({
+    dnaFusionService: {
+      createPlan: async () => ({
+        type: "dna-fusion",
+        parentCellIds: [parentA.id, parentB.id],
+        childCellId: "child-fused",
+        fusedVector: parentA.dnaVector,
+        role: "Unified Role",
+      }),
+      applyPlan: async () => {
+        throw new Error("Apply DNA failed");
+      },
+    },
     livingContextFusionServiceFactory: (requesterCell) => {
       return new FakeLivingContextFusionService({ requesterCell });
     },
@@ -675,12 +751,19 @@ async function test16_ApplicationFailureChildNotDeleted() {
   const parentA = new FakeCell("parent-a");
   const parentB = new FakeCell("parent-b");
 
-  // 覆寫 applyFusionPlanByDNA 使其失敗
-  parentA.applyFusionPlanByDNA = async () => {
-    throw new Error("Apply DNA failed");
-  };
-
-  const service = new CellFusionService({
+  const service = createCellFusionService({
+    dnaFusionService: {
+      createPlan: async () => ({
+        type: "dna-fusion",
+        parentCellIds: [parentA.id, parentB.id],
+        childCellId: "child-fused",
+        fusedVector: parentA.dnaVector,
+        role: "Unified Role",
+      }),
+      applyPlan: async () => {
+        throw new Error("Apply DNA failed");
+      },
+    },
     livingContextFusionServiceFactory: (requesterCell) => {
       return new FakeLivingContextFusionService({ requesterCell });
     },
@@ -706,12 +789,19 @@ async function test17_ErrorsIncludeStage() {
   const parentA = new FakeCell("parent-a");
   const parentB = new FakeCell("parent-b");
 
-  // 覆寫 applyFusionPlanByDNA 使其失敗
-  parentA.applyFusionPlanByDNA = async () => {
-    throw new Error("Apply DNA failed");
-  };
-
-  const service = new CellFusionService({
+  const service = createCellFusionService({
+    dnaFusionService: {
+      createPlan: async () => ({
+        type: "dna-fusion",
+        parentCellIds: [parentA.id, parentB.id],
+        childCellId: "child-fused",
+        fusedVector: parentA.dnaVector,
+        role: "Unified Role",
+      }),
+      applyPlan: async () => {
+        throw new Error("Apply DNA failed");
+      },
+    },
     livingContextFusionServiceFactory: (requesterCell) => {
       return new FakeLivingContextFusionService({ requesterCell });
     },
@@ -740,12 +830,19 @@ async function test18_ParentAndChildHaveIncompleteHistory() {
   const parentA = new FakeCell("parent-a");
   const parentB = new FakeCell("parent-b");
 
-  // 覆寫 applyFusionPlanByDNA 使其失敗
-  parentA.applyFusionPlanByDNA = async () => {
-    throw new Error("Apply DNA failed");
-  };
-
-  const service = new CellFusionService({
+  const service = createCellFusionService({
+    dnaFusionService: {
+      createPlan: async () => ({
+        type: "dna-fusion",
+        parentCellIds: [parentA.id, parentB.id],
+        childCellId: "child-fused",
+        fusedVector: parentA.dnaVector,
+        role: "Unified Role",
+      }),
+      applyPlan: async () => {
+        throw new Error("Apply DNA failed");
+      },
+    },
     livingContextFusionServiceFactory: (requesterCell) => {
       return new FakeLivingContextFusionService({ requesterCell });
     },

@@ -59,105 +59,51 @@ export class CellFusionService {
    * @returns {Promise<object>} Fusion result
    */
   async fuse({ engine, parentCells, childId }) {
-    // 1. Validate
     this._validateParameters({ engine, parentCells, childId });
 
-    // 2. 確認 Child 不存在
     if (this._childExists(engine, childId)) {
       throw new Error(`CellFusionService: child cell already exists: ${childId}`);
     }
 
-    // ===== Planning Phase =====
-
-    let dnaFusionPlan;
-    let fusionPlan;
-
-    try {
-      // 3. createFusionPlanByDNA()
-      console.log(`  Planning DNA fusion...`);
-      
-      dnaFusionPlan = await this.dnaFusionService.createPlan({
-        parentCells,
-        childId
-      });
-
-      // 4. createFusionPlan()
-      console.log(`  Planning Living Context fusion...`);
-      const firstParent = parentCells[0];
-      
-      const fusionService = this.livingContextFusionServiceFactory(firstParent);
-      
-      fusionPlan = await fusionService.createFusionPlan({
+    const { dnaFusionPlan, fusionPlan } =
+      await this._createFusionPlans({
         parentCells,
         childId,
-        dnaFusionPlan
       });
-
-      console.log(`  ✅ Planning phase complete`);
-    } catch (error) {
-      // Planning 失敗：不可建立 Child
-      throw new Error(`CellFusionService: planning failed: ${error.message}`, {
-        cause: error
-      });
-    }
-
-    // ===== Application Phase =====
 
     let child;
     const errors = [];
 
     try {
-      // 6. engine.createCell(childId)
       console.log(`  Creating child cell...`);
       child = await engine.createCell(childId);
 
-      // 7. applyFusionPlanByDNA()
-      console.log(`  Applying DNA fusion...`);
-      try {
+      await this._runApplicationStage(errors, "apply-dna", async () => {
+        console.log(`  Applying DNA fusion...`);
         await this.dnaFusionService.applyPlan({
           childCell: child,
           parentCells,
           plan: dnaFusionPlan
         });
-      } catch (error) {
-        errors.push({
-          stage: "apply-dna",
-          message: error.message
-        });
-        throw error;
-      }
+      });
 
-      // 8. apply fused Living Context
-      console.log(`  Applying Living Context fusion...`);
-      try {
+      await this._runApplicationStage(errors, "apply-living-context", async () => {
+        console.log(`  Applying Living Context fusion...`);
         await this._applyFusedLivingContext({
           parentCells,
           childCell: child,
           fusionPlan
         });
-      } catch (error) {
-        errors.push({
-          stage: "apply-living-context",
-          message: error.message
-        });
-        throw error;
-      }
+      });
 
-      // 9. apply fused Memory Seed
-      console.log(`  Applying fused memory...`);
-      try {
+      await this._runApplicationStage(errors, "apply-memory", async () => {
+        console.log(`  Applying fused memory...`);
         await this._applyFusedMemory({
           parentCells,
           childCell: child,
           fusionPlan
         });
-      } catch (error) {
-        errors.push({
-          stage: "apply-memory",
-          message: error.message
-        });
-        throw error;
-      }
+      });
 
       // 12. archive Parent memory snapshots
       console.log(`  Archiving parent memories...`);
@@ -171,78 +117,37 @@ export class CellFusionService {
         console.warn(`  ⚠️  Memory archive warning: ${error.message}`);
       }
 
-      // 11. create relationships
-      console.log(`  Creating relationships...`);
-      try {
+      await this._runApplicationStage(errors, "relationships", async () => {
+        console.log(`  Creating relationships...`);
         await this._createRelationships({
           parentCells,
           childCell: child,
           fusionPlan
         });
-      } catch (error) {
-        errors.push({
-          stage: "relationships",
-          message: error.message
-        });
-        throw error;
-      }
+      });
 
-      // 13. regenerate productions
-      console.log(`  Regenerating productions...`);
-      let productionResult = {
-        produced: [],
-        failed: [],
-        skipped: [],
-        complete: true
-      };
-
-      try {
-        productionResult = await this.artifactRegenerationService.regenerateForFusion({
-          parentCells,
-          childCell: child,
-          fusionPlan
-        });
-
-        if (productionResult.produced.length > 0) {
-          console.log(`  ✅ Produced ${productionResult.produced.length} artifact(s)`);
-        }
-
-        if (productionResult.failed.length > 0) {
-          console.log(`  ⚠️  ${productionResult.failed.length} artifact(s) failed`);
-        }
-
-        // 14. write history / thoughts
-        await this._recordFusionHistory({
+      const productionResult =
+        await this._regenerateProductions({
           parentCells,
           child,
           fusionPlan,
-          productionResult
+          errors,
         });
 
-      } catch (error) {
-        errors.push({
-          stage: "production",
-          message: error.message
-        });
-
-        // Production 失敗時 Child 保留
-        console.warn(`  ⚠️  Production incomplete`);
-      }
-
-      // 15. return result
-      const complete = errors.length === 0 && productionResult.complete;
-      const status = complete ? "complete" : (child ? "incomplete" : "failed");
-
-      return {
-        success: status !== "failed",
-        status,
+      await this._recordFusionHistory({
+        parentCells,
         child,
-        complete,
+        fusionPlan,
+        productionResult
+      });
+
+      return this._createFusionResult({
+        child,
         errors,
         productionResult,
         dnaFusionPlan,
         fusionPlan
-      };
+      });
 
     } catch (error) {
       // Application 失敗：Child 保留，complete = false
@@ -261,6 +166,115 @@ export class CellFusionService {
         error: error.message
       };
     }
+  }
+
+  async _createFusionPlans({ parentCells, childId }) {
+    try {
+      console.log(`  Planning DNA fusion...`);
+
+      const dnaFusionPlan = await this.dnaFusionService.createPlan({
+        parentCells,
+        childId
+      });
+
+      console.log(`  Planning Living Context fusion...`);
+      const firstParent = parentCells[0];
+      const fusionService = this.livingContextFusionServiceFactory(firstParent);
+
+      const fusionPlan = await fusionService.createFusionPlan({
+        parentCells,
+        childId,
+        dnaFusionPlan
+      });
+
+      console.log(`  ✅ Planning phase complete`);
+
+      return {
+        dnaFusionPlan,
+        fusionPlan,
+      };
+    } catch (error) {
+      // Planning 失敗：不可建立 Child
+      throw new Error(`CellFusionService: planning failed: ${error.message}`, {
+        cause: error
+      });
+    }
+  }
+
+  async _runApplicationStage(errors, stage, callback) {
+    try {
+      await callback();
+    } catch (error) {
+      errors.push({
+        stage,
+        message: error.message
+      });
+      throw error;
+    }
+  }
+
+  async _regenerateProductions({ parentCells, child, fusionPlan, errors }) {
+    console.log(`  Regenerating productions...`);
+
+    const defaultProductionResult = {
+      produced: [],
+      failed: [],
+      skipped: [],
+      complete: true
+    };
+
+    try {
+      const productionResult =
+        await this.artifactRegenerationService.regenerateForFusion({
+          parentCells,
+          childCell: child,
+          fusionPlan
+        });
+
+      this._logProductionResult(productionResult);
+      return productionResult;
+    } catch (error) {
+      errors.push({
+        stage: "production",
+        message: error.message
+      });
+
+      // Production 失敗時 Child 保留
+      console.warn(`  ⚠️  Production incomplete`);
+      return defaultProductionResult;
+    }
+  }
+
+  _logProductionResult(productionResult) {
+    if (productionResult.produced.length > 0) {
+      console.log(`  ✅ Produced ${productionResult.produced.length} artifact(s)`);
+    }
+
+    if (productionResult.failed.length > 0) {
+      console.log(`  ⚠️  ${productionResult.failed.length} artifact(s) failed`);
+    }
+  }
+
+  _createFusionResult({
+    child,
+    errors,
+    productionResult,
+    dnaFusionPlan,
+    fusionPlan,
+  }) {
+    const complete = errors.length === 0 && productionResult.complete;
+    const status = complete ? "complete" : (child ? "incomplete" : "failed");
+
+    return {
+      success: status !== "failed",
+      status,
+      child,
+      complete,
+      errors,
+      productionResult,
+      dnaFusionPlan,
+      fusionPlan
+    };
   }
 
   /**
