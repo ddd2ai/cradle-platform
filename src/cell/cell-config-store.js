@@ -1,5 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
+import { writeTextFile } from "../utils/text-file.js";
 
 export const DEFAULT_DNA_DEFINITIONS = Object.freeze([
   { name: "PERCEPTION", fileName: "perception.md" },
@@ -162,7 +163,7 @@ TODO: define meaning from DNA_DEFINITION.md.
     try {
       await fs.access(file);
     } catch {
-      await fs.writeFile(file, content, "utf8");
+      await writeTextFile(file, content);
     }
   }
 }
