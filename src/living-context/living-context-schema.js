@@ -1,3 +1,7 @@
+import {
+  normalizeRelationships,
+} from "./relationship-utils.js";
+
 /**
  * living-context-schema.js
  *
@@ -113,56 +117,6 @@ export function normalizeLivingContext(context) {
     return [...new Set(normalizedItems)];
   };
 
-  const cleanRelationships = (relationships) => {
-    if (!Array.isArray(relationships)) {
-      return [];
-    }
-
-    const normalizedRelationships =
-      relationships
-        .filter(
-          (relationship) =>
-            relationship &&
-            typeof relationship === "object" &&
-            !Array.isArray(relationship)
-        )
-        .map((relationship) => ({
-          ...relationship,
-
-          type:
-            typeof relationship.type === "string"
-              ? relationship.type.trim()
-              : "",
-
-          target:
-            typeof relationship.target === "string"
-              ? relationship.target.trim()
-              : "",
-        }))
-        .filter(
-          (relationship) =>
-            relationship.type &&
-            relationship.target
-        );
-
-    // 以 type + target 去除重複關係
-    const seen = new Set();
-
-    return normalizedRelationships.filter(
-      (relationship) => {
-        const key =
-          `${relationship.type}::${relationship.target}`;
-
-        if (seen.has(key)) {
-          return false;
-        }
-
-        seen.add(key);
-        return true;
-      }
-    );
-  };
-
   return {
     ...context,
 
@@ -202,7 +156,7 @@ export function normalizeLivingContext(context) {
       cleanStringArray(context.constraints),
 
     relationships:
-      cleanRelationships(
+      normalizeRelationships(
         context.relationships
       ),
 

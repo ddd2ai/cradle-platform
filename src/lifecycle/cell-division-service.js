@@ -10,6 +10,7 @@
 import { LivingContextService } from "../living-context/living-context-service.js";
 import { ArtifactRegenerationService } from "../production/artifact-regeneration-service.js";
 import { createLivingContext, normalizeLivingContext } from "../living-context/living-context-schema.js";
+import { deduplicateRelationships } from "../living-context/relationship-utils.js";
 import { block } from "../utils/text.js";
 import {
   logProductionResult,
@@ -519,7 +520,7 @@ export class CellDivisionService {
     ];
 
     // 去重（type + target）
-    const parentUnique = this._deduplicateRelationships(parentRelationships);
+    const parentUnique = deduplicateRelationships(parentRelationships);
 
     for (const rel of parentUnique) {
       // 檢查是否已存在
@@ -539,7 +540,7 @@ export class CellDivisionService {
       ...(plan.childLivingContext.relationships || [])
     ];
 
-    const childUnique = this._deduplicateRelationships(childRelationships);
+    const childUnique = deduplicateRelationships(childRelationships);
 
     for (const rel of childUnique) {
       const existing = await childCell.listRelationships();
@@ -671,24 +672,5 @@ export class CellDivisionService {
     }
 
     await parentCell.appendHistory(block(parentHistoryLines));
-  }
-
-  /**
-   * 去重 Relationships（type + target）
-   * @private
-   */
-  _deduplicateRelationships(relationships) {
-    const seen = new Set();
-    const result = [];
-
-    for (const rel of relationships) {
-      const key = `${rel.type}::${rel.target}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        result.push(rel);
-      }
-    }
-
-    return result;
   }
 }
