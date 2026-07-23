@@ -42,34 +42,95 @@ export class CellDivisionService {
    * @returns {Promise<Object>} Division result
    */
   async divide({ engine, parentCell, childId }) {
-    // 1. 參數驗證
     this._validateParameters({ engine, parentCell, childId });
 
-    // 2. 檢查 Child 是否已存在
     if (this._childExists(engine, childId)) {
       throw new Error(`CellDivisionService: child cell already exists: ${childId}`);
     }
 
-    // ===== Planning Phase =====
+    const {
+      dnaDivisionPlan,
+      livingContextPlan,
+    } = await this._createDivisionPlans({
+      engine,
+      parentCell,
+      childId,
+    });
 
-    let dnaDivisionPlan;
-    let livingContextPlan;
-    let parentArtifacts = [];
+    let child;
+    const errors = [];
 
     try {
-      // 3. 建立 DNA Division Plan
-      console.log(`  Planning DNA division...`);
-      dnaDivisionPlan = await parentCell.createDivisionPlanBySVD(childId);
+      console.log(`  Creating child cell...`);
+      child = await engine.createCell(childId);
 
-      // 4. 建立 Living Context Division Plan
+      await this._runApplicationStage(errors, "apply-dna", async () => {
+        console.log(`  Applying DNA division...`);
+        await parentCell.applyDivisionPlanBySVD(child, dnaDivisionPlan);
+      });
+
+      await this._runApplicationStage(errors, "apply-living-context", async () => {
+        console.log(`  Applying Living Context transformation...`);
+        await this._applyLivingContextPlan({
+          parentCell,
+          childCell: child,
+          plan: livingContextPlan,
+          dnaDivisionPlan,
+        });
+      });
+
+      const productionResult =
+        await this._regenerateProductions({
+          parentCell,
+          child,
+          livingContextPlan,
+          errors,
+        });
+
+      console.log(`  ✅ Application phase complete`);
+
+      return this._createDivisionResult({
+        parentCell,
+        child,
+        dnaDivisionPlan,
+        livingContextPlan,
+        productionResult,
+        errors,
+      });
+
+    } catch (error) {
+      await this._recordIncompleteApplication({
+        parentCell,
+        child,
+        childId,
+        errors,
+        error,
+      });
+
+      return {
+        parentCell,
+        child,
+        dnaDivisionPlan,
+        livingContextPlan,
+        productionResult: this._createFailedProductionResult(),
+        complete: false,
+        errors,
+      };
+    }
+  }
+
+  async _createDivisionPlans({ engine, parentCell, childId }) {
+    try {
+      console.log(`  Planning DNA division...`);
+      const dnaDivisionPlan = await parentCell.createDivisionPlanBySVD(childId);
+
       console.log(`  Planning Living Context transformation...`);
       const livingContextService = this.livingContextServiceFactory(parentCell);
-
-      parentArtifacts = await this._listArtifacts(parentCell);
+      const parentArtifacts = await this._listArtifacts(parentCell);
 
       console.log(`  Found ${parentArtifacts.length} parent artifact(s)`);
 
-      livingContextPlan = await livingContextService.createDivisionPlan({
+      const livingContextPlan = await livingContextService.createDivisionPlan({
         parentCell,
         childId,
         dnaDivisionPlan,
@@ -98,171 +159,154 @@ export class CellDivisionService {
       });
 
       console.log(`  ✅ Planning phase complete`);
+
+      return {
+        dnaDivisionPlan,
+        livingContextPlan,
+      };
     } catch (error) {
       // Planning 失敗：不可建立 Child
       throw new Error(`CellDivisionService: planning failed: ${error.message}`, {
         cause: error
       });
     }
+  }
 
-    // ===== Application Phase =====
+  async _runApplicationStage(errors, stage, callback) {
+    try {
+      await callback();
+    } catch (error) {
+      errors.push({
+        stage,
+        message: error.message,
+      });
+      throw error;
+    }
+  }
 
-    let child;
-    const errors = [];
+  async _regenerateProductions({ parentCell, child, livingContextPlan, errors }) {
+    console.log(`  Regenerating productions...`);
 
     try {
-      // 5. 建立 Child Cell
-      console.log(`  Creating child cell...`);
-      child = await engine.createCell(childId);
-
-      // 6. 套用 DNA Division Plan
-      console.log(`  Applying DNA division...`);
-      try {
-        await parentCell.applyDivisionPlanBySVD(child, dnaDivisionPlan);
-      } catch (error) {
-        errors.push({
-          stage: "apply-dna",
-          message: error.message,
-        });
-        throw error;
-      }
-
-      // 7. 套用 Living Context Division Plan
-      console.log(`  Applying Living Context transformation...`);
-      try {
-        await this._applyLivingContextPlan({
-          parentCell,
-          childCell: child,
-          plan: livingContextPlan,
-          dnaDivisionPlan,
-        });
-      } catch (error) {
-        errors.push({
-          stage: "apply-living-context",
-          message: error.message,
-        });
-        throw error;
-      }
-
-      // 8. Regenerate Productions
-      console.log(`  Regenerating productions...`);
-      let productionResult = {
-        produced: [],
-        parentRevisions: [],
-        failed: [],
-        skipped: [],
-        complete: true
-      };
-
-      try {
-        productionResult = await this.artifactRegenerationService.regenerateForDivision({
+      const productionResult =
+        await this.artifactRegenerationService.regenerateForDivision({
           parentCell,
           childCell: child,
           divisionPlan: livingContextPlan
         });
 
-        if (productionResult.produced.length > 0) {
-          console.log(`  ✅ Produced ${productionResult.produced.length} artifact(s)`);
-        }
-
-        if (productionResult.failed.length > 0) {
-          console.log(`  ⚠️  ${productionResult.failed.length} artifact(s) failed`);
-        }
-
-        // 9. 記錄 Production History
-        await this._recordProductionHistory(parentCell, child, productionResult);
-
-      } catch (error) {
-        errors.push({
-          stage: "production",
-          message: error.message,
-        });
-
-        productionResult = {
-          produced: [],
-          parentRevisions: [],
-          failed: [{
-            index: -1,
-            title: "unknown",
-            stage: "production",
-            message: error.message
-          }],
-          skipped: [],
-          complete: false
-        };
-      }
-
-      console.log(`  ✅ Application phase complete`);
-
-      return {
-        parentCell,
-        child,
-        dnaDivisionPlan,
-        livingContextPlan,
-        productionResult,
-        complete: errors.length === 0 && productionResult.complete,
-        errors: [
-          ...errors,
-          ...productionResult.failed.map(failure => ({
-            stage: "production",
-            message: failure.message,
-            title: failure.title
-          }))
-        ],
-      };
-
+      this._logProductionResult(productionResult);
+      await this._recordProductionHistory(parentCell, child, productionResult);
+      return productionResult;
     } catch (error) {
-      // Application 失敗：Child 已經建立，記錄 incomplete 狀態
-
-      if (child) {
-        try {
-          await child.appendHistory(
-            block([
-              `## Division Application Incomplete`,
-              "",
-              `Failed at: ${errors[0]?.stage || "unknown"}`,
-              `Error: ${errors[0]?.message || error.message}`,
-              `Time: ${new Date().toISOString()}`,
-              "",
-            ])
-          );
-        } catch {
-          // 記錄失敗不應中斷
-        }
-
-        try {
-          await parentCell.appendHistory(
-            block([
-              `## Division Application Incomplete`,
-              "",
-              `Child: ${childId}`,
-              `Failed at: ${errors[0]?.stage || "unknown"}`,
-              `Error: ${errors[0]?.message || error.message}`,
-              `Time: ${new Date().toISOString()}`,
-              "",
-            ])
-          );
-        } catch {
-          // 記錄失敗不應中斷
-        }
-      }
+      errors.push({
+        stage: "production",
+        message: error.message,
+      });
 
       return {
-        parentCell,
-        child,
-        dnaDivisionPlan,
-        livingContextPlan,
-        productionResult: {
-          produced: [],
-          parentRevisions: [],
-          failed: [],
-          skipped: [],
-          complete: false
-        },
-        complete: false,
-        errors,
+        produced: [],
+        parentRevisions: [],
+        failed: [{
+          index: -1,
+          title: "unknown",
+          stage: "production",
+          message: error.message
+        }],
+        skipped: [],
+        complete: false
       };
     }
+  }
+
+  _logProductionResult(productionResult) {
+    if (productionResult.produced.length > 0) {
+      console.log(`  ✅ Produced ${productionResult.produced.length} artifact(s)`);
+    }
+
+    if (productionResult.failed.length > 0) {
+      console.log(`  ⚠️  ${productionResult.failed.length} artifact(s) failed`);
+    }
+  }
+
+  _createDivisionResult({
+    parentCell,
+    child,
+    dnaDivisionPlan,
+    livingContextPlan,
+    productionResult,
+    errors,
+  }) {
+    return {
+      parentCell,
+      child,
+      dnaDivisionPlan,
+      livingContextPlan,
+      productionResult,
+      complete: errors.length === 0 && productionResult.complete,
+      errors: [
+        ...errors,
+        ...productionResult.failed.map(failure => ({
+          stage: "production",
+          message: failure.message,
+          title: failure.title
+        }))
+      ],
+    };
+  }
+
+  async _recordIncompleteApplication({
+    parentCell,
+    child,
+    childId,
+    errors,
+    error,
+  }) {
+    // Application 失敗：Child 已經建立，記錄 incomplete 狀態
+    if (!child) {
+      return;
+    }
+
+    try {
+      await child.appendHistory(
+        block([
+          `## Division Application Incomplete`,
+          "",
+          `Failed at: ${errors[0]?.stage || "unknown"}`,
+          `Error: ${errors[0]?.message || error.message}`,
+          `Time: ${new Date().toISOString()}`,
+          "",
+        ])
+      );
+    } catch {
+      // 記錄失敗不應中斷
+    }
+
+    try {
+      await parentCell.appendHistory(
+        block([
+          `## Division Application Incomplete`,
+          "",
+          `Child: ${childId}`,
+          `Failed at: ${errors[0]?.stage || "unknown"}`,
+          `Error: ${errors[0]?.message || error.message}`,
+          `Time: ${new Date().toISOString()}`,
+          "",
+        ])
+      );
+    } catch {
+      // 記錄失敗不應中斷
+    }
+  }
+
+  _createFailedProductionResult() {
+    return {
+      produced: [],
+      parentRevisions: [],
+      failed: [],
+      skipped: [],
+      complete: false
+    };
   }
 
   /**
