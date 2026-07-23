@@ -9,6 +9,7 @@ import { mergeCellProfileForStart } from "./cell/cell-profile.js";
 import { CellTaskStore } from "./cell/cell-task-store.js";
 import { CellLifecycleEventStore } from "./cell/cell-lifecycle-event-store.js";
 import { CellInboxStore } from "./cell/cell-inbox-store.js";
+import { CellMemoryStore } from "./cell/cell-memory-store.js";
 import { block } from "./utils/text.js";
 import { parseLooseJsonObject } from "./utils/json.js";
 import {
@@ -92,6 +93,13 @@ export class CradleCell {
     this.inboxStore = new CellInboxStore({
       inboxDir: this.inboxDir,
       inboxFile: this.inboxFile,
+    });
+    this.memoryStore = new CellMemoryStore({
+      memoryFiles: this.memoryFiles,
+      thoughtsDir: this.thoughtsDir,
+      cellId: this.id,
+      cellName: this.name,
+      timestampFormatter: (date) => this.formatTimestamp(date),
     });
 
     this.assistant = null;
@@ -745,42 +753,7 @@ ${input}
   }
 
   async prepareMemoryFiles() {
-    await this.ensureFile(
-      this.memoryFiles.identity,
-      `# Identity
-
-      I am ${this.name}.
-      My cell id is ${this.id}.
-
-      `
-    );
-
-    await this.ensureFile(
-      this.memoryFiles.rules,
-      `# Rules
-
-      - Use Traditional Chinese.
-      - Be concise, clear, and useful.
-      - Preserve Cradle Platform context.
-      - Grow through memory, workspace, thoughts, and snapshots.
-      - Do not treat history as absolute truth; summarize and refine it into knowledge.
-
-      `
-    );
-
-    await this.ensureFile(
-      this.memoryFiles.knowledge,
-      `# Knowledge
-
-      `
-    );
-
-    await this.ensureFile(
-      this.memoryFiles.history,
-      `# History
-
-      `
-    );
+    await this.memoryStore.prepareMemoryFiles();
   }
 
   async ensureRootFiles() {
@@ -2023,11 +1996,7 @@ ${memoryContext}
   }
 
   async safeReadMemory(name) {
-    try {
-      return await this.readMemory(name);
-    } catch {
-      return "";
-    }
+    return await this.memoryStore.safeReadMemory(name);
   }
 
   async readVision() {
@@ -2300,18 +2269,15 @@ ${memoryContext}
   }
 
   async readMemory(name = "knowledge") {
-    const file = this.resolveMemoryFile(name);
-    return await fs.readFile(file, "utf8");
+    return await this.memoryStore.readMemory(name);
   }
 
   async writeMemory(name, content) {
-    const file = this.resolveMemoryFile(name);
-    await fs.writeFile(file, content, "utf8");
+    await this.memoryStore.writeMemory(name, content);
   }
 
   async appendMemory(name, content) {
-    const file = this.resolveMemoryFile(name);
-    await fs.appendFile(file, `\n${content}\n`, "utf8");
+    await this.memoryStore.appendMemory(name, content);
   }
 
   // =========================
@@ -2435,36 +2401,20 @@ ${memoryContext}
     );
   }
 
-  async appendMemory(name, content) {
-    const file = this.resolveMemoryFile(name);
-    await fs.appendFile(file, `\n${content}\n`, "utf8");
-  }
-
   async appendKnowledge(content) {
-    await this.appendMemory("knowledge", content);
+    await this.memoryStore.appendKnowledge(content);
   }
 
   async appendHistory(content) {
-    await this.appendMemory("history", content);
+    await this.memoryStore.appendHistory(content);
   }
 
   async appendThought(content) {
-    const file = path.join(
-      this.thoughtsDir,
-      `${this.formatTimestamp(new Date())}.md`
-    );
-
-    await fs.writeFile(file, content, "utf8");
+    await this.memoryStore.appendThought(content);
   }
 
   resolveMemoryFile(name) {
-    const file = this.memoryFiles[name];
-
-    if (!file) {
-      throw new Error(`Unknown memory file: ${name}`);
-    }
-
-    return file;
+    return this.memoryStore.resolveMemoryFile(name);
   }
 
   // =========================
