@@ -3,6 +3,7 @@ import path from "path";
 import { renderAnswerStart } from "../cradle-console.js";
 import { block } from "../utils/text.js";
 import { getAiTimeoutMs } from "../cradle-config.js";
+import { commandArgs, splitFirstArg } from "./command-input.js";
 
 export function createCellCommands() {
   return [
@@ -36,24 +37,16 @@ export function createCellCommands() {
       match: (input, { engine }) => input.startsWith("/send ") && !engine.isCradleMode(),
       execute: async ({ engine, input }) => {
         const cell = engine.getActiveCell();
-        const args = input.replace("/send ", "").trim();
-        const firstSpaceIndex = args.indexOf(" ");
+        const { first: targetCellId, rest: message } =
+          splitFirstArg(input, "/send");
 
-        if (firstSpaceIndex === -1) {
+        if (!targetCellId || !message) {
           console.log("Usage: /send <cell-id> <message>");
           return;
         }
-
-        const targetCellId = args.slice(0, firstSpaceIndex).trim();
-        const message = args.slice(firstSpaceIndex + 1).trim();
 
         if (!engine.cells.has(targetCellId)) {
           console.log(`Target cell not found: ${targetCellId}`);
-          return;
-        }
-
-        if (!message) {
-          console.log("Usage: /send <cell-id> <message>");
           return;
         }
 
@@ -394,7 +387,7 @@ Reason        : ${result.reason ?? "-"}
       match: (input, { engine }) => input.startsWith("/feed ") && !engine.isCradleMode(),
       execute: async ({ engine, input }) => {
         const cell = engine.getActiveCell();
-        const content = input.replace("/feed ", "").trim();
+        const content = commandArgs(input, "/feed");
 
         if (!content) {
           console.log("Usage: /feed <content>");
@@ -418,7 +411,7 @@ Reason        : ${result.reason ?? "-"}
       match: (input, { engine }) => input.startsWith("/write ") && !engine.isCradleMode(),
       execute: async ({ engine, input }) => {
         const cell = engine.getActiveCell();
-        const content = input.replace("/write ", "").trim();
+        const content = commandArgs(input, "/write");
 
         if (!content) {
           console.log("Usage: /write <task>");
@@ -453,7 +446,7 @@ Reason        : ${result.reason ?? "-"}
 
       execute: async ({ engine, input }) => {
         const cell = engine.getActiveCell();
-        const content = input.replace("/write-note ", "").trim();
+        const content = commandArgs(input, "/write-note");
 
         if (!content) {
           console.log("Usage: /write-note <content>");
@@ -484,7 +477,7 @@ createdAt: ${new Date().toISOString()}
 
       execute: async ({ engine, input }) => {
         const cell = engine.getActiveCell();
-        const content = input.replace("/decide ", "").trim();
+        const content = commandArgs(input, "/decide");
 
         if (!content) {
           console.log("Usage: /decide <decision>");
@@ -523,7 +516,7 @@ createdAt: ${new Date().toISOString()}
 
       execute: async ({ engine, input }) => {
         const cell = engine.getActiveCell();
-        const content = input.replace("/research ", "").trim();
+        const content = commandArgs(input, "/research");
 
         if (!content) {
           console.log("Usage: /research <content>");
@@ -560,7 +553,7 @@ createdAt: ${new Date().toISOString()}
       match: (input, { engine }) => input.startsWith("/read ") && !engine.isCradleMode(),
       execute: async ({ engine, input }) => {
         const cell = engine.getActiveCell();
-        const fileName = input.replace("/read ", "").trim();
+        const fileName = commandArgs(input, "/read");
 
         if (!fileName) {
           console.log("Usage: /read <workspace-file>");
@@ -581,16 +574,8 @@ createdAt: ${new Date().toISOString()}
       match: (input, { engine }) => input.startsWith("/revise ") && !engine.isCradleMode(),
       execute: async ({ engine, input }) => {
         const cell = engine.getActiveCell();
-        const args = input.replace("/revise ", "").trim();
-        const firstSpaceIndex = args.indexOf(" ");
-
-        if (firstSpaceIndex === -1) {
-          console.log("Usage: /revise <workspace-file> <task>");
-          return;
-        }
-
-        const fileName = args.slice(0, firstSpaceIndex).trim();
-        const task = args.slice(firstSpaceIndex + 1).trim();
+        const { first: fileName, rest: task } =
+          splitFirstArg(input, "/revise");
 
         if (!fileName || !task) {
           console.log("Usage: /revise <workspace-file> <task>");
@@ -641,7 +626,7 @@ createdAt: ${new Date().toISOString()}
       match: (input, { engine }) => input.startsWith("/share ") && !engine.isCradleMode(),
       execute: async ({ engine, input }) => {
         const cell = engine.getActiveCell();
-        const args = input.replace("/share ", "").trim().split(/\s+/);
+        const args = commandArgs(input, "/share").split(/\s+/);
 
         if (args.length < 2) {
           console.log("Usage: /share <workspace-file> <target-cell-id>");
@@ -672,7 +657,7 @@ createdAt: ${new Date().toISOString()}
       match: (input, { engine }) => input.startsWith("/import ") && !engine.isCradleMode(),
       execute: async ({ engine, input }) => {
         const cell = engine.getActiveCell();
-        const args = input.replace("/import ", "").trim().split(/\s+/);
+        const args = commandArgs(input, "/import").split(/\s+/);
 
         if (args.length < 2) {
           console.log("Usage: /import <source-cell-id> <workspace-file>");
@@ -705,7 +690,7 @@ createdAt: ${new Date().toISOString()}
 
       execute: async ({ engine, input }) => {
         const cell = engine.getActiveCell();
-        const projectName = input.replace("/project-init ", "").trim();
+        const projectName = commandArgs(input, "/project-init");
 
         if (!projectName) {
           console.log("Usage: /project-init <project-name>");
@@ -740,16 +725,8 @@ createdAt: ${new Date().toISOString()}
 
       execute: async ({ engine, input }) => {
         const cell = engine.getActiveCell();
-        const args = input.replace("/project-file ", "").trim();
-        const firstSpaceIndex = args.indexOf(" ");
-
-        if (firstSpaceIndex === -1) {
-          console.log("Usage: /project-file <project-name> <relative-file-path>");
-          return;
-        }
-
-        const projectName = args.slice(0, firstSpaceIndex).trim();
-        const filePath = args.slice(firstSpaceIndex + 1).trim();
+        const { first: projectName, rest: filePath } =
+          splitFirstArg(input, "/project-file");
 
         if (!projectName || !filePath) {
           console.log("Usage: /project-file <project-name> <relative-file-path>");
@@ -818,7 +795,7 @@ createdAt: ${new Date().toISOString()}
       name: "/restore",
       match: (input, { engine }) => input.startsWith("/restore ") && !engine.isCradleMode(),
       execute: async ({ engine, input }) => {
-        const snapshotName = input.replace("/restore ", "").trim();
+        const snapshotName = commandArgs(input, "/restore");
 
         if (!snapshotName) {
           console.log("Usage: /restore <snapshot-name>");
@@ -1016,8 +993,7 @@ DNA drift    : ${result.dnaDrift.length}
           engine.getActiveCell();
 
         const args =
-          input.replace("/resp ","")
-            .trim()
+          commandArgs(input, "/resp")
             .split(/\s+/);
 
         const action = args[0];
@@ -1065,8 +1041,7 @@ DNA drift    : ${result.dnaDrift.length}
           engine.getActiveCell();
 
         const args =
-          input.replace("/link ","")
-            .trim()
+          commandArgs(input, "/link")
             .split(/\s+/);
 
         if(args.length < 2) {
@@ -1215,7 +1190,7 @@ DNA drift    : ${result.dnaDrift.length}
 
       execute: async ({ engine, input }) => {
         const cell = engine.getActiveCell();
-        const role = input.replace("/specialize ", "").trim();
+        const role = commandArgs(input, "/specialize");
 
         if (!role) {
           console.log("Usage: /specialize <responsibility>");
@@ -1354,24 +1329,16 @@ DNA drift    : ${result.dnaDrift.length}
 
       execute: async ({ engine, input }) => {
         const cell = engine.getActiveCell();
-        const args = input.replace("/delegate ", "").trim();
-        const firstSpaceIndex = args.indexOf(" ");
+        const { first: targetCellId, rest: task } =
+          splitFirstArg(input, "/delegate");
 
-        if (firstSpaceIndex === -1) {
+        if (!targetCellId || !task) {
           console.log("Usage: /delegate <cell-id> <task>");
           return;
         }
-
-        const targetCellId = args.slice(0, firstSpaceIndex).trim();
-        const task = args.slice(firstSpaceIndex + 1).trim();
 
         if (!engine.cells.has(targetCellId)) {
           console.log(`Target cell not found: ${targetCellId}`);
-          return;
-        }
-
-        if (!task) {
-          console.log("Usage: /delegate <cell-id> <task>");
           return;
         }
 
@@ -1417,16 +1384,13 @@ DNA drift    : ${result.dnaDrift.length}
 
       execute: async ({ engine, input }) => {
         const cell = engine.getActiveCell();
-        const args = input.replace("/report ", "").trim();
-        const firstSpaceIndex = args.indexOf(" ");
+        const { first: targetCellId, rest: fileName } =
+          splitFirstArg(input, "/report");
 
-        if (firstSpaceIndex === -1) {
+        if (!targetCellId || !fileName) {
           console.log("Usage: /report <cell-id> <workspace-file>");
           return;
         }
-
-        const targetCellId = args.slice(0, firstSpaceIndex).trim();
-        const fileName = args.slice(firstSpaceIndex + 1).trim();
 
         const targetCell = engine.cells.get(targetCellId);
 
