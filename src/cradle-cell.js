@@ -55,6 +55,7 @@ import {
   createLivingContext,
   normalizeLivingContext,
 } from "./living-context/living-context-schema.js";
+import { LivingContextStore } from "./living-context/living-context-store.js";
 import {
   resolveRepairTypeFromDecision,
 } from "./lifecycle/repair-type.js";
@@ -122,6 +123,9 @@ export class CradleCell {
     });
     this.workspaceStore = new CellWorkspaceStore({
       workspaceDir: this.workspaceDir,
+    });
+    this.livingContextStore = new LivingContextStore({
+      livingContextFile: this.livingContextFile,
     });
     this.snapshotStore = new CellSnapshotStore({
       cellId: this.id,
@@ -2088,38 +2092,11 @@ ${memoryContext}
   }
 
   async readLivingContext() {
-    try {
-      const raw = await fs.readFile(
-        this.livingContextFile,
-        "utf8"
-      );
-
-      return JSON.parse(raw);
-    } catch (error) {
-      if (error.code === "ENOENT") {
-        return null;
-      }
-
-      throw error;
-    }
+    return await this.livingContextStore.readLivingContext();
   }
 
   async writeLivingContext(context) {
-    if (!context || typeof context !== "object") {
-      throw new Error("writeLivingContext: context must be an object");
-    }
-
-    // 更新時間戳記
-    const updated = {
-      ...context,
-      updatedAt: new Date().toISOString()
-    };
-
-    await fs.writeFile(
-      this.livingContextFile,
-      JSON.stringify(updated, null, 2),
-      "utf8"
-    );
+    await this.livingContextStore.writeLivingContext(context);
   }
 
   async appendKnowledge(content) {
