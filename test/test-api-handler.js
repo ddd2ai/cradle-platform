@@ -54,6 +54,17 @@ const cellStore = new Map([
       workspaceFiles: {
         "notes/source.md": "source content",
       },
+      dnaVector: {
+        PERCEPTION: { strength: 0.8 },
+      },
+      maturityInfo: {
+        percent: 70,
+        state: "stable",
+      },
+      lifecycleDecision: {
+        action: "stay",
+        confidence: 0.7,
+      },
     }),
   ],
   [
@@ -249,6 +260,51 @@ const missingWorkspaceFilePath = await handler({
 assert.equal(missingWorkspaceFilePath.status, 400);
 assert.equal(missingWorkspaceFilePath.body.error.code, "WORKSPACE_FILE_PATH_REQUIRED");
 
+const dna = await handler({
+  method: "GET",
+  url: "/api/v1/cells/cell-001/dna",
+});
+
+assert.equal(dna.status, 200);
+assert.deepEqual(dna.body, {
+  cellId: "cell-001",
+  vector: {
+    PERCEPTION: { strength: 0.8 },
+  },
+});
+
+const maturity = await handler({
+  method: "GET",
+  url: "/api/v1/cells/cell-001/maturity",
+});
+
+assert.equal(maturity.status, 200);
+assert.deepEqual(maturity.body, {
+  cellId: "cell-001",
+  maturity: {
+    percent: 70,
+    state: "stable",
+  },
+});
+
+const lifecycleDecision = await handler({
+  method: "GET",
+  url: "/api/v1/cells/cell-001/lifecycle-decision?hasComplementaryCell=true&recentFailureRate=0.2",
+});
+
+assert.equal(lifecycleDecision.status, 200);
+assert.deepEqual(lifecycleDecision.body, {
+  cellId: "cell-001",
+  decision: {
+    action: "stay",
+    confidence: 0.7,
+    request: {
+      hasComplementaryCell: true,
+      recentFailureRate: 0.2,
+    },
+  },
+});
+
 const heartbeat = await handler({
   method: "GET",
   url: "/api/v1/heartbeat",
@@ -329,6 +385,9 @@ function createCell({
   active,
   workspaceSections = {},
   workspaceFiles = {},
+  dnaVector = {},
+  maturityInfo = {},
+  lifecycleDecision = {},
 }) {
   const cell = {
     id,
@@ -338,6 +397,12 @@ function createCell({
     getProfile: async () => profile,
     isActive: () => cell.active,
     listWorkspaceSections: async () => workspaceSections,
+    readDNAVector: async () => dnaVector,
+    getMaturityInfo: async () => maturityInfo,
+    getLifecycleDecision: async (request) => ({
+      ...lifecycleDecision,
+      request,
+    }),
     readWorkspaceFile: async (relativePath) => {
       if (!(relativePath in workspaceFiles)) {
         throw new Error("missing");

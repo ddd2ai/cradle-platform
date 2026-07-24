@@ -1,7 +1,10 @@
 import { CreateCellUseCase } from "../application/create-cell-use-case.js";
+import { GetCellDnaUseCase } from "../application/get-cell-dna-use-case.js";
 import { GetHeartbeatUseCase } from "../application/get-heartbeat-use-case.js";
 import { GetHealthUseCase } from "../application/get-health-use-case.js";
 import { GetCellUseCase } from "../application/get-cell-use-case.js";
+import { GetCellLifecycleDecisionUseCase } from "../application/get-cell-lifecycle-decision-use-case.js";
+import { GetCellMaturityUseCase } from "../application/get-cell-maturity-use-case.js";
 import { GetOperationUseCase } from "../application/get-operation-use-case.js";
 import { HeartbeatModeStore } from "../heartbeat/heartbeat-mode.js";
 import { InMemoryOperationStore } from "../application/operation-store.js";
@@ -83,6 +86,42 @@ export function createApiHandler({
         return jsonResponse(200, result);
       }
 
+      const dnaMatch = route.pathname.match(/^\/api\/v1\/cells\/([^/]+)\/dna$/);
+
+      if (route.method === "GET" && dnaMatch) {
+        const result = await new GetCellDnaUseCase({ engine }).execute({
+          cellId: decodeURIComponent(dnaMatch[1]),
+        });
+        return jsonResponse(200, result);
+      }
+
+      const maturityMatch =
+        route.pathname.match(/^\/api\/v1\/cells\/([^/]+)\/maturity$/);
+
+      if (route.method === "GET" && maturityMatch) {
+        const result = await new GetCellMaturityUseCase({ engine }).execute({
+          cellId: decodeURIComponent(maturityMatch[1]),
+        });
+        return jsonResponse(200, result);
+      }
+
+      const lifecycleDecisionMatch =
+        route.pathname.match(/^\/api\/v1\/cells\/([^/]+)\/lifecycle-decision$/);
+
+      if (route.method === "GET" && lifecycleDecisionMatch) {
+        const result = await new GetCellLifecycleDecisionUseCase({ engine }).execute({
+          cellId: decodeURIComponent(lifecycleDecisionMatch[1]),
+          hasComplementaryCell: parseBoolean(
+            route.searchParams.get("hasComplementaryCell")
+          ),
+          recentFailureRate: parseNumber(
+            route.searchParams.get("recentFailureRate"),
+            0
+          ),
+        });
+        return jsonResponse(200, result);
+      }
+
       if (route.method === "GET" && route.pathname === "/api/v1/heartbeat") {
         const result = await new GetHeartbeatUseCase({
           heartbeatModeStoreFactory,
@@ -158,4 +197,18 @@ function jsonResponse(status, body) {
     },
     body,
   };
+}
+
+function parseBoolean(value) {
+  return value === "true" || value === "1";
+}
+
+function parseNumber(value, fallback) {
+  if (value === null || value === undefined || value === "") {
+    return fallback;
+  }
+
+  const parsed = Number(value);
+
+  return Number.isFinite(parsed) ? parsed : fallback;
 }
