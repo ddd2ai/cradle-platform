@@ -63,6 +63,7 @@ const tests = [
   "test/test-svd-division.js",
   "test/test-text-file.js",
   "test/test-workspace-document-templates.js",
+  "test/test-workspace-commands.js",
 ];
 
 let failed = 0;
