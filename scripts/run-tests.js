@@ -79,6 +79,7 @@ const tests = [
   "test/test-workspace-document-templates.js",
   "test/test-workspace-draft-commands.js",
   "test/test-workspace-file-commands.js",
+  "test/test-workspace-list-commands.js",
   "test/test-workspace-record-commands.js",
   "test/test-workspace-commands.js",
 ];
