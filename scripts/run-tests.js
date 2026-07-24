@@ -23,6 +23,7 @@ const tests = [
   "test/test-cell-paths.js",
   "test/test-cell-profile-store.js",
   "test/test-cell-profile.js",
+  "test/test-cell-relationship-renderer.js",
   "test/test-cell-runtime-lifecycle-service.js",
   "test/test-cell-snapshot-store.js",
   "test/test-cell-task-processing-service.js",

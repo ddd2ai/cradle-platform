@@ -17,6 +17,10 @@ import {
   createProjectReadmeDocument,
   createResearchDocument,
 } from "./workspace-document-templates.js";
+import {
+  renderCellGraph,
+  renderCellTrace,
+} from "./cell-relationship-renderer.js";
 
 export function createCellCommands() {
   return [
@@ -1274,29 +1278,11 @@ DNA drift    : ${result.dnaDrift.length}
         const links =
           await cell.listRelationships();
 
-        console.log("");
-
-        console.log(cell.id);
-
-        console.log("");
-        console.log("Responsibilities");
-
-        for(const item of resp) {
-          console.log(
-            ` ├─ ${item}`
-          );
-        }
-
-        console.log("");
-        console.log("Relationships");
-
-        for(const link of links) {
-          console.log(
-            ` ├─ ${link.type} -> ${link.target}`
-          );
-        }
-
-        console.log("");
+        renderCellGraph({
+          cellId: cell.id,
+          responsibilities: resp,
+          relationships: links,
+        });
       }
     },
 
@@ -1422,20 +1408,10 @@ DNA drift    : ${result.dnaDrift.length}
         const profile = await cell.getProfile();
         const relationships = profile.relationships ?? [];
 
-        console.log("");
-        console.log(`Trace: ${cell.id}`);
-        console.log("");
-
-        if (relationships.length === 0) {
-          console.log("(no relationships)");
-          return;
-        }
-
-        for (const link of relationships) {
-          console.log(`${cell.id} --${link.type}--> ${link.target}`);
-        }
-
-        console.log("");
+        renderCellTrace({
+          cellId: cell.id,
+          relationships,
+        });
       },
     },
 
