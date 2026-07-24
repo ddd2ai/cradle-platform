@@ -1,5 +1,5 @@
-import { renderTable } from "../ui/render-table.js";
 import { createEngineCellCommands } from "./engine-cell-commands.js";
+import { createEngineStatusCommands } from "./engine-status-commands.js";
 import { createEnvironmentCommands } from "./environment-commands.js";
 import { createHeartbeatCommands } from "./heartbeat-commands.js";
 
@@ -15,65 +15,7 @@ export function createEngineCommands() {
 
     ...createEngineCellCommands(),
 
-    {
-      name: "/status",
-      match: (input) => input === "/status",
-
-      execute: async ({ engine }) => {
-        const rows = [];
-
-        for (const [id, cell] of engine.cells) {
-          const profile = await cell.getEvolutionInfo();
-          const maturity = await cell.getMaturityInfo();
-          const lifecycle = await cell.getLifecycleDecision();
-
-          rows.push({
-            Cell: id,
-            Status: profile.status ?? "unknown",
-            Active: cell.isActive() ? "yes" : "no",
-            Mature: `${maturity.percent}%`,
-            Life: lifecycle.action,
-            State: maturity.state,
-            Var: maturity.temporalVariance.toFixed(4),
-            Conv: maturity.convergence.toFixed(2),
-            Gen: profile.generation ?? 1,
-            Inbox: engine.inboxes.get(id)?.length ?? 0,
-          });
-        }
-
-        console.log("");
-
-        renderTable(
-          ["Cell", "Status", "Active", "Mature", "Life", "State", "Var", "Conv", "Gen", "Inbox"],
-          rows
-        );
-      },
-    },
-
-    {
-      name: "/whoami",
-      match: (input) => input === "/whoami",
-      execute: async ({ engine }) => {
-        if (engine.isCradleMode()) {
-          console.log(`
-          Mode      : Cradle
-          Role      : Engine Console
-          Model     : ${engine.model}
-          Cells     : ${engine.cells.size}
-          `);
-          return;
-        }
-
-        const cell = engine.getActiveCell();
-
-        console.log(`
-        Cell ID   : ${cell.id}
-        Cell Name : ${cell.name}
-        Model     : ${cell.model}
-        Inbox     : ${engine.inboxes.get(cell.id)?.length ?? 0}
-        `);
-      },
-    },
+    ...createEngineStatusCommands(),
 
     ...createHeartbeatCommands(),
 
