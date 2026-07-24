@@ -9,6 +9,7 @@ import { CellPromptContextService } from "./cell/cell-prompt-context-service.js"
 import { CellLifecycleFacade } from "./cell/cell-lifecycle-facade.js";
 import { CellEvolutionFacade } from "./cell/cell-evolution-facade.js";
 import { CellLivingContextService } from "./cell/cell-living-context-service.js";
+import { CellThinkingService } from "./cell/cell-thinking-service.js";
 import { prepareCellDirectories } from "./cell/cell-directory-preparer.js";
 import { mergeCellProfileForStart } from "./cell/cell-profile.js";
 import { block } from "./utils/text.js";
@@ -81,6 +82,9 @@ export class CradleCell {
       cell: this,
     });
     this.livingContextService = new CellLivingContextService({
+      cell: this,
+    });
+    this.thinkingService = new CellThinkingService({
       cell: this,
     });
 
@@ -1405,145 +1409,12 @@ ${memoryContext}
   // =========================
 
   async think() {
-    const profile = await this.getProfile();
-    const memoryContext = await this.buildMemoryContext();
-
-    const prompt = `
-    你是 ${this.name} 的自我思考模組。
-
-    請根據目前 Cell 狀態，產生一份「成長反思」。
-
-    請輸出 Markdown，包含：
-
-    ## Current State
-    目前狀態。
-
-    ## Observed Pattern
-    最近觀察到的模式。
-
-    ## Growth Direction
-    下一步成長方向。
-
-    ## Suggested Action
-    建議行動。
-
-    ---
-
-    # Profile
-
-    ${JSON.stringify(profile, null, 2)}
-
-    ---
-
-    # Memory Context
-
-    ${memoryContext}
-    `;
-
-    const result = await this.askWithTimeout(prompt, getAiTimeoutMs());
-    const thought = result?.text ?? result?.answer ?? "";
-
-    if (!thought.trim()) {
-      throw new Error("No thought generated.");
-    }
-
-    await this.appendThought(
-      block([
-        `## ${new Date().toISOString()}`,
-        "",
-        thought,
-        "",
-      ])
-    );
-
-    await this.increaseMaturity(1);
-
-    return thought.trim();
+    return await this.thinkingService.think();
   }
 
   async processInbox(inbox = []) {
-  if (inbox.length === 0) {
-    return {
-      processed: 0,
-      summary: "",
-    };
+    return await this.thinkingService.processInbox(inbox);
   }
-
-  const profile = await this.getProfile();
-
-  const prompt = `
-  你是 ${this.name} 的訊息代謝模組。
-
-  請整理收到的 inbox，轉化成可長期保存的 Cell 記憶。
-
-  請輸出 Markdown，包含：
-
-  ## Inbox Summary
-  重點摘要。
-
-  ## Signals
-  這些訊息透露出什麼需求、方向或環境刺激。
-
-  ## Possible Tasks
-  可能形成的任務。
-
-  ## Growth Impact
-  這些訊息對 Cell 成長有什麼影響。
-
-  ---
-
-  # Profile
-
-  ${JSON.stringify(profile, null, 2)}
-
-  ---
-
-  # Inbox
-
-  ${JSON.stringify(inbox, null, 2)}
-  `;
-
-  const result = await this.askWithTimeout(prompt, getAiTimeoutMs());
-  const summary = result?.text ?? result?.answer ?? "";
-
-  if (!summary.trim()) {
-    throw new Error("No inbox summary generated.");
-  }
-
-  const timestamp = new Date().toISOString();
-
-  await this.appendThought(
-    block([
-      `## ${timestamp}`,
-      "",
-      summary,
-      "",
-    ])
-  );
-
-  await this.appendKnowledge(
-    block([
-      `## Inbox Processed at ${timestamp}`,
-      "",
-      summary,
-      "",
-    ])
-  );
-
-  const task = await this.addTask({
-    title: `Process inbox from ${inbox.map((m) => m.from).join(", ")}`,
-    source: "inbox",
-    content: summary.trim(),
-  });
-
-  await this.increaseMaturity(1);
-
-  return {
-    processed: inbox.length,
-    summary: summary.trim(),
-    task,
-  };
-}
 
   // =========================
   // Workspace
