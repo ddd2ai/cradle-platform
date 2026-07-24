@@ -8,6 +8,7 @@ import { createCellRuntimeServices } from "./cell/cell-runtime-services.js";
 import { CellPromptContextService } from "./cell/cell-prompt-context-service.js";
 import { CellLifecycleFacade } from "./cell/cell-lifecycle-facade.js";
 import { CellEvolutionFacade } from "./cell/cell-evolution-facade.js";
+import { CellLivingContextService } from "./cell/cell-living-context-service.js";
 import { prepareCellDirectories } from "./cell/cell-directory-preparer.js";
 import { mergeCellProfileForStart } from "./cell/cell-profile.js";
 import { block } from "./utils/text.js";
@@ -40,10 +41,6 @@ import {
 } from "./dna/dna-centroid.js";
 import { ArtifactProductionService } from "./production/artifact-production-service.js";
 import { StabilityStore } from "./stability/stability-store.js";
-import {
-  createLivingContext,
-  normalizeLivingContext,
-} from "./living-context/living-context-schema.js";
 
 export class CradleCell {
 
@@ -81,6 +78,9 @@ export class CradleCell {
       cell: this,
     });
     this.evolutionFacade = new CellEvolutionFacade({
+      cell: this,
+    });
+    this.livingContextService = new CellLivingContextService({
       cell: this,
     });
 
@@ -1373,85 +1373,7 @@ ${memoryContext}
   // =========================
 
   async prepareLivingContext() {
-    await fs.mkdir(this.rootDir, {
-      recursive: true,
-    });
-
-    let profile = null;
-
-    try {
-      profile = await this.readProfile();
-    } catch (error) {
-      if (error.code !== "ENOENT") {
-        throw error;
-      }
-    }
-
-    const safeProfile =
-      profile && typeof profile === "object"
-        ? profile
-        : {};
-
-    const profileResponsibilities =
-      Array.isArray(safeProfile.responsibilities)
-        ? safeProfile.responsibilities
-        : [];
-
-    const existingContext =
-      await this.readLivingContext();
-
-    // 第一次建立
-    if (!existingContext) {
-      const context = createLivingContext({
-        cellId: this.id,
-
-        purpose:
-          typeof safeProfile.purpose === "string"
-            ? safeProfile.purpose
-            : "",
-
-        responsibilities:
-          profileResponsibilities,
-      });
-
-      await this.writeLivingContext(context);
-
-      return context;
-    }
-
-    // 已存在時，只 merge responsibilities，
-    // 不覆蓋手動設定的 purpose、owns 等欄位。
-    const mergedContext =
-      normalizeLivingContext({
-        ...existingContext,
-
-        cellId: this.id,
-
-        responsibilities: [
-          ...(existingContext.responsibilities ?? []),
-          ...profileResponsibilities,
-        ],
-      });
-
-    const previousResponsibilities =
-      normalizeLivingContext({
-        ...existingContext,
-        cellId: this.id,
-      }).responsibilities;
-
-    const responsibilitiesChanged =
-      JSON.stringify(previousResponsibilities) !==
-      JSON.stringify(
-        mergedContext.responsibilities
-      );
-
-    if (responsibilitiesChanged) {
-      await this.writeLivingContext(
-        mergedContext
-      );
-    }
-
-    return mergedContext;
+    return await this.livingContextService.prepareLivingContext();
   }
 
   async readLivingContext() {
