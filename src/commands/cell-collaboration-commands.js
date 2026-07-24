@@ -14,18 +14,13 @@ export function createCellCollaborationCommands() {
     {
       name: "/resp",
 
-      match: (input,{engine}) =>
+      match: (input, { engine }) =>
         input.startsWith("/resp ") &&
         !engine.isCradleMode(),
 
-      execute: async ({engine,input}) => {
-
-        const cell =
-          engine.getActiveCell();
-
-        const args =
-          commandArgs(input, "/resp")
-            .split(/\s+/);
+      execute: async ({ engine, input }) => {
+        const cell = engine.getActiveCell();
+        const args = commandArgs(input, "/resp").split(/\s+/);
 
         const action = args[0];
 
@@ -42,44 +37,31 @@ export function createCellCollaborationCommands() {
           return;
         }
 
-        if(action === "list") {
+        if (action === "list") {
+          const items = await cell.listResponsibilities();
 
-          const items =
-            await cell.listResponsibilities();
-
-          console.log(
-            items.join("\n")
-          );
+          console.log(items.join("\n"));
 
           return;
         }
 
         console.log("Usage: /resp add <name> | /resp list");
-      }
+      },
     },
-
 
     {
       name: "/link",
 
-      match: (input,{engine}) =>
+      match: (input, { engine }) =>
         input.startsWith("/link ") &&
         !engine.isCradleMode(),
 
-      execute: async ({engine,input}) => {
+      execute: async ({ engine, input }) => {
+        const cell = engine.getActiveCell();
+        const args = commandArgs(input, "/link").split(/\s+/);
 
-        const cell =
-          engine.getActiveCell();
-
-        const args =
-          commandArgs(input, "/link")
-            .split(/\s+/);
-
-        if(args.length < 2) {
-
-          console.log(
-            "Usage: /link depends-on cell-002"
-          );
+        if (args.length < 2) {
+          console.log("Usage: /link depends-on cell-002");
 
           return;
         }
@@ -87,15 +69,10 @@ export function createCellCollaborationCommands() {
         const type = args[0];
         const target = args[1];
 
-        await cell.addRelationship(
-          type,
-          target
-        );
+        await cell.addRelationship(type, target);
 
-        console.log(
-          `${type} -> ${target}`
-        );
-      }
+        console.log(`${type} -> ${target}`);
+      },
     },
 
     {
@@ -153,27 +130,21 @@ export function createCellCollaborationCommands() {
     {
       name: "/graph",
 
-      match: (input,{engine}) =>
+      match: (input, { engine }) =>
         input === "/graph" &&
         !engine.isCradleMode(),
 
-      execute: async ({engine}) => {
-
-        const cell =
-          engine.getActiveCell();
-
-        const resp =
-          await cell.listResponsibilities();
-
-        const links =
-          await cell.listRelationships();
+      execute: async ({ engine }) => {
+        const cell = engine.getActiveCell();
+        const resp = await cell.listResponsibilities();
+        const links = await cell.listRelationships();
 
         renderCellGraph({
           cellId: cell.id,
           responsibilities: resp,
           relationships: links,
         });
-      }
+      },
     },
 
     {
