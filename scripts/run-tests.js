@@ -27,6 +27,7 @@ const tests = [
   "test/test-cell-memory-renderer.js",
   "test/test-cell-metabolism-service.js",
   "test/test-cell-paths.js",
+  "test/test-cell-profile-commands.js",
   "test/test-cell-profile-store.js",
   "test/test-cell-profile.js",
   "test/test-cell-relationship-renderer.js",
