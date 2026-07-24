@@ -6,7 +6,6 @@ import { commandArgs } from "./command-input.js";
 import { writeTextFile } from "../utils/text-file.js";
 import {
   createPerceptionPrompt,
-  createTaskArtifactPrompt,
 } from "./cell-command-prompts.js";
 import {
   renderDivisionBeforeChildFailure,
@@ -21,10 +20,10 @@ import { createCellIntrospectionCommands } from "./cell-introspection-commands.j
 import { createEvolutionCommands } from "./evolution-commands.js";
 import { createInboxCommands } from "./inbox-commands.js";
 import { createSnapshotCommands } from "./snapshot-commands.js";
+import { createTaskCommands } from "./task-commands.js";
 import { createWorkspaceCommands } from "./workspace-commands.js";
 import {
   renderMetabolismResult,
-  renderTaskList,
 } from "./cell-work-renderer.js";
 
 export function createCellCommands() {
@@ -224,49 +223,7 @@ export function createCellCommands() {
 
     ...createCellCollaborationCommands(),
 
-    {
-      name: "/tasks",
-      match: (input, { engine }) =>
-        input === "/tasks" && !engine.isCradleMode(),
-
-      execute: async ({ engine }) => {
-        const cell = engine.getActiveCell();
-        const tasks = await cell.readTasks();
-
-        renderTaskList(tasks);
-      },
-    },
-
-    {
-      name: "/do",
-
-      match: (input, { engine }) =>
-        input === "/do" && !engine.isCradleMode(),
-
-      execute: async ({ engine }) => {
-        const cell = engine.getActiveCell();
-        const task = await cell.nextPendingTask();
-
-        if (!task) {
-          console.log("(no pending task)");
-          return;
-        }
-
-        renderAnswerStart();
-
-        const result = await cell.ask(createTaskArtifactPrompt(task));
-
-        const outputText =
-          engine.cleanMarkdownFence(result?.text ?? result?.answer ?? "");
-
-        const filename = `artifacts/${task.id}.md`;
-
-        await cell.writeWorkspaceFile(filename, outputText);
-        await cell.completeTask(task.id);
-
-        console.log(`\nArtifact created: ${filename}`);
-      },
-    },
+    ...createTaskCommands(),
 
 
   ];
