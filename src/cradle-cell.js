@@ -11,6 +11,7 @@ import { CellEvolutionFacade } from "./cell/cell-evolution-facade.js";
 import { CellLivingContextService } from "./cell/cell-living-context-service.js";
 import { CellThinkingService } from "./cell/cell-thinking-service.js";
 import { CellArtifactExecutionService } from "./cell/cell-artifact-execution-service.js";
+import { CellArtifactStabilizationService } from "./cell/cell-artifact-stabilization-service.js";
 import { prepareCellDirectories } from "./cell/cell-directory-preparer.js";
 import { mergeCellProfileForStart } from "./cell/cell-profile.js";
 import { block } from "./utils/text.js";
@@ -89,6 +90,9 @@ export class CradleCell {
       cell: this,
     });
     this.artifactExecutionService = new CellArtifactExecutionService({
+      cell: this,
+    });
+    this.artifactStabilizationService = new CellArtifactStabilizationService({
       cell: this,
     });
 
@@ -1465,155 +1469,21 @@ ${memoryContext}
     task,
     executionResult,
   } = {}) {
-    if (!artifactId) {
-      throw new Error("repairArtifactFromTask requires artifactId");
-    }
-
-    if (!task) {
-      throw new Error("repairArtifactFromTask requires task");
-    }
-
-    const result =
-      await this.productionService.repairArtifactFromExecution({
-        artifactId,
-        task,
-        executionResult:
-          executionResult?.toJSON?.() ??
-          executionResult,
-      });
-
-    await this.completeTask(task.id);
-
-    return result;
+    return await this.artifactStabilizationService.repairArtifactFromTask({
+      artifactId,
+      task,
+      executionResult,
+    });
   }
 
   async stabilizeArtifact({
     artifactId,
     maxRounds = 3,
   } = {}) {
-    if (!artifactId) {
-      throw new Error("stabilizeArtifact requires artifactId");
-    }
-
-    const history = [];
-
-    for (let round = 1; round <= maxRounds; round++) {
-      const beforeTasks = await this.readTasks();
-      const beforeTaskIds = new Set(beforeTasks.map((task) => task.id));
-
-      const execution = await this.executeArtifact(artifactId);
-      const executionResult = execution.result;
-
-      const passed = executionResult.status === "passed";
-
-      const metabolism = await this.metabolize();
-
-      const afterTasks = await this.readTasks();
-
-      const generatedTasks = afterTasks.filter(
-        (task) =>
-          task.status === "pending" &&
-          !beforeTaskIds.has(task.id)
-      );
-
-      // 成功輪次產生的建議，不是修復任務
-      const repairTasks = passed
-        ? []
-        : generatedTasks.slice(0, 1);
-
-      // 成功輪次多產生的 task 直接結束，避免殘留
-      if (passed) {
-        for (const task of generatedTasks) {
-          await this.completeTask(task.id);
-        }
-      }
-
-      const roundRecord = {
-        round,
-        executionStatus: executionResult.status,
-        createdTasks: repairTasks.length,
-        observationFile: metabolism.observationFile,
-        newTasks: repairTasks.map((task) => ({
-          id: task.id,
-          title: task.title,
-        })),
-      };
-
-      history.push(roundRecord);
-
-      // 記錄到 StabilityStore
-      const artifactState =
-        await this.stabilityStore.appendArtifactRecord(
-          artifactId,
-          {
-            round,
-            executionStatus: executionResult.status,
-            createdTasks: repairTasks.length,
-            observationFile: metabolism.observationFile,
-            tasks: repairTasks.map((task) => ({
-              id: task.id,
-              title: task.title,
-            })),
-          }
-        );
-
-      // 新的穩定條件：連續 2 次 passed + 連續 2 次 no task
-      if (artifactState.status === "stable") {
-        await this.appendHistory(`
-## ${new Date().toISOString()}
-
-### Artifact Stabilized
-
-- artifactId: ${artifactId}
-- rounds: ${round}
-- status: stable
-- consecutivePassed: ${artifactState.consecutivePassed}
-- consecutiveNoTask: ${artifactState.consecutiveNoTask}
-- repairCount: ${artifactState.repairCount}
-`);
-
-        return {
-          stable: true,
-          artifactId,
-          rounds: round,
-          artifactState,
-          history,
-        };
-      }
-
-      const repairTask = repairTasks[0];
-
-      if (!repairTask) {
-        if (passed) {
-          // 本輪成功且沒有修復任務，繼續下一輪累積穩定條件
-          continue;
-        }
-
-        return {
-          stable: false,
-          artifactId,
-          reason: "execution failed and no repair task was created",
-          artifactState,
-          history,
-        };
-      }
-
-      await this.repairArtifactFromTask({
-        artifactId,
-        task: repairTask,
-        executionResult,
-      });
-    }
-
-    const finalState = await this.stabilityStore.getArtifactState(artifactId);
-
-    return {
-      stable: false,
+    return await this.artifactStabilizationService.stabilizeArtifact({
       artifactId,
-      reason: "max rounds reached",
-      artifactState: finalState,
-      history,
-    };
+      maxRounds,
+    });
   }
 
   // =========================
