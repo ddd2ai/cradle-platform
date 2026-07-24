@@ -47,6 +47,13 @@ const cellStore = new Map([
         responsibilities: ["planning"],
       },
       active: true,
+      workspaceSections: {
+        notes: ["source.md"],
+        decisions: [],
+      },
+      workspaceFiles: {
+        "notes/source.md": "source content",
+      },
     }),
   ],
   [
@@ -200,6 +207,48 @@ const missingActivation = await handler({
 assert.equal(missingActivation.status, 404);
 assert.equal(missingActivation.body.error.code, "CELL_NOT_FOUND");
 
+const workspace = await handler({
+  method: "GET",
+  url: "/api/v1/cells/cell-001/workspace",
+});
+
+assert.equal(workspace.status, 200);
+assert.deepEqual(workspace.body, {
+  cellId: "cell-001",
+  sections: {
+    notes: ["source.md"],
+    decisions: [],
+  },
+});
+
+const workspaceFile = await handler({
+  method: "GET",
+  url: "/api/v1/cells/cell-001/workspace/files?path=notes%2Fsource.md",
+});
+
+assert.equal(workspaceFile.status, 200);
+assert.deepEqual(workspaceFile.body, {
+  cellId: "cell-001",
+  path: "notes/source.md",
+  content: "source content",
+});
+
+const missingWorkspaceFile = await handler({
+  method: "GET",
+  url: "/api/v1/cells/cell-001/workspace/files?path=missing.md",
+});
+
+assert.equal(missingWorkspaceFile.status, 404);
+assert.equal(missingWorkspaceFile.body.error.code, "WORKSPACE_FILE_NOT_FOUND");
+
+const missingWorkspaceFilePath = await handler({
+  method: "GET",
+  url: "/api/v1/cells/cell-001/workspace/files",
+});
+
+assert.equal(missingWorkspaceFilePath.status, 400);
+assert.equal(missingWorkspaceFilePath.body.error.code, "WORKSPACE_FILE_PATH_REQUIRED");
+
 const heartbeat = await handler({
   method: "GET",
   url: "/api/v1/heartbeat",
@@ -274,7 +323,13 @@ function waitForMicrotasks() {
   return new Promise((resolve) => setImmediate(resolve));
 }
 
-function createCell({ id, profile, active }) {
+function createCell({
+  id,
+  profile,
+  active,
+  workspaceSections = {},
+  workspaceFiles = {},
+}) {
   const cell = {
     id,
     name: id,
@@ -282,6 +337,14 @@ function createCell({ id, profile, active }) {
     active,
     getProfile: async () => profile,
     isActive: () => cell.active,
+    listWorkspaceSections: async () => workspaceSections,
+    readWorkspaceFile: async (relativePath) => {
+      if (!(relativePath in workspaceFiles)) {
+        throw new Error("missing");
+      }
+
+      return workspaceFiles[relativePath];
+    },
   };
 
   return cell;

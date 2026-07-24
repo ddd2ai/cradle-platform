@@ -5,8 +5,10 @@ import { GetCellUseCase } from "../application/get-cell-use-case.js";
 import { GetOperationUseCase } from "../application/get-operation-use-case.js";
 import { HeartbeatModeStore } from "../heartbeat/heartbeat-mode.js";
 import { InMemoryOperationStore } from "../application/operation-store.js";
+import { ListCellWorkspaceUseCase } from "../application/list-cell-workspace-use-case.js";
 import { ListCellsUseCase } from "../application/list-cells-use-case.js";
 import { OperationRunner } from "../application/operation-runner.js";
+import { ReadCellWorkspaceFileUseCase } from "../application/read-cell-workspace-file-use-case.js";
 import { RunHeartbeatUseCase } from "../application/run-heartbeat-use-case.js";
 import { SetCellActiveUseCase } from "../application/set-cell-active-use-case.js";
 import { SetHeartbeatModeUseCase } from "../application/set-heartbeat-mode-use-case.js";
@@ -56,6 +58,27 @@ export function createApiHandler({
         const result = await new SetCellActiveUseCase({ engine }).execute({
           cellId: decodeURIComponent(activationMatch[1]),
           active: activationMatch[2] === "activate",
+        });
+        return jsonResponse(200, result);
+      }
+
+      const workspaceMatch =
+        route.pathname.match(/^\/api\/v1\/cells\/([^/]+)\/workspace$/);
+
+      if (route.method === "GET" && workspaceMatch) {
+        const result = await new ListCellWorkspaceUseCase({ engine }).execute({
+          cellId: decodeURIComponent(workspaceMatch[1]),
+        });
+        return jsonResponse(200, result);
+      }
+
+      const workspaceFileMatch =
+        route.pathname.match(/^\/api\/v1\/cells\/([^/]+)\/workspace\/files$/);
+
+      if (route.method === "GET" && workspaceFileMatch) {
+        const result = await new ReadCellWorkspaceFileUseCase({ engine }).execute({
+          cellId: decodeURIComponent(workspaceFileMatch[1]),
+          path: route.searchParams.get("path"),
         });
         return jsonResponse(200, result);
       }
@@ -115,6 +138,7 @@ function normalizeRoute(request) {
   return {
     method: request.method.toUpperCase(),
     pathname: stripTrailingSlash(url.pathname),
+    searchParams: url.searchParams,
   };
 }
 
