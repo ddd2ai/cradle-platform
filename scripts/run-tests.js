@@ -59,6 +59,7 @@ const tests = [
   "test/test-fuse.js",
   "test/test-fusion-engine-contract.js",
   "test/test-fusion-plan-schema.js",
+  "test/test-heartbeat-result-renderer.js",
   "test/test-heartbeat-service.js",
   "test/test-heartbeat-commands.js",
   "test/test-inbox-commands.js",
