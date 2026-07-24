@@ -48,6 +48,7 @@ const tests = [
   "test/test-dna-maturity.js",
   "test/test-evolution-commands.js",
   "test/test-environment-commands.js",
+  "test/test-engine-cell-commands.js",
   "test/test-fuse-command.js",
   "test/test-fuse-lifecycle.js",
   "test/test-fuse.js",
