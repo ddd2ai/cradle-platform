@@ -11,10 +11,12 @@ import {
   renderDivisionResult,
 } from "./division-renderer.js";
 import {
+  createDelegationDocument,
   createDecisionDocument,
   createNoteDocument,
   createProjectFileDocument,
   createProjectReadmeDocument,
+  createReportMessage,
   createResearchDocument,
 } from "./workspace-document-templates.js";
 import {
@@ -1318,23 +1320,12 @@ DNA drift    : ${result.dnaDrift.length}
 
         await cell.writeWorkspaceFile(
           `decisions/delegation-${engine.formatTimestamp(new Date())}.md`,
-          `# Delegation
-
-          ## From
-
-          ${cell.id}
-
-          ## To
-
-          ${targetCellId}
-
-          ## Task
-
-          ${task}
-
-          ---
-          createdAt: ${new Date().toISOString()}
-          `
+          createDelegationDocument({
+            fromCellId: cell.id,
+            targetCellId,
+            task,
+            createdAt: new Date().toISOString(),
+          })
         );
 
         console.log(`Delegated task from ${cell.id} to ${targetCellId}`);
@@ -1377,17 +1368,11 @@ DNA drift    : ${result.dnaDrift.length}
           from: cell.id,
           to: targetCellId,
           type: "report",
-          content: `
-          # Report from ${cell.id}
-
-          ## Source File
-
-          ${fileName}
-
-          ## Content
-
-          ${content}
-          `,
+          content: createReportMessage({
+            fromCellId: cell.id,
+            fileName,
+            content,
+          }),
         });
 
         await cell.addRelationship("reported-to", targetCellId);

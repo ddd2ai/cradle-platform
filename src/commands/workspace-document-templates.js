@@ -65,3 +65,46 @@ export function createProjectFileDocument({ cellId, createdAt }) {
            // createdAt: ${createdAt}
           `;
 }
+
+export function createDelegationDocument({
+  fromCellId,
+  targetCellId,
+  task,
+  createdAt,
+}) {
+  return `# Delegation
+
+          ## From
+
+          ${fromCellId}
+
+          ## To
+
+          ${targetCellId}
+
+          ## Task
+
+          ${task}
+
+          ---
+          createdAt: ${createdAt}
+          `;
+}
+
+export function createReportMessage({
+  fromCellId,
+  fileName,
+  content,
+}) {
+  return `
+          # Report from ${fromCellId}
+
+          ## Source File
+
+          ${fileName}
+
+          ## Content
+
+          ${content}
+          `;
+}
