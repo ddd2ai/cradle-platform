@@ -57,6 +57,7 @@ const cellStore = new Map([
       dnaVector: {
         PERCEPTION: { strength: 0.8 },
       },
+      dnaHistory: [{ version: 1, reason: "initialization" }],
       maturityInfo: {
         percent: 70,
         state: "stable",
@@ -332,6 +333,17 @@ assert.deepEqual(dna.body, {
   },
 });
 
+const dnaHistory = await handler({
+  method: "GET",
+  url: "/api/v1/cells/cell-001/dna/history",
+});
+
+assert.equal(dnaHistory.status, 200);
+assert.deepEqual(dnaHistory.body, {
+  cellId: "cell-001",
+  history: [{ version: 1, reason: "initialization" }],
+});
+
 const maturity = await handler({
   method: "GET",
   url: "/api/v1/cells/cell-001/maturity",
@@ -575,6 +587,7 @@ function createCell({
   workspaceSections = {},
   workspaceFiles = {},
   dnaVector = {},
+  dnaHistory = [],
   maturityInfo = {},
   lifecycleDecision = {},
   tasks = [],
@@ -594,6 +607,7 @@ function createCell({
     isActive: () => cell.active,
     listWorkspaceSections: async () => workspaceSections,
     readDNAVector: async () => dnaVector,
+    readDNAHistory: async () => dnaHistory,
     getMaturityInfo: async () => maturityInfo,
     getLifecycleDecision: async (request) => ({
       ...lifecycleDecision,

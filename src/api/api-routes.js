@@ -1,6 +1,7 @@
 import { CreateCellUseCase } from "../application/create-cell-use-case.js";
 import { GetCellArtifactUseCase } from "../application/get-cell-artifact-use-case.js";
 import { GetCellDnaUseCase } from "../application/get-cell-dna-use-case.js";
+import { GetCellDnaHistoryUseCase } from "../application/get-cell-dna-history-use-case.js";
 import { GetCellLifecycleDecisionUseCase } from "../application/get-cell-lifecycle-decision-use-case.js";
 import { GetCellMaturityUseCase } from "../application/get-cell-maturity-use-case.js";
 import { GetCellArtifactStabilityUseCase } from "../application/get-cell-artifact-stability-use-case.js";
@@ -99,6 +100,12 @@ export function createApiRoutes({
     ),
     pattern("GET", /^\/api\/v1\/cells\/([^/]+)\/dna$/, async ({ params }) =>
       new GetCellDnaUseCase({ engine }).execute({ cellId: params[0] })
+    ),
+    pattern(
+      "GET",
+      /^\/api\/v1\/cells\/([^/]+)\/dna\/history$/,
+      async ({ params }) =>
+        new GetCellDnaHistoryUseCase({ engine }).execute({ cellId: params[0] })
     ),
     pattern(
       "GET",
