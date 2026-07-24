@@ -12,6 +12,7 @@ import { CellLivingContextService } from "./cell/cell-living-context-service.js"
 import { CellThinkingService } from "./cell/cell-thinking-service.js";
 import { CellTaskProcessingService } from "./cell/cell-task-processing-service.js";
 import { CellMetabolismService } from "./cell/cell-metabolism-service.js";
+import { CellRuntimeLifecycleService } from "./cell/cell-runtime-lifecycle-service.js";
 import { CellArtifactExecutionService } from "./cell/cell-artifact-execution-service.js";
 import { CellArtifactStabilizationService } from "./cell/cell-artifact-stabilization-service.js";
 import { prepareCellDirectories } from "./cell/cell-directory-preparer.js";
@@ -97,6 +98,9 @@ export class CradleCell {
     this.metabolismService = new CellMetabolismService({
       cell: this,
     });
+    this.runtimeLifecycleService = new CellRuntimeLifecycleService({
+      cell: this,
+    });
     this.artifactExecutionService = new CellArtifactExecutionService({
       cell: this,
     });
@@ -155,137 +159,19 @@ export class CradleCell {
   
 
   async activate() {
-    if (this.active) {
-      console.log(`Cell already active: ${this.id}`);
-      return;
-    }
-
-    this.active = true;
-    await this.updateStatus("active");
-
-    this.tickTimer = setInterval(() => {
-      this.tick().catch(async (error) => {
-        console.log(`[${this.id}] tick failed: ${error.message}`);
-        await this.updateStatus("error");
-      });
-    }, this.tickIntervalMs);
-
-    console.log(`🟢 Cell activated: ${this.id}`);
+    await this.runtimeLifecycleService.activate();
   }
 
   async deactivate() {
-    if (!this.active) {
-      console.log(`Cell already inactive: ${this.id}`);
-      return;
-    }
-
-    this.active = false;
-
-    if (this.tickTimer) {
-      clearInterval(this.tickTimer);
-      this.tickTimer = null;
-    }
-
-    await this.updateStatus("idle");
-
-    console.log(`⚪ Cell deactivated: ${this.id}`);
+    await this.runtimeLifecycleService.deactivate();
   }
 
   isActive() {
-    return this.active;
+    return this.runtimeLifecycleService.isActive();
   }
 
   async tick() {
-    console.log(`⏱️ ${this.id} tick`);
-
-    if (this.isTicking) {
-      console.log(`  ${this.id} skipped: already ticking`);
-
-      return {
-        skipped: true,
-        reason: "already ticking",
-      };
-    }
-
-    this.isTicking = true;
-
-    try {
-      const inbox = await this.readInbox();
-
-      if (inbox.length > 0) {
-        console.log(`  ${this.id} processing inbox=${inbox.length}`);
-
-        await this.updateStatus("running");
-
-        const result = await this.processInbox(inbox);
-
-        await this.clearInbox();
-
-        await this.updateStatus(this.active ? "active" : "idle");
-
-        return {
-          type: "inbox",
-          processed: result.processed ?? inbox.length,
-        };
-      }
-
-      const task = await this.nextPendingTask();
-
-      if (task) {
-        console.log(`  ${this.id} processing task=${task.id}`);
-
-        await this.updateStatus("running");
-
-        const result = await this.processTask(task);
-
-        await this.completeTask(task.id);
-
-        await this.updateStatus(this.active ? "active" : "idle");
-
-        return {
-          type: "task",
-          processed: 1,
-          taskId: task.id,
-          result,
-        };
-      }
-
-      const metabolism = await this.metabolize();
-
-      if (metabolism.created > 0) {
-        console.log(`  ${this.id} metabolized stimuli, tasks=${metabolism.created}`);
-
-        return {
-          type: "metabolism",
-          processed: metabolism.created,
-          observationFile: metabolism.observationFile,
-        };
-      }
-
-      const evolution = await this.evolve();
-
-      if (evolution.evolved) {
-        console.log(`  ${this.id} evolved from thoughts=${evolution.thoughtCount}`);
-
-        return {
-          type: "evolution",
-          processed: evolution.thoughtCount,
-          file: evolution.file,
-        };
-      }
-
-      console.log(`  ${this.id} idle: no inbox, task, or stimuli`);
-
-      return {
-        processed: 0,
-        reason: "no inbox, task, or stimuli",
-      };
-    } catch (error) {
-      await this.updateStatus("error");
-      throw error;
-    } finally {
-      this.isTicking = false;
-    }
+    return await this.runtimeLifecycleService.tick();
   }
 
 
@@ -1382,13 +1268,6 @@ ${memoryContext}
   }
 
   async shutdown() {
-    if (this.tickTimer) {
-      clearInterval(this.tickTimer);
-      this.tickTimer = null;
-    }
-
-    this.active = false;
-    await this.updateStatus("stopped");
-    await this.assistant?.cleanup();
+    await this.runtimeLifecycleService.shutdown();
   }
 }
