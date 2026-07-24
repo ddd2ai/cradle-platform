@@ -12,6 +12,12 @@ import {
   renderEvolutionStatusTable,
   renderWorkTable,
 } from "./colony-renderer.js";
+import {
+  buildDnaMatrixRows,
+  buildEvolutionRows,
+  buildWatchStatusRows,
+  buildWorkRows,
+} from "./colony-row-builders.js";
 
 export function createColonyCommands({
   fusionServiceFactory = () => new CellFusionService(),
@@ -101,31 +107,7 @@ export function createColonyCommands({
         input === "/work",
 
       execute: async ({ engine }) => {
-        const rows = [];
-
-        for (const [id, cell] of engine.cells) {
-          const inbox = await cell.readInbox();
-          const tasks = await cell.readTasks();
-
-          const pendingTasks =
-            tasks.filter((task) => task.status === "pending");
-
-          engine.inboxes.set(id, inbox);
-
-          rows.push({
-            Cell: id,
-            Inbox: inbox.length,
-            Tasks: pendingTasks.length,
-            Action:
-              inbox.length > 0
-                ? "process"
-                : pendingTasks.length > 0
-                  ? "todo"
-                  : "idle",
-          });
-        }
-
-        renderWorkTable(rows);
+        renderWorkTable(await buildWorkRows(engine));
       },
     },
 
@@ -136,23 +118,9 @@ export function createColonyCommands({
         input === "/evolution-status",
 
       execute: async ({ engine }) => {
-        const rows = [];
-
-        for (const [id, cell] of engine.cells) {
-          const status = await cell.getEvolutionStatus();
-
-          rows.push({
-            Cell: id,
-            Thoughts: status.totalThoughts,
-            Unevolved: status.unevolvedThoughts,
-            Evolved: status.evolvedThoughts,
-            Evolutions: status.evolutionCount,
-            Next: status.nextEvolutionIn,
-            Last: status.lastEvolvedAt,
-          });
-        }
-
-        renderEvolutionStatusTable(rows);
+        renderEvolutionStatusTable(await buildEvolutionRows(engine, {
+          includeLast: true,
+        }));
       },
     },
 
@@ -163,48 +131,7 @@ export function createColonyCommands({
         input === "/colony-dna",
 
       execute: async ({ engine }) => {
-
-        const rows = [];
-
-        for (const [id, cell] of engine.cells) {
-
-          const dna =
-            await cell.getDNARank();
-
-          rows.push({
-            Cell: id,
-            "Dominant DNA":
-              dna.dominantDNA,
-            Score:
-              dna.score.toFixed(2),
-
-            PER:
-              dna.scores.PERCEPTION.toFixed(2),
-
-            DEC:
-              dna.scores.DECISION.toFixed(2),
-
-            DEP:
-              dna.scores.DECOMPOSITION.toFixed(2),
-
-            LEA:
-              dna.scores.LEARNING.toFixed(2),
-
-            COL:
-              dna.scores.COLLABORATION.toFixed(2),
-
-            CRE:
-              dna.scores.CREATION.toFixed(2),
-
-            EVO:
-              dna.scores.EVOLUTION.toFixed(2),
-
-            REF:
-              dna.scores.REFLECTION.toFixed(2),
-          });
-        }
-
-        renderDnaMatrix(rows);
+        renderDnaMatrix(await buildDnaMatrixRows(engine));
       },
     },
 
@@ -284,27 +211,7 @@ export function createColonyCommands({
           console.log(`Updated at: ${new Date().toLocaleString()}`);
           console.log("");
 
-          // Status Table
-          const statusRows = [];
-
-          for (const [id, cell] of engine.cells) {
-            const profile = await cell.getEvolutionInfo();
-            const maturity = await cell.getMaturityInfo();
-            const lifecycle = await cell.getLifecycleDecision();
-
-            statusRows.push({
-              Cell: id,
-              Status: profile.status ?? "unknown",
-              Active: cell.isActive() ? "yes" : "no",
-              Mature: `${maturity.percent}%`,
-              Life: lifecycle.action,
-              State: maturity.state,
-              Var: maturity.temporalVariance.toFixed(4),
-              Conv: maturity.convergence.toFixed(2),
-              Gen: profile.generation ?? 1,
-              Inbox: engine.inboxes.get(id)?.length ?? 0,
-            });
-          }
+          const statusRows = await buildWatchStatusRows(engine);
 
           console.log("Status");
           renderTable(
@@ -312,30 +219,7 @@ export function createColonyCommands({
             statusRows
           );
 
-          // Work Table
-          const workRows = [];
-
-          for (const [id, cell] of engine.cells) {
-            const inbox = await cell.readInbox();
-            const tasks = await cell.readTasks();
-
-            const pendingTasks =
-              tasks.filter((task) => task.status === "pending");
-
-            engine.inboxes.set(id, inbox);
-
-            workRows.push({
-              Cell: id,
-              Inbox: inbox.length,
-              Tasks: pendingTasks.length,
-              Action:
-                inbox.length > 0
-                  ? "process"
-                  : pendingTasks.length > 0
-                    ? "todo"
-                    : "idle",
-            });
-          }
+          const workRows = await buildWorkRows(engine);
 
           console.log("");
           console.log("Work");
@@ -344,21 +228,7 @@ export function createColonyCommands({
             workRows
           );
 
-          // Evolution Table
-          const evolutionRows = [];
-
-          for (const [id, cell] of engine.cells) {
-            const status = await cell.getEvolutionStatus();
-
-            evolutionRows.push({
-              Cell: id,
-              Thoughts: status.totalThoughts,
-              Unevolved: status.unevolvedThoughts,
-              Evolved: status.evolvedThoughts,
-              Evolutions: status.evolutionCount,
-              Next: status.nextEvolutionIn,
-            });
-          }
+          const evolutionRows = await buildEvolutionRows(engine);
 
           console.log("");
           console.log("Evolution");

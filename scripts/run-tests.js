@@ -38,6 +38,7 @@ const tests = [
   "test/test-cell-workspace-store.js",
   "test/test-command-input.js",
   "test/test-colony-renderer.js",
+  "test/test-colony-row-builders.js",
   "test/test-division-plan-schema.js",
   "test/test-division-commands.js",
   "test/test-division-renderer.js",
