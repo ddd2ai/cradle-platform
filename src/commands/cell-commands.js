@@ -32,11 +32,11 @@ import {
 } from "./cell-relationship-renderer.js";
 import {
   renderEvolutionFileList,
-  renderSnapshotList,
   renderStimuliList,
   renderWorkspaceSections,
 } from "./cell-list-renderer.js";
 import { renderFullMemory } from "./cell-memory-renderer.js";
+import { createSnapshotCommands } from "./snapshot-commands.js";
 import {
   renderDNAHistory,
   renderLifecycleDecision,
@@ -629,39 +629,7 @@ export function createCellCommands() {
       },
     },
 
-    {
-      name: "/snapshot",
-      match: (input, { engine }) => input === "/snapshot" && !engine.isCradleMode(),
-      execute: async ({ engine }) => {
-        const snapshot = await engine.getActiveCell().createSnapshot();
-        console.log(`Snapshot created: ${snapshot}`);
-      },
-    },
-
-    {
-      name: "/snapshots",
-      match: (input, { engine }) => input === "/snapshots" && !engine.isCradleMode(),
-      execute: async ({ engine }) => {
-        const snapshots = await engine.getActiveCell().listSnapshots();
-        renderSnapshotList(snapshots);
-      },
-    },
-
-    {
-      name: "/restore",
-      match: (input, { engine }) => input.startsWith("/restore ") && !engine.isCradleMode(),
-      execute: async ({ engine, input }) => {
-        const snapshotName = commandArgs(input, "/restore");
-
-        if (!snapshotName) {
-          console.log("Usage: /restore <snapshot-name>");
-          return;
-        }
-
-        await engine.getActiveCell().restoreSnapshot(snapshotName);
-        console.log(`Snapshot restored: ${snapshotName}`);
-      },
-    },
+    ...createSnapshotCommands(),
 
     {
       name: "/evolve",
