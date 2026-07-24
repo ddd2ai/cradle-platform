@@ -106,6 +106,11 @@ const cellStore = new Map([
           outputs: [{ kind: "file", path: "design.md", content: "# Design" }],
         },
       },
+      stabilityState: {
+        artifactId: "artifact-001",
+        status: "stable",
+        consecutivePassed: 2,
+      },
     }),
   ],
   [
@@ -436,6 +441,30 @@ const artifact = await handler({
 assert.equal(artifact.status, 200);
 assert.equal(artifact.body.artifact.id, "artifact-001");
 
+const stability = await handler({
+  method: "GET",
+  url: "/api/v1/cells/cell-001/artifacts/artifact-001/stability",
+});
+
+assert.equal(stability.status, 200);
+assert.deepEqual(stability.body, {
+  cellId: "cell-001",
+  artifactId: "artifact-001",
+  state: {
+    artifactId: "artifact-001",
+    status: "stable",
+    consecutivePassed: 2,
+  },
+});
+
+const missingStability = await handler({
+  method: "GET",
+  url: "/api/v1/cells/cell-001/artifacts/missing-artifact/stability",
+});
+
+assert.equal(missingStability.status, 404);
+assert.equal(missingStability.body.error.code, "STABILITY_STATE_NOT_FOUND");
+
 const missingArtifact = await handler({
   method: "GET",
   url: "/api/v1/cells/cell-001/artifacts/missing-artifact",
@@ -541,6 +570,7 @@ function createCell({
   lifecycleEvents = [],
   artifactSummaries = { artifacts: [], errors: [] },
   artifacts = {},
+  stabilityState = null,
 }) {
   const cell = {
     id,
@@ -568,6 +598,10 @@ function createCell({
 
         return artifacts[artifactId];
       },
+    },
+    stabilityStore: {
+      getArtifactState: async (artifactId) =>
+        artifactId === stabilityState?.artifactId ? stabilityState : null,
     },
     readWorkspaceFile: async (relativePath) => {
       if (!(relativePath in workspaceFiles)) {

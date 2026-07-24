@@ -3,6 +3,7 @@ import { GetCellArtifactUseCase } from "../application/get-cell-artifact-use-cas
 import { GetCellDnaUseCase } from "../application/get-cell-dna-use-case.js";
 import { GetCellLifecycleDecisionUseCase } from "../application/get-cell-lifecycle-decision-use-case.js";
 import { GetCellMaturityUseCase } from "../application/get-cell-maturity-use-case.js";
+import { GetCellArtifactStabilityUseCase } from "../application/get-cell-artifact-stability-use-case.js";
 import { GetCellUseCase } from "../application/get-cell-use-case.js";
 import { GetColonyUseCase } from "../application/get-colony-use-case.js";
 import { GetHeartbeatUseCase } from "../application/get-heartbeat-use-case.js";
@@ -82,6 +83,15 @@ export function createApiRoutes({
       /^\/api\/v1\/cells\/([^/]+)\/artifacts\/([^/]+)$/,
       async ({ params }) =>
         new GetCellArtifactUseCase({ engine }).execute({
+          cellId: params[0],
+          artifactId: params[1],
+        })
+    ),
+    pattern(
+      "GET",
+      /^\/api\/v1\/cells\/([^/]+)\/artifacts\/([^/]+)\/stability$/,
+      async ({ params }) =>
+        new GetCellArtifactStabilityUseCase({ engine }).execute({
           cellId: params[0],
           artifactId: params[1],
         })
