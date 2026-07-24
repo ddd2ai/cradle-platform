@@ -174,6 +174,18 @@ assert.deepEqual(cells.body.cells, [
   },
 ]);
 
+const colony = await handler({
+  method: "GET",
+  url: "/api/v1/colony",
+});
+
+assert.equal(colony.status, 200);
+assert.equal(colony.body.activeCellId, "Cradle");
+assert.equal(colony.body.cellCount, 2);
+assert.equal(colony.body.activeCount, 1);
+assert.equal(colony.body.idleCount, 1);
+assert.equal(colony.body.cells.length, 2);
+
 const cell = await handler({
   method: "GET",
   url: "/api/v1/cells/cell-001",

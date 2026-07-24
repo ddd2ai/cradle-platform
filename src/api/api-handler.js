@@ -5,6 +5,7 @@ import { GetHealthUseCase } from "../application/get-health-use-case.js";
 import { GetCellUseCase } from "../application/get-cell-use-case.js";
 import { GetCellLifecycleDecisionUseCase } from "../application/get-cell-lifecycle-decision-use-case.js";
 import { GetCellMaturityUseCase } from "../application/get-cell-maturity-use-case.js";
+import { GetColonyUseCase } from "../application/get-colony-use-case.js";
 import { GetOperationUseCase } from "../application/get-operation-use-case.js";
 import { HeartbeatModeStore } from "../heartbeat/heartbeat-mode.js";
 import { InMemoryOperationStore } from "../application/operation-store.js";
@@ -39,6 +40,11 @@ export function createApiHandler({
 
       if (route.method === "GET" && route.pathname === "/api/v1/cells") {
         const result = await new ListCellsUseCase({ engine }).execute();
+        return jsonResponse(200, result);
+      }
+
+      if (route.method === "GET" && route.pathname === "/api/v1/colony") {
+        const result = await new GetColonyUseCase({ engine }).execute();
         return jsonResponse(200, result);
       }
 
