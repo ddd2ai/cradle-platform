@@ -36,6 +36,7 @@ import {
   renderStimuliList,
   renderWorkspaceSections,
 } from "./cell-list-renderer.js";
+import { renderFullMemory } from "./cell-memory-renderer.js";
 import {
   renderDNAHistory,
   renderLifecycleDecision,
@@ -196,29 +197,12 @@ export function createCellCommands() {
       execute: async ({ engine }) => {
         const cell = engine.getActiveCell();
 
-        console.log(`
-        # Identity
-
-        ${await cell.safeReadMemory("identity")}
-
-        ---
-
-        # Rules
-
-        ${await cell.safeReadMemory("rules")}
-
-        ---
-
-        # Knowledge
-
-        ${await cell.safeReadMemory("knowledge")}
-
-        ---
-
-        # History
-
-        ${await cell.safeReadMemory("history")}
-        `);
+        renderFullMemory({
+          identity: await cell.safeReadMemory("identity"),
+          rules: await cell.safeReadMemory("rules"),
+          knowledge: await cell.safeReadMemory("knowledge"),
+          history: await cell.safeReadMemory("history"),
+        });
       },
     },
 
