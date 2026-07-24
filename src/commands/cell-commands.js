@@ -1,4 +1,3 @@
-import fs from "fs/promises";
 import path from "path";
 import { renderAnswerStart } from "../cradle-console.js";
 import { block } from "../utils/text.js";
@@ -31,11 +30,11 @@ import {
   renderCellTrace,
 } from "./cell-relationship-renderer.js";
 import {
-  renderEvolutionFileList,
   renderStimuliList,
   renderWorkspaceSections,
 } from "./cell-list-renderer.js";
 import { renderFullMemory } from "./cell-memory-renderer.js";
+import { createEvolutionCommands } from "./evolution-commands.js";
 import { createSnapshotCommands } from "./snapshot-commands.js";
 import {
   renderDNAHistory,
@@ -43,7 +42,6 @@ import {
   renderMaturityInfo,
 } from "./cell-status-renderer.js";
 import {
-  renderEvolutionResult,
   renderInbox,
   renderInboxProcessResult,
   renderMetabolismResult,
@@ -631,68 +629,7 @@ export function createCellCommands() {
 
     ...createSnapshotCommands(),
 
-    {
-      name: "/evolve",
-
-      match: (input, { engine }) =>
-        input === "/evolve" &&
-        !engine.isCradleMode(),
-
-      execute: async ({ engine }) => {
-        const cell = engine.getActiveCell();
-
-        console.log("🧬 Evolving from thoughts...");
-
-        const result = await cell.evolve({
-          force: true,
-        });
-
-        renderEvolutionResult(result);
-      },
-    },
-
-    {
-      name: "/evolution",
-
-      match: (input, { engine }) =>
-        input === "/evolution" &&
-        !engine.isCradleMode(),
-
-      execute: async ({ engine }) => {
-
-        const cell =
-          engine.getActiveCell();
-
-        const content =
-          await cell.readLatestEvolution();
-
-        console.log(
-          content ??
-          "No evolution found."
-        );
-      },
-    },
-
-    {
-      name: "/evolutions",
-
-      match: (input, { engine }) =>
-        input === "/evolutions" &&
-        !engine.isCradleMode(),
-
-      execute: async ({ engine }) => {
-
-        const cell =
-          engine.getActiveCell();
-
-        const files =
-          await fs.readdir(
-            cell.evolutionsDir
-          );
-
-        renderEvolutionFileList(files);
-      },
-    },
+    ...createEvolutionCommands(),
 
     {
       name: "/divide",
