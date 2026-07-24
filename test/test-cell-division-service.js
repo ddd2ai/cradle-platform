@@ -6,6 +6,7 @@
  * 使用 Fake 實作，不呼叫真實 AI
  */
 
+import assert from "node:assert/strict";
 import { CellDivisionService } from "../src/lifecycle/cell-division-service.js";
 
 // Fake Engine
@@ -208,7 +209,7 @@ async function testPlanningPhase() {
   const service = new CellDivisionService({
     livingContextServiceFactory: (requesterCell) => {
       livingContextServiceCreated = true;
-      console.assert(
+      assert.ok(
         requesterCell.id === parentCell.id,
         "requesterCell should be parentCell"
       );
@@ -222,10 +223,10 @@ async function testPlanningPhase() {
     childId: "child-001",
   });
 
-  console.assert(result.complete === true, "Division should be complete");
-  console.assert(result.dnaDivisionPlan !== null, "DNA plan should exist");
-  console.assert(result.livingContextPlan !== null, "Living Context plan should exist");
-  console.assert(livingContextServiceCreated === true, "LivingContextService should be created");
+  assert.ok(result.complete === true, "Division should be complete");
+  assert.ok(result.dnaDivisionPlan !== null, "DNA plan should exist");
+  assert.ok(result.livingContextPlan !== null, "Living Context plan should exist");
+  assert.ok(livingContextServiceCreated === true, "LivingContextService should be created");
 
   console.log("✅ Planning phase completes before child creation");
 }
@@ -248,9 +249,9 @@ async function testChildCreation() {
     childId: "child-002",
   });
 
-  console.assert(engine.createdCells.length === 1, "Should create exactly one child");
-  console.assert(engine.createdCells[0] === "child-002", "Should create correct child ID");
-  console.assert(result.child.id === "child-002", "Result should contain child cell");
+  assert.ok(engine.createdCells.length === 1, "Should create exactly one child");
+  assert.ok(engine.createdCells[0] === "child-002", "Should create correct child ID");
+  assert.ok(result.child.id === "child-002", "Result should contain child cell");
 
   console.log("✅ Child cell created after planning");
 }
@@ -275,18 +276,18 @@ async function testDNAApplication() {
 
   const child = result.child;
 
-  console.assert(
+  assert.ok(
     child.dnaHistory.some((h) => h.reason === "svd-division-inheritance"),
     "Child should have DNA inheritance history"
   );
 
-  console.assert(
+  assert.ok(
     parentCell.dnaHistory.some((h) => h.reason === "svd-division-attenuation"),
     "Parent should have DNA attenuation history"
   );
 
-  console.assert(child.generation === parentCell.generation + 1, "Child generation should be parent + 1");
-  console.assert(child.parent === parentCell.id, "Child parent should be set");
+  assert.ok(child.generation === parentCell.generation + 1, "Child generation should be parent + 1");
+  assert.ok(child.parent === parentCell.id, "Child parent should be set");
 
   console.log("✅ DNA division applied correctly");
 }
@@ -311,15 +312,15 @@ async function testLivingContextApplication() {
 
   const child = result.child;
 
-  console.assert(parentCell.livingContext !== null, "Parent Living Context should be updated");
-  console.assert(child.livingContext !== null, "Child Living Context should be created");
+  assert.ok(parentCell.livingContext !== null, "Parent Living Context should be updated");
+  assert.ok(child.livingContext !== null, "Child Living Context should be created");
 
-  console.assert(
+  assert.ok(
     parentCell.livingContext.cellId === parentCell.id,
     "Parent Living Context cellId should match"
   );
 
-  console.assert(
+  assert.ok(
     child.livingContext.cellId === child.id,
     "Child Living Context cellId should match"
   );
@@ -347,10 +348,10 @@ async function testMemorySeed() {
 
   const child = result.child;
 
-  console.assert(child.memory.identity !== undefined, "Child should have identity");
-  console.assert(child.memory.knowledge !== undefined, "Child should have knowledge");
-  console.assert(child.memory.history !== undefined, "Child should have history");
-  console.assert(child.thoughts.length > 0, "Child should have thoughts");
+  assert.ok(child.memory.identity !== undefined, "Child should have identity");
+  assert.ok(child.memory.knowledge !== undefined, "Child should have knowledge");
+  assert.ok(child.memory.history !== undefined, "Child should have history");
+  assert.ok(child.thoughts.length > 0, "Child should have thoughts");
 
   console.log("✅ Memory Seed applied correctly");
 }
@@ -375,17 +376,17 @@ async function testResponsibilities() {
 
   const child = result.child;
 
-  console.assert(
+  assert.ok(
     parentCell.responsibilities.includes("Order"),
     "Parent should have Order responsibility"
   );
 
-  console.assert(
+  assert.ok(
     parentCell.responsibilities.includes("User"),
     "Parent should have User responsibility"
   );
 
-  console.assert(
+  assert.ok(
     child.responsibilities.includes("Payment"),
     "Child should have Payment responsibility"
   );
@@ -413,12 +414,12 @@ async function testRelationships() {
 
   const child = result.child;
 
-  console.assert(
+  assert.ok(
     parentCell.relationships.some((r) => r.type === "divided-into" && r.target === child.id),
     "Parent should have divided-into relationship"
   );
 
-  console.assert(
+  assert.ok(
     child.relationships.some((r) => r.type === "born-from" && r.target === parentCell.id),
     "Child should have born-from relationship"
   );
@@ -447,7 +448,7 @@ async function testParentMemoryNotCopied() {
 
   const child = result.child;
 
-  console.assert(
+  assert.ok(
     child.memory.secretData === undefined,
     "Child should not have parent's secret data"
   );
@@ -486,7 +487,7 @@ async function testSharedContractExistingCellReference() {
     childId: "child-011",
   });
 
-  console.assert(result.complete === true, "Division should allow existing contract owner");
+  assert.ok(result.complete === true, "Division should allow existing contract owner");
 
   console.log("✅ Shared contracts can reference existing cells");
 }
@@ -524,13 +525,13 @@ async function testSharedContractUnknownCellReferenceFails() {
     });
   } catch (error) {
     errorCaught = true;
-    console.assert(
+    assert.ok(
       error.message.includes("shared contract references unknown cell"),
       "Error should mention unknown shared contract cell"
     );
   }
 
-  console.assert(errorCaught, "Should fail when shared contract references unknown cell");
+  assert.ok(errorCaught, "Should fail when shared contract references unknown cell");
 
   console.log("✅ Unknown shared contract references fail during planning");
 }
@@ -559,13 +560,13 @@ async function testChildAlreadyExists() {
     });
   } catch (error) {
     errorCaught = true;
-    console.assert(
+    assert.ok(
       error.message.includes("already exists"),
       "Error message should mention already exists"
     );
   }
 
-  console.assert(errorCaught, "Should throw error when child already exists");
+  assert.ok(errorCaught, "Should throw error when child already exists");
 
   console.log("✅ Fails when child already exists");
 }
@@ -595,14 +596,14 @@ async function testPlanningFailure() {
     });
   } catch (error) {
     errorCaught = true;
-    console.assert(
+    assert.ok(
       error.message.includes("planning failed"),
       "Error message should mention planning failed"
     );
   }
 
-  console.assert(errorCaught, "Should throw error when planning fails");
-  console.assert(
+  assert.ok(errorCaught, "Should throw error when planning fails");
+  assert.ok(
     engine.createdCells.length === 0,
     "Should not create child when planning fails"
   );
@@ -618,17 +619,17 @@ async function testParameterValidation() {
   // Missing engine
   try {
     await service.divide({ engine: null, parentCell: new FakeCell("test"), childId: "test" });
-    console.assert(false, "Should throw when engine is null");
+    assert.ok(false, "Should throw when engine is null");
   } catch (error) {
-    console.assert(error.message.includes("engine is required"), "Should validate engine");
+    assert.ok(error.message.includes("engine is required"), "Should validate engine");
   }
 
   // Missing parentCell
   try {
     await service.divide({ engine: new FakeEngine(), parentCell: null, childId: "test" });
-    console.assert(false, "Should throw when parentCell is null");
+    assert.ok(false, "Should throw when parentCell is null");
   } catch (error) {
-    console.assert(error.message.includes("parentCell is required"), "Should validate parentCell");
+    assert.ok(error.message.includes("parentCell is required"), "Should validate parentCell");
   }
 
   // Empty childId
@@ -638,9 +639,9 @@ async function testParameterValidation() {
       parentCell: new FakeCell("test"),
       childId: "",
     });
-    console.assert(false, "Should throw when childId is empty");
+    assert.ok(false, "Should throw when childId is empty");
   } catch (error) {
-    console.assert(
+    assert.ok(
       error.message.includes("non-empty string"),
       "Should validate childId is non-empty"
     );
@@ -653,9 +654,9 @@ async function testParameterValidation() {
       parentCell: new FakeCell("test"),
       childId: "test",
     });
-    console.assert(false, "Should throw when childId equals parentCell.id");
+    assert.ok(false, "Should throw when childId equals parentCell.id");
   } catch (error) {
-    console.assert(
+    assert.ok(
       error.message.includes("must not equal"),
       "Should validate childId not equal to parentCell.id"
     );

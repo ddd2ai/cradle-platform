@@ -6,6 +6,7 @@
  * 使用 Fake 實作，不呼叫真實 AI
  */
 
+import assert from "node:assert/strict";
 import { CellFusionService } from "../src/lifecycle/cell-fusion-service.js";
 
 const successfulArtifactRegenerationService = {
@@ -247,7 +248,7 @@ async function test01_DNAPlanningBeforeCreateCell() {
     dnaFusionService: {
       createPlan: async () => {
         dnaPlanningCalled = true;
-        console.assert(engine.createdCells.length === 0, "Child should not exist yet");
+        assert.ok(engine.createdCells.length === 0, "Child should not exist yet");
         return {
           type: "dna-fusion",
           parentCellIds: [parentA.id, parentB.id],
@@ -274,9 +275,9 @@ async function test01_DNAPlanningBeforeCreateCell() {
     childId: "child-fused",
   });
 
-  console.assert(result.success, "Fusion should succeed");
-  console.assert(result.complete, "Fusion should be complete");
-  console.assert(dnaPlanningCalled, "DNA planning should be called once");
+  assert.ok(result.success, "Fusion should succeed");
+  assert.ok(result.complete, "Fusion should be complete");
+  assert.ok(dnaPlanningCalled, "DNA planning should be called once");
   
   console.log("✅ DNA planning called before createCell");
 }
@@ -296,7 +297,7 @@ async function test02_LivingContextPlanningBeforeCreateCell() {
       const original = fake.createFusionPlan.bind(fake);
       fake.createFusionPlan = async (...args) => {
         planningCalled = true;
-        console.assert(engine.createdCells.length === 0, "Child should not exist yet");
+        assert.ok(engine.createdCells.length === 0, "Child should not exist yet");
         return await original(...args);
       };
       return fake;
@@ -309,7 +310,7 @@ async function test02_LivingContextPlanningBeforeCreateCell() {
     childId: "child-fused",
   });
 
-  console.assert(planningCalled, "Living Context planning should be called");
+  assert.ok(planningCalled, "Living Context planning should be called");
   console.log("✅ Living Context planning called before createCell");
 }
 
@@ -342,9 +343,9 @@ async function test03_DNAPlanningFailureNoChild() {
     error = e;
   }
 
-  console.assert(error !== null, "Should throw error");
-  console.assert(error.message.includes("planning failed"), "Error should mention planning");
-  console.assert(engine.createdCells.length === 0, "Child should not be created");
+  assert.ok(error !== null, "Should throw error");
+  assert.ok(error.message.includes("planning failed"), "Error should mention planning");
+  assert.ok(engine.createdCells.length === 0, "Child should not be created");
   
   console.log("✅ DNA planning failure prevents Child creation");
 }
@@ -377,8 +378,8 @@ async function test04_LivingContextPlanningFailureNoChild() {
     error = e;
   }
 
-  console.assert(error !== null, "Should throw error");
-  console.assert(engine.createdCells.length === 0, "Child should not be created");
+  assert.ok(error !== null, "Should throw error");
+  assert.ok(engine.createdCells.length === 0, "Child should not be created");
   
   console.log("✅ Living Context planning failure prevents Child creation");
 }
@@ -410,8 +411,8 @@ async function test05_ChildAlreadyExistsFails() {
     error = e;
   }
 
-  console.assert(error !== null, "Should throw error");
-  console.assert(error.message.includes("already exists"), "Error should mention already exists");
+  assert.ok(error !== null, "Should throw error");
+  assert.ok(error.message.includes("already exists"), "Error should mention already exists");
   
   console.log("✅ Fusion fails when Child already exists");
 }
@@ -435,11 +436,11 @@ async function test06_ChildSuccessfullyCreated() {
     childId: "child-fused",
   });
 
-  console.assert(result.success, "Fusion should succeed");
-  console.assert(result.child, "Child should be created");
-  console.assert(result.child.id === "child-fused", "Child ID should match");
-  console.assert(engine.createdCells.length === 1, "One child should be created");
-  console.assert(engine.createdCells[0] === "child-fused", "Child ID should be correct");
+  assert.ok(result.success, "Fusion should succeed");
+  assert.ok(result.child, "Child should be created");
+  assert.ok(result.child.id === "child-fused", "Child ID should match");
+  assert.ok(engine.createdCells.length === 1, "One child should be created");
+  assert.ok(engine.createdCells[0] === "child-fused", "Child ID should be correct");
   
   console.log("✅ Child successfully created");
 }
@@ -463,7 +464,7 @@ async function test07_ApplyFusionPlanByDNACalled() {
     childId: "child-fused",
   });
 
-  console.assert(
+  assert.ok(
     result.child.methodCalls.appendDNAHistoryIfChanged === 1,
     "DNA apply should append child DNA history once"
   );
@@ -492,9 +493,9 @@ async function test08_FusedLivingContextWritten() {
 
   const child = result.child;
 
-  console.assert(child.livingContext !== null, "Living Context should be written");
-  console.assert(child.livingContext.cellId === "child-fused", "Living Context cellId should match");
-  console.assert(
+  assert.ok(child.livingContext !== null, "Living Context should be written");
+  assert.ok(child.livingContext.cellId === "child-fused", "Living Context cellId should match");
+  assert.ok(
     child.livingContext.purpose === "Unified payment lifecycle",
     "Living Context purpose should match"
   );
@@ -523,8 +524,8 @@ async function test09_ChildResponsibilitiesReplaced() {
 
   const child = result.child;
 
-  console.assert(child.methodCalls.setResponsibilities === 1, "setResponsibilities should be called once");
-  console.assert(
+  assert.ok(child.methodCalls.setResponsibilities === 1, "setResponsibilities should be called once");
+  assert.ok(
     JSON.stringify(child.responsibilities) === JSON.stringify(["Payment", "Order"]),
     "Responsibilities should match fusion plan"
   );
@@ -553,21 +554,21 @@ async function test10_FusedMemorySeedWritten() {
 
   const child = result.child;
 
-  console.assert(child.memory.identity, "Identity should be written");
-  console.assert(child.memory.identity.includes("child-fused"), "Identity should mention child ID");
-  console.assert(child.memory.identity.includes("parent-a"), "Identity should mention parent-a");
-  console.assert(child.memory.identity.includes("parent-b"), "Identity should mention parent-b");
+  assert.ok(child.memory.identity, "Identity should be written");
+  assert.ok(child.memory.identity.includes("child-fused"), "Identity should mention child ID");
+  assert.ok(child.memory.identity.includes("parent-a"), "Identity should mention parent-a");
+  assert.ok(child.memory.identity.includes("parent-b"), "Identity should mention parent-b");
 
-  console.assert(child.memory.knowledge, "Knowledge should be written");
-  console.assert(
+  assert.ok(child.memory.knowledge, "Knowledge should be written");
+  assert.ok(
     child.memory.knowledge.includes("Test fused knowledge"),
     "Knowledge should include fused seed"
   );
 
-  console.assert(child.memory.history, "History should be written");
-  console.assert(child.memory.history.includes("Birth by Cell Fusion"), "History should mention birth");
+  assert.ok(child.memory.history, "History should be written");
+  assert.ok(child.memory.history.includes("Birth by Cell Fusion"), "History should mention birth");
 
-  console.assert(child.thoughts.length > 0, "Thought should be appended");
+  assert.ok(child.thoughts.length > 0, "Thought should be appended");
   
   console.log("✅ Fused Memory Seed written to Child");
 }
@@ -594,11 +595,11 @@ async function test11_ParentMemoryNotModified() {
     childId: "child-fused",
   });
 
-  console.assert(
+  assert.ok(
     parentA.memory.identity === "Original A identity",
     "Parent A identity should not change"
   );
-  console.assert(
+  assert.ok(
     parentB.memory.identity === "Original B identity",
     "Parent B identity should not change"
   );
@@ -628,11 +629,11 @@ async function test12_ParentLivingContextNotModified() {
     childId: "child-fused",
   });
 
-  console.assert(
+  assert.ok(
     parentA.livingContext.purpose === "Original A purpose",
     "Parent A Living Context should not change"
   );
-  console.assert(
+  assert.ok(
     parentB.livingContext.purpose === "Original B purpose",
     "Parent B Living Context should not change"
   );
@@ -666,8 +667,8 @@ async function test13_ParentHasFusedIntoRelationship() {
     r => r.type === "fused-into" && r.target === "child-fused"
   );
 
-  console.assert(parentARelationship, "Parent A should have fused-into relationship");
-  console.assert(parentBRelationship, "Parent B should have fused-into relationship");
+  assert.ok(parentARelationship, "Parent A should have fused-into relationship");
+  assert.ok(parentBRelationship, "Parent B should have fused-into relationship");
   
   console.log("✅ Parents have fused-into relationships");
 }
@@ -700,8 +701,8 @@ async function test14_ChildHasFusedFromRelationship() {
     r => r.type === "fused-from" && r.target === "parent-b"
   );
 
-  console.assert(fusedFromA, "Child should have fused-from relationship to parent-a");
-  console.assert(fusedFromB, "Child should have fused-from relationship to parent-b");
+  assert.ok(fusedFromA, "Child should have fused-from relationship to parent-a");
+  assert.ok(fusedFromB, "Child should have fused-from relationship to parent-b");
   
   console.log("✅ Child has fused-from relationships");
 }
@@ -737,9 +738,9 @@ async function test15_ApplicationFailureCompleteFalse() {
     childId: "child-fused",
   });
 
-  console.assert(result.success === false, "Success should be false");
-  console.assert(result.complete === false, "Complete should be false");
-  console.assert(result.errors.length > 0, "Errors should be recorded");
+  assert.ok(result.success === false, "Success should be false");
+  assert.ok(result.complete === false, "Complete should be false");
+  assert.ok(result.errors.length > 0, "Errors should be recorded");
   
   console.log("✅ Application failure sets complete to false");
 }
@@ -775,9 +776,9 @@ async function test16_ApplicationFailureChildNotDeleted() {
     childId: "child-fused",
   });
 
-  console.assert(result.child !== null, "Child should exist");
-  console.assert(result.child.id === "child-fused", "Child ID should match");
-  console.assert(engine.createdCells.length === 1, "Child should not be deleted");
+  assert.ok(result.child !== null, "Child should exist");
+  assert.ok(result.child.id === "child-fused", "Child ID should match");
+  assert.ok(engine.createdCells.length === 1, "Child should not be deleted");
   
   console.log("✅ Application failure does not delete Child");
 }
@@ -813,9 +814,9 @@ async function test17_ErrorsIncludeStage() {
     childId: "child-fused",
   });
 
-  console.assert(result.errors.length > 0, "Errors should exist");
-  console.assert(result.errors[0].stage === "apply-dna", "Error stage should be apply-dna");
-  console.assert(
+  assert.ok(result.errors.length > 0, "Errors should exist");
+  assert.ok(result.errors[0].stage === "apply-dna", "Error stage should be apply-dna");
+  assert.ok(
     result.errors[0].message.includes("Apply DNA failed"),
     "Error message should match"
   );
@@ -856,17 +857,17 @@ async function test18_ParentAndChildHaveIncompleteHistory() {
 
   const child = result.child;
 
-  console.assert(parentA.history.length > 0, "Parent A should have history");
-  console.assert(parentB.history.length > 0, "Parent B should have history");
-  console.assert(child.history.length > 0, "Child should have history");
+  assert.ok(parentA.history.length > 0, "Parent A should have history");
+  assert.ok(parentB.history.length > 0, "Parent B should have history");
+  assert.ok(child.history.length > 0, "Child should have history");
 
   const parentAHasIncomplete = parentA.history.some(h => h.includes("Incomplete Fusion"));
   const parentBHasIncomplete = parentB.history.some(h => h.includes("Incomplete Fusion"));
   const childHasIncomplete = child.history.some(h => h.includes("Incomplete Fusion"));
 
-  console.assert(parentAHasIncomplete, "Parent A should have incomplete history");
-  console.assert(parentBHasIncomplete, "Parent B should have incomplete history");
-  console.assert(childHasIncomplete, "Child should have incomplete history");
+  assert.ok(parentAHasIncomplete, "Parent A should have incomplete history");
+  assert.ok(parentBHasIncomplete, "Parent B should have incomplete history");
+  assert.ok(childHasIncomplete, "Child should have incomplete history");
   
   console.log("✅ Parent and Child have incomplete history");
 }
