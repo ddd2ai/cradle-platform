@@ -1,5 +1,3 @@
-import { block } from "../utils/text.js";
-import { commandArgs } from "./command-input.js";
 import {
   renderDivisionBeforeChildFailure,
   renderDivisionReadiness,
@@ -9,6 +7,7 @@ import { createCellCollaborationCommands } from "./cell-collaboration-commands.j
 import { createCellIntrospectionCommands } from "./cell-introspection-commands.js";
 import { createEvolutionCommands } from "./evolution-commands.js";
 import { createInboxCommands } from "./inbox-commands.js";
+import { createMemoryCommands } from "./memory-commands.js";
 import { createSnapshotCommands } from "./snapshot-commands.js";
 import { createStimulusCommands } from "./stimulus-commands.js";
 import { createTaskCommands } from "./task-commands.js";
@@ -22,29 +21,7 @@ export function createCellCommands() {
 
     ...createStimulusCommands(),
 
-    {
-      name: "/feed",
-      match: (input, { engine }) => input.startsWith("/feed ") && !engine.isCradleMode(),
-      execute: async ({ engine, input }) => {
-        const cell = engine.getActiveCell();
-        const content = commandArgs(input, "/feed");
-
-        if (!content) {
-          console.log("Usage: /feed <content>");
-          return;
-        }
-
-        await cell.appendKnowledge(
-          block([
-            `## ${new Date().toISOString()}`,
-            "",
-            content,
-            "",
-          ])
-        );
-        console.log("Memory updated.");
-      },
-    },
+    ...createMemoryCommands(),
 
     ...createWorkspaceCommands(),
 
