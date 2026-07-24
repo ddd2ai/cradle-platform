@@ -28,7 +28,7 @@ export function createHeartbeatCommands({
         }).beat();
 
         renderHeartbeatResult(result);
-      }
+      },
     },
 
     {
@@ -39,7 +39,7 @@ export function createHeartbeatCommands({
 
       execute: async ({ engine }) => {
         await engine.tickAll();
-      }
+      },
     },
 
     {
@@ -66,7 +66,7 @@ export function createHeartbeatCommands({
         const result = await store.setMode(mode);
         console.log("Heartbeat mode changed:");
         console.log(`${result.previous} → ${result.current}`);
-      }
+      },
     },
 
     {
@@ -87,9 +87,11 @@ export function createHeartbeatCommands({
 
         for (const record of proposals.slice(0, 20)) {
           const proposal = record.proposal || {};
-          console.log(`${proposal.proposalId}  ${proposal.status}  ${proposal.action}  ${proposal.sourceCellId}`);
+          console.log(
+            `${proposal.proposalId}  ${proposal.status}  ${proposal.action}  ${proposal.sourceCellId}`
+          );
         }
-      }
+      },
     },
   ];
 }
