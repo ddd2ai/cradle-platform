@@ -53,6 +53,7 @@ const tests = [
   "test/test-stimulus-store.js",
   "test/test-svd-division.js",
   "test/test-text-file.js",
+  "test/test-workspace-document-templates.js",
 ];
 
 let failed = 0;
