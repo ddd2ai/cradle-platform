@@ -36,9 +36,6 @@ import {
 import {
   createDivisionPlanFromMatrix,
 } from "./dna/dna-division.js";
-import {
-  calculateDNAMatrixCentroid,
-} from "./dna/dna-centroid.js";
 import { ArtifactProductionService } from "./production/artifact-production-service.js";
 import { StabilityStore } from "./stability/stability-store.js";
 
