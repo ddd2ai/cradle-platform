@@ -1,5 +1,6 @@
 import { CreateCellUseCase } from "../application/create-cell-use-case.js";
 import { GetCellDnaUseCase } from "../application/get-cell-dna-use-case.js";
+import { GetCellArtifactUseCase } from "../application/get-cell-artifact-use-case.js";
 import { GetHeartbeatUseCase } from "../application/get-heartbeat-use-case.js";
 import { GetHealthUseCase } from "../application/get-health-use-case.js";
 import { GetCellUseCase } from "../application/get-cell-use-case.js";
@@ -10,6 +11,7 @@ import { GetOperationUseCase } from "../application/get-operation-use-case.js";
 import { HeartbeatModeStore } from "../heartbeat/heartbeat-mode.js";
 import { InMemoryOperationStore } from "../application/operation-store.js";
 import { ListCellInboxUseCase } from "../application/list-cell-inbox-use-case.js";
+import { ListCellArtifactsUseCase } from "../application/list-cell-artifacts-use-case.js";
 import { ListCellLifecycleEventsUseCase } from "../application/list-cell-lifecycle-events-use-case.js";
 import { ListCellTasksUseCase } from "../application/list-cell-tasks-use-case.js";
 import { ListCellWorkspaceUseCase } from "../application/list-cell-workspace-use-case.js";
@@ -92,6 +94,27 @@ export function createApiHandler({
         const result = await new ReadCellWorkspaceFileUseCase({ engine }).execute({
           cellId: decodeURIComponent(workspaceFileMatch[1]),
           path: route.searchParams.get("path"),
+        });
+        return jsonResponse(200, result);
+      }
+
+      const artifactsMatch =
+        route.pathname.match(/^\/api\/v1\/cells\/([^/]+)\/artifacts$/);
+
+      if (route.method === "GET" && artifactsMatch) {
+        const result = await new ListCellArtifactsUseCase({ engine }).execute({
+          cellId: decodeURIComponent(artifactsMatch[1]),
+        });
+        return jsonResponse(200, result);
+      }
+
+      const artifactMatch =
+        route.pathname.match(/^\/api\/v1\/cells\/([^/]+)\/artifacts\/([^/]+)$/);
+
+      if (route.method === "GET" && artifactMatch) {
+        const result = await new GetCellArtifactUseCase({ engine }).execute({
+          cellId: decodeURIComponent(artifactMatch[1]),
+          artifactId: decodeURIComponent(artifactMatch[2]),
         });
         return jsonResponse(200, result);
       }

@@ -85,6 +85,27 @@ const cellStore = new Map([
           status: "completed",
         },
       ],
+      artifactSummaries: {
+        artifacts: [
+          {
+            artifactId: "artifact-001",
+            type: "document",
+            title: "Design",
+            status: "completed",
+            outputPaths: ["design.md"],
+          },
+        ],
+        errors: [],
+      },
+      artifacts: {
+        "artifact-001": {
+          id: "artifact-001",
+          type: "document",
+          title: "Design",
+          status: "completed",
+          outputs: [{ kind: "file", path: "design.md", content: "# Design" }],
+        },
+      },
     }),
   ],
   [
@@ -387,6 +408,42 @@ assert.deepEqual(lifecycleEvents.body, {
   ],
 });
 
+const artifacts = await handler({
+  method: "GET",
+  url: "/api/v1/cells/cell-001/artifacts",
+});
+
+assert.equal(artifacts.status, 200);
+assert.deepEqual(artifacts.body, {
+  cellId: "cell-001",
+  artifacts: [
+    {
+      artifactId: "artifact-001",
+      type: "document",
+      title: "Design",
+      status: "completed",
+      outputPaths: ["design.md"],
+    },
+  ],
+  errors: [],
+});
+
+const artifact = await handler({
+  method: "GET",
+  url: "/api/v1/cells/cell-001/artifacts/artifact-001",
+});
+
+assert.equal(artifact.status, 200);
+assert.equal(artifact.body.artifact.id, "artifact-001");
+
+const missingArtifact = await handler({
+  method: "GET",
+  url: "/api/v1/cells/cell-001/artifacts/missing-artifact",
+});
+
+assert.equal(missingArtifact.status, 404);
+assert.equal(missingArtifact.body.error.code, "ARTIFACT_NOT_FOUND");
+
 const heartbeat = await handler({
   method: "GET",
   url: "/api/v1/heartbeat",
@@ -482,6 +539,8 @@ function createCell({
   tasks = [],
   inbox = [],
   lifecycleEvents = [],
+  artifactSummaries = { artifacts: [], errors: [] },
+  artifacts = {},
 }) {
   const cell = {
     id,
@@ -500,6 +559,16 @@ function createCell({
     readTasks: async () => tasks,
     readInbox: async () => inbox,
     readLifecycleEvents: async () => lifecycleEvents,
+    artifactStore: {
+      listArtifactSummaries: async () => artifactSummaries,
+      readArtifact: async (artifactId) => {
+        if (!(artifactId in artifacts)) {
+          throw new Error("missing");
+        }
+
+        return artifacts[artifactId];
+      },
+    },
     readWorkspaceFile: async (relativePath) => {
       if (!(relativePath in workspaceFiles)) {
         throw new Error("missing");
