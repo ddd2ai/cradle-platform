@@ -77,6 +77,7 @@ const tests = [
   "test/test-task-commands.js",
   "test/test-text-file.js",
   "test/test-workspace-document-templates.js",
+  "test/test-workspace-record-commands.js",
   "test/test-workspace-commands.js",
 ];
 
