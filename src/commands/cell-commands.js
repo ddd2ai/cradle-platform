@@ -5,7 +5,6 @@ import { getAiTimeoutMs } from "../cradle-config.js";
 import { commandArgs, splitFirstArg } from "./command-input.js";
 import { writeTextFile } from "../utils/text-file.js";
 import {
-  createInboxDigestPrompt,
   createPerceptionPrompt,
   createTaskArtifactPrompt,
 } from "./cell-command-prompts.js";
@@ -27,57 +26,17 @@ import {
 } from "./cell-list-renderer.js";
 import { createCellIntrospectionCommands } from "./cell-introspection-commands.js";
 import { createEvolutionCommands } from "./evolution-commands.js";
+import { createInboxCommands } from "./inbox-commands.js";
 import { createSnapshotCommands } from "./snapshot-commands.js";
 import { createWorkspaceCommands } from "./workspace-commands.js";
 import {
-  renderInbox,
-  renderInboxProcessResult,
   renderMetabolismResult,
   renderTaskList,
 } from "./cell-work-renderer.js";
 
 export function createCellCommands() {
   return [
-    {
-      name: "/inbox",
-      match: (input, { engine }) => input === "/inbox" && !engine.isCradleMode(),
-      execute: async ({ engine }) => {
-        const cell = engine.getActiveCell();
-        const inbox = await cell.readInbox();
-        engine.inboxes.set(cell.id, inbox);
-
-        renderInbox(inbox);
-      },
-    },
-
-    {
-      name: "/send",
-      match: (input, { engine }) => input.startsWith("/send ") && !engine.isCradleMode(),
-      execute: async ({ engine, input }) => {
-        const cell = engine.getActiveCell();
-        const { first: targetCellId, rest: message } =
-          splitFirstArg(input, "/send");
-
-        if (!targetCellId || !message) {
-          console.log("Usage: /send <cell-id> <message>");
-          return;
-        }
-
-        if (!engine.cells.has(targetCellId)) {
-          console.log(`Target cell not found: ${targetCellId}`);
-          return;
-        }
-
-        await engine.pushMessage({
-          from: cell.id,
-          to: targetCellId,
-          type: "message",
-          content: message,
-        });
-
-        console.log(`Message sent from ${cell.id} to ${targetCellId}`);
-      },
-    },
+    ...createInboxCommands(),
 
     ...createCellIntrospectionCommands(),
 
@@ -373,82 +332,6 @@ export function createCellCommands() {
           ...profile,
           convergence,
         }, null, 2));
-      },
-    },
-
-    {
-      name: "/digest",
-
-      match: (input, { engine }) =>
-        input === "/digest" &&
-        !engine.isCradleMode(),
-
-      execute: async ({ engine }) => {
-        const cell = engine.getActiveCell();
-        const inbox = engine.inboxes.get(cell.id) ?? [];
-
-        if (inbox.length === 0) {
-          console.log("(empty inbox)");
-          return;
-        }
-
-        renderAnswerStart();
-
-        const result = await cell.ask(createInboxDigestPrompt(inbox));
-
-        const outputText =
-          engine.cleanMarkdownFence(result?.text ?? result?.answer ?? "");
-
-        await cell.writeWorkspaceFile(
-          `digest-${engine.formatTimestamp(new Date())}.md`,
-          outputText
-        );
-
-        console.log("\nInbox digest created.");
-      },
-    },
-
-    {
-      name: "/process",
-
-      match: (input, { engine }) =>
-        input === "/process" &&
-        !engine.isCradleMode(),
-
-      execute: async ({ engine }) => {
-        const cell = engine.getActiveCell();
-        const inbox = engine.inboxes.get(cell.id) ?? [];
-
-        if (inbox.length === 0) {
-          console.log("(empty inbox)");
-          return;
-        }
-
-        renderAnswerStart();
-
-        const result = await cell.processInbox(inbox);
-
-        engine.inboxes.set(cell.id, []);
-        await cell.clearInbox();
-
-        renderInboxProcessResult(result);
-      },
-    },
-
-    {
-      name: "/clean-inbox",
-
-      match: (input, { engine }) =>
-        input === "/clean-inbox" &&
-        !engine.isCradleMode(),
-
-      execute: async ({ engine }) => {
-        const cell = engine.getActiveCell();
-
-        engine.inboxes.set(cell.id, []);
-        await cell.clearInbox();
-
-        console.log(`Inbox cleared: ${cell.id}`);
       },
     },
 
