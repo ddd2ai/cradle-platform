@@ -1,5 +1,6 @@
 import { commandArgs } from "./command-input.js";
 import { renderExecutionResult } from "./execution-result-renderer.js";
+import { renderStabilizationResult } from "./stabilization-result-renderer.js";
 
 export function createExecutionCommands() {
   return [
@@ -79,27 +80,7 @@ File     : situation/stimuli/${stimulus.category}/${stimulus.file}
             maxRounds: 3,
           });
 
-          console.log(`
-Stabilization completed.
-
-Artifact : ${result.artifactId}
-Stable   : ${result.stable ? "yes" : "no"}
-Rounds   : ${result.rounds ?? result.history.length}
-Reason   : ${result.reason ?? "-"}
-
-History:
-${result.history.map((item) => `
-- Round ${item.round}
-  executionStatus: ${item.executionStatus}
-  createdTasks   : ${item.createdTasks}
-  observation    : ${item.observationFile ?? "-"}
-  tasks          : ${
-    item.newTasks.length === 0
-      ? "-"
-      : item.newTasks.map((task) => task.title).join(", ")
-  }
-`).join("\n")}
-`);
+          renderStabilizationResult(result);
         } catch (error) {
           console.log("\n❌ Stabilization failed\n");
           console.error(error.message);
