@@ -7,6 +7,7 @@ import { createCellPaths } from "./cell/cell-paths.js";
 import { createCellRuntimeServices } from "./cell/cell-runtime-services.js";
 import { CellPromptContextService } from "./cell/cell-prompt-context-service.js";
 import { CellLifecycleFacade } from "./cell/cell-lifecycle-facade.js";
+import { CellEvolutionFacade } from "./cell/cell-evolution-facade.js";
 import { prepareCellDirectories } from "./cell/cell-directory-preparer.js";
 import { mergeCellProfileForStart } from "./cell/cell-profile.js";
 import { block } from "./utils/text.js";
@@ -14,7 +15,6 @@ import { parseLooseJsonObject } from "./utils/json.js";
 import { writeJsonFile } from "./utils/json-file.js";
 import {
   getAiTimeoutMs,
-  getTimeoutMs,
 } from "./cradle-config.js";
 import {
   renderError,
@@ -78,6 +78,9 @@ export class CradleCell {
       cell: this,
     });
     this.lifecycleFacade = new CellLifecycleFacade({
+      cell: this,
+    });
+    this.evolutionFacade = new CellEvolutionFacade({
       cell: this,
     });
 
@@ -758,250 +761,27 @@ ${input}
   }
 
   async applyDNADrift(dnaDrift = []) {
-    const vector = await this.readDNAVector();
-
-    if (!vector) return;
-
-    for (const drift of dnaDrift) {
-      const trait = String(drift.trait ?? "").toUpperCase();
-      const factor = drift.factor;
-      const delta = Number(drift.delta ?? 0);
-
-      if (!trait || !factor) continue;
-
-      vector[trait] ??= {};
-      vector[trait][factor] ??= 0.5;
-
-      vector[trait][factor] =
-        this.clampDNAValue(Number(vector[trait][factor]) + delta);
-    }
-
-    await this.writeDNAVector(vector);
-    await this.appendDNAHistory("evolution");
+    await this.evolutionFacade.applyDNADrift(dnaDrift);
   }
 
   async calculateDNAVelocity(windowSize = 5) {
-    let history = [];
-
-    try {
-      const raw = await fs.readFile(this.dnaHistoryFile, "utf8");
-      history = JSON.parse(raw);
-    } catch {
-      return 1;
-    }
-
-    if (history.length < 2) {
-      return 1;
-    }
-
-    const recent = history.slice(-windowSize);
-
-    let totalDelta = 0;
-    let count = 0;
-
-    for (let i = 1; i < recent.length; i++) {
-      const prev = recent[i - 1].vector;
-      const curr = recent[i].vector;
-
-      for (const dnaKey of Object.keys(curr)) {
-        for (const factor of Object.keys(curr[dnaKey] ?? {})) {
-          const a = Number(prev?.[dnaKey]?.[factor] ?? 0);
-          const b = Number(curr?.[dnaKey]?.[factor] ?? 0);
-
-          totalDelta += Math.abs(b - a);
-          count++;
-        }
-      }
-    }
-
-    if (count === 0) return 1;
-
-    return totalDelta / count;
+    return await this.evolutionFacade.calculateDNAVelocity(windowSize);
   }
 
   async calculateConvergence() {
-    const velocity = await this.calculateDNAVelocity();
-
-    const convergence = Math.max(0, Math.min(1, 1 - velocity));
-
-    return {
-      velocity,
-      convergence,
-      percent: Math.round(convergence * 100),
-    };
+    return await this.evolutionFacade.calculateConvergence();
   }
 
   parseEvolutionJson(raw = "{}") {
-    try {
-      return parseLooseJsonObject(raw);
-    } catch {
-      return {
-        summary: "Evolution JSON parse failed.",
-        dnaDrift: [],
-        affinities: [],
-      };
-    }
+    return this.evolutionFacade.parseEvolutionJson(raw);
   }
 
   async readLatestEvolution() {
-    try {
-      const files = await fs.readdir(
-        this.evolutionsDir
-      );
-
-      const latest =
-        files
-          .filter(file => file.endsWith(".md"))
-          .sort()
-          .at(-1);
-
-      if (!latest) {
-        return null;
-      }
-
-      return await fs.readFile(
-        path.join(
-          this.evolutionsDir,
-          latest
-        ),
-        "utf8"
-      );
-    } catch {
-      return null;
-    }
+    return await this.evolutionFacade.readLatestEvolution();
   }
 
   async evolve({ force = false } = {}) {
-    if (this.isEvolving) {
-      return {
-        evolved: false,
-        reason: "already evolving",
-        thoughtCount: 0,
-      };
-    }
-
-    this.isEvolving = true;
-
-    try {
-      const thoughts = await this.loadUnevolvedThoughts(5);
-
-      if (!force && thoughts.length < 5) {
-        return {
-          evolved: false,
-          reason: "not enough thoughts",
-          thoughtCount: thoughts.length,
-        };
-      }
-
-      if (thoughts.length === 0) {
-        return {
-          evolved: false,
-          reason: "no thoughts",
-          thoughtCount: 0,
-        };
-      }
-
-      const dnaVector = await this.readDNAVector();
-
-      const thoughtContext = thoughts
-        .map((thought) => `
-      ## ${thought.file}
-
-      ${this.tail(thought.content, 1200)}
-      `)
-              .join("\n\n");
-
-            const result = await this.askWithTimeout(`
-      你是 ${this.id} 的 Evolution 模組。
-
-      你的任務是：
-      根據最近累積的 Thought，總結這個 Cell 的經驗，並產生小幅 DNA drift。
-
-      請只輸出 JSON。
-      不要 markdown。
-      不要 code fence。
-      不要額外說明。
-
-      輸出格式如下：
-
-      {
-        "summary": "這次 evolution 的總結",
-        "dnaDrift": [
-          {
-            "trait": "PERCEPTION",
-            "factor": "fitness",
-            "delta": 0.02,
-            "reason": "原因"
-          }
-        ],
-        "affinities": ["api", "product", "query"]
-      }
-
-      限制：
-      - trait 只能是：PERCEPTION、DECISION、DECOMPOSITION、LEARNING、COLLABORATION、CREATION、EVOLUTION、REFLECTION
-      - factor 只能是：strength、stability、plasticity、fitness
-      - delta 必須介於 -0.05 到 0.05
-      - 最多輸出 2 筆 dnaDrift
-      - affinities 最多 5 個
-      - 不要一次大幅改變 DNA
-      - 如果沒有明確變化，dnaDrift 可以是空陣列
-
-      DNA Drift Rules：
-      - 只調整最能代表這批 thoughts 的 DNA trait。
-      - 不要平均分配 drift 到多個 trait。
-      - 優先讓 Cell 逐漸形成 specialization，而不是維持全能平衡。
-      - 如果 thoughts 明顯偏向某一種能力，請集中強化該 trait。
-      - 不相關的 trait 不要調整。
-      - 重複出現的主題，應該強化同一個主要 trait。
-      - strength 代表此 trait 對 Cell 行為的影響倍率。
-      - fitness 代表此 trait 在目前環境中的平均有效性。
-      - stability 代表此 trait 的可信度修正。
-      - plasticity 代表此 trait 的波動程度或可塑性。
-
-      # Current DNA Vector
-
-      ${JSON.stringify(dnaVector, null, 2)}
-
-      # Thoughts
-
-      ${thoughtContext}
-      `, getAiTimeoutMs());
-
-            const raw = result?.text ?? result?.answer ?? "{}";
-            const evolution = this.parseEvolutionJson(raw);
-
-            await this.applyDNADrift(evolution.dnaDrift ?? []);
-
-            const filename = await this.evolutionStore.writeEvolutionJournal({
-              evolution,
-              thoughts,
-            });
-
-      const state = await this.readEvolutionState();
-
-      state.evolvedThoughts = [
-        ...new Set([
-          ...(state.evolvedThoughts ?? []),
-          ...thoughts.map((thought) => thought.file),
-        ]),
-      ];
-
-      state.evolutionCount = Number(state.evolutionCount ?? 0) + 1;
-      state.lastEvolvedAt = new Date().toISOString();
-      state.lastEvolutionFile = filename;
-
-      await this.writeEvolutionState(state);
-
-      return {
-        evolved: true,
-        file: filename,
-        thoughtCount: thoughts.length,
-        dnaDrift: evolution.dnaDrift ?? [],
-        affinities: evolution.affinities ?? [],
-      };
-    } finally {
-      this.isEvolving = false;
-    }
+    return await this.evolutionFacade.evolve({ force });
   }
 
   async readCellProfile() {
@@ -1565,23 +1345,7 @@ ${memoryContext}
   }
 
   async getEvolutionStatus() {
-    const thoughts = await this.listThoughtFiles();
-    const state = await this.readEvolutionState();
-
-    const evolvedThoughts = state.evolvedThoughts ?? [];
-    const unevolvedThoughts = thoughts.filter(
-      (file) => !evolvedThoughts.includes(file)
-    );
-
-    return {
-      totalThoughts: thoughts.length,
-      evolvedThoughts: evolvedThoughts.length,
-      unevolvedThoughts: unevolvedThoughts.length,
-      nextEvolutionIn: Math.max(0, 5 - unevolvedThoughts.length),
-      evolutionCount: Number(state.evolutionCount ?? 0),
-      lastEvolvedAt: state.lastEvolvedAt ?? "-",
-      lastEvolutionFile: state.lastEvolutionFile ?? "-",
-    };
+    return await this.evolutionFacade.getEvolutionStatus();
   }
 
   async loadUnevolvedThoughts(limit = 5) {
@@ -1589,63 +1353,7 @@ ${memoryContext}
   }
 
   async reflect({ input, output }) {
-    try {
-      const reflectionPrompt = `
-      你是 ${this.name} 的自我反思模組。
-
-      請根據本次互動，產生一段「可長期保存」的細胞記憶。
-
-      請只輸出 Markdown，並分成三段：
-
-      ## Learned
-      本次學到什麼。
-
-      ## Useful Pattern
-      未來可重複使用的模式。
-
-      ## Next Growth
-      這個 Cell 下一步可以如何成長。
-
-      ---
-
-      # User Input
-
-      ${input}
-
-      ---
-
-      # Cell Output
-
-      ${output}
-      `;
-
-      const result = await this.askWithTimeout(reflectionPrompt, getTimeoutMs("reflectionSeconds"));
-      const reflection = result?.text ?? result?.answer ?? "";
-
-      if (!reflection.trim()) return;
-
-      const timestamp = new Date().toISOString();
-
-      await this.appendThought(
-        block([
-          `## ${timestamp}`,
-          "",
-          reflection,
-          "",
-        ])
-      );
-
-      await this.appendKnowledge(
-        block([
-          `## Learned at ${timestamp}`,
-          "",
-          reflection,
-          "",
-        ])
-      );
-    } catch {
-      // reflection 失敗不應中斷主要任務
-    }
+    await this.evolutionFacade.reflect({ input, output });
   }
 
   async readMemory(name = "knowledge") {
