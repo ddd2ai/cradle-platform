@@ -44,10 +44,11 @@ const engine = new CradleEngine({
 await engine.loadCells();
 
 const port = Number(process.env.PORT || DEFAULT_PORT);
+const host = process.env.HOST || "127.0.0.1";
 const server = createHttpServer({
   handler: createApiHandler({ engine }),
 });
 
-server.listen(port, () => {
-  console.log(`Cradle API listening on http://localhost:${port}`);
+server.listen(port, host, () => {
+  console.log(`Cradle API listening on http://${host}:${port}`);
 });
