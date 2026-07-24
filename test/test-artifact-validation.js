@@ -1,80 +1,100 @@
 #!/usr/bin/env node
 
-// 測試 validateOutputsByType 驗證邏輯
+import assert from "node:assert/strict";
 
-import { ArtifactProductionService } from "../src/production/artifact-production-service.js";
+import { ArtifactValidator } from "../src/production/artifact-validator.js";
 
-console.log("🧪 Artifact Outputs 驗證測試\n");
+const validator = new ArtifactValidator();
 
-// 建立一個 mock service (只用來測試驗證方法)
-const mockService = new ArtifactProductionService({
-  cell: { id: "test" },
-  assistant: {},
-  productionsDir: "/tmp/test",
+function output({ path, language, content }) {
+  return {
+    kind: "file",
+    path,
+    language,
+    content,
+  };
+}
+
+function assertValidOutputs(artifact) {
+  assert.doesNotThrow(() => validator.validateOutputs(artifact));
+}
+
+function assertInvalidOutputs(artifact, pattern) {
+  assert.throws(() => validator.validateOutputs(artifact), pattern);
+}
+
+console.log("Testing artifact output validation...");
+
+assertValidOutputs({
+  type: "document",
+  outputs: [
+    output({
+      path: "design.md",
+      language: "markdown",
+      content: "# Design\n\nValid markdown.",
+    }),
+    output({
+      path: "readme.md",
+      language: "markdown",
+      content: "# README\n\nValid markdown.",
+    }),
+  ],
 });
 
-console.log("測試 1: document type 只允許 .md 檔案\n");
-
-// ✅ 有效的 document outputs
-try {
-  mockService.validateOutputsByType({
+assertInvalidOutputs(
+  {
     type: "document",
     outputs: [
-      { path: "design.md", language: "markdown" },
-      { path: "readme.md", language: "markdown" },
+      output({
+        path: "design.md",
+        language: "markdown",
+        content: "# Design\n\nValid markdown.",
+      }),
+      output({
+        path: "src/main/java/App.java",
+        language: "java",
+        content: "public class App {}",
+      }),
     ],
-  });
-  console.log("✅ 有效的 document outputs: 通過");
-} catch (error) {
-  console.log("❌ 不應該失敗:", error.message);
-}
+  },
+  /Invalid output language/
+);
 
-// ❌ 無效的 document outputs (包含 Java)
-try {
-  mockService.validateOutputsByType({
-    type: "document",
-    outputs: [
-      { path: "design.md", language: "markdown" },
-      { path: "src/main/java/App.java", language: "java" },
-    ],
-  });
-  console.log("❌ 不應該通過 - document 不能包含 Java");
-} catch (error) {
-  console.log("✅ 正確攔截無效 document outputs");
-  console.log(`   錯誤訊息: ${error.message}`);
-}
+assertValidOutputs({
+  type: "code",
+  outputs: [
+    output({
+      path: "src/App.java",
+      language: "java",
+      content: "public class App {}",
+    }),
+    output({
+      path: "config.yaml",
+      language: "yaml",
+      content: "name: cradle",
+    }),
+    output({
+      path: "README.md",
+      language: "markdown",
+      content: "# README",
+    }),
+  ],
+});
 
-console.log("\n測試 2: code type 允許多種檔案類型\n");
+assertValidOutputs({
+  type: "generic",
+  outputs: [
+    output({
+      path: "anything.txt",
+      language: "text",
+      content: "anything",
+    }),
+    output({
+      path: "whatever.xyz",
+      language: "unknown",
+      content: "whatever",
+    }),
+  ],
+});
 
-// ✅ code type 可以包含多種檔案
-try {
-  mockService.validateOutputsByType({
-    type: "code",
-    outputs: [
-      { path: "src/App.java", language: "java" },
-      { path: "config.yaml", language: "yaml" },
-      { path: "README.md", language: "markdown" },
-    ],
-  });
-  console.log("✅ code type 允許多種檔案: 通過");
-} catch (error) {
-  console.log("❌ code type 應該允許多種檔案:", error.message);
-}
-
-console.log("\n測試 3: generic type 不驗證\n");
-
-// ✅ generic type 不做驗證
-try {
-  mockService.validateOutputsByType({
-    type: "generic",
-    outputs: [
-      { path: "anything.txt", language: "text" },
-      { path: "whatever.xyz", language: "unknown" },
-    ],
-  });
-  console.log("✅ generic type 不做驗證: 通過");
-} catch (error) {
-  console.log("❌ generic type 不應該驗證:", error.message);
-}
-
-console.log("\n🎉 驗證邏輯測試完成!");
+console.log("Artifact validation tests passed");
