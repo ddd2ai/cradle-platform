@@ -1,5 +1,7 @@
 import assert from "assert";
 import { createApiHandler } from "../src/api/api-handler.js";
+import { InMemoryOperationStore } from "../src/application/operation-store.js";
+import { OperationRunner } from "../src/application/operation-runner.js";
 
 const engine = {
   activeCellId: "Cradle",
@@ -62,7 +64,36 @@ const cellStore = new Map([
   ],
 ]);
 
-const handler = createApiHandler({ engine });
+const modeStore = {
+  mode: "manual",
+  getMode: async () => modeStore.mode,
+  setMode: async (mode) => {
+    const previous = modeStore.mode;
+    modeStore.mode = mode;
+    return { previous, current: mode };
+  },
+};
+const operationStore = new InMemoryOperationStore({
+  now: () => new Date("2026-07-24T10:00:00.000Z"),
+});
+const operationRunner = new OperationRunner({ operationStore });
+const heartbeatCalls = [];
+const handler = createApiHandler({
+  engine,
+  heartbeatModeStoreFactory: () => modeStore,
+  heartbeatServiceFactory: () => ({
+    beat: async () => {
+      heartbeatCalls.push("beat");
+      return {
+        status: "completed",
+        action: "stay",
+        mode: modeStore.mode,
+      };
+    },
+  }),
+  operationStore,
+  operationRunner,
+});
 
 const health = await handler({
   method: "GET",
@@ -169,6 +200,65 @@ const missingActivation = await handler({
 assert.equal(missingActivation.status, 404);
 assert.equal(missingActivation.body.error.code, "CELL_NOT_FOUND");
 
+const heartbeat = await handler({
+  method: "GET",
+  url: "/api/v1/heartbeat",
+});
+
+assert.equal(heartbeat.status, 200);
+assert.deepEqual(heartbeat.body, { mode: "manual" });
+
+const heartbeatMode = await handler({
+  method: "PUT",
+  url: "/api/v1/heartbeat/mode",
+  body: { mode: "automatic" },
+});
+
+assert.equal(heartbeatMode.status, 200);
+assert.deepEqual(heartbeatMode.body, {
+  previous: "manual",
+  current: "automatic",
+});
+
+const invalidHeartbeatMode = await handler({
+  method: "PUT",
+  url: "/api/v1/heartbeat/mode",
+  body: { mode: "fast" },
+});
+
+assert.equal(invalidHeartbeatMode.status, 400);
+assert.equal(invalidHeartbeatMode.body.error.code, "INVALID_HEARTBEAT_MODE");
+
+const heartbeatRun = await handler({
+  method: "POST",
+  url: "/api/v1/heartbeat/runs",
+});
+
+assert.equal(heartbeatRun.status, 202);
+assert.equal(heartbeatRun.body.type, "heartbeat");
+assert.equal(heartbeatRun.body.status, "accepted");
+assert.ok(heartbeatRun.body.operationId.startsWith("op-"));
+
+await waitForMicrotasks();
+
+const operation = await handler({
+  method: "GET",
+  url: `/api/v1/operations/${heartbeatRun.body.operationId}`,
+});
+
+assert.equal(operation.status, 200);
+assert.equal(operation.body.operation.status, "completed");
+assert.equal(operation.body.operation.result.action, "stay");
+assert.deepEqual(heartbeatCalls, ["beat"]);
+
+const missingOperation = await handler({
+  method: "GET",
+  url: "/api/v1/operations/op-missing",
+});
+
+assert.equal(missingOperation.status, 404);
+assert.equal(missingOperation.body.error.code, "OPERATION_NOT_FOUND");
+
 const notFound = await handler({
   method: "GET",
   url: "/missing",
@@ -179,6 +269,10 @@ assert.equal(notFound.body.error.code, "ROUTE_NOT_FOUND");
 assert.equal(notFound.body.error.message, "Route not found: GET /missing");
 
 console.log("API handler tests passed");
+
+function waitForMicrotasks() {
+  return new Promise((resolve) => setImmediate(resolve));
+}
 
 function createCell({ id, profile, active }) {
   const cell = {
