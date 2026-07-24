@@ -10,6 +10,7 @@ import { CellLifecycleFacade } from "./cell/cell-lifecycle-facade.js";
 import { CellEvolutionFacade } from "./cell/cell-evolution-facade.js";
 import { CellLivingContextService } from "./cell/cell-living-context-service.js";
 import { CellThinkingService } from "./cell/cell-thinking-service.js";
+import { CellArtifactExecutionService } from "./cell/cell-artifact-execution-service.js";
 import { prepareCellDirectories } from "./cell/cell-directory-preparer.js";
 import { mergeCellProfileForStart } from "./cell/cell-profile.js";
 import { block } from "./utils/text.js";
@@ -85,6 +86,9 @@ export class CradleCell {
       cell: this,
     });
     this.thinkingService = new CellThinkingService({
+      cell: this,
+    });
+    this.artifactExecutionService = new CellArtifactExecutionService({
       cell: this,
     });
 
@@ -1453,57 +1457,7 @@ ${memoryContext}
   }
 
   async executeArtifact(artifactId) {
-    const { ArtifactExecutionService } = await import(
-      "./execution/artifact-execution-service.js"
-    );
-
-    const { ThreatStore } = await import(
-      "./heartbeat/threat-store.js"
-    );
-
-    const { buildExecutionStimulus } = await import(
-      "./situation/execution-stimulus.js"
-    );
-
-    const executionService = new ArtifactExecutionService({
-      cellId: this.id,
-      productionsDir: this.productionsDir,
-      executionsDir: path.join(this.workspaceDir, "executions"),
-      threatStore: new ThreatStore(),
-    });
-
-    const result = await executionService.executeArtifact(artifactId);
-
-    const stimulus = buildExecutionStimulus({
-      cellId: this.id,
-      artifactId,
-      executionResult: result.toJSON ? result.toJSON() : result,
-    });
-
-    const stimulusFile = await this.writeStimulus({
-      category: stimulus.category,
-      name: `execution-${artifactId}-${this.formatTimestamp(new Date())}.md`,
-      content: stimulus.content,
-    });
-
-    await this.appendHistory(
-      block([
-        `## ${new Date().toISOString()}`,
-        "",
-        "### Artifact Executed",
-        "",
-        `- artifactId: ${artifactId}`,
-        `- status: ${result.status}`,
-        `- executionId: ${result.executionId ?? "-"}`,
-        `- stimulus: ${stimulusFile.category}/${stimulusFile.file}`,
-        "",
-      ])
-    );
-
-    return {
-      result,
-      stimulus: stimulusFile,
-    };
+    return await this.artifactExecutionService.executeArtifact(artifactId);
   }
 
   async repairArtifactFromTask({
