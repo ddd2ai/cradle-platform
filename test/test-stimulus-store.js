@@ -35,6 +35,44 @@ assert.equal(generated.category, "signals");
 assert.equal(generated.file, "stimulus-20260723-101112.md");
 assert.equal(await fs.readFile(generated.path, "utf8"), "new signal");
 
+await fs.writeFile(path.join(stimuliDir, "signals", "notes.txt"), "ignored");
+
+const stimuli = await store.readStimuli();
+
+assert.deepEqual(
+  stimuli.map(({ category, file, content }) => ({ category, file, content })),
+  [
+    {
+      category: "signals",
+      file: "stimulus-20260723-101112.md",
+      content: "new signal",
+    },
+    {
+      category: "threats",
+      file: "build-failure.md",
+      content: "compile failed",
+    },
+  ]
+);
+
+await store.archiveStimuli(stimuli);
+
+await assert.rejects(
+  () => fs.access(path.join(stimuliDir, "signals", "stimulus-20260723-101112.md")),
+  /ENOENT/
+);
+assert.equal(
+  await fs.readFile(
+    path.join(
+      stimuliDir,
+      "processed",
+      "signals-20260723-101112-stimulus-20260723-101112.md"
+    ),
+    "utf8"
+  ),
+  "new signal"
+);
+
 await assert.rejects(
   () => store.writeStimulus({ category: "unknown" }),
   /Invalid stimulus category/

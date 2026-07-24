@@ -1267,40 +1267,7 @@ ${memoryContext}
   }
 
   async readStimuli() {
-    const categories = [
-      "signals",
-      "threats",
-      "pressures",
-      "resources",
-    ];
-
-    const results = [];
-
-    for (const category of categories) {
-      const dir = path.join(this.stimuliDir, category);
-
-      try {
-        const files = await fs.readdir(dir);
-
-        for (const file of files) {
-          if (!file.endsWith(".md")) continue;
-
-          const filePath = path.join(dir, file);
-          const content = await fs.readFile(filePath, "utf8");
-
-          results.push({
-            category,
-            file,
-            path: filePath,
-            content,
-          });
-        }
-      } catch {
-        // skip missing category
-      }
-    }
-
-    return results;
+    return await this.stimulusStore.readStimuli();
   }
 
   async writeStimulus({ category = "signals", name, content } = {}) {
@@ -1312,23 +1279,7 @@ ${memoryContext}
   }
 
   async archiveStimuli(stimuli = []) {
-    const processedDir = path.join(this.stimuliDir, "processed");
-
-    await fs.mkdir(processedDir, { recursive: true });
-
-    for (const item of stimuli) {
-      const from = path.join(this.stimuliDir, item.category, item.file);
-      const to = path.join(
-        processedDir,
-        `${item.category}-${this.formatTimestamp(new Date())}-${item.file}`
-      );
-
-      try {
-        await fs.rename(from, to);
-      } catch {
-        // ignore missing file
-      }
-    }
+    await this.stimulusStore.archiveStimuli(stimuli);
   }
 
   async readRecentHistory(maxChars = 8000) {
