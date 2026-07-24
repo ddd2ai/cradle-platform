@@ -27,11 +27,8 @@ export function createCellCommands() {
 
     ...createDivisionCommands(),
 
-
     ...createCellCollaborationCommands(),
 
     ...createTaskCommands(),
-
-
   ];
 }
