@@ -1,9 +1,5 @@
-import fs from "fs/promises";
 import { renderColonyGraph } from "../ui/render-colony-graph.js";
-import { dnaVectorToMatrix } from "../dna/dna-matrix.js";
 import { CellFusionService } from "../lifecycle/cell-fusion-service.js";
-import { block } from "../utils/text.js";
-import { commandArgs } from "./command-input.js";
 import { createColonyCommunicationCommands } from "./colony-communication-commands.js";
 import { createFusionCommands } from "./fusion-commands.js";
 import {
@@ -28,7 +24,7 @@ export function createColonyCommands({
 
     ...createFusionCommands({ fusionServiceFactory }),
 
-   {
+    {
       name: "/work",
 
       match: (input) =>
@@ -166,7 +162,5 @@ export function createColonyCommands({
         console.log("Watch stopped.");
       },
     },
-
-
   ];
 }
