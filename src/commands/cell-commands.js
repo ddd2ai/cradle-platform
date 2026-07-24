@@ -28,6 +28,13 @@ import {
   renderLifecycleDecision,
   renderMaturityInfo,
 } from "./cell-status-renderer.js";
+import {
+  renderEvolutionResult,
+  renderInbox,
+  renderInboxProcessResult,
+  renderMetabolismResult,
+  renderTaskList,
+} from "./cell-work-renderer.js";
 
 export function createCellCommands() {
   return [
@@ -39,20 +46,7 @@ export function createCellCommands() {
         const inbox = await cell.readInbox();
         engine.inboxes.set(cell.id, inbox);
 
-        if (inbox.length === 0) {
-          console.log("(empty inbox)");
-          return;
-        }
-
-        for (const message of inbox) {
-          console.log(`
-          [${message.type}] ${message.createdAt}
-          From: ${message.from}
-          To  : ${message.to}
-
-          ${message.content}
-          `);
-        }
+        renderInbox(inbox);
       },
     },
 
@@ -338,13 +332,7 @@ export function createCellCommands() {
 
         const result = await cell.metabolize();
 
-        console.log(`
-Metabolism completed.
-
-Created tasks : ${result.created}
-Observation   : ${result.observationFile ?? "-"}
-Reason        : ${result.reason ?? "-"}
-`);
+        renderMetabolismResult(result);
       },
     },
 
@@ -756,23 +744,7 @@ Reason        : ${result.reason ?? "-"}
           force: true,
         });
 
-        if (!result.evolved) {
-          console.log(`
-Evolution skipped.
-
-Reason       : ${result.reason}
-Thought count: ${result.thoughtCount}
-`);
-          return;
-        }
-
-        console.log(`
-Evolution completed.
-
-File         : ${result.file}
-Thoughts     : ${result.thoughtCount}
-DNA drift    : ${result.dnaDrift.length}
-`);
+        renderEvolutionResult(result);
       },
     },
 
@@ -1086,14 +1058,7 @@ DNA drift    : ${result.dnaDrift.length}
         engine.inboxes.set(cell.id, []);
         await cell.clearInbox();
 
-        console.log(`
-        Inbox processed.
-
-        Messages:
-        ${result.processed}
-
-        ${result.summary}
-        `);
+        renderInboxProcessResult(result);
       },
     },
 
@@ -1156,18 +1121,7 @@ DNA drift    : ${result.dnaDrift.length}
         const cell = engine.getActiveCell();
         const tasks = await cell.readTasks();
 
-        if (tasks.length === 0) {
-          console.log("(no tasks)");
-          return;
-        }
-
-        for (const task of tasks) {
-          console.log(`
-          [${task.status}] ${task.id}
-          ${task.title}
-          source: ${task.source}
-          `);
-        }
+        renderTaskList(tasks);
       },
     },
 
