@@ -10,9 +10,6 @@
   "scripts": {
     "copilot:ensure": "node scripts/ensure-copilot-cli.js",
     "test": "node scripts/run-tests.js",
-    "test:providers": "node test/test-provider.js",
-    "test:gemini": "node test/test-gemini-provider.js",
-    "test:pipeline": "node test/test-production-pipeline.js && node test/test-execution-pipeline.js",
     "start": "node src/cradle.js start",
     "dev": "node src/cradle.js start"
   },

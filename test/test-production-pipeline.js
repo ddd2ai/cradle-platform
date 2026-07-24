@@ -7,23 +7,27 @@ import path from "path";
 
 const PROVIDER = process.env.PROVIDER || "ollama";
 const MODEL = process.env.MODEL || "gemma:7b";
+const CELL_ID = "test-production-cell";
 
 console.log(`\n=== Production Pipeline Test ===`);
 console.log(`Provider: ${PROVIDER}`);
 console.log(`Model: ${MODEL}\n`);
 
 async function runTests() {
+  await fs.rm(`cells/${CELL_ID}`, { recursive: true, force: true });
+
   // 建立測試 cell
   const cell = new CradleCell({
-    id: "cell-001",
+    id: CELL_ID,
     name: "Test Cell",
     model: MODEL,
     provider: PROVIDER,
   });
 
-  await cell.prepare();
+  try {
+    await cell.prepare();
 
-  console.log(`✓ Cell prepared: ${cell.id}\n`);
+    console.log(`✓ Cell prepared: ${cell.id}\n`);
 
 // 測試案例
 const testCases = [
@@ -225,7 +229,11 @@ console.log(`══════════════════════�
 console.log(`Total: ${results.length} | Pass: ${passCount} | Fail: ${failCount}`);
 console.log(`═══════════════════════════════════════\n`);
 
-  return failCount;
+    return failCount;
+  } finally {
+    await cell.assistant?.cleanup?.();
+    await fs.rm(`cells/${CELL_ID}`, { recursive: true, force: true });
+  }
 }
 
 // 執行測試

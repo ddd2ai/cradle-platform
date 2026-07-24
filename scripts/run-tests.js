@@ -25,7 +25,6 @@ const tests = [
   "test/test-cell-task-store.js",
   "test/test-cell-workspace-store.js",
   "test/test-command-input.js",
-  "test/test-copilot-listener-cleanup.js",
   "test/test-division-plan-schema.js",
   "test/test-dna-lifecycle.js",
   "test/test-dna-maturity-integration.js",

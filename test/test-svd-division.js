@@ -1,5 +1,7 @@
 // test/test-svd-division.js
 
+import assert from "node:assert/strict";
+
 import {
   dnaVectorToMatrix,
 } from "../src/dna/dna-matrix.js";
@@ -82,9 +84,13 @@ const plan2 = createDivisionPlanFromMatrix(matrix2, {
   childId: "cell-002",
 });
 
-// 驗證兩次規劃產生相同結果
-console.assert(
-  JSON.stringify(plan) === JSON.stringify(plan2),
+// createdAt is intentionally time-based, so compare the deterministic plan body.
+const { createdAt: _createdAt, ...planBody } = plan;
+const { createdAt: _createdAt2, ...planBody2 } = plan2;
+
+assert.deepEqual(
+  planBody,
+  planBody2,
   "Planning should produce identical results for same input"
 );
 

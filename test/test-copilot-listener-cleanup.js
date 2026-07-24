@@ -269,4 +269,7 @@ async function testListenerCleanup() {
   await provider.cleanup();
 }
 
-testListenerCleanup().catch(console.error);
+testListenerCleanup().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

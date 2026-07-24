@@ -175,38 +175,45 @@ async function testCase2_Calculator(cell) {
 async function main() {
   const cell = await setupTestCell();
 
-  const results = [];
+  try {
+    const results = [];
 
-  // 測試案例 1
-  const result1 = await testCase1_HelloService(cell);
-  results.push({ name: "Case 1: HelloService", ...result1 });
+    // 測試案例 1
+    const result1 = await testCase1_HelloService(cell);
+    results.push({ name: "Case 1: HelloService", ...result1 });
 
-  // 測試案例 2
-  const result2 = await testCase2_Calculator(cell);
-  results.push({ name: "Case 2: Calculator", ...result2 });
+    // 測試案例 2
+    const result2 = await testCase2_Calculator(cell);
+    results.push({ name: "Case 2: Calculator", ...result2 });
 
-  // 總結
-  console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-  console.log("測試總結");
-  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+    // 總結
+    console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.log("測試總結");
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
-  for (const result of results) {
-    const symbol = result.status === "PASS" ? "✅" : "❌";
-    console.log(`${symbol} ${result.name}: ${result.status}`);
-    if (result.artifactId) {
-      console.log(`   Artifact: ${result.artifactId}`);
+    for (const result of results) {
+      const symbol = result.status === "PASS" ? "✅" : "❌";
+      console.log(`${symbol} ${result.name}: ${result.status}`);
+      if (result.artifactId) {
+        console.log(`   Artifact: ${result.artifactId}`);
+      }
     }
+
+    const passCount = results.filter((r) => r.status === "PASS").length;
+    const failCount = results.filter((r) => r.status === "FAIL").length;
+
+    console.log(`\n總計: ${results.length} | 通過: ${passCount} | 失敗: ${failCount}`);
+
+    if (failCount > 0) {
+      process.exitCode = 1;
+    }
+  } finally {
+    // 清理測試 cell
+    console.log("\n清理測試環境...");
+    await cell.assistant?.cleanup?.();
+    await fs.rm(`cells/${CELL_ID}`, { recursive: true, force: true });
+    console.log("✓ 清理完成");
   }
-
-  const passCount = results.filter((r) => r.status === "PASS").length;
-  const failCount = results.filter((r) => r.status === "FAIL").length;
-
-  console.log(`\n總計: ${results.length} | 通過: ${passCount} | 失敗: ${failCount}`);
-
-  // 清理測試 cell
-  console.log("\n清理測試環境...");
-  await fs.rm(`cells/${CELL_ID}`, { recursive: true, force: true });
-  console.log("✓ 清理完成");
 }
 
 main().catch((error) => {
