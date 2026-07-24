@@ -10,6 +10,7 @@ const tests = [
   "test/test-artifact-validation.js",
   "test/test-cell-config-store.js",
   "test/test-cell-command-prompts.js",
+  "test/test-cell-collaboration-commands.js",
   "test/test-cell-directory-preparer.js",
   "test/test-cell-dna-readiness-service.js",
   "test/test-cell-division-service.js",
