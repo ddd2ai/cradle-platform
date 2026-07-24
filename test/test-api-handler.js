@@ -111,6 +111,7 @@ const cellStore = new Map([
         status: "stable",
         consecutivePassed: 2,
       },
+      snapshots: ["snapshot-001", "snapshot-002"],
     }),
   ],
   [
@@ -465,6 +466,17 @@ const missingStability = await handler({
 assert.equal(missingStability.status, 404);
 assert.equal(missingStability.body.error.code, "STABILITY_STATE_NOT_FOUND");
 
+const snapshots = await handler({
+  method: "GET",
+  url: "/api/v1/cells/cell-001/snapshots",
+});
+
+assert.equal(snapshots.status, 200);
+assert.deepEqual(snapshots.body, {
+  cellId: "cell-001",
+  snapshots: ["snapshot-001", "snapshot-002"],
+});
+
 const missingArtifact = await handler({
   method: "GET",
   url: "/api/v1/cells/cell-001/artifacts/missing-artifact",
@@ -571,6 +583,7 @@ function createCell({
   artifactSummaries = { artifacts: [], errors: [] },
   artifacts = {},
   stabilityState = null,
+  snapshots = [],
 }) {
   const cell = {
     id,
@@ -603,6 +616,7 @@ function createCell({
       getArtifactState: async (artifactId) =>
         artifactId === stabilityState?.artifactId ? stabilityState : null,
     },
+    listSnapshots: async () => snapshots,
     readWorkspaceFile: async (relativePath) => {
       if (!(relativePath in workspaceFiles)) {
         throw new Error("missing");

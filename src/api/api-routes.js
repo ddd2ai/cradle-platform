@@ -14,6 +14,7 @@ import { ListCellArtifactsUseCase } from "../application/list-cell-artifacts-use
 import { ListCellInboxUseCase } from "../application/list-cell-inbox-use-case.js";
 import { ListCellLifecycleEventsUseCase } from "../application/list-cell-lifecycle-events-use-case.js";
 import { ListCellTasksUseCase } from "../application/list-cell-tasks-use-case.js";
+import { ListCellSnapshotsUseCase } from "../application/list-cell-snapshots-use-case.js";
 import { ListCellWorkspaceUseCase } from "../application/list-cell-workspace-use-case.js";
 import { ListCellsUseCase } from "../application/list-cells-use-case.js";
 import { ListOperationsUseCase } from "../application/list-operations-use-case.js";
@@ -122,6 +123,12 @@ export function createApiRoutes({
     ),
     pattern("GET", /^\/api\/v1\/cells\/([^/]+)\/tasks$/, async ({ params }) =>
       new ListCellTasksUseCase({ engine }).execute({ cellId: params[0] })
+    ),
+    pattern(
+      "GET",
+      /^\/api\/v1\/cells\/([^/]+)\/snapshots$/,
+      async ({ params }) =>
+        new ListCellSnapshotsUseCase({ engine }).execute({ cellId: params[0] })
     ),
     pattern("GET", /^\/api\/v1\/cells\/([^/]+)\/inbox$/, async ({ params }) =>
       new ListCellInboxUseCase({ engine }).execute({ cellId: params[0] })
