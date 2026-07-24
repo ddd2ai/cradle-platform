@@ -1,6 +1,8 @@
+import { CreateCellUseCase } from "../application/create-cell-use-case.js";
 import { GetHealthUseCase } from "../application/get-health-use-case.js";
 import { GetCellUseCase } from "../application/get-cell-use-case.js";
 import { ListCellsUseCase } from "../application/list-cells-use-case.js";
+import { SetCellActiveUseCase } from "../application/set-cell-active-use-case.js";
 import { ApiError, mapApiError } from "./api-error.js";
 
 export function createApiHandler({ engine }) {
@@ -18,11 +20,29 @@ export function createApiHandler({ engine }) {
         return jsonResponse(200, result);
       }
 
+      if (route.method === "POST" && route.pathname === "/api/v1/cells") {
+        const result = await new CreateCellUseCase({ engine }).execute({
+          cellId: request.body?.cellId,
+        });
+        return jsonResponse(201, result);
+      }
+
       const cellMatch = route.pathname.match(/^\/api\/v1\/cells\/([^/]+)$/);
 
       if (route.method === "GET" && cellMatch) {
         const result = await new GetCellUseCase({ engine }).execute({
           cellId: decodeURIComponent(cellMatch[1]),
+        });
+        return jsonResponse(200, result);
+      }
+
+      const activationMatch =
+        route.pathname.match(/^\/api\/v1\/cells\/([^/]+)\/(activate|deactivate)$/);
+
+      if (route.method === "POST" && activationMatch) {
+        const result = await new SetCellActiveUseCase({ engine }).execute({
+          cellId: decodeURIComponent(activationMatch[1]),
+          active: activationMatch[2] === "activate",
         });
         return jsonResponse(200, result);
       }
