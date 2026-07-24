@@ -20,6 +20,5 @@ export function createEngineCommands() {
     ...createHeartbeatCommands(),
 
     ...createEnvironmentCommands(),
-
   ];
 }
