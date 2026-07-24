@@ -79,6 +79,12 @@ const cellStore = new Map([
           content: "hello",
         },
       ],
+      lifecycleEvents: [
+        {
+          type: "division",
+          status: "completed",
+        },
+      ],
     }),
   ],
   [
@@ -353,6 +359,22 @@ assert.deepEqual(inbox.body, {
   ],
 });
 
+const lifecycleEvents = await handler({
+  method: "GET",
+  url: "/api/v1/cells/cell-001/lifecycle/events",
+});
+
+assert.equal(lifecycleEvents.status, 200);
+assert.deepEqual(lifecycleEvents.body, {
+  cellId: "cell-001",
+  events: [
+    {
+      type: "division",
+      status: "completed",
+    },
+  ],
+});
+
 const heartbeat = await handler({
   method: "GET",
   url: "/api/v1/heartbeat",
@@ -447,6 +469,7 @@ function createCell({
   lifecycleDecision = {},
   tasks = [],
   inbox = [],
+  lifecycleEvents = [],
 }) {
   const cell = {
     id,
@@ -464,6 +487,7 @@ function createCell({
     }),
     readTasks: async () => tasks,
     readInbox: async () => inbox,
+    readLifecycleEvents: async () => lifecycleEvents,
     readWorkspaceFile: async (relativePath) => {
       if (!(relativePath in workspaceFiles)) {
         throw new Error("missing");

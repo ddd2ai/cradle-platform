@@ -9,6 +9,7 @@ import { GetOperationUseCase } from "../application/get-operation-use-case.js";
 import { HeartbeatModeStore } from "../heartbeat/heartbeat-mode.js";
 import { InMemoryOperationStore } from "../application/operation-store.js";
 import { ListCellInboxUseCase } from "../application/list-cell-inbox-use-case.js";
+import { ListCellLifecycleEventsUseCase } from "../application/list-cell-lifecycle-events-use-case.js";
 import { ListCellTasksUseCase } from "../application/list-cell-tasks-use-case.js";
 import { ListCellWorkspaceUseCase } from "../application/list-cell-workspace-use-case.js";
 import { ListCellsUseCase } from "../application/list-cells-use-case.js";
@@ -139,6 +140,16 @@ export function createApiHandler({
       if (route.method === "GET" && inboxMatch) {
         const result = await new ListCellInboxUseCase({ engine }).execute({
           cellId: decodeURIComponent(inboxMatch[1]),
+        });
+        return jsonResponse(200, result);
+      }
+
+      const lifecycleEventsMatch =
+        route.pathname.match(/^\/api\/v1\/cells\/([^/]+)\/lifecycle\/events$/);
+
+      if (route.method === "GET" && lifecycleEventsMatch) {
+        const result = await new ListCellLifecycleEventsUseCase({ engine }).execute({
+          cellId: decodeURIComponent(lifecycleEventsMatch[1]),
         });
         return jsonResponse(200, result);
       }
