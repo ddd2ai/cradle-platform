@@ -13,6 +13,7 @@ import { CellThinkingService } from "./cell/cell-thinking-service.js";
 import { CellTaskProcessingService } from "./cell/cell-task-processing-service.js";
 import { CellMetabolismService } from "./cell/cell-metabolism-service.js";
 import { CellRuntimeLifecycleService } from "./cell/cell-runtime-lifecycle-service.js";
+import { CellDNAReadinessService } from "./cell/cell-dna-readiness-service.js";
 import { CellArtifactExecutionService } from "./cell/cell-artifact-execution-service.js";
 import { CellArtifactStabilizationService } from "./cell/cell-artifact-stabilization-service.js";
 import { prepareCellDirectories } from "./cell/cell-directory-preparer.js";
@@ -30,18 +31,11 @@ import {
   writeAssistantChunk,
 } from "./cradle-console.js";
 import {
-  calculateTraitValue,
-  calculateCellScore,
-} from "./dna/dna-measure.js";
-import {
   dnaVectorToMatrix,
 } from "./dna/dna-matrix.js";
 import {
   createDivisionPlanFromMatrix,
 } from "./dna/dna-division.js";
-import {
-  calculateDNAMaturityFromHistory,
-} from "./dna/dna-maturity.js";
 import {
   calculateDNAMatrixCentroid,
 } from "./dna/dna-centroid.js";
@@ -99,6 +93,9 @@ export class CradleCell {
       cell: this,
     });
     this.runtimeLifecycleService = new CellRuntimeLifecycleService({
+      cell: this,
+    });
+    this.dnaReadinessService = new CellDNAReadinessService({
       cell: this,
     });
     this.artifactExecutionService = new CellArtifactExecutionService({
@@ -366,30 +363,11 @@ ${input}
   }
 
   async prepareDNAVector() {
-    const definitions = await this.readDNADefinition();
-    const factors = await this.readDNAFactors();
-
-    const existing = await this.readDNAVector();
-
-    const vector = existing ?? {};
-
-    for (const definition of definitions) {
-      vector[definition.name] ??= {};
-
-      for (const factor of factors) {
-        vector[definition.name][factor] ??= this.defaultDNAFactorValue(factor);
-      }
-    }
-
-    await this.writeDNAVector(vector);
-    await this.appendDNAHistory("prepare");
+    await this.dnaReadinessService.prepareDNAVector();
   }
 
   defaultDNAFactorValue(factor) {
-    if (factor === "strength") return 0.5;
-    if (factor === "stability") return 0.7;
-    if (factor === "plasticity") return 0.3;
-    return 0.5;
+    return this.dnaReadinessService.defaultDNAFactorValue(factor);
   }
 
   async readDNAVector() {
@@ -486,8 +464,7 @@ ${input}
    * @returns {Promise<number>} Maturity percentage
    */
   async getMaturity() {
-    const maturity = await this.getMaturityInfo();
-    return maturity.percent;
+    return await this.dnaReadinessService.getMaturity();
   }
 
   /**
@@ -504,13 +481,7 @@ ${input}
    * - currentTraitScores: latest trait scores
    */
   async getMaturityInfo() {
-    const history = await this.readDNAHistory();
-
-    return calculateDNAMaturityFromHistory(history, {
-      windowSize: 5,
-      varianceScale: 1,
-      maxMagnitude: 8,
-    });
+    return await this.dnaReadinessService.getMaturityInfo();
   }
 
   /**
@@ -549,7 +520,7 @@ ${input}
    * @returns {Promise<Object>} Complete maturity information
    */
   async mature(amount = 1) {
-    return await this.getMaturityInfo();
+    return await this.dnaReadinessService.mature(amount);
   }
 
   /**
@@ -562,14 +533,7 @@ ${input}
    * @returns {Promise<boolean>} Can divide or not
    */
   async canDivide() {
-    const maturity = await this.getMaturityInfo();
-
-    return (
-      maturity.sampleSize >= 5 &&
-      maturity.maturity >= 0.75 &&
-      maturity.temporalVariance <= 0.08 &&
-      maturity.normalizedMagnitude >= 0.60
-    );
+    return await this.dnaReadinessService.canDivide();
   }
 
   /**
@@ -579,36 +543,7 @@ ${input}
    * @throws {Error} Detailed error message with all requirements
    */
   async assertCanDivide() {
-    const maturity = await this.getMaturityInfo();
-
-    const passed =
-      maturity.sampleSize >= 5 &&
-      maturity.maturity >= 0.75 &&
-      maturity.temporalVariance <= 0.08 &&
-      maturity.normalizedMagnitude >= 0.60;
-
-    if (passed) {
-      return maturity;
-    }
-
-    throw new Error(
-      [
-        `Cell ${this.id} is not mature enough to divide.`,
-        "",
-        `Maturity           : ${maturity.percent}%`,
-        `State              : ${maturity.state}`,
-        `Sample Size        : ${maturity.sampleSize}`,
-        `Temporal Variance  : ${maturity.temporalVariance.toFixed(6)}`,
-        `Convergence        : ${maturity.convergence.toFixed(4)}`,
-        `NormalizedMagnitude: ${maturity.normalizedMagnitude.toFixed(4)}`,
-        "",
-        "Required:",
-        "- sampleSize >= 5",
-        "- maturity >= 75%",
-        "- temporalVariance <= 0.08",
-        "- normalizedMagnitude >= 0.60",
-      ].join("\n")
-    );
+    return await this.dnaReadinessService.assertCanDivide();
   }
 
   async divideTo(childCell) {
@@ -750,36 +685,7 @@ ${input}
   }
 
   async getEvolutionInfo() {
-    const profile = await this.readCellProfile();
-    const dnaVector = await this.readDNAVector();
-
-    // Convert DNA vector to simplified format for projection
-    const dna = {};
-    if (dnaVector) {
-      const traitMapping = {
-        PERCEPTION: "PER",
-        DECISION: "DEC",
-        DECOMPOSITION: "DEP",
-        LEARNING: "LEA",
-        COLLABORATION: "COL",
-        CREATION: "CRE",
-        EVOLUTION: "EVO",
-        REFLECTION: "REF",
-      };
-
-      for (const [trait, shortName] of Object.entries(traitMapping)) {
-        dna[shortName] = calculateTraitValue(dnaVector[trait] ?? {});
-      }
-    }
-
-    return {
-      id: profile?.id,
-      status: profile?.status,
-      maturity: Number(profile?.maturity ?? 0),
-      generation: Number(profile?.generation ?? 1),
-      parent: profile?.parent ?? null,
-      dna,
-    };
+    return await this.dnaReadinessService.getEvolutionInfo();
   }
 
   async addResponsibility(name) {
@@ -1169,55 +1075,7 @@ ${memoryContext}
   // =========================
 
   async getDNARank() {
-
-    const dna =
-      await this.readDNAVector();
-
-    const traits = [
-      "PERCEPTION",
-      "DECISION",
-      "DECOMPOSITION",
-      "LEARNING",
-      "COLLABORATION",
-      "CREATION",
-      "EVOLUTION",
-      "REFLECTION",
-    ];
-
-    const scores = {};
-
-    for (const trait of traits) {
-
-      const value =
-        dna?.[trait];
-
-      if (!value) {
-        scores[trait] = 0;
-        continue;
-      }
-
-      scores[trait] =
-        calculateTraitValue(value);
-    }
-
-    const dominant =
-      Object.entries(scores)
-        .sort((a, b) => b[1] - a[1])[0];
-
-    const cellScore =
-      calculateCellScore(
-        scores
-      );
-
-    return {
-      dominantDNA:
-        dominant[0],
-
-      score:
-        cellScore,
-
-      scores,
-    };
+    return await this.dnaReadinessService.getDNARank();
   }
 
   // =========================
