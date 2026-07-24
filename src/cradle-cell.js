@@ -10,6 +10,7 @@ import { CellLifecycleFacade } from "./cell/cell-lifecycle-facade.js";
 import { CellEvolutionFacade } from "./cell/cell-evolution-facade.js";
 import { CellLivingContextService } from "./cell/cell-living-context-service.js";
 import { CellThinkingService } from "./cell/cell-thinking-service.js";
+import { CellTaskProcessingService } from "./cell/cell-task-processing-service.js";
 import { CellArtifactExecutionService } from "./cell/cell-artifact-execution-service.js";
 import { CellArtifactStabilizationService } from "./cell/cell-artifact-stabilization-service.js";
 import { prepareCellDirectories } from "./cell/cell-directory-preparer.js";
@@ -87,6 +88,9 @@ export class CradleCell {
       cell: this,
     });
     this.thinkingService = new CellThinkingService({
+      cell: this,
+    });
+    this.taskProcessingService = new CellTaskProcessingService({
       cell: this,
     });
     this.artifactExecutionService = new CellArtifactExecutionService({
@@ -282,95 +286,7 @@ export class CradleCell {
 
 
   async processTask(task) {
-    const result = await this.askWithTimeout(`
-    你是 ${this.id}。
-
-    請根據你的 DNA、Memory、Vision、Environment,處理以下任務。
-
-    # Task
-
-    ${task.title}
-
-    # Content
-
-    ${task.content || "(empty)"}
-
-    請輸出：
-    - 任務理解
-    - 執行結果
-    - 下一步建議
-    `, getAiTimeoutMs());
-
-    const outputText =
-      result?.text ??
-      result?.answer ??
-      "(response streamed)";
-
-    const filename =
-      `tasks/task-result-${this.formatTimestamp(new Date())}.md`;
-
-    await this.writeWorkspaceFile(
-      filename,
-      `# Task Result
-
-    ## Task
-
-    ${task.title}
-
-    ## Task ID
-
-    ${task.id}
-
-    ## Result
-
-    ${outputText}
-
-    ---
-    createdAt: ${new Date().toISOString()}
-    `
-    );
-
-    await this.appendHistory(
-      block([
-        `## ${new Date().toISOString()}`,
-        "",
-        "### Task",
-        task.title,
-        "",
-        "### Result",
-        outputText,
-        "",
-      ])
-    );
-
-
-    await this.appendThought(
-      block([
-        `## ${new Date().toISOString()}`,
-        "",
-        "## Task Experience",
-        "",
-        "### Task",
-        task.title,
-        "",
-        "### Source",
-        task.source,
-        "",
-        "### Result Summary",
-        outputText,
-        "",
-        "### Growth Impact",
-        "This task changed how the cell understands its environment and future work.",
-        "",
-      ])
-    );
-
-    await this.mature(1);
-
-    return {
-      file: filename,
-      text: outputText,
-    };
+    return await this.taskProcessingService.processTask(task);
   }
 
   formatObservationMarkdown(observation) {
