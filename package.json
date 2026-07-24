@@ -12,7 +12,8 @@
     "copilot:ensure": "node scripts/ensure-copilot-cli.js",
     "test": "node scripts/run-tests.js",
     "start": "node src/cradle.js start",
-    "dev": "node src/cradle.js start"
+    "dev": "node src/cradle.js start",
+    "api": "node src/cradle-api.js"
   },
   "keywords": [
     "cradle",
