@@ -5,6 +5,7 @@ import { createCradleAssistant } from "./cradle-ai.js";
 import { createLLMProvider } from "./providers/llm-provider-factory.js";
 import { createCellPaths } from "./cell/cell-paths.js";
 import { createCellRuntimeServices } from "./cell/cell-runtime-services.js";
+import { CellPromptContextService } from "./cell/cell-prompt-context-service.js";
 import { prepareCellDirectories } from "./cell/cell-directory-preparer.js";
 import { mergeCellProfileForStart } from "./cell/cell-profile.js";
 import { block } from "./utils/text.js";
@@ -80,6 +81,9 @@ export class CradleCell {
         paths: this.paths,
       })
     );
+    this.promptContextService = new CellPromptContextService({
+      cell: this,
+    });
 
     this.assistant = null;
 
@@ -1539,25 +1543,7 @@ ${input}
   // =========================
 
   async readDNAContext() {
-    const dnaFiles = await this.getDNAFiles();
-    const contents = [];
-
-    for (const [key, file] of Object.entries(dnaFiles)) {
-      try {
-        const content = await fs.readFile(file, "utf8");
-        contents.push(`# ${key}\n\n${content}`);
-      } catch {
-        // skip missing DNA file
-      }
-    }
-
-    const vector = await this.readDNAVector();
-
-    if (vector) {
-      contents.push(`# DNA Vector\n\n\`\`\`json\n${JSON.stringify(vector, null, 2)}\n\`\`\``);
-    }
-
-    return contents.join("\n\n---\n\n");
+    return await this.promptContextService.readDNAContext();
   }
 
   async initDNA() {
@@ -1613,72 +1599,11 @@ ${memoryContext}
   }
 
   async buildMemoryContext(input = "") {
-    const identity = await this.safeReadMemory("identity");
-    const rules = await this.safeReadMemory("rules");
-    const knowledge = await this.safeReadMemory("knowledge");
-    const recentHistory = await this.readRecentHistory(8000);
-    const recentThoughts = await this.readRecentThoughts(4000);
-    const dnaContext = await this.readDNAContext();
-    const vision = await this.readVision();
-    const environment = await this.readEnvironment();
-
-    return `
-    ## DNA
-
-    ${dnaContext}
-
-    ---
-
-    ## Vision
-
-    ${vision}
-
-    ---
-
-    ## Environment
-
-    ${environment}
-
-    ---
-
-    ## Identity
-
-    ${identity}
-
-    ---
-
-    ## Rules
-
-    ${rules}
-
-    ---
-
-    ## Knowledge
-
-    ${knowledge}
-
-    ---
-
-    ## Recent History
-
-    ${recentHistory}
-
-    ---
-
-    ## Recent Thoughts
-
-    ${recentThoughts}
-
-    ---
-
-    ## Current Task Hint
-
-    ${input}
-    `;
+    return await this.promptContextService.buildMemoryContext(input);
   }
 
   async readMemoryContext() {
-    return await this.buildMemoryContext();
+    return await this.promptContextService.readMemoryContext();
   }
 
   async safeReadMemory(name) {
@@ -2530,82 +2455,7 @@ ${memoryContext}
   }
 
   async buildCellSystemPrompt() {
-    const vision = await this.safeReadFile(this.visionFile, "# VISION\n\n(empty)");
-    const environment = await this.safeReadFile(this.environmentFile, "# ENVIRONMENT\n\n(empty)");
-    const dnaDefinition = await this.safeReadFile(this.dnaDefinitionFile, "# DNA_DEFINITION\n\n(empty)");
-    const dnaFactors = await this.safeReadFile(this.dnaFactorsFile, "# DNA_FACTORS\n\n(empty)");
-
-    const identity = await this.safeReadMemory("identity");
-    const rules = await this.safeReadMemory("rules");
-    const knowledge = await this.safeReadMemory("knowledge");
-    const dnaContext = await this.readDNAContext();
-
-    return `
-你是 Cradle Cell，不是 Cradle Platform 的核心助手。
-
-你是一個會根據 DNA、記憶、環境與願景成長的軟體生命細胞。
-
-請永遠使用台灣常用繁體中文回答。
-不要使用簡體中文。
-不要使用制式客服語氣。
-
-你的回答必須根據以下來源：
-- VISION：定義你要長成什麼系統
-- ENVIRONMENT：定義你所在的技術環境與限制
-- DNA_DEFINITION：定義你的能力維度
-- DNA_FACTORS：定義你的成熟度與成長因素
-- CELL MEMORY：定義你的身份、規則、知識與經驗
-- CELL DNA：定義你目前的能力狀態
-
-你不能假裝自己是整個 Cradle Platform。
-你只能以目前 cell 的角度回答。
-
-# VISION
-
-${vision}
-
----
-
-# ENVIRONMENT
-
-${environment}
-
----
-
-# DNA_DEFINITION
-
-${dnaDefinition}
-
----
-
-# DNA_FACTORS
-
-${dnaFactors}
-
----
-
-# CELL IDENTITY
-
-${identity}
-
----
-
-# CELL RULES
-
-${rules}
-
----
-
-# CELL KNOWLEDGE
-
-${knowledge}
-
----
-
-# CELL DNA
-
-${dnaContext}
-`;
+    return await this.promptContextService.buildCellSystemPrompt();
   }
 
   async listDirectoryRecursive(dir, baseDir = dir) {
