@@ -62,6 +62,7 @@ const tests = [
   "test/test-source-material-service.js",
   "test/test-snapshot-commands.js",
   "test/test-stimulus-store.js",
+  "test/test-stimulus-commands.js",
   "test/test-svd-division.js",
   "test/test-task-commands.js",
   "test/test-text-file.js",
