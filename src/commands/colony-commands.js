@@ -1,12 +1,17 @@
 import fs from "fs/promises";
 import { renderAnswerStart } from "../cradle-console.js";
 import { renderColonyGraph } from "../ui/render-colony-graph.js";
-import { renderTable } from "../ui/render-table.js";
 import { dnaVectorToMatrix } from "../dna/dna-matrix.js";
 import { CellFusionService } from "../lifecycle/cell-fusion-service.js";
 import { block } from "../utils/text.js";
 import { commandArgs, splitFirstArg } from "./command-input.js";
 import { createFusionCommands } from "./fusion-commands.js";
+import {
+  renderColonyStatus,
+  renderDnaMatrix,
+  renderEvolutionStatusTable,
+  renderWorkTable,
+} from "./colony-renderer.js";
 
 export function createColonyCommands({
   fusionServiceFactory = () => new CellFusionService(),
@@ -120,12 +125,7 @@ export function createColonyCommands({
           });
         }
 
-        console.log("");
-
-        renderTable(
-          ["Cell", "Inbox", "Tasks", "Action"],
-          rows
-        );
+        renderWorkTable(rows);
       },
     },
 
@@ -152,20 +152,7 @@ export function createColonyCommands({
           });
         }
 
-        console.log("");
-
-        renderTable(
-          [
-            "Cell",
-            "Thoughts",
-            "Unevolved",
-            "Evolved",
-            "Evolutions",
-            "Next",
-            "Last",
-          ],
-          rows
-        );
+        renderEvolutionStatusTable(rows);
       },
     },
 
@@ -217,25 +204,7 @@ export function createColonyCommands({
           });
         }
 
-        console.log("");
-        console.log("DNA Matrix");
-
-        renderTable(
-          [
-            "Cell",
-            "Dominant DNA",
-            "Score",
-            "PER",
-            "DEC",
-            "DEP",
-            "LEA",
-            "COL",
-            "CRE",
-            "EVO",
-            "REF",
-          ],
-          rows
-        );
+        renderDnaMatrix(rows);
       },
     },
 
@@ -246,9 +215,7 @@ export function createColonyCommands({
         input === "/colony",
 
       execute: async ({ engine }) => {
-        console.log("");
-        console.log("🧫 Cradle Colony");
-        console.log("");
+        const cells = [];
 
         for (const [id, cell] of engine.cells) {
           const profile = await cell.getEvolutionInfo();
@@ -257,38 +224,19 @@ export function createColonyCommands({
           const relationships = await cell.listRelationships();
           const inboxCount = engine.inboxes.get(id)?.length ?? 0;
 
-          console.log(id);
-          console.log(` ├─ status: ${profile.status ?? "unknown"}`);
-          console.log(` ├─ maturity: ${maturity.percent}% (${maturity.state})`);
-          console.log(` ├─ variance: ${maturity.temporalVariance.toFixed(6)}`);
-          console.log(` ├─ convergence: ${maturity.convergence.toFixed(4)}`);
-          console.log(` ├─ magnitude: ${maturity.normalizedMagnitude.toFixed(4)}`);
-          console.log(` ├─ generation: ${profile.generation ?? 1}`);
-          console.log(` ├─ parent: ${profile.parent ?? "-"}`);
-          console.log(` ├─ inbox: ${inboxCount}`);
-
-          console.log(" ├─ responsibilities:");
-
-          if (responsibilities.length === 0) {
-            console.log(" │   └─ -");
-          } else {
-            for (const item of responsibilities) {
-              console.log(` │   └─ ${item}`);
-            }
-          }
-
-          console.log(" └─ relationships:");
-
-          if (relationships.length === 0) {
-            console.log("     └─ -");
-          } else {
-            for (const link of relationships) {
-              console.log(`     └─ ${link.type} -> ${link.target}`);
-            }
-          }
-
-          console.log("");
+          cells.push({
+            id,
+            status: profile.status,
+            maturity,
+            generation: profile.generation,
+            parent: profile.parent,
+            inboxCount,
+            responsibilities,
+            relationships,
+          });
         }
+
+        renderColonyStatus(cells);
       },
     },
 
