@@ -8,6 +8,8 @@ import { GetCellMaturityUseCase } from "../application/get-cell-maturity-use-cas
 import { GetOperationUseCase } from "../application/get-operation-use-case.js";
 import { HeartbeatModeStore } from "../heartbeat/heartbeat-mode.js";
 import { InMemoryOperationStore } from "../application/operation-store.js";
+import { ListCellInboxUseCase } from "../application/list-cell-inbox-use-case.js";
+import { ListCellTasksUseCase } from "../application/list-cell-tasks-use-case.js";
 import { ListCellWorkspaceUseCase } from "../application/list-cell-workspace-use-case.js";
 import { ListCellsUseCase } from "../application/list-cells-use-case.js";
 import { OperationRunner } from "../application/operation-runner.js";
@@ -118,6 +120,24 @@ export function createApiHandler({
             route.searchParams.get("recentFailureRate"),
             0
           ),
+        });
+        return jsonResponse(200, result);
+      }
+
+      const tasksMatch = route.pathname.match(/^\/api\/v1\/cells\/([^/]+)\/tasks$/);
+
+      if (route.method === "GET" && tasksMatch) {
+        const result = await new ListCellTasksUseCase({ engine }).execute({
+          cellId: decodeURIComponent(tasksMatch[1]),
+        });
+        return jsonResponse(200, result);
+      }
+
+      const inboxMatch = route.pathname.match(/^\/api\/v1\/cells\/([^/]+)\/inbox$/);
+
+      if (route.method === "GET" && inboxMatch) {
+        const result = await new ListCellInboxUseCase({ engine }).execute({
+          cellId: decodeURIComponent(inboxMatch[1]),
         });
         return jsonResponse(200, result);
       }

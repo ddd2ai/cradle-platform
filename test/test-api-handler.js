@@ -65,6 +65,20 @@ const cellStore = new Map([
         action: "stay",
         confidence: 0.7,
       },
+      tasks: [
+        {
+          id: "task-001",
+          title: "Draft plan",
+          status: "pending",
+        },
+      ],
+      inbox: [
+        {
+          id: "msg-001",
+          from: "cell-002",
+          content: "hello",
+        },
+      ],
     }),
   ],
   [
@@ -305,6 +319,40 @@ assert.deepEqual(lifecycleDecision.body, {
   },
 });
 
+const tasks = await handler({
+  method: "GET",
+  url: "/api/v1/cells/cell-001/tasks",
+});
+
+assert.equal(tasks.status, 200);
+assert.deepEqual(tasks.body, {
+  cellId: "cell-001",
+  tasks: [
+    {
+      id: "task-001",
+      title: "Draft plan",
+      status: "pending",
+    },
+  ],
+});
+
+const inbox = await handler({
+  method: "GET",
+  url: "/api/v1/cells/cell-001/inbox",
+});
+
+assert.equal(inbox.status, 200);
+assert.deepEqual(inbox.body, {
+  cellId: "cell-001",
+  messages: [
+    {
+      id: "msg-001",
+      from: "cell-002",
+      content: "hello",
+    },
+  ],
+});
+
 const heartbeat = await handler({
   method: "GET",
   url: "/api/v1/heartbeat",
@@ -388,6 +436,8 @@ function createCell({
   dnaVector = {},
   maturityInfo = {},
   lifecycleDecision = {},
+  tasks = [],
+  inbox = [],
 }) {
   const cell = {
     id,
@@ -403,6 +453,8 @@ function createCell({
       ...lifecycleDecision,
       request,
     }),
+    readTasks: async () => tasks,
+    readInbox: async () => inbox,
     readWorkspaceFile: async (relativePath) => {
       if (!(relativePath in workspaceFiles)) {
         throw new Error("missing");
