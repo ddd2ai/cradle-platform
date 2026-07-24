@@ -5,7 +5,8 @@
   "type": "module",
   "main": "src/cradle.js",
   "bin": {
-    "cradle": "./src/cradle.js"
+    "cradle": "./src/cradle.js",
+    "cradle-api": "./src/cradle-api.js"
   },
   "scripts": {
     "copilot:ensure": "node scripts/ensure-copilot-cli.js",

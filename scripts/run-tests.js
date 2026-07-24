@@ -3,6 +3,7 @@
 import { spawnSync } from "node:child_process";
 
 const tests = [
+  "test/test-api-handler.js",
   "test/test-artifact-execution-service.js",
   "test/test-artifact-production-transformation.js",
   "test/test-artifact-regeneration-service.js",
