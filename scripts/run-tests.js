@@ -39,6 +39,7 @@ const tests = [
   "test/test-cell-task-store.js",
   "test/test-cell-work-renderer.js",
   "test/test-cell-workspace-store.js",
+  "test/test-cli-approval-service.js",
   "test/test-command-input.js",
   "test/test-colony-communication-commands.js",
   "test/test-colony-renderer.js",
