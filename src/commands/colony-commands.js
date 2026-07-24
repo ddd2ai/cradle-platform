@@ -10,6 +10,7 @@ import {
   renderColonyStatus,
   renderDnaMatrix,
   renderEvolutionStatusTable,
+  renderLiveWatch,
   renderWorkTable,
 } from "./colony-renderer.js";
 import {
@@ -205,47 +206,15 @@ export function createColonyCommands({
         }
 
         engine.watchTimer = setInterval(async () => {
-          console.clear();
-
-          console.log("🧫 Cradle Live Watch");
-          console.log(`Updated at: ${new Date().toLocaleString()}`);
-          console.log("");
-
           const statusRows = await buildWatchStatusRows(engine);
-
-          console.log("Status");
-          renderTable(
-            ["Cell", "Status", "Active", "Mature", "Life", "State", "Var", "Conv", "Gen", "Inbox"],
-            statusRows
-          );
-
           const workRows = await buildWorkRows(engine);
-
-          console.log("");
-          console.log("Work");
-          renderTable(
-            ["Cell", "Inbox", "Tasks", "Action"],
-            workRows
-          );
-
           const evolutionRows = await buildEvolutionRows(engine);
 
-          console.log("");
-          console.log("Evolution");
-          renderTable(
-            [
-              "Cell",
-              "Thoughts",
-              "Unevolved",
-              "Evolved",
-              "Evolutions",
-              "Next",
-            ],
-            evolutionRows
-          );
-
-          console.log("");
-          console.log("Use /unwatch to stop live watch.");
+          renderLiveWatch({
+            statusRows,
+            workRows,
+            evolutionRows,
+          });
         }, 2000);
 
         console.log("Live watch started. Use /unwatch to stop.");

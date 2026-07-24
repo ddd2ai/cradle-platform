@@ -87,3 +87,46 @@ export function renderColonyStatus(cells) {
     console.log("");
   }
 }
+
+export function renderLiveWatch({
+  now = new Date(),
+  statusRows,
+  workRows,
+  evolutionRows,
+}) {
+  console.clear();
+
+  console.log("🧫 Cradle Live Watch");
+  console.log(`Updated at: ${now.toLocaleString()}`);
+  console.log("");
+
+  console.log("Status");
+  renderTable(
+    ["Cell", "Status", "Active", "Mature", "Life", "State", "Var", "Conv", "Gen", "Inbox"],
+    statusRows
+  );
+
+  console.log("");
+  console.log("Work");
+  renderTable(
+    ["Cell", "Inbox", "Tasks", "Action"],
+    workRows
+  );
+
+  console.log("");
+  console.log("Evolution");
+  renderTable(
+    [
+      "Cell",
+      "Thoughts",
+      "Unevolved",
+      "Evolved",
+      "Evolutions",
+      "Next",
+    ],
+    evolutionRows
+  );
+
+  console.log("");
+  console.log("Use /unwatch to stop live watch.");
+}
