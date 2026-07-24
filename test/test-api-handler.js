@@ -404,6 +404,15 @@ assert.equal(operation.body.operation.status, "completed");
 assert.equal(operation.body.operation.result.action, "stay");
 assert.deepEqual(heartbeatCalls, ["beat"]);
 
+const operations = await handler({
+  method: "GET",
+  url: "/api/v1/operations",
+});
+
+assert.equal(operations.status, 200);
+assert.equal(operations.body.operations.length, 1);
+assert.equal(operations.body.operations[0].operationId, heartbeatRun.body.operationId);
+
 const missingOperation = await handler({
   method: "GET",
   url: "/api/v1/operations/op-missing",

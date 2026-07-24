@@ -31,6 +31,12 @@ export class InMemoryOperationStore {
     return this.operations.get(operationId) ?? null;
   }
 
+  list() {
+    return [...this.operations.values()].sort(
+      (a, b) => String(b.createdAt).localeCompare(String(a.createdAt))
+    );
+  }
+
   update(operationId, patch) {
     const operation = this.get(operationId);
 

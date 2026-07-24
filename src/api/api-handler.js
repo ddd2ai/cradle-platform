@@ -12,6 +12,7 @@ import { ListCellInboxUseCase } from "../application/list-cell-inbox-use-case.js
 import { ListCellTasksUseCase } from "../application/list-cell-tasks-use-case.js";
 import { ListCellWorkspaceUseCase } from "../application/list-cell-workspace-use-case.js";
 import { ListCellsUseCase } from "../application/list-cells-use-case.js";
+import { ListOperationsUseCase } from "../application/list-operations-use-case.js";
 import { OperationRunner } from "../application/operation-runner.js";
 import { ReadCellWorkspaceFileUseCase } from "../application/read-cell-workspace-file-use-case.js";
 import { RunHeartbeatUseCase } from "../application/run-heartbeat-use-case.js";
@@ -165,6 +166,13 @@ export function createApiHandler({
           operationRunner,
         }).execute();
         return jsonResponse(202, result);
+      }
+
+      if (route.method === "GET" && route.pathname === "/api/v1/operations") {
+        const result = await new ListOperationsUseCase({
+          operationStore,
+        }).execute();
+        return jsonResponse(200, result);
       }
 
       const operationMatch =
