@@ -4,18 +4,9 @@ import path from "path";
 import { createCradleAssistant } from "./cradle-ai.js";
 import { createLLMProvider } from "./providers/llm-provider-factory.js";
 import { createCellPaths } from "./cell/cell-paths.js";
+import { createCellRuntimeServices } from "./cell/cell-runtime-services.js";
 import { prepareCellDirectories } from "./cell/cell-directory-preparer.js";
 import { mergeCellProfileForStart } from "./cell/cell-profile.js";
-import { CellTaskStore } from "./cell/cell-task-store.js";
-import { CellLifecycleEventStore } from "./cell/cell-lifecycle-event-store.js";
-import { CellInboxStore } from "./cell/cell-inbox-store.js";
-import { CellMemoryStore } from "./cell/cell-memory-store.js";
-import { CellProfileStore } from "./cell/cell-profile-store.js";
-import { CellDNAStore } from "./cell/cell-dna-store.js";
-import { CellConfigStore } from "./cell/cell-config-store.js";
-import { CellEvolutionStore } from "./cell/cell-evolution-store.js";
-import { CellWorkspaceStore } from "./cell/cell-workspace-store.js";
-import { CellSnapshotStore } from "./cell/cell-snapshot-store.js";
 import { block } from "./utils/text.js";
 import { parseLooseJsonObject } from "./utils/json.js";
 import { writeJsonFile } from "./utils/json-file.js";
@@ -56,12 +47,9 @@ import {
   createLivingContext,
   normalizeLivingContext,
 } from "./living-context/living-context-schema.js";
-import { LivingContextStore } from "./living-context/living-context-store.js";
 import {
   resolveRepairTypeFromDecision,
 } from "./lifecycle/repair-type.js";
-import { StimulusStore } from "./situation/stimulus-store.js";
-import { ObservationStore } from "./situation/observation-store.js";
 
 export class CradleCell {
 
@@ -85,70 +73,13 @@ export class CradleCell {
     });
     Object.assign(this, this.paths);
 
-    this.taskStore = new CellTaskStore({
-      tasksDir: this.tasksDir,
-      tasksFile: this.tasksFile,
-      timestampFormatter: (date) => this.formatTimestamp(date),
-    });
-    this.lifecycleEventStore = new CellLifecycleEventStore({
-      lifecycleEventsFile: this.lifecycleEventsFile,
-    });
-    this.inboxStore = new CellInboxStore({
-      inboxDir: this.inboxDir,
-      inboxFile: this.inboxFile,
-    });
-    this.memoryStore = new CellMemoryStore({
-      memoryFiles: this.memoryFiles,
-      thoughtsDir: this.thoughtsDir,
-      cellId: this.id,
-      cellName: this.name,
-      timestampFormatter: (date) => this.formatTimestamp(date),
-    });
-    this.profileStore = new CellProfileStore({
-      cellFile: this.cellFile,
-      profileFile: this.profileFile,
-    });
-    this.dnaStore = new CellDNAStore({
-      dnaVectorFile: this.dnaVectorFile,
-      dnaHistoryFile: this.dnaHistoryFile,
-    });
-    this.configStore = new CellConfigStore({
-      dnaDefinitionFile: this.dnaDefinitionFile,
-      dnaFactorsFile: this.dnaFactorsFile,
-      visionFile: this.visionFile,
-      environmentFile: this.environmentFile,
-      dnaDir: this.dnaDir,
-    });
-    this.evolutionStore = new CellEvolutionStore({
-      thoughtsDir: this.thoughtsDir,
-      evolutionsDir: this.evolutionsDir,
-      evolutionStateFile: this.evolutionStateFile,
-      timestampFormatter: (date) => this.formatTimestamp(date),
-      tail: (content, maxChars) => this.tail(content, maxChars),
-    });
-    this.workspaceStore = new CellWorkspaceStore({
-      workspaceDir: this.workspaceDir,
-    });
-    this.livingContextStore = new LivingContextStore({
-      livingContextFile: this.livingContextFile,
-    });
-    this.stimulusStore = new StimulusStore({
-      stimuliDir: this.stimuliDir,
-      timestampFormatter: (date) => this.formatTimestamp(date),
-    });
-    this.observationStore = new ObservationStore({
-      observationsDir: this.observationsDir,
-      timestampFormatter: (date) => this.formatTimestamp(date),
-    });
-    this.snapshotStore = new CellSnapshotStore({
-      cellId: this.id,
-      snapshotsDir: this.snapshotsDir,
-      memoryDir: this.memoryDir,
-      workspaceDir: this.workspaceDir,
-      thoughtsDir: this.thoughtsDir,
-      cellFile: this.cellFile,
-      timestampFormatter: (date) => this.formatTimestamp(date),
-    });
+    Object.assign(
+      this,
+      createCellRuntimeServices({
+        cell: this,
+        paths: this.paths,
+      })
+    );
 
     this.assistant = null;
 
