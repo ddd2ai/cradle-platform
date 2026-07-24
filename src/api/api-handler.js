@@ -1,4 +1,6 @@
 import { GetHealthUseCase } from "../application/get-health-use-case.js";
+import { GetCellUseCase } from "../application/get-cell-use-case.js";
+import { ListCellsUseCase } from "../application/list-cells-use-case.js";
 import { ApiError, mapApiError } from "./api-error.js";
 
 export function createApiHandler({ engine }) {
@@ -8,6 +10,20 @@ export function createApiHandler({ engine }) {
 
       if (route.method === "GET" && route.pathname === "/health") {
         const result = await new GetHealthUseCase({ engine }).execute();
+        return jsonResponse(200, result);
+      }
+
+      if (route.method === "GET" && route.pathname === "/api/v1/cells") {
+        const result = await new ListCellsUseCase({ engine }).execute();
+        return jsonResponse(200, result);
+      }
+
+      const cellMatch = route.pathname.match(/^\/api\/v1\/cells\/([^/]+)$/);
+
+      if (route.method === "GET" && cellMatch) {
+        const result = await new GetCellUseCase({ engine }).execute({
+          cellId: decodeURIComponent(cellMatch[1]),
+        });
         return jsonResponse(200, result);
       }
 
