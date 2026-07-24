@@ -1,5 +1,6 @@
 import { commandArgs } from "./command-input.js";
 import { renderExecutionResult } from "./execution-result-renderer.js";
+import { renderStabilityState } from "./stability-state-renderer.js";
 import { renderStabilizationResult } from "./stabilization-result-renderer.js";
 
 export function createExecutionCommands() {
@@ -119,23 +120,7 @@ File     : situation/stimuli/${stimulus.category}/${stimulus.file}
             return;
           }
 
-          console.log(`
-Status               : ${state.status}
-Consecutive Passed   : ${state.consecutivePassed}
-Consecutive No Task  : ${state.consecutiveNoTask}
-Repair Count         : ${state.repairCount}
-Updated At           : ${state.updatedAt}
-${state.stableAt ? `Stable At            : ${state.stableAt}` : ""}
-
-Recent Records (last 5):
-${state.records.slice(-5).map((record) => `
-- Round ${record.round}
-  Status     : ${record.executionStatus}
-  Tasks      : ${record.createdTasks}
-  Observation: ${record.observationFile ?? "-"}
-  Created At : ${record.createdAt}
-`).join("\n")}
-`);
+          renderStabilityState(state);
         } catch (error) {
           console.log("\n❌ Failed to get stability state\n");
           console.error(error.message);
