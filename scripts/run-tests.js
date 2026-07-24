@@ -16,6 +16,7 @@ const tests = [
   "test/test-cell-evolution-store.js",
   "test/test-cell-fusion-service.js",
   "test/test-cell-inbox-store.js",
+  "test/test-cell-list-renderer.js",
   "test/test-cell-lifecycle-event-store.js",
   "test/test-cell-living-context.js",
   "test/test-cell-memory-store.js",

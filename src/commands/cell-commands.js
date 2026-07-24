@@ -24,6 +24,12 @@ import {
   renderCellTrace,
 } from "./cell-relationship-renderer.js";
 import {
+  renderEvolutionFileList,
+  renderSnapshotList,
+  renderStimuliList,
+  renderWorkspaceSections,
+} from "./cell-list-renderer.js";
+import {
   renderDNAHistory,
   renderLifecycleDecision,
   renderMaturityInfo,
@@ -247,18 +253,7 @@ export function createCellCommands() {
         const cell = engine.getActiveCell();
         const stimuli = await cell.readStimuli();
 
-        if (stimuli.length === 0) {
-          console.log("(no stimuli)");
-          return;
-        }
-
-        console.log("");
-        console.log("Situation Stimuli");
-        console.log("");
-
-        for (const item of stimuli) {
-          console.log(`[${item.category}] ${item.file}`);
-        }
+        renderStimuliList(stimuli);
       },
     },
 
@@ -674,23 +669,7 @@ export function createCellCommands() {
         const cell = engine.getActiveCell();
         const sections = await cell.listWorkspaceSections();
 
-        console.log("");
-        console.log("Workspace");
-        console.log("");
-
-        for (const [section, files] of Object.entries(sections)) {
-          console.log(`${section}/`);
-
-          if (files.length === 0) {
-            console.log("  └─ -");
-          } else {
-            for (const file of files) {
-              console.log(`  └─ ${file}`);
-            }
-          }
-
-          console.log("");
-        }
+        renderWorkspaceSections(sections);
       },
     },
 
@@ -708,7 +687,7 @@ export function createCellCommands() {
       match: (input, { engine }) => input === "/snapshots" && !engine.isCradleMode(),
       execute: async ({ engine }) => {
         const snapshots = await engine.getActiveCell().listSnapshots();
-        console.log(snapshots.length ? snapshots.join("\n") : "(no snapshots)");
+        renderSnapshotList(snapshots);
       },
     },
 
@@ -787,14 +766,7 @@ export function createCellCommands() {
             cell.evolutionsDir
           );
 
-        console.log("");
-
-        files
-          .filter(file => file.endsWith(".md"))
-          .sort()
-          .forEach(file => console.log(file));
-
-        console.log("");
+        renderEvolutionFileList(files);
       },
     },
 
