@@ -1,5 +1,6 @@
 import { toCellViewModel } from "../domain/cellViewModel";
 import { DnaDimensionsCard } from "./cell/DnaDimensionsCard";
+import { MaturityCard } from "./cell/MaturityCard";
 import { mapDnaDimensions } from "./cell/dna-dimensions";
 import { CellWorkspacePanel } from "./workspace/CellWorkspacePanel";
 
@@ -18,10 +19,6 @@ export function CellPanel({
   const isActive = normalizedStatus === "active" || normalizedStatus === "running";
   const isIdle = normalizedStatus === "idle" || normalizedStatus === "inactive";
   const isBusy = Boolean(activeAction);
-  const maturityText =
-    typeof view.maturity === "number"
-      ? `${Math.round(view.maturity <= 1 ? view.maturity * 100 : view.maturity)}%`
-      : "—";
   const dnaDimensions = mapDnaDimensions(view.dnaVector);
 
   return (
@@ -88,11 +85,7 @@ export function CellPanel({
           <div className="dashboard-card-value">{view.lifecycle}</div>
           <p>Current software life-cycle state.</p>
         </article>
-        <article className="dashboard-card">
-          <div className="dashboard-card-label">Maturity</div>
-          <div className="dashboard-card-value">{maturityText}</div>
-          <p>Estimated maturity of the selected cell.</p>
-        </article>
+        <MaturityCard maturity={view.maturityInfo} />
         <DnaDimensionsCard dimensions={dnaDimensions} />
       </div>
 

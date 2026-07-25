@@ -177,7 +177,7 @@ function App() {
           ...cell,
           dna,
           workspace,
-          maturity: maturity.maturity,
+          maturity: maturity.maturity ?? maturity,
         };
 
         setSelectedCell(selectedDetail);

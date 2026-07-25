@@ -92,6 +92,17 @@ button:focus-visible { outline: 2px solid #9b8cff; outline-offset: 2px; }
 .action-error { margin-top: 12px; color: #d88f8f; font-size: 12px; }
 .dashboard-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: stretch; gap: 14px; margin-top: 14px; } .dashboard-card { padding: 18px; } .cell-summary-grid .dashboard-card { min-height: 300px; }
 .dashboard-card-label { color: #929292; font-size: 11px; font-weight: 650; letter-spacing: .05em; text-transform: uppercase; } .dashboard-card-value { margin-top: 13px; font-size: 25px; font-weight: 650; } .dashboard-card p { margin: 8px 0 0; color: #929292; font-size: 12px; line-height: 1.5; }
+.maturity-card { display: flex; min-width: 0; flex-direction: column; }
+.maturity-summary { display: flex; align-items: center; gap: 14px; margin-top: 28px; }
+.maturity-value { color: #f2f2f2; font-size: 46px; font-weight: 700; line-height: 1; }
+.maturity-badge { display: inline-flex; align-items: center; min-height: 28px; padding: 4px 10px; border: 1px solid #4a4a4a; border-radius: 999px; background: #2e2e2e; color: #b7b7b7; font-size: 11px; font-weight: 700; letter-spacing: .06em; }
+.maturity-description { margin-top: 18px; color: #949494; font-size: 13px; line-height: 1.5; }
+.maturity-metrics { display: flex; flex-direction: column; margin-top: 24px; padding-top: 14px; border-top: 1px solid #3b3b3b; }
+.maturity-metric-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 32px; color: #999; font-size: 13px; }
+.maturity-metric-row span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.maturity-metric-row strong { max-width: 48%; overflow: hidden; color: #ddd; font-weight: 600; text-align: right; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.maturity-state-message { display: flex; min-height: 220px; align-items: center; justify-content: center; color: #929292; text-align: center; font-size: 13px; line-height: 1.5; }
+.maturity-state-message.is-error { color: #d28d8d; }
 .dna-dimensions-card { display: flex; min-width: 0; flex-direction: column; }
 .dna-dimension-list { display: flex; flex-direction: column; gap: 12px; margin-top: 18px; }
 .dna-dimension-item { min-width: 0; }

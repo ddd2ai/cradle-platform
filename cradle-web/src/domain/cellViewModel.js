@@ -1,10 +1,16 @@
 export function toCellViewModel(cell) {
   const id = cell.id ?? cell.cellId;
   const dna = cell.dna?.vector ?? cell.dna ?? cell.profile?.dna ?? {};
-  const maturity =
+  const maturityInfo =
     typeof cell.maturity === "object"
-      ? cell.maturity?.percent ?? cell.maturity?.maturity
-      : cell.maturity ?? cell.metrics?.maturity ?? null;
+      ? normalizeMaturityInfo(cell.maturity)
+      : typeof cell.metrics?.maturity === "object"
+        ? normalizeMaturityInfo(cell.metrics.maturity)
+        : typeof cell.maturity === "number"
+          ? { value: cell.maturity }
+          : typeof cell.metrics?.maturity === "number"
+            ? { value: cell.metrics.maturity }
+            : null;
   const workspaceSections = cell.workspace?.sections ?? {};
 
   return {
@@ -17,7 +23,8 @@ export function toCellViewModel(cell) {
       cell.profile?.lifecycle?.state ??
       cell.status ??
       "Unknown",
-    maturity,
+    maturity: maturityInfo?.value ?? null,
+    maturityInfo,
     dnaDimensions:
       cell.dnaDimensions ??
       (Object.keys(dna).length > 0 ? Object.keys(dna).length : null),
@@ -28,5 +35,12 @@ export function toCellViewModel(cell) {
       cell.profile?.directories?.workspace ??
       null,
     workspaceSections,
+  };
+}
+
+function normalizeMaturityInfo(maturity = {}) {
+  return {
+    ...maturity,
+    value: maturity.value ?? maturity.maturity ?? maturity.percent ?? null,
   };
 }

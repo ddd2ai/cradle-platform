@@ -122,6 +122,22 @@ export function classifyMaturity(maturity) {
   return "seed";
 }
 
+export function resolveDominantTrait(vector = []) {
+  if (!Array.isArray(vector) || vector.length === 0) {
+    return null;
+  }
+
+  let maxIndex = 0;
+
+  for (let index = 1; index < vector.length; index += 1) {
+    if (Number(vector[index] ?? 0) > Number(vector[maxIndex] ?? 0)) {
+      maxIndex = index;
+    }
+  }
+
+  return DNA_TRAITS[maxIndex] ?? null;
+}
+
 /**
  * Calculate DNA maturity from historical DNA vectors
  * 
@@ -153,6 +169,7 @@ export function calculateDNAMaturityFromHistory(
 
   if (recent.length < 2) {
     return {
+      value: 0,
       maturity: 0,
       percent: 0,
       state: "seed",
@@ -162,6 +179,7 @@ export function calculateDNAMaturityFromHistory(
       normalizedMagnitude: 0,
       temporalVariance: 1,
       convergence: 0,
+      dominantTrait: null,
       currentTraitScores: {},
     };
   }
@@ -205,6 +223,7 @@ export function calculateDNAMaturityFromHistory(
     );
 
   return {
+    value: maturity,
     maturity,
     percent: Math.round(maturity * 100),
     state: classifyMaturity(maturity),
@@ -213,6 +232,7 @@ export function calculateDNAMaturityFromHistory(
     normalizedMagnitude,
     temporalVariance,
     convergence,
+    dominantTrait: resolveDominantTrait(current.vector),
     currentTraitScores: current.traitScores,
   };
 }

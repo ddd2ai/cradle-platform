@@ -89,8 +89,15 @@ const cellStore = new Map([
       },
       dnaHistory: [{ version: 1, reason: "initialization" }],
       maturityInfo: {
+        value: 0.7,
+        maturity: 0.7,
         percent: 70,
         state: "stable",
+        normalizedMagnitude: 0.8,
+        temporalVariance: 0.0318,
+        convergence: 0.9692,
+        sampleSize: 8,
+        dominantTrait: "CREATION",
       },
       lifecycleDecision: {
         action: "stay",
@@ -525,8 +532,15 @@ assert.equal(maturity.status, 200);
 assert.deepEqual(maturity.body, {
   cellId: "cell-001",
   maturity: {
+    value: 0.7,
+    maturity: 0.7,
     percent: 70,
     state: "stable",
+    normalizedMagnitude: 0.8,
+    temporalVariance: 0.0318,
+    convergence: 0.9692,
+    sampleSize: 8,
+    dominantTrait: "CREATION",
   },
 });
 
