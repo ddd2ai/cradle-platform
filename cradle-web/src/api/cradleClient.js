@@ -14,6 +14,29 @@ export async function fetchCells() {
   }));
 }
 
+export async function createCell(cellId) {
+  const response = await fetch("/api/v1/cells", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ cellId }),
+  });
+
+  const data = await readJsonResponse(response);
+
+  if (!response.ok) {
+    throw new Error(
+      data?.error?.message ?? `Failed to create cell: ${response.status}`,
+    );
+  }
+
+  const cell = data.cell ?? data;
+
+  return {
+    ...cell,
+    id: cell.id ?? cell.cellId,
+  };
+}
+
 export async function fetchCell(cellId) {
   const response = await fetch(
     `/api/v1/cells/${encodeURIComponent(cellId)}`,
@@ -190,4 +213,14 @@ async function postCellsAction(action) {
     })),
     cultivation: data.cultivation ?? null,
   };
+}
+
+async function readJsonResponse(response) {
+  const contentType = response.headers.get("content-type");
+
+  if (!contentType?.includes("application/json")) {
+    return null;
+  }
+
+  return response.json();
 }

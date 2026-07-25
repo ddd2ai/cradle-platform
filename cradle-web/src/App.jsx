@@ -3,6 +3,7 @@ import "./App.css";
 import {
   activateAllCells,
   activateCell,
+  createCell,
   deactivateAllCells,
   deactivateCell,
   fetchCell,
@@ -33,6 +34,10 @@ function App() {
   const [cellAction, setCellAction] = useState(null);
   const [actionMessage, setActionMessage] = useState(null);
   const [actionError, setActionError] = useState(null);
+  const [isCreateCellOpen, setIsCreateCellOpen] = useState(false);
+  const [newCellId, setNewCellId] = useState("");
+  const [isCreatingCell, setIsCreatingCell] = useState(false);
+  const [createCellError, setCreateCellError] = useState(null);
   const [heartbeatRun, setHeartbeatRun] = useState(null);
   const [heartbeatStatus, setHeartbeatStatus] = useState(null);
   const [heartbeatMessage, setHeartbeatMessage] = useState(null);
@@ -329,7 +334,48 @@ function App() {
   }
 
   function handleCreateCell() {
-    console.log("Create new cell");
+    setNewCellId(getNextCellId(cells));
+    setCreateCellError(null);
+    setIsCreateCellOpen(true);
+  }
+
+  function handleCloseCreateCell() {
+    if (isCreatingCell) {
+      return;
+    }
+
+    setIsCreateCellOpen(false);
+    setCreateCellError(null);
+  }
+
+  async function handleSubmitCreateCell(event) {
+    event.preventDefault();
+
+    const cellId = newCellId.trim();
+
+    if (!cellId || isCreatingCell) {
+      return;
+    }
+
+    try {
+      setIsCreatingCell(true);
+      setCreateCellError(null);
+
+      const createdCell = await createCell(cellId);
+      const loadedCells = await loadCells();
+      const createdCellId = createdCell.id ?? cellId;
+
+      setIsCreateCellOpen(false);
+      setNewCellId("");
+      setActionMessage(`Cell ${createdCellId} created successfully.`);
+
+      const existsInList = loadedCells.some((cell) => cell.id === createdCellId);
+      await handleSelectCell(existsInList ? createdCellId : cellId);
+    } catch (error) {
+      setCreateCellError(error.message);
+    } finally {
+      setIsCreatingCell(false);
+    }
   }
 
   return (
@@ -412,8 +458,82 @@ function App() {
           )}
         </main>
       </div>
+      {isCreateCellOpen && (
+        <div className="modal-backdrop" role="presentation">
+          <section
+            className="create-cell-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="create-cell-title"
+          >
+            <form onSubmit={handleSubmitCreateCell}>
+              <div className="dialog-header">
+                <div>
+                  <h2 id="create-cell-title">New Cell</h2>
+                  <p>Create a Cell workspace and register it in the colony.</p>
+                </div>
+                <button
+                  type="button"
+                  className="dialog-close-button"
+                  onClick={handleCloseCreateCell}
+                  disabled={isCreatingCell}
+                  aria-label="Close"
+                >
+                  ×
+                </button>
+              </div>
+
+              <label className="field-label" htmlFor="new-cell-id">
+                Cell ID
+              </label>
+              <input
+                id="new-cell-id"
+                className="text-input"
+                value={newCellId}
+                onChange={(event) => setNewCellId(event.target.value)}
+                autoFocus
+                disabled={isCreatingCell}
+                placeholder="cell-003"
+              />
+
+              {createCellError && (
+                <div className="dialog-error">{createCellError}</div>
+              )}
+
+              <div className="dialog-actions">
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={handleCloseCreateCell}
+                  disabled={isCreatingCell}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="primary-button"
+                  disabled={!newCellId.trim() || isCreatingCell}
+                >
+                  {isCreatingCell ? "Creating..." : "Create Cell"}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
     </div>
   );
+}
+
+function getNextCellId(cells) {
+  const existingCellIds = new Set(cells.map((cell) => cell.id));
+  let nextIndex = 1;
+
+  while (existingCellIds.has(`cell-${String(nextIndex).padStart(3, "0")}`)) {
+    nextIndex += 1;
+  }
+
+  return `cell-${String(nextIndex).padStart(3, "0")}`;
 }
 
 export default App;

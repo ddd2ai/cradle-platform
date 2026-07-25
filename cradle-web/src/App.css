@@ -63,7 +63,7 @@ button:focus-visible { outline: 2px solid #9b8cff; outline-offset: 2px; }
 .welcome-content { max-width: 620px; text-align: center; } .cradle-symbol { margin-bottom: 22px; font-size: 64px; filter: drop-shadow(0 8px 22px rgba(155,140,255,.18)); }
 .welcome-content h2 { margin: 0; font-size: clamp(28px,4vw,42px); font-weight: 650; letter-spacing: -.03em; }
 .welcome-content p { max-width: 520px; margin: 18px auto 28px; color: #aaa; font-size: 16px; line-height: 1.7; }
-.primary-button { padding: 12px 18px; border: 0; border-radius: 10px; background: #f1f1f1; color: #171717; font-weight: 650; cursor: pointer; transition: .15s ease; } .primary-button:hover { background: #fff; transform: translateY(-1px); }
+.primary-button { padding: 12px 18px; border: 0; border-radius: 10px; background: #f1f1f1; color: #171717; font-weight: 650; cursor: pointer; transition: .15s ease; } .primary-button:hover:not(:disabled) { background: #fff; transform: translateY(-1px); } .primary-button:disabled { cursor: not-allowed; opacity: .46; }
 .cell-panel { width: min(1100px, 100%); margin: 0 auto; padding: 30px; }
 .cell-overview-card, .dashboard-card, .workspace-card { border: 1px solid #363636; border-radius: 14px; background: #272727; }
 .cell-overview-card { padding: 22px; } .cell-overview-header { display: flex; align-items: center; gap: 16px; }
@@ -94,6 +94,21 @@ button:focus-visible { outline: 2px solid #9b8cff; outline-offset: 2px; }
 .dashboard-card-label { color: #929292; font-size: 11px; font-weight: 650; letter-spacing: .05em; text-transform: uppercase; } .dashboard-card-value { margin-top: 13px; font-size: 25px; font-weight: 650; } .dashboard-card p { margin: 8px 0 0; color: #929292; font-size: 12px; line-height: 1.5; }
 .workspace-card { margin-top: 14px; padding: 20px; } .workspace-card-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; } .workspace-card-header h3 { margin: 0; font-size: 16px; } .workspace-card-header p { margin: 5px 0 0; color: #909090; font-size: 12px; } .text-button { padding: 8px 12px; }
 .workspace-placeholder { display: grid; min-height: 190px; margin-top: 20px; border: 1px dashed #464646; border-radius: 10px; color: #777; font-size: 13px; place-items: center; }
+.modal-backdrop { position: fixed; inset: 0; z-index: 30; display: grid; padding: 24px; background: rgba(8,8,8,.62); backdrop-filter: blur(10px); place-items: center; }
+.create-cell-dialog { width: min(430px, 100%); border: 1px solid #3a3a3a; border-radius: 12px; background: #242424; box-shadow: 0 24px 80px rgba(0,0,0,.44); }
+.create-cell-dialog form { padding: 20px; }
+.dialog-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+.dialog-header h2 { margin: 0; font-size: 20px; }
+.dialog-header p { margin: 6px 0 0; color: #9a9a9a; font-size: 13px; line-height: 1.5; }
+.dialog-close-button { display: grid; width: 34px; height: 34px; flex: none; border: 1px solid #3f3f3f; border-radius: 8px; background: transparent; color: #bdbdbd; cursor: pointer; font-size: 22px; line-height: 1; place-items: center; }
+.dialog-close-button:hover:not(:disabled) { background: #303030; color: #fff; }
+.dialog-close-button:disabled { cursor: not-allowed; opacity: .45; }
+.field-label { display: block; margin-bottom: 8px; color: #cfcfcf; font-size: 12px; font-weight: 650; }
+.text-input { width: 100%; height: 44px; padding: 0 12px; border: 1px solid #484848; border-radius: 9px; background: #1c1c1c; color: #f4f4f4; font: inherit; outline: none; }
+.text-input:focus { border-color: #777; box-shadow: 0 0 0 3px rgba(255,255,255,.08); }
+.text-input:disabled { opacity: .52; }
+.dialog-error { margin-top: 12px; padding: 10px 12px; border: 1px solid #603737; border-radius: 9px; background: #3a2424; color: #efaaaa; font-size: 13px; line-height: 1.45; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
 @media (max-width: 800px) { .sidebar { width: 220px; min-width: 220px; } .main-layout { margin-left: 220px; } .dashboard-grid { grid-template-columns: 1fr; } .cell-panel { padding: 18px; } }
 @media (max-width: 850px) { .heartbeat-grid { grid-template-columns: 1fr; } .page-heading { flex-direction: column; } }
 @media (max-width: 620px) { .sidebar { display: none; } .main-layout { margin-left: 0; } .server-status { display: none; } .welcome-panel { padding: 24px; } }
