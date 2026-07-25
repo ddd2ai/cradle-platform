@@ -1,7 +1,17 @@
+const cradleItems = [
+  { id: "overview", label: "Overview", icon: "◫" },
+  { id: "cultivation", label: "Cultivation", icon: "♡" },
+  { id: "opendna", label: "OpenDNA", icon: "🧬" },
+  { id: "artifacts", label: "Artifacts", icon: "◈" },
+  { id: "logs", label: "Logs", icon: "≡" },
+];
+
 export function Sidebar({
   cells,
   selectedCellId,
+  selectedSection,
   onSelectCell,
+  onSelectSection,
   onCreateCell,
   isLoading,
   error,
@@ -16,6 +26,24 @@ export function Sidebar({
       </div>
 
       <div className="sidebar-content">
+        <div className="sidebar-section-title">Cradle</div>
+        <nav className="cradle-nav" aria-label="Cradle functions">
+          {cradleItems.map((item) => {
+            const isSelected = selectedSection === item.id;
+
+            return (
+              <button
+                type="button"
+                key={item.id}
+                className={`cradle-nav-item ${isSelected ? "selected" : ""}`}
+                onClick={() => onSelectSection(item.id)}
+              >
+                <span className="cradle-nav-icon">{item.icon}</span>
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+        </nav>
         <div className="sidebar-section-title">Cells</div>
         <div className="cell-list">
           {isLoading && <div className="sidebar-message">Loading cells...</div>}

@@ -1,11 +1,32 @@
-export function Header({ selectedCell, isServerConnected }) {
+export function Header({ selectedCell, selectedSection, isServerConnected }) {
+  const sectionTitles = {
+    overview: {
+      title: "Cradle",
+      subtitle: "Software Life Engineering Platform",
+    },
+    cultivation: {
+      title: "Cultivation",
+      subtitle: "Activate and observe the Cradle environment",
+    },
+    opendna: { title: "OpenDNA", subtitle: "Software DNA visualization" },
+    artifacts: { title: "Artifacts", subtitle: "Generated software products" },
+    logs: { title: "Logs", subtitle: "Cradle runtime activity" },
+  };
+  const section = sectionTitles[selectedSection] ?? sectionTitles.overview;
+  const title =
+    selectedSection === "cell" && selectedCell
+      ? selectedCell.name ?? selectedCell.id
+      : section.title;
+  const subtitle =
+    selectedSection === "cell" && selectedCell
+      ? selectedCell.id
+      : section.subtitle;
+
   return (
     <header className="top-bar">
       <div className="top-bar-title">
-        <h1>{selectedCell ? selectedCell.name : "Cradle"}</h1>
-        <p>
-          {selectedCell ? selectedCell.id : "Software Life Engineering Platform"}
-        </p>
+        <h1>{title}</h1>
+        <p>{subtitle}</p>
       </div>
 
       <div className="top-bar-actions">

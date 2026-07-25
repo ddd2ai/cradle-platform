@@ -1,18 +1,24 @@
 import { useEffect, useRef, useState } from "react";
 import "./App.css";
 import {
+  activateCell,
+  deactivateCell,
   fetchCell,
   fetchCellDna,
   fetchCellMaturity,
   fetchCellWorkspace,
   fetchCells,
+  heartbeatCell,
 } from "./api/cradleClient";
 import { Sidebar } from "./components/Sidebar";
 import { Header } from "./components/Header";
-import { WelcomePanel } from "./components/WelcomePanel";
 import { CellPanel } from "./components/CellPanel";
+import { CradleOverviewPage } from "./pages/CradleOverviewPage";
+import { CultivationPage } from "./pages/CultivationPage";
+import { PlaceholderPage } from "./pages/PlaceholderPage";
 
 function App() {
+  const [selectedSection, setSelectedSection] = useState("overview");
   const [selectedCellId, setSelectedCellId] = useState(null);
   const [cells, setCells] = useState([]);
   const [isLoadingCells, setIsLoadingCells] = useState(true);
@@ -20,7 +26,16 @@ function App() {
   const [selectedCell, setSelectedCell] = useState(null);
   const [isLoadingCell, setIsLoadingCell] = useState(false);
   const [cellError, setCellError] = useState(null);
+  const [cellAction, setCellAction] = useState(null);
+  const [actionMessage, setActionMessage] = useState(null);
+  const [actionError, setActionError] = useState(null);
+  const [heartbeatRun, setHeartbeatRun] = useState(null);
+  const [heartbeatStatus, setHeartbeatStatus] = useState(null);
+  const [heartbeatMessage, setHeartbeatMessage] = useState(null);
+  const [heartbeatError, setHeartbeatError] = useState(null);
+  const [cultivationRunning, setCultivationRunning] = useState(false);
   const detailRequestRef = useRef(0);
+  const selectedCellIdRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -51,11 +66,24 @@ function App() {
       cancelled = true;
     };
   }, []);
-  async function handleSelectCell(cellId) {
+
+  useEffect(() => {
+    if (!actionMessage) return undefined;
+
+    const timerId = window.setTimeout(() => setActionMessage(null), 3000);
+    return () => window.clearTimeout(timerId);
+  }, [actionMessage]);
+
+  useEffect(() => {
+    if (!heartbeatMessage) return undefined;
+
+    const timerId = window.setTimeout(() => setHeartbeatMessage(null), 3000);
+    return () => window.clearTimeout(timerId);
+  }, [heartbeatMessage]);
+  async function loadSelectedCell(cellId) {
     const requestId = detailRequestRef.current + 1;
     detailRequestRef.current = requestId;
 
-    setSelectedCellId(cellId);
     setSelectedCell(null);
     setCellError(null);
     setIsLoadingCell(true);
@@ -69,22 +97,125 @@ function App() {
       ]);
 
       if (detailRequestRef.current === requestId) {
-        setSelectedCell({
+        const selectedDetail = {
           ...cell,
           dna,
           workspace,
           maturity: maturity.maturity,
-        });
+        };
+
+        setSelectedCell(selectedDetail);
+        setCells((currentCells) =>
+          currentCells.map((summary) =>
+            summary.id === cellId
+              ? {
+                  ...summary,
+                  name: selectedDetail.name ?? summary.name,
+                  status: selectedDetail.status ?? summary.status,
+                  active: selectedDetail.active ?? summary.active,
+                }
+              : summary,
+          ),
+        );
+
+        return true;
       }
     } catch (error) {
       if (detailRequestRef.current === requestId) {
         setCellError(error.message);
       }
+
+      return false;
     } finally {
       if (detailRequestRef.current === requestId) {
         setIsLoadingCell(false);
       }
     }
+
+    return false;
+  }
+
+  async function handleSelectCell(cellId) {
+    selectedCellIdRef.current = cellId;
+    setSelectedSection("cell");
+    setActionMessage(null);
+    setActionError(null);
+    setSelectedCellId(cellId);
+    await loadSelectedCell(cellId);
+  }
+
+  async function runCellAction(actionName, action) {
+    const cellId = selectedCellIdRef.current;
+
+    if (!cellId || cellAction) {
+      return;
+    }
+
+    try {
+      setCellAction(actionName);
+      setActionMessage(null);
+      setActionError(null);
+
+      await action(cellId);
+
+      if (selectedCellIdRef.current === cellId) {
+        const refreshed = await loadSelectedCell(cellId);
+        if (!refreshed) {
+          throw new Error("Action completed, but Cell refresh failed.");
+        }
+      }
+
+      setActionMessage(
+        actionName === "activate"
+          ? "Cell activated successfully."
+          : actionName === "deactivate"
+            ? "Cell deactivated successfully."
+            : "Heartbeat completed successfully.",
+      );
+    } catch (error) {
+      setActionError(error.message);
+    } finally {
+      setCellAction(null);
+    }
+  }
+
+  function handleActivateCell() {
+    return runCellAction("activate", activateCell);
+  }
+
+  function handleDeactivateCell() {
+    return runCellAction("deactivate", deactivateCell);
+  }
+
+  async function handleHeartbeatCell() {
+    if (["starting", "running", "pending", "accepted"].includes(heartbeatStatus)) {
+      return;
+    }
+
+    try {
+      setHeartbeatStatus("starting");
+      setHeartbeatMessage(null);
+      setHeartbeatError(null);
+
+      const operation = await heartbeatCell();
+      setHeartbeatRun(operation);
+      setHeartbeatStatus(operation.status ?? "completed");
+      setCultivationRunning(true);
+      setHeartbeatMessage("Cultivation started successfully.");
+    } catch (error) {
+      setHeartbeatStatus("failed");
+      setHeartbeatError(error.message);
+    }
+  }
+
+  function handleSelectSection(section) {
+    setSelectedSection(section);
+    setSelectedCellId(null);
+    selectedCellIdRef.current = null;
+    setSelectedCell(null);
+    setCellError(null);
+    setActionMessage(null);
+    setActionError(null);
   }
 
   function handleCreateCell() {
@@ -96,7 +227,9 @@ function App() {
       <Sidebar
         cells={cells}
         selectedCellId={selectedCellId}
+        selectedSection={selectedSection}
         onSelectCell={handleSelectCell}
+        onSelectSection={handleSelectSection}
         onCreateCell={handleCreateCell}
         isLoading={isLoadingCells}
         error={cellsError}
@@ -104,22 +237,66 @@ function App() {
       <div className="main-layout">
         <Header
           selectedCell={selectedCell}
+          selectedSection={selectedSection}
           isServerConnected={!isLoadingCells && !cellsError}
         />
         <main className="main-content">
-          {!selectedCellId && (
-            <WelcomePanel onCreateCell={handleCreateCell} />
+          {selectedSection === "overview" && (
+            <CradleOverviewPage cells={cells} />
           )}
-          {selectedCellId && isLoadingCell && (
+
+          {selectedSection === "cultivation" && (
+            <CultivationPage
+              heartbeatRun={heartbeatRun}
+              heartbeatStatus={heartbeatStatus}
+              heartbeatError={heartbeatError}
+              heartbeatMessage={heartbeatMessage}
+              cultivationRunning={cultivationRunning}
+              onStartCultivation={handleHeartbeatCell}
+            />
+          )}
+
+          {selectedSection === "opendna" && (
+            <PlaceholderPage
+              title="OpenDNA"
+              description="Observe DNA traits and relationships across the Cradle."
+              icon="🧬"
+            />
+          )}
+
+          {selectedSection === "artifacts" && (
+            <PlaceholderPage
+              title="Artifacts"
+              description="Browse software artifacts produced by Cradle cells."
+              icon="◈"
+            />
+          )}
+
+          {selectedSection === "logs" && (
+            <PlaceholderPage
+              title="Logs"
+              description="Observe runtime activity and platform events."
+              icon="≡"
+            />
+          )}
+
+          {selectedSection === "cell" && selectedCellId && isLoadingCell && (
             <div className="content-message">Loading cell...</div>
           )}
-          {selectedCellId && !isLoadingCell && cellError && (
+          {selectedSection === "cell" && selectedCellId && !isLoadingCell && cellError && (
             <div className="content-message error">
               Unable to load cell details
             </div>
           )}
-          {selectedCellId && !isLoadingCell && !cellError && selectedCell && (
-            <CellPanel cell={selectedCell} />
+          {selectedSection === "cell" && selectedCell && !isLoadingCell && !cellError && (
+            <CellPanel
+              cell={selectedCell}
+              onActivate={handleActivateCell}
+              onDeactivate={handleDeactivateCell}
+              activeAction={cellAction}
+              actionMessage={actionMessage}
+              actionError={actionError}
+            />
           )}
         </main>
       </div>

@@ -70,3 +70,69 @@ export async function fetchCellMaturity(cellId) {
 
   return response.json();
 }
+
+export async function activateCell(cellId) {
+  return postCellAction(cellId, "activate");
+}
+
+export async function deactivateCell(cellId) {
+  return postCellAction(cellId, "deactivate");
+}
+
+export async function heartbeatCell() {
+  const response = await fetch("/api/v1/heartbeat/runs", { method: "POST" });
+
+  if (!response.ok) {
+    throw new Error(`Failed to start heartbeat: ${response.status}`);
+  }
+
+  const accepted = await response.json();
+  if (!accepted.operationId) return accepted;
+
+  return waitForOperation(accepted.operationId);
+}
+
+async function waitForOperation(operationId) {
+  const deadline = Date.now() + 60_000;
+
+  while (Date.now() < deadline) {
+    const response = await fetch(
+      `/api/v1/operations/${encodeURIComponent(operationId)}`,
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to read heartbeat operation: ${response.status}`);
+    }
+
+    const { operation } = await response.json();
+    if (operation.status === "completed") return operation;
+    if (operation.status === "failed") {
+      throw new Error(operation.error?.message ?? "Heartbeat operation failed");
+    }
+
+    await new Promise((resolve) => window.setTimeout(resolve, 250));
+  }
+
+  throw new Error("Heartbeat operation timed out");
+}
+
+async function postCellAction(cellId, action) {
+  const response = await fetch(
+    `/api/v1/cells/${encodeURIComponent(cellId)}/${action}`,
+    { method: "POST" },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to ${action} cell ${cellId}: ${response.status}`,
+    );
+  }
+
+  const contentType = response.headers.get("content-type");
+
+  if (contentType?.includes("application/json")) {
+    return response.json();
+  }
+
+  return null;
+}
