@@ -17,8 +17,15 @@ export class ListCellWorkspaceUseCase {
       });
     }
 
+    const metadata = typeof cell.getWorkspaceMetadata === "function"
+      ? await cell.getWorkspaceMetadata()
+      : {};
+
     return {
       cellId,
+      displayPath: `cells/${cellId}/workspace`,
+      exists: metadata.exists ?? true,
+      readable: metadata.readable ?? true,
       sections: await cell.listWorkspaceSections(),
     };
   }

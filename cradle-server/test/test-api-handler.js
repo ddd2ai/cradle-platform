@@ -392,10 +392,62 @@ const workspace = await handler({
 assert.equal(workspace.status, 200);
 assert.deepEqual(workspace.body, {
   cellId: "cell-001",
+  displayPath: "cells/cell-001/workspace",
+  exists: true,
+  readable: true,
   sections: {
     notes: ["source.md"],
     decisions: [],
   },
+});
+
+const workspaceEntries = await handler({
+  method: "GET",
+  url: "/api/v1/cells/cell-001/workspace/entries?path=notes",
+});
+
+assert.equal(workspaceEntries.status, 200);
+assert.deepEqual(workspaceEntries.body, {
+  cellId: "cell-001",
+  path: "notes",
+  entries: [
+    {
+      name: "source.md",
+      path: "notes/source.md",
+      type: "file",
+      size: 14,
+      mimeType: "text/markdown",
+      modifiedAt: "2026-07-25T10:31:21.000Z",
+      hasChildren: false,
+    },
+  ],
+});
+
+const invalidWorkspaceEntries = await handler({
+  method: "GET",
+  url: "/api/v1/cells/cell-001/workspace/entries?path=..%2Foutside",
+});
+
+assert.equal(invalidWorkspaceEntries.status, 400);
+assert.equal(invalidWorkspaceEntries.body.error.code, "INVALID_WORKSPACE_PATH");
+
+const workspacePreview = await handler({
+  method: "GET",
+  url: "/api/v1/cells/cell-001/workspace/file?path=notes%2Fsource.md",
+});
+
+assert.equal(workspacePreview.status, 200);
+assert.deepEqual(workspacePreview.body, {
+  cellId: "cell-001",
+  name: "source.md",
+  path: "notes/source.md",
+  mimeType: "text/markdown",
+  size: 14,
+  modifiedAt: "2026-07-25T10:31:21.000Z",
+  encoding: "utf-8",
+  content: "source content",
+  truncated: false,
+  previewable: true,
 });
 
 const workspaceFile = await handler({
@@ -711,7 +763,30 @@ function createCell({
     active,
     getProfile: async () => profile,
     isActive: () => cell.active,
+    getWorkspaceMetadata: async () => ({
+      exists: true,
+      readable: true,
+    }),
     listWorkspaceSections: async () => workspaceSections,
+    listWorkspaceEntries: async (relativePath = "") => {
+      if (relativePath.includes("..")) {
+        throw new Error("Invalid path outside cell directory");
+      }
+
+      return Object.entries(workspaceFiles)
+        .filter(([workspacePath]) => pathDirname(workspacePath) === relativePath)
+        .map(([workspacePath, content]) => ({
+          name: pathBasename(workspacePath),
+          path: workspacePath,
+          type: "file",
+          size: content.length,
+          mimeType: workspacePath.endsWith(".md")
+            ? "text/markdown"
+            : "text/plain",
+          modifiedAt: "2026-07-25T10:31:21.000Z",
+          hasChildren: false,
+        }));
+    },
     readDNAVector: async () => dnaVector,
     readDNAHistory: async () => dnaHistory,
     getMaturityInfo: async () => maturityInfo,
@@ -744,7 +819,34 @@ function createCell({
 
       return workspaceFiles[relativePath];
     },
+    readWorkspaceFilePreview: async (relativePath) => {
+      if (!(relativePath in workspaceFiles)) {
+        throw new Error("missing");
+      }
+
+      return {
+        name: pathBasename(relativePath),
+        path: relativePath,
+        mimeType: relativePath.endsWith(".md") ? "text/markdown" : "text/plain",
+        size: workspaceFiles[relativePath].length,
+        modifiedAt: "2026-07-25T10:31:21.000Z",
+        encoding: "utf-8",
+        content: workspaceFiles[relativePath],
+        truncated: false,
+        previewable: true,
+      };
+    },
   };
 
   return cell;
+}
+
+function pathDirname(workspacePath) {
+  const parts = workspacePath.split("/");
+  parts.pop();
+  return parts.join("/");
+}
+
+function pathBasename(workspacePath) {
+  return workspacePath.split("/").at(-1);
 }

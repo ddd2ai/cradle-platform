@@ -18,12 +18,14 @@ import { ListCellInboxUseCase } from "../application/list-cell-inbox-use-case.js
 import { ListCellLifecycleEventsUseCase } from "../application/list-cell-lifecycle-events-use-case.js";
 import { ListCellTasksUseCase } from "../application/list-cell-tasks-use-case.js";
 import { ListCellSnapshotsUseCase } from "../application/list-cell-snapshots-use-case.js";
+import { ListCellWorkspaceEntriesUseCase } from "../application/list-cell-workspace-entries-use-case.js";
 import { ListCellWorkspaceUseCase } from "../application/list-cell-workspace-use-case.js";
 import { ListCellsUseCase } from "../application/list-cells-use-case.js";
 import { ListLogsUseCase } from "../application/list-logs-use-case.js";
 import { ListOperationsUseCase } from "../application/list-operations-use-case.js";
 import { OperationRunner } from "../application/operation-runner.js";
 import { ReadCellWorkspaceFileUseCase } from "../application/read-cell-workspace-file-use-case.js";
+import { ReadCellWorkspacePreviewUseCase } from "../application/read-cell-workspace-preview-use-case.js";
 import { RunHeartbeatUseCase } from "../application/run-heartbeat-use-case.js";
 import { SetAllCellsActiveUseCase } from "../application/set-all-cells-active-use-case.js";
 import { SetCellActiveUseCase } from "../application/set-cell-active-use-case.js";
@@ -90,6 +92,24 @@ export function createApiRoutes({
       /^\/api\/v1\/cells\/([^/]+)\/workspace\/files$/,
       async ({ params, route }) =>
         new ReadCellWorkspaceFileUseCase({ engine }).execute({
+          cellId: params[0],
+          path: route.searchParams.get("path"),
+        })
+    ),
+    pattern(
+      "GET",
+      /^\/api\/v1\/cells\/([^/]+)\/workspace\/entries$/,
+      async ({ params, route }) =>
+        new ListCellWorkspaceEntriesUseCase({ engine }).execute({
+          cellId: params[0],
+          path: route.searchParams.get("path"),
+        })
+    ),
+    pattern(
+      "GET",
+      /^\/api\/v1\/cells\/([^/]+)\/workspace\/file$/,
+      async ({ params, route }) =>
+        new ReadCellWorkspacePreviewUseCase({ engine }).execute({
           cellId: params[0],
           path: route.searchParams.get("path"),
         })

@@ -947,6 +947,14 @@ ${memoryContext}
     return await this.workspaceStore.listWorkspace();
   }
 
+  async getWorkspaceMetadata() {
+    return await this.workspaceStore.getWorkspaceMetadata();
+  }
+
+  async listWorkspaceEntries(relativePath = "") {
+    return await this.workspaceStore.listWorkspaceEntries(relativePath);
+  }
+
   async listWorkspaceSections() {
     return await this.workspaceStore.listWorkspaceSections();
   }
@@ -957,6 +965,10 @@ ${memoryContext}
 
   async readWorkspaceFile(relativePath) {
     return await this.workspaceStore.readWorkspaceFile(relativePath);
+  }
+
+  async readWorkspaceFilePreview(relativePath) {
+    return await this.workspaceStore.readWorkspaceFilePreview(relativePath);
   }
 
   async appendWorkspaceFile(relativePath, content) {
