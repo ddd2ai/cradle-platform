@@ -1,11 +1,13 @@
 import { ApiError, mapApiError } from "./api-error.js";
 import { createApiRoutes } from "./api-routes.js";
+import { LogBuffer } from "../application/log-buffer.js";
 import { InMemoryOperationStore } from "../application/operation-store.js";
 
 export function createApiHandler({
   engine,
   heartbeatModeStoreFactory,
   heartbeatServiceFactory,
+  logBuffer = new LogBuffer(),
   operationStore = new InMemoryOperationStore(),
   operationRunner,
 }) {
@@ -13,6 +15,7 @@ export function createApiHandler({
     engine,
     heartbeatModeStoreFactory,
     heartbeatServiceFactory,
+    logBuffer,
     operationStore,
     operationRunner,
   });

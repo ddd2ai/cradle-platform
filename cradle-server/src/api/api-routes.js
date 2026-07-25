@@ -1,4 +1,5 @@
 import { CreateCellUseCase } from "../application/create-cell-use-case.js";
+import { ClearLogsUseCase } from "../application/clear-logs-use-case.js";
 import { GetCellArtifactUseCase } from "../application/get-cell-artifact-use-case.js";
 import { GetCellDnaUseCase } from "../application/get-cell-dna-use-case.js";
 import { GetCellDnaHistoryUseCase } from "../application/get-cell-dna-history-use-case.js";
@@ -19,6 +20,7 @@ import { ListCellTasksUseCase } from "../application/list-cell-tasks-use-case.js
 import { ListCellSnapshotsUseCase } from "../application/list-cell-snapshots-use-case.js";
 import { ListCellWorkspaceUseCase } from "../application/list-cell-workspace-use-case.js";
 import { ListCellsUseCase } from "../application/list-cells-use-case.js";
+import { ListLogsUseCase } from "../application/list-logs-use-case.js";
 import { ListOperationsUseCase } from "../application/list-operations-use-case.js";
 import { OperationRunner } from "../application/operation-runner.js";
 import { ReadCellWorkspaceFileUseCase } from "../application/read-cell-workspace-file-use-case.js";
@@ -31,6 +33,7 @@ export function createApiRoutes({
   engine,
   heartbeatModeStoreFactory = () => new HeartbeatModeStore(),
   heartbeatServiceFactory,
+  logBuffer,
   operationStore,
   operationRunner = new OperationRunner({ operationStore }),
 }) {
@@ -46,6 +49,12 @@ export function createApiRoutes({
     ),
     exact("GET", "/api/v1/cultivation/status", async () =>
       new GetCultivationStatusUseCase({ engine }).execute()
+    ),
+    exact("GET", "/api/v1/logs", async () =>
+      new ListLogsUseCase({ logBuffer }).execute()
+    ),
+    exact("DELETE", "/api/v1/logs", async () =>
+      new ClearLogsUseCase({ logBuffer }).execute()
     ),
     exact("POST", "/api/v1/cells", async ({ request }) =>
       new CreateCellUseCase({ engine }).execute({

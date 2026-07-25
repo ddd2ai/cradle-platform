@@ -1,5 +1,6 @@
 import assert from "assert";
 import { createApiHandler } from "../src/api/api-handler.js";
+import { LogBuffer } from "../src/application/log-buffer.js";
 import { InMemoryOperationStore } from "../src/application/operation-store.js";
 import { OperationRunner } from "../src/application/operation-runner.js";
 
@@ -172,6 +173,11 @@ const operationStore = new InMemoryOperationStore({
   now: () => new Date("2026-07-24T10:00:00.000Z"),
 });
 const operationRunner = new OperationRunner({ operationStore });
+const logBuffer = new LogBuffer({
+  now: () => new Date("2026-07-25T10:31:21.000Z"),
+});
+logBuffer.append({ level: "info", args: ["cell-001 tick"] });
+logBuffer.append({ level: "warn", args: ["cell-003 idle"] });
 const heartbeatCalls = [];
 const handler = createApiHandler({
   engine,
@@ -186,6 +192,7 @@ const handler = createApiHandler({
       };
     },
   }),
+  logBuffer,
   operationStore,
   operationRunner,
 });
@@ -262,6 +269,36 @@ assert.deepEqual(cultivationStatus.body, {
 });
 
 cellStore.get("cell-001").isTicking = false;
+
+const logs = await handler({
+  method: "GET",
+  url: "/api/v1/logs",
+});
+
+assert.equal(logs.status, 200);
+assert.deepEqual(logs.body.logs, [
+  {
+    id: 1,
+    level: "info",
+    timestamp: "2026-07-25T10:31:21.000Z",
+    message: "cell-001 tick",
+  },
+  {
+    id: 2,
+    level: "warn",
+    timestamp: "2026-07-25T10:31:21.000Z",
+    message: "cell-003 idle",
+  },
+]);
+
+const clearedLogs = await handler({
+  method: "DELETE",
+  url: "/api/v1/logs",
+});
+
+assert.equal(clearedLogs.status, 200);
+assert.deepEqual(clearedLogs.body.logs, []);
+assert.deepEqual(logBuffer.list(), []);
 
 const cell = await handler({
   method: "GET",

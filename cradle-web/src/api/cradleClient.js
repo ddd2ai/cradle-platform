@@ -151,6 +151,30 @@ export async function fetchCultivationStatus() {
   return response.json();
 }
 
+export async function fetchLogs() {
+  const response = await fetch("/api/v1/logs");
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch logs: ${response.status}`);
+  }
+
+  const data = await response.json();
+
+  return data.logs ?? [];
+}
+
+export async function clearLogs() {
+  const response = await fetch("/api/v1/logs", { method: "DELETE" });
+
+  if (!response.ok) {
+    throw new Error(`Failed to clear logs: ${response.status}`);
+  }
+
+  const data = await response.json();
+
+  return data.logs ?? [];
+}
+
 async function waitForOperation(operationId) {
   const deadline = Date.now() + 60_000;
 

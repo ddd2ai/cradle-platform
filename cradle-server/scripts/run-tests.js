@@ -72,6 +72,7 @@ const tests = [
   "test/test-living-context-schema.js",
   "test/test-living-context-service.js",
   "test/test-living-context-store.js",
+  "test/test-log-buffer.js",
   "test/test-memory-commands.js",
   "test/test-observation-store.js",
   "test/test-project-commands.js",

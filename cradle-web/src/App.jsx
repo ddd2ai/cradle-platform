@@ -20,6 +20,7 @@ import { Header } from "./components/Header";
 import { CellPanel } from "./components/CellPanel";
 import { CradleOverviewPage } from "./pages/CradleOverviewPage";
 import { CultivationPage } from "./pages/CultivationPage";
+import { LogsPage } from "./pages/LogsPage";
 import { PlaceholderPage } from "./pages/PlaceholderPage";
 
 function App() {
@@ -431,11 +432,7 @@ function App() {
           )}
 
           {selectedSection === "logs" && (
-            <PlaceholderPage
-              title="Logs"
-              description="Observe runtime activity and platform events."
-              icon="≡"
-            />
+            <LogsPage />
           )}
 
           {selectedSection === "cell" && selectedCellId && isLoadingCell && (
