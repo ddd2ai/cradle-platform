@@ -109,6 +109,7 @@ export class CradleCell {
     this.tickTimer = null;
     this.tickIntervalMs = 10_000;
     this.isTicking = false;
+    this.currentTickPromise = null;
     this.isEvolving = false;
   }
 
@@ -167,6 +168,14 @@ export class CradleCell {
 
   async tick() {
     return await this.runtimeLifecycleService.tick();
+  }
+
+  getActiveTick() {
+    return this.runtimeLifecycleService.getActiveTick();
+  }
+
+  async waitForActiveTick() {
+    return await this.runtimeLifecycleService.waitForActiveTick();
   }
 
 

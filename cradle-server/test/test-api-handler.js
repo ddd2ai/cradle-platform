@@ -45,6 +45,23 @@ const engine = {
       cell.profile.status = "idle";
     }
   },
+  getCultivationStatus: () => {
+    const activeTickCellIds = [...cellStore.values()]
+      .filter((cell) => cell.isTicking)
+      .map((cell) => cell.id);
+
+    return {
+      status: activeTickCellIds.length > 0 ? "stopping" : "dormant",
+      activeCells: [...cellStore.values()].filter((cell) => cell.active).length,
+      activeTicks: activeTickCellIds.length,
+      runningTasks: activeTickCellIds.length,
+      activeTickCellIds,
+      startedAt: null,
+      stoppingAt: activeTickCellIds.length > 0
+        ? "2026-07-25T08:49:00.983Z"
+        : null,
+    };
+  },
 };
 
 const cellStore = new Map([
@@ -225,6 +242,26 @@ assert.equal(colony.body.cellCount, 2);
 assert.equal(colony.body.activeCount, 1);
 assert.equal(colony.body.idleCount, 1);
 assert.equal(colony.body.cells.length, 2);
+
+cellStore.get("cell-001").isTicking = true;
+
+const cultivationStatus = await handler({
+  method: "GET",
+  url: "/api/v1/cultivation/status",
+});
+
+assert.equal(cultivationStatus.status, 200);
+assert.deepEqual(cultivationStatus.body, {
+  status: "stopping",
+  activeCells: 1,
+  activeTicks: 1,
+  runningTasks: 1,
+  activeTickCellIds: ["cell-001"],
+  startedAt: null,
+  stoppingAt: "2026-07-25T08:49:00.983Z",
+});
+
+cellStore.get("cell-001").isTicking = false;
 
 const cell = await handler({
   method: "GET",

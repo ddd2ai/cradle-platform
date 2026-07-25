@@ -9,13 +9,16 @@ export class SetAllCellsActiveUseCase {
     if (active) {
       await this.engine.activateAllCells();
     } else {
-      await this.engine.deactivateAllCells();
+      await this.engine.deactivateAllCells({ waitForTicks: true });
     }
 
     const cells = await Promise.all(
       this.engine.listCells().map((cell) => toCellSummary(cell))
     );
 
-    return { cells };
+    return {
+      cells,
+      cultivation: this.engine.getCultivationStatus?.() ?? null,
+    };
   }
 }

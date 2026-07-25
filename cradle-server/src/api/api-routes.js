@@ -7,6 +7,7 @@ import { GetCellMaturityUseCase } from "../application/get-cell-maturity-use-cas
 import { GetCellArtifactStabilityUseCase } from "../application/get-cell-artifact-stability-use-case.js";
 import { GetCellUseCase } from "../application/get-cell-use-case.js";
 import { GetColonyUseCase } from "../application/get-colony-use-case.js";
+import { GetCultivationStatusUseCase } from "../application/get-cultivation-status-use-case.js";
 import { GetHeartbeatUseCase } from "../application/get-heartbeat-use-case.js";
 import { GetHealthUseCase } from "../application/get-health-use-case.js";
 import { GetOperationUseCase } from "../application/get-operation-use-case.js";
@@ -42,6 +43,9 @@ export function createApiRoutes({
     ),
     exact("GET", "/api/v1/colony", async () =>
       new GetColonyUseCase({ engine }).execute()
+    ),
+    exact("GET", "/api/v1/cultivation/status", async () =>
+      new GetCultivationStatusUseCase({ engine }).execute()
     ),
     exact("POST", "/api/v1/cells", async ({ request }) =>
       new CreateCellUseCase({ engine }).execute({

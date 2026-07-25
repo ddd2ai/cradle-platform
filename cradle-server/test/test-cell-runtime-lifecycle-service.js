@@ -98,6 +98,50 @@ function createCell(overrides = {}) {
 }
 
 {
+  let releaseTask;
+  let taskStarted;
+  const task = { id: "task-wait" };
+  const taskStartedPromise = new Promise((resolve) => {
+    taskStarted = resolve;
+  });
+  const releaseTaskPromise = new Promise((resolve) => {
+    releaseTask = resolve;
+  });
+  const { cell } = createCell({
+    active: true,
+    async nextPendingTask() {
+      return task;
+    },
+    async processTask() {
+      taskStarted();
+      await releaseTaskPromise;
+      return { ok: true };
+    },
+  });
+  const service = new CellRuntimeLifecycleService({ cell });
+  const tickPromise = service.tick();
+
+  await taskStartedPromise;
+  assert.equal(cell.isTicking, true);
+  assert.equal(service.getActiveTick().cellId, "cell-runtime");
+
+  let waitCompleted = false;
+  const waitPromise = service.waitForActiveTick().then(() => {
+    waitCompleted = true;
+  });
+
+  await Promise.resolve();
+  assert.equal(waitCompleted, false);
+
+  releaseTask();
+  await tickPromise;
+  await waitPromise;
+
+  assert.equal(waitCompleted, true);
+  assert.equal(cell.isTicking, false);
+}
+
+{
   const { cell } = createCell({
     async metabolize() {
       return { created: 2, observationFile: "observations/one.md" };

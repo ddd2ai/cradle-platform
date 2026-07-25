@@ -44,6 +44,11 @@ export class CradleEngine {
     this.activeCellId = this.CRADLE_ID;
     this.rl = null;
     this.watchTimer = null;
+    this.cultivation = {
+      status: "dormant",
+      startedAt: null,
+      stoppingAt: null,
+    };
 
     this.commandRegistry = new CommandRegistry();
     this.registerCommands();
@@ -242,15 +247,70 @@ export class CradleEngine {
   }
 
   async activateAllCells() {
+    this.cultivation = {
+      status: "starting",
+      startedAt: this.cultivation.startedAt ?? new Date().toISOString(),
+      stoppingAt: null,
+    };
+
     for (const cell of this.cells.values()) {
       await cell.activate();
     }
+
+    this.cultivation.status = "running";
   }
 
-  async deactivateAllCells() {
+  async deactivateAllCells({ waitForTicks = false } = {}) {
+    this.cultivation = {
+      ...this.cultivation,
+      status: "stopping",
+      stoppingAt: this.cultivation.stoppingAt ?? new Date().toISOString(),
+    };
+
     for (const cell of this.cells.values()) {
       await cell.deactivate();
     }
+
+    if (waitForTicks) {
+      await this.waitForActiveTicks();
+    }
+
+    this.cultivation = {
+      status: "dormant",
+      startedAt: null,
+      stoppingAt: null,
+    };
+  }
+
+  getActiveTicks() {
+    return [...this.cells.values()]
+      .map((cell) => cell.getActiveTick?.())
+      .filter(Boolean);
+  }
+
+  async waitForActiveTicks() {
+    const activeTicks = this.getActiveTicks();
+
+    await Promise.allSettled(
+      activeTicks.map((tick) => tick.promise)
+    );
+  }
+
+  getCultivationStatus() {
+    const activeTicks = this.getActiveTicks();
+    const activeCells = [...this.cells.values()].filter((cell) =>
+      cell.isActive()
+    ).length;
+
+    return {
+      status: this.cultivation.status,
+      activeCells,
+      activeTicks: activeTicks.length,
+      runningTasks: activeTicks.length,
+      activeTickCellIds: activeTicks.map((tick) => tick.cellId),
+      startedAt: this.cultivation.startedAt,
+      stoppingAt: this.cultivation.stoppingAt,
+    };
   }
 
   async tickAll() {

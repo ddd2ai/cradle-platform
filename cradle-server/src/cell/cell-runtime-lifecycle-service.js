@@ -48,6 +48,23 @@ export class CellRuntimeLifecycleService {
     return this.cell.active;
   }
 
+  getActiveTick() {
+    return this.cell.isTicking
+      ? {
+          cellId: this.cell.id,
+          promise: this.cell.currentTickPromise ?? Promise.resolve(),
+        }
+      : null;
+  }
+
+  async waitForActiveTick() {
+    const activeTick = this.getActiveTick();
+
+    if (activeTick) {
+      await activeTick.promise;
+    }
+  }
+
   async tick() {
     console.log(`⏱️ ${this.cell.id} tick`);
 
@@ -61,84 +78,90 @@ export class CellRuntimeLifecycleService {
     }
 
     this.cell.isTicking = true;
+    this.cell.currentTickPromise = this.performTick();
 
     try {
-      const inbox = await this.cell.readInbox();
-
-      if (inbox.length > 0) {
-        console.log(`  ${this.cell.id} processing inbox=${inbox.length}`);
-
-        await this.cell.updateStatus("running");
-
-        const result = await this.cell.processInbox(inbox);
-
-        await this.cell.clearInbox();
-
-        await this.cell.updateStatus(this.cell.active ? "active" : "idle");
-
-        return {
-          type: "inbox",
-          processed: result.processed ?? inbox.length,
-        };
-      }
-
-      const task = await this.cell.nextPendingTask();
-
-      if (task) {
-        console.log(`  ${this.cell.id} processing task=${task.id}`);
-
-        await this.cell.updateStatus("running");
-
-        const result = await this.cell.processTask(task);
-
-        await this.cell.completeTask(task.id);
-
-        await this.cell.updateStatus(this.cell.active ? "active" : "idle");
-
-        return {
-          type: "task",
-          processed: 1,
-          taskId: task.id,
-          result,
-        };
-      }
-
-      const metabolism = await this.cell.metabolize();
-
-      if (metabolism.created > 0) {
-        console.log(`  ${this.cell.id} metabolized stimuli, tasks=${metabolism.created}`);
-
-        return {
-          type: "metabolism",
-          processed: metabolism.created,
-          observationFile: metabolism.observationFile,
-        };
-      }
-
-      const evolution = await this.cell.evolve();
-
-      if (evolution.evolved) {
-        console.log(`  ${this.cell.id} evolved from thoughts=${evolution.thoughtCount}`);
-
-        return {
-          type: "evolution",
-          processed: evolution.thoughtCount,
-          file: evolution.file,
-        };
-      }
-
-      console.log(`  ${this.cell.id} idle: no inbox, task, or stimuli`);
-
-      return {
-        processed: 0,
-        reason: "no inbox, task, or stimuli",
-      };
+      return await this.cell.currentTickPromise;
     } catch (error) {
       await this.cell.updateStatus("error");
       throw error;
     } finally {
       this.cell.isTicking = false;
+      this.cell.currentTickPromise = null;
     }
+  }
+
+  async performTick() {
+    const inbox = await this.cell.readInbox();
+
+    if (inbox.length > 0) {
+      console.log(`  ${this.cell.id} processing inbox=${inbox.length}`);
+
+      await this.cell.updateStatus("running");
+
+      const result = await this.cell.processInbox(inbox);
+
+      await this.cell.clearInbox();
+
+      await this.cell.updateStatus(this.cell.active ? "active" : "idle");
+
+      return {
+        type: "inbox",
+        processed: result.processed ?? inbox.length,
+      };
+    }
+
+    const task = await this.cell.nextPendingTask();
+
+    if (task) {
+      console.log(`  ${this.cell.id} processing task=${task.id}`);
+
+      await this.cell.updateStatus("running");
+
+      const result = await this.cell.processTask(task);
+
+      await this.cell.completeTask(task.id);
+
+      await this.cell.updateStatus(this.cell.active ? "active" : "idle");
+
+      return {
+        type: "task",
+        processed: 1,
+        taskId: task.id,
+        result,
+      };
+    }
+
+    const metabolism = await this.cell.metabolize();
+
+    if (metabolism.created > 0) {
+      console.log(`  ${this.cell.id} metabolized stimuli, tasks=${metabolism.created}`);
+
+      return {
+        type: "metabolism",
+        processed: metabolism.created,
+        observationFile: metabolism.observationFile,
+      };
+    }
+
+    const evolution = await this.cell.evolve();
+
+    if (evolution.evolved) {
+      console.log(`  ${this.cell.id} evolved from thoughts=${evolution.thoughtCount}`);
+
+      return {
+        type: "evolution",
+        processed: evolution.thoughtCount,
+        file: evolution.file,
+      };
+    }
+
+    console.log(`  ${this.cell.id} idle: no inbox, task, or stimuli`);
+
+    return {
+      processed: 0,
+      reason: "no inbox, task, or stimuli",
+    };
   }
 
   async shutdown() {
