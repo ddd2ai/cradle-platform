@@ -1,4 +1,5 @@
 import { toCellViewModel } from "../domain/cellViewModel";
+import { CellWorkspacePanel } from "./workspace/CellWorkspacePanel";
 
 export function CellPanel({
   cell,
@@ -19,7 +20,6 @@ export function CellPanel({
     typeof view.maturity === "number"
       ? `${Math.round(view.maturity <= 1 ? view.maturity * 100 : view.maturity)}%`
       : "—";
-  const workspaceSectionCount = Object.keys(view.workspaceSections).length;
 
   return (
     <section className="cell-panel">
@@ -97,26 +97,7 @@ export function CellPanel({
         </article>
       </div>
 
-      <div className="workspace-card">
-        <div className="workspace-card-header">
-          <div>
-            <h3>Cell Workspace</h3>
-            <p>
-              {view.workspacePath ??
-                `${workspaceSectionCount} workspace sections available.`}
-            </p>
-          </div>
-          <button type="button" className="text-button">Open Workspace</button>
-        </div>
-        <div className="workspace-placeholder">
-          {view.workspacePath ??
-            (workspaceSectionCount > 0
-              ? Object.entries(view.workspaceSections)
-                  .map(([name, entries]) => `${name}: ${entries.length}`)
-                  .join(" · ")
-              : "Workspace information will appear here.")}
-        </div>
-      </div>
+      <CellWorkspacePanel workspacePath={view.workspacePath} />
     </section>
   );
 }
