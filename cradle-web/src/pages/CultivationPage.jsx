@@ -3,12 +3,17 @@ export function CultivationPage({
   heartbeatStatus,
   heartbeatError,
   heartbeatMessage,
-  cultivationRunning,
+  cultivationStatus,
+  cultivationAction,
   onStartCultivation,
+  onStopCultivation,
 }) {
   const isStarting = ["starting", "running", "pending", "accepted"].includes(
     heartbeatStatus,
   );
+  const isStopping = cultivationAction === "stop";
+  const isBusy = isStarting || isStopping;
+  const cultivationRunning = Boolean(cultivationStatus?.running);
 
   return (
     <section className="platform-page">
@@ -20,21 +25,39 @@ export function CultivationPage({
             observe and evolve.
           </p>
         </div>
-        <button
-          type="button"
-          className="primary-button heartbeat-run-button"
-          onClick={onStartCultivation}
-          disabled={isStarting}
-        >
-          {isStarting ? (
-            <>
-              <span className="button-spinner" />
-              Starting Cultivation...
-            </>
-          ) : (
-            "Start Cultivation"
-          )}
-        </button>
+        {cultivationRunning ? (
+          <button
+            type="button"
+            className="secondary-button heartbeat-run-button"
+            onClick={onStopCultivation}
+            disabled={isBusy}
+          >
+            {isStopping ? (
+              <>
+                <span className="button-spinner" />
+                Stopping Cultivation...
+              </>
+            ) : (
+              "Stop Cultivation"
+            )}
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="primary-button heartbeat-run-button"
+            onClick={onStartCultivation}
+            disabled={isBusy}
+          >
+            {isStarting ? (
+              <>
+                <span className="button-spinner" />
+                Starting Cultivation...
+              </>
+            ) : (
+              "Start Cultivation"
+            )}
+          </button>
+        )}
       </div>
 
       {isStarting && (
@@ -43,7 +66,13 @@ export function CultivationPage({
           <span>Cradle cultivation is starting.</span>
         </div>
       )}
-      {heartbeatMessage && !isStarting && (
+      {isStopping && (
+        <div className="operation-banner">
+          <span className="button-spinner" />
+          <span>Cradle cultivation is stopping.</span>
+        </div>
+      )}
+      {heartbeatMessage && !isBusy && (
         <div className="action-feedback-item success">✓ {heartbeatMessage}</div>
       )}
       {heartbeatError && (
@@ -58,6 +87,15 @@ export function CultivationPage({
           </div>
           <p>Current state of the Cradle cultivation loop.</p>
         </article>
+        {cultivationRunning && (
+          <article className="dashboard-card">
+            <div className="dashboard-card-label">Active Cells</div>
+            <div className="dashboard-card-value">
+              {cultivationStatus?.activeCells ?? 0}
+            </div>
+            <p>Cells currently available for cultivation ticks.</p>
+          </article>
+        )}
         <article className="dashboard-card">
           <div className="dashboard-card-label">Last Start Command</div>
           <div className="dashboard-card-value">

@@ -180,6 +180,27 @@ try {
     assert((await reloaded.getMode()) === HeartbeatMode.AUTOMATIC);
   });
 
+  await test("automatic mode records cultivation start state", async () => {
+    const file = path.join(tmp, "cradle-config-cultivation-start.json");
+    const store = new HeartbeatModeStore({ file });
+    await store.setMode(HeartbeatMode.AUTOMATIC);
+
+    const state = await store.getState();
+    assert(state.mode === HeartbeatMode.AUTOMATIC);
+    assert(typeof state.startedAt === "string");
+  });
+
+  await test("manual mode clears cultivation start state", async () => {
+    const file = path.join(tmp, "cradle-config-cultivation-stop.json");
+    const store = new HeartbeatModeStore({ file });
+    await store.setMode(HeartbeatMode.AUTOMATIC);
+    await store.setMode(HeartbeatMode.MANUAL);
+
+    const state = await store.getState();
+    assert(state.mode === HeartbeatMode.MANUAL);
+    assert(state.startedAt === null);
+  });
+
   await test("invalid mode is rejected", async () => {
     const store = new HeartbeatModeStore({ file: path.join(tmp, "cradle-config-invalid.json") });
     let threw = false;

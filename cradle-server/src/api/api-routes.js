@@ -1,4 +1,9 @@
 import { CreateCellUseCase } from "../application/create-cell-use-case.js";
+import {
+  GetCultivationStatusUseCase,
+  StartCultivationUseCase,
+  StopCultivationUseCase,
+} from "../application/cultivation-use-cases.js";
 import { GetCellArtifactUseCase } from "../application/get-cell-artifact-use-case.js";
 import { GetCellDnaUseCase } from "../application/get-cell-dna-use-case.js";
 import { GetCellDnaHistoryUseCase } from "../application/get-cell-dna-history-use-case.js";
@@ -155,6 +160,26 @@ export function createApiRoutes({
       new SetHeartbeatModeUseCase({ heartbeatModeStoreFactory }).execute({
         mode: request.body?.mode,
       })
+    ),
+    exact("GET", "/api/v1/cultivation/status", async () =>
+      new GetCultivationStatusUseCase({
+        engine,
+        heartbeatModeStoreFactory,
+      }).execute()
+    ),
+    exact("POST", "/api/v1/cultivation/start", async () =>
+      new StartCultivationUseCase({
+        engine,
+        heartbeatModeStoreFactory,
+        heartbeatServiceFactory,
+        operationRunner,
+      }).execute()
+    ),
+    exact("POST", "/api/v1/cultivation/stop", async () =>
+      new StopCultivationUseCase({
+        engine,
+        heartbeatModeStoreFactory,
+      }).execute()
     ),
     exact("POST", "/api/v1/heartbeat/runs", async () =>
       new RunHeartbeatUseCase({
