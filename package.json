@@ -1,0 +1,19 @@
+{
+  "name": "cradle-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Software Life Engineering Platform",
+  "workspaces": [
+    "cradle-server",
+    "cradle-web"
+  ],
+  "scripts": {
+    "server": "npm run start --workspace=cradle-server",
+    "server:dev": "npm run dev --workspace=cradle-server",
+    "api": "npm run api --workspace=cradle-server",
+    "test": "npm run test --workspace=cradle-server",
+    "web": "npm run dev --workspace=cradle-web"
+  },
+  "author": "Alan Huang",
+  "license": "MIT"
+}
