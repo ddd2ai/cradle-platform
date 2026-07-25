@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import "./App.css";
 import {
+  activateAllCells,
   activateCell,
+  deactivateAllCells,
   deactivateCell,
   fetchCell,
   fetchCellDna,
@@ -40,10 +42,25 @@ function App() {
   const selectedCellIdRef = useRef(null);
   const activeCellCount = cells.filter((cell) => cell.active === true).length;
 
+  async function loadCells() {
+    try {
+      setIsLoadingCells(true);
+      setCellsError(null);
+      const loadedCells = await fetchCells();
+      setCells(loadedCells);
+      return loadedCells;
+    } catch (error) {
+      setCellsError(error.message);
+      throw error;
+    } finally {
+      setIsLoadingCells(false);
+    }
+  }
+
   useEffect(() => {
     let cancelled = false;
 
-    async function loadCells() {
+    async function loadInitialCells() {
       try {
         setIsLoadingCells(true);
         setCellsError(null);
@@ -63,7 +80,7 @@ function App() {
       }
     }
 
-    loadCells();
+    loadInitialCells();
 
     return () => {
       cancelled = true;
@@ -202,9 +219,12 @@ function App() {
       setHeartbeatMessage(null);
       setHeartbeatError(null);
 
+      const activatedCells = await activateAllCells();
+      setCells(activatedCells);
       const operation = await startCultivation();
       setHeartbeatRun(operation);
       setHeartbeatStatus(operation.status ?? "completed");
+      await loadCells();
       setCultivationRunning(true);
       setHeartbeatMessage("Cultivation started successfully.");
     } catch (error) {
@@ -226,6 +246,8 @@ function App() {
       setHeartbeatError(null);
 
       await stopCultivation();
+      const deactivatedCells = await deactivateAllCells();
+      setCells(deactivatedCells);
       setCultivationRunning(false);
       setHeartbeatMessage("Cultivation stopped successfully.");
     } catch (error) {

@@ -79,6 +79,14 @@ export async function deactivateCell(cellId) {
   return postCellAction(cellId, "deactivate");
 }
 
+export async function activateAllCells() {
+  return postCellsAction("activate-all");
+}
+
+export async function deactivateAllCells() {
+  return postCellsAction("deactivate-all");
+}
+
 export async function heartbeatCell() {
   const response = await fetch("/api/v1/heartbeat/runs", { method: "POST" });
 
@@ -153,4 +161,20 @@ async function postCellAction(cellId, action) {
   }
 
   return null;
+}
+
+async function postCellsAction(action) {
+  const response = await fetch(`/api/v1/cells/${action}`, { method: "POST" });
+
+  if (!response.ok) {
+    throw new Error(`Failed to ${action.replace("-", " ")} cells: ${response.status}`);
+  }
+
+  const data = await response.json();
+  const loadedCells = data.cells ?? [];
+
+  return loadedCells.map((cell) => ({
+    ...cell,
+    id: cell.id ?? cell.cellId,
+  }));
 }

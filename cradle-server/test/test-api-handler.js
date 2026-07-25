@@ -33,6 +33,18 @@ const engine = {
     cell.active = false;
     cell.profile.status = "idle";
   },
+  activateAllCells: async () => {
+    for (const cell of cellStore.values()) {
+      cell.active = true;
+      cell.profile.status = "active";
+    }
+  },
+  deactivateAllCells: async () => {
+    for (const cell of cellStore.values()) {
+      cell.active = false;
+      cell.profile.status = "idle";
+    }
+  },
 };
 
 const cellStore = new Map([
@@ -277,6 +289,26 @@ const missingActivation = await handler({
 
 assert.equal(missingActivation.status, 404);
 assert.equal(missingActivation.body.error.code, "CELL_NOT_FOUND");
+
+const activatedAll = await handler({
+  method: "POST",
+  url: "/api/v1/cells/activate-all",
+});
+
+assert.equal(activatedAll.status, 200);
+assert.equal(activatedAll.body.cells.length, 3);
+assert.equal(activatedAll.body.cells.every((cell) => cell.active), true);
+
+const deactivatedAll = await handler({
+  method: "POST",
+  url: "/api/v1/cells/deactivate-all",
+});
+
+assert.equal(deactivatedAll.status, 200);
+assert.equal(deactivatedAll.body.cells.length, 3);
+assert.equal(deactivatedAll.body.cells.every((cell) => !cell.active), true);
+
+await engine.activateCell("cell-001");
 
 const workspace = await handler({
   method: "GET",

@@ -22,6 +22,7 @@ import { ListOperationsUseCase } from "../application/list-operations-use-case.j
 import { OperationRunner } from "../application/operation-runner.js";
 import { ReadCellWorkspaceFileUseCase } from "../application/read-cell-workspace-file-use-case.js";
 import { RunHeartbeatUseCase } from "../application/run-heartbeat-use-case.js";
+import { SetAllCellsActiveUseCase } from "../application/set-all-cells-active-use-case.js";
 import { SetCellActiveUseCase } from "../application/set-cell-active-use-case.js";
 import { SetHeartbeatModeUseCase } from "../application/set-heartbeat-mode-use-case.js";
 
@@ -46,6 +47,12 @@ export function createApiRoutes({
       new CreateCellUseCase({ engine }).execute({
         cellId: request.body?.cellId,
       })
+    ),
+    exact("POST", "/api/v1/cells/activate-all", async () =>
+      new SetAllCellsActiveUseCase({ engine }).execute({ active: true })
+    ),
+    exact("POST", "/api/v1/cells/deactivate-all", async () =>
+      new SetAllCellsActiveUseCase({ engine }).execute({ active: false })
     ),
     pattern("GET", /^\/api\/v1\/cells\/([^/]+)$/, async ({ params }) =>
       new GetCellUseCase({ engine }).execute({ cellId: params[0] })
