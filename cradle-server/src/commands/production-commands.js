@@ -1,6 +1,7 @@
 import { renderAnswerStart } from "../cradle-console.js";
 import path from "path";
 import { splitFirstArg } from "./command-input.js";
+import { PROJECT_ROOT } from "../project-root.js";
 
 export function createProductionCommands() {
   return [
@@ -38,7 +39,7 @@ Artifact produced.
 ID    : ${result.artifact.id}
 Type  : ${result.artifact.type}
 Title : ${result.artifact.title}
-Dir   : ${path.relative(process.cwd(), result.saved.dir)}
+Dir   : ${path.relative(PROJECT_ROOT, result.saved.dir)}
 
 Outputs:
 ${outputsList || "(no outputs)"}

@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { PROJECT_ROOT } from "./project-root.js";
 
 const DEFAULT_CRADLE_CONFIG = Object.freeze({
   ai: Object.freeze({
@@ -30,7 +31,7 @@ const DEFAULT_CRADLE_CONFIG = Object.freeze({
 });
 
 const CRADLE_CONFIG_FILE = path.join(
-  process.cwd(),
+  PROJECT_ROOT,
   "config",
   "cradle-config.json"
 );

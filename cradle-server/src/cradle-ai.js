@@ -1,6 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import { writeTextFile } from "./utils/text-file.js";
+import { PROJECT_ROOT } from "./project-root.js";
 
 export const CRADLE_SYSTEM_PROMPT = `
 你是 Cradle Platform 的核心助手。
@@ -65,20 +66,29 @@ ${logDir}
   );
 
   async function loadSkill(skillName) {
-    try {
-      const basePath = path.join(process.cwd(), ".agents", "skills", skillName);
+    const skillRoots = [
+      path.join(PROJECT_ROOT, ".agents", "skills"),
+      path.join(PROJECT_ROOT, "..", ".agents", "skills"),
+    ];
 
-      const skillContent = await fs.readFile(
-        path.join(basePath, "SKILL.md"),
-        "utf8"
-      );
+    for (const skillRoot of skillRoots) {
+      const basePath = path.join(skillRoot, skillName);
 
-      const refsContent = await loadSkillReferences(basePath);
+      try {
+        const skillContent = await fs.readFile(
+          path.join(basePath, "SKILL.md"),
+          "utf8"
+        );
 
-      return skillContent + refsContent;
-    } catch {
-      return null;
+        const refsContent = await loadSkillReferences(basePath);
+
+        return skillContent + refsContent;
+      } catch {
+        // Try the next skill root.
+      }
     }
+
+    return null;
   }
 
   async function loadSkillReferences(basePath) {

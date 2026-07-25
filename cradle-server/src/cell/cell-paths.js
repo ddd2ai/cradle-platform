@@ -1,8 +1,9 @@
 import path from "path";
+import { PROJECT_ROOT } from "../project-root.js";
 
 export function createCellPaths({
   cellId,
-  projectRoot = process.cwd(),
+  projectRoot = PROJECT_ROOT,
   cellsDir = "cells",
 } = {}) {
   if (!cellId) {

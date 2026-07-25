@@ -1,6 +1,7 @@
 // cradle-engine.js
 import readline from "readline";
 import fs from "fs/promises";
+import path from "path";
 import { CradleCell } from "./cradle-cell.js";
 import {
   clearScreen,
@@ -20,6 +21,7 @@ import { createProductionCommands } from "./commands/production-commands.js";
 import { createExecutionCommands } from "./commands/execution-commands.js";
 import { createLifecycleCommands } from "./commands/lifecycle-commands.js";
 import dnaPlot2DCommand from "./commands/plot2d-command.js";
+import { PROJECT_ROOT } from "./project-root.js";
 
 export class CradleEngine {
   constructor({ 
@@ -27,11 +29,13 @@ export class CradleEngine {
       provider = "copilot",
       timeoutSeconds = 3600,
       heartbeatMode = "manual",
+      projectRoot = PROJECT_ROOT,
   } = {}) {
     this.model = model;
     this.provider = provider;
     this.timeoutSeconds = timeoutSeconds;
     this.heartbeatMode = heartbeatMode;
+    this.projectRoot = projectRoot;
 
     this.cells = new Map();
     this.inboxes = new Map();
@@ -80,9 +84,10 @@ export class CradleEngine {
   }
 
   async loadCells() {
-    await fs.mkdir("cells", { recursive: true });
+    const cellsDir = path.join(this.projectRoot, "cells");
+    await fs.mkdir(cellsDir, { recursive: true });
 
-    const entries = await fs.readdir("cells", { withFileTypes: true });
+    const entries = await fs.readdir(cellsDir, { withFileTypes: true });
     const cellDirs = entries.filter((e) => e.isDirectory());
 
     if (cellDirs.length === 0) {
@@ -106,6 +111,7 @@ export class CradleEngine {
       name: id,
       model: this.model,
       provider: this.provider,
+      projectRoot: this.projectRoot,
     });
 
     await cell.prepare();
@@ -121,6 +127,7 @@ export class CradleEngine {
       name: id,
       model: this.model,
       provider: this.provider,
+      projectRoot: this.projectRoot,
     });
 
     await cell.prepare();

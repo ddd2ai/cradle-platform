@@ -1,9 +1,10 @@
 import fs from "fs/promises";
 import path from "path";
 import { readJsonFile, writeJsonFile } from "../utils/json-file.js";
+import { PROJECT_ROOT } from "../project-root.js";
 
 export class LifecycleProposalStore {
-  constructor({ dir = path.join("situation", "proposals") } = {}) {
+  constructor({ dir = path.join(PROJECT_ROOT, "situation", "proposals") } = {}) {
     this.dir = dir;
   }
 

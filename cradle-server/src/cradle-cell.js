@@ -38,6 +38,7 @@ import {
 } from "./dna/dna-division.js";
 import { ArtifactProductionService } from "./production/artifact-production-service.js";
 import { StabilityStore } from "./stability/stability-store.js";
+import { PROJECT_ROOT } from "./project-root.js";
 
 export class CradleCell {
 
@@ -46,8 +47,8 @@ export class CradleCell {
     name = "Cradle Cell",
     model = "gpt-5-mini",
     provider = "copilot",
-    projectRoot = process.cwd(),
-    cellsDir = "cells",
+    projectRoot = PROJECT_ROOT,
+    cellsDir = path.join(projectRoot, "cells"),
   } = {}) {
     this.id = id;
     this.name = name;
@@ -122,7 +123,7 @@ export class CradleCell {
     const provider = await createLLMProvider({
       provider: this.provider,
       model: this.model,
-      cwd: process.cwd(),
+      cwd: this.paths.projectRoot,
     });
 
     this.assistant = await createCradleAssistant({
@@ -1019,7 +1020,7 @@ ${memoryContext}
 
     await this.assertCanDivide();
 
-    const childRootDir = path.join("cells", childId);
+    const childRootDir = path.join(this.cellsDir, childId);
 
     await fs.mkdir(childRootDir, { recursive: true });
 

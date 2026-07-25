@@ -2,11 +2,12 @@ import { createCopilotProvider } from "./copilot-provider.js";
 import { createOllamaProvider } from "./ollama-provider.js";
 import { createGeminiProvider } from "./gemini-provider.js";
 import { createCodexProvider } from "./codex-provider.js";
+import { PROJECT_ROOT } from "../project-root.js";
 
 export async function createLLMProvider({
   provider,
   model,
-  cwd = process.cwd(),
+  cwd = PROJECT_ROOT,
 } = {}) {
   switch (provider) {
     case "ollama":

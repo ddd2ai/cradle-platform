@@ -1,0 +1,8 @@
+node_modules/
+cells/**
+!cells/**/
+!cells/**/.gitkeep
+situation/**
+!situation/**/
+!situation/**/.gitkeep
+.DS_Store

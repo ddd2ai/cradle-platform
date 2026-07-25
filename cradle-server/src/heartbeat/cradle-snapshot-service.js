@@ -1,11 +1,12 @@
 import fs from "fs/promises";
 import path from "path";
 import { ThreatStore } from "./threat-store.js";
+import { PROJECT_ROOT } from "../project-root.js";
 
 export class CradleSnapshotService {
   constructor({
     engine,
-    situationDir = "situation",
+    situationDir = path.join(PROJECT_ROOT, "situation"),
     threatStore = new ThreatStore({
       dir: path.join(situationDir, "stimuli", "threats"),
     }),

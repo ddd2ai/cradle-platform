@@ -1,6 +1,6 @@
 {
-  "name": "cradle-platform",
-  "version": "0.1.0",
+  "name": "cradle-server",
+  "version": "1.0.0",
   "description": "Software Life Engineering Platform",
   "type": "module",
   "main": "src/cradle.js",

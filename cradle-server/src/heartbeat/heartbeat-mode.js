@@ -4,6 +4,7 @@ import {
   readCradleConfig,
 } from "../cradle-config.js";
 import { writeJsonFile } from "../utils/json-file.js";
+import { PROJECT_ROOT } from "../project-root.js";
 
 export const HeartbeatMode = Object.freeze({
   MANUAL: "manual",
@@ -11,7 +12,7 @@ export const HeartbeatMode = Object.freeze({
 });
 
 export class HeartbeatModeStore {
-  constructor({ file = path.join("config", "cradle-config.json") } = {}) {
+  constructor({ file = path.join(PROJECT_ROOT, "config", "cradle-config.json") } = {}) {
     this.file = file;
   }
 

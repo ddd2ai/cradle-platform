@@ -1,6 +1,7 @@
 import path from "path";
 import { createArtifact } from "./artifact-schema.js";
 import { ArtifactStore } from "./artifact-store.js";
+import { PROJECT_ROOT } from "../project-root.js";
 import {
   buildProductionPrompt,
   buildArtifactRepairPrompt,
@@ -334,7 +335,7 @@ Attempting one repair cycle.
 - id: ${artifact.id}
 - type: ${artifact.type}
 - title: ${artifact.title}
-- dir: ${path.relative(process.cwd(), saved.dir)}
+- dir: ${path.relative(PROJECT_ROOT, saved.dir)}
 `);
 
     await this.cell.appendThought(`

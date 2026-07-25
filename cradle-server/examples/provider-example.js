@@ -9,6 +9,7 @@
 import { createCradleAssistant } from "../src/cradle-ai.js";
 import { createCopilotProvider } from "../src/providers/copilot-provider.js";
 import { createOllamaProvider } from "../src/providers/ollama-provider.js";
+import { PROJECT_ROOT } from "../src/project-root.js";
 import path from "path";
 
 // ================================
@@ -29,7 +30,7 @@ async function exampleCopilot() {
   // 2. 建立 Cradle Assistant
   const assistant = await createCradleAssistant({
     provider,
-    logDir: path.join(process.cwd(), "test", "logs"),
+    logDir: path.join(PROJECT_ROOT, "test", "logs"),
     cellId: "example-cell",
     cellName: "Example Cell",
     onDelta: (chunk) => process.stdout.write(chunk),
@@ -69,7 +70,7 @@ async function exampleOllama() {
   // 2. 建立 Cradle Assistant
   const assistant = await createCradleAssistant({
     provider,
-    logDir: path.join(process.cwd(), "test", "logs"),
+    logDir: path.join(PROJECT_ROOT, "test", "logs"),
     cellId: "example-cell-ollama",
     cellName: "Example Cell (Ollama)",
     onDelta: (chunk) => process.stdout.write(chunk),
@@ -103,7 +104,7 @@ async function exampleSkill() {
 
   const assistant = await createCradleAssistant({
     provider,
-    logDir: path.join(process.cwd(), "test", "logs"),
+    logDir: path.join(PROJECT_ROOT, "test", "logs"),
     cellId: "example-cell-skill",
     cellName: "Example Cell (Skill)",
     onDelta: (chunk) => process.stdout.write(chunk),
