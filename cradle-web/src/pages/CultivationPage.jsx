@@ -4,16 +4,17 @@ export function CultivationPage({
   heartbeatError,
   heartbeatMessage,
   activeCellCount,
-  cultivationRunning,
-  cultivationAction,
+  cultivationStatus,
   onStartCultivation,
   onStopCultivation,
 }) {
+  const status = cultivationStatus?.status ?? "dormant";
   const isStarting = ["starting", "running", "pending", "accepted"].includes(
     heartbeatStatus,
-  );
-  const isStopping = cultivationAction === "stop";
+  ) || status === "starting";
+  const isStopping = status === "stopping";
   const isBusy = isStarting || isStopping;
+  const isRunning = status === "running";
 
   return (
     <section className="platform-page">
@@ -25,7 +26,7 @@ export function CultivationPage({
             observe and evolve.
           </p>
         </div>
-        {cultivationRunning ? (
+        {isRunning || isStopping ? (
           <button
             type="button"
             className="secondary-button heartbeat-run-button"
@@ -83,17 +84,32 @@ export function CultivationPage({
         <article className="dashboard-card">
           <div className="dashboard-card-label">Cultivation Status</div>
           <div className="dashboard-card-value">
-            {cultivationRunning ? "Running" : "Dormant"}
+            {toTitleCase(status)}
           </div>
-          <p>Current state of the Cradle cultivation loop.</p>
+          <p>
+            {isStopping
+              ? "Waiting for running cell tasks to finish."
+              : "Current state of the Cradle cultivation loop."}
+          </p>
         </article>
-        {cultivationRunning && (
+        {(isRunning || isStopping) && (
           <article className="dashboard-card">
             <div className="dashboard-card-label">Active Cells</div>
             <div className="dashboard-card-value">
-              {activeCellCount}
+              {cultivationStatus?.activeCells ?? activeCellCount}
             </div>
             <p>Cells currently available for cultivation ticks.</p>
+          </article>
+        )}
+        {isStopping && (
+          <article className="dashboard-card">
+            <div className="dashboard-card-label">Running Tasks</div>
+            <div className="dashboard-card-value">
+              {cultivationStatus?.runningTasks ?? 0}
+            </div>
+            <p>
+              {formatActiveTicks(cultivationStatus?.activeTickCellIds)}
+            </p>
           </article>
         )}
         <article className="dashboard-card">
@@ -120,4 +136,20 @@ export function CultivationPage({
       </div>
     </section>
   );
+}
+
+function toTitleCase(value) {
+  return value ? value[0].toUpperCase() + value.slice(1) : "Dormant";
+}
+
+function formatActiveTicks(cellIds = []) {
+  if (cellIds.length === 0) {
+    return "No running cell tasks remain.";
+  }
+
+  if (cellIds.length === 1) {
+    return `Waiting for ${cellIds[0]} to finish its current task.`;
+  }
+
+  return `Waiting for ${cellIds.length} cells to finish current tasks.`;
 }

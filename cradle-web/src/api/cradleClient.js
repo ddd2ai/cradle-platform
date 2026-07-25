@@ -118,6 +118,16 @@ export async function stopCultivation() {
   return response.json();
 }
 
+export async function fetchCultivationStatus() {
+  const response = await fetch("/api/v1/cultivation/status");
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch cultivation status: ${response.status}`);
+  }
+
+  return response.json();
+}
+
 async function waitForOperation(operationId) {
   const deadline = Date.now() + 60_000;
 
@@ -173,8 +183,11 @@ async function postCellsAction(action) {
   const data = await response.json();
   const loadedCells = data.cells ?? [];
 
-  return loadedCells.map((cell) => ({
-    ...cell,
-    id: cell.id ?? cell.cellId,
-  }));
+  return {
+    cells: loadedCells.map((cell) => ({
+      ...cell,
+      id: cell.id ?? cell.cellId,
+    })),
+    cultivation: data.cultivation ?? null,
+  };
 }

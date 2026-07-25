@@ -10,6 +10,7 @@ import {
   fetchCellMaturity,
   fetchCellWorkspace,
   fetchCells,
+  fetchCultivationStatus,
   startCultivation,
   stopCultivation,
 } from "./api/cradleClient";
@@ -36,8 +37,15 @@ function App() {
   const [heartbeatStatus, setHeartbeatStatus] = useState(null);
   const [heartbeatMessage, setHeartbeatMessage] = useState(null);
   const [heartbeatError, setHeartbeatError] = useState(null);
-  const [cultivationRunning, setCultivationRunning] = useState(false);
-  const [cultivationAction, setCultivationAction] = useState(null);
+  const [cultivationStatus, setCultivationStatus] = useState({
+    status: "dormant",
+    activeCells: 0,
+    activeTicks: 0,
+    runningTasks: 0,
+    activeTickCellIds: [],
+    startedAt: null,
+    stoppingAt: null,
+  });
   const detailRequestRef = useRef(0);
   const selectedCellIdRef = useRef(null);
   const activeCellCount = cells.filter((cell) => cell.active === true).length;
@@ -86,6 +94,47 @@ function App() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadCultivationStatus() {
+      try {
+        const status = await fetchCultivationStatus();
+
+        if (!cancelled) {
+          setCultivationStatus(status);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setHeartbeatError(error.message);
+        }
+      }
+    }
+
+    loadCultivationStatus();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (cultivationStatus.status !== "stopping") {
+      return undefined;
+    }
+
+    const timerId = window.setInterval(async () => {
+      try {
+        const status = await fetchCultivationStatus();
+        setCultivationStatus(status);
+      } catch (error) {
+        setHeartbeatError(error.message);
+      }
+    }, 1000);
+
+    return () => window.clearInterval(timerId);
+  }, [cultivationStatus.status]);
 
   useEffect(() => {
     if (!actionMessage) return undefined;
@@ -209,51 +258,63 @@ function App() {
   }
 
   async function handleStartCultivation() {
-    if (cultivationAction || ["starting", "running", "pending", "accepted"].includes(heartbeatStatus)) {
+    if (["starting", "stopping"].includes(cultivationStatus.status) || ["starting", "running", "pending", "accepted"].includes(heartbeatStatus)) {
       return;
     }
 
     try {
-      setCultivationAction("start");
+      setCultivationStatus((current) => ({
+        ...current,
+        status: "starting",
+      }));
       setHeartbeatStatus("starting");
       setHeartbeatMessage(null);
       setHeartbeatError(null);
 
       const activatedCells = await activateAllCells();
-      setCells(activatedCells);
+      setCells(activatedCells.cells);
+      if (activatedCells.cultivation) {
+        setCultivationStatus(activatedCells.cultivation);
+      }
       const operation = await startCultivation();
       setHeartbeatRun(operation);
       setHeartbeatStatus(operation.status ?? "completed");
       await loadCells();
-      setCultivationRunning(true);
+      const status = await fetchCultivationStatus();
+      setCultivationStatus(status);
       setHeartbeatMessage("Cultivation started successfully.");
     } catch (error) {
       setHeartbeatStatus("failed");
       setHeartbeatError(error.message);
-    } finally {
-      setCultivationAction(null);
     }
   }
 
   async function handleStopCultivation() {
-    if (cultivationAction) {
+    if (["starting", "stopping", "dormant"].includes(cultivationStatus.status)) {
       return;
     }
 
     try {
-      setCultivationAction("stop");
+      setCultivationStatus((current) => ({
+        ...current,
+        status: "stopping",
+        stoppingAt: current.stoppingAt ?? new Date().toISOString(),
+      }));
       setHeartbeatMessage(null);
       setHeartbeatError(null);
 
       await stopCultivation();
       const deactivatedCells = await deactivateAllCells();
-      setCells(deactivatedCells);
-      setCultivationRunning(false);
+      setCells(deactivatedCells.cells);
+      if (deactivatedCells.cultivation) {
+        setCultivationStatus(deactivatedCells.cultivation);
+      } else {
+        const status = await fetchCultivationStatus();
+        setCultivationStatus(status);
+      }
       setHeartbeatMessage("Cultivation stopped successfully.");
     } catch (error) {
       setHeartbeatError(error.message);
-    } finally {
-      setCultivationAction(null);
     }
   }
 
@@ -301,8 +362,7 @@ function App() {
               heartbeatError={heartbeatError}
               heartbeatMessage={heartbeatMessage}
               activeCellCount={activeCellCount}
-              cultivationRunning={cultivationRunning}
-              cultivationAction={cultivationAction}
+              cultivationStatus={cultivationStatus}
               onStartCultivation={handleStartCultivation}
               onStopCultivation={handleStopCultivation}
             />
