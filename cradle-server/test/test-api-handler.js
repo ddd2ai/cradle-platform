@@ -450,6 +450,20 @@ assert.deepEqual(workspacePreview.body, {
   previewable: true,
 });
 
+const workspaceExport = await handler({
+  method: "GET",
+  url: "/api/v1/cells/cell-001/workspace/export",
+});
+
+assert.equal(workspaceExport.status, 200);
+assert.equal(workspaceExport.headers["content-type"], "application/zip");
+assert.equal(
+  workspaceExport.headers["content-disposition"],
+  'attachment; filename="cell-001-workspace.zip"'
+);
+assert.equal(Buffer.isBuffer(workspaceExport.body), true);
+assert.deepEqual(workspaceExport.body, Buffer.from("zip"));
+
 const workspaceFile = await handler({
   method: "GET",
   url: "/api/v1/cells/cell-001/workspace/files?path=notes%2Fsource.md",
@@ -835,6 +849,10 @@ function createCell({
         truncated: false,
         previewable: true,
       };
+    },
+    exportWorkspaceZip: async ({ rootName }) => {
+      assert.equal(rootName, `${id}-workspace`);
+      return Buffer.from("zip");
     },
   };
 

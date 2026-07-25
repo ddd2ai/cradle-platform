@@ -9,7 +9,11 @@ export function createHttpServer({ handler }) {
     });
 
     response.writeHead(result.status, result.headers);
-    response.end(JSON.stringify(result.body));
+    response.end(
+      Buffer.isBuffer(result.body) || typeof result.body === "string"
+        ? result.body
+        : JSON.stringify(result.body)
+    );
   });
 }
 

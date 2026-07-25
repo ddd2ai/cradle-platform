@@ -1,5 +1,6 @@
 import { CreateCellUseCase } from "../application/create-cell-use-case.js";
 import { ClearLogsUseCase } from "../application/clear-logs-use-case.js";
+import { ExportCellWorkspaceUseCase } from "../application/export-cell-workspace-use-case.js";
 import { GetCellArtifactUseCase } from "../application/get-cell-artifact-use-case.js";
 import { GetCellDnaUseCase } from "../application/get-cell-dna-use-case.js";
 import { GetCellDnaHistoryUseCase } from "../application/get-cell-dna-history-use-case.js";
@@ -112,6 +113,14 @@ export function createApiRoutes({
         new ReadCellWorkspacePreviewUseCase({ engine }).execute({
           cellId: params[0],
           path: route.searchParams.get("path"),
+        })
+    ),
+    pattern(
+      "GET",
+      /^\/api\/v1\/cells\/([^/]+)\/workspace\/export$/,
+      async ({ params }) =>
+        new ExportCellWorkspaceUseCase({ engine }).execute({
+          cellId: params[0],
         })
     ),
     pattern(

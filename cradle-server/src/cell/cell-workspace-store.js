@@ -3,6 +3,7 @@ import fs from "fs/promises";
 import path from "path";
 import { resolveInsideRoot } from "../utils/safe-path.js";
 import { writeTextFile } from "../utils/text-file.js";
+import { createZipArchive } from "../utils/zip-archive.js";
 
 const IGNORED_DIRECTORIES = new Set([
   ".git",
@@ -173,6 +174,18 @@ export class CellWorkspaceStore {
     }
   }
 
+  async exportWorkspaceZip({ rootName = "workspace" } = {}) {
+    const rootRealPath = await fs.realpath(this.workspaceDir);
+    const entries = await collectZipEntries({
+      directory: rootRealPath,
+      zipPath: sanitizeZipSegment(rootName),
+      rootRealPath,
+      visitedDirectories: new Set([rootRealPath]),
+    });
+
+    return createZipArchive(entries);
+  }
+
   async appendWorkspaceFile(relativePath, content) {
     const file = this.resolveInside(this.workspaceDir, relativePath);
     await fs.mkdir(path.dirname(file), { recursive: true });
@@ -317,6 +330,98 @@ function shouldIgnoreEntry(entry) {
   }
 
   return IGNORED_FILES.has(entry.name);
+}
+
+async function collectZipEntries({
+  directory,
+  zipPath,
+  rootRealPath,
+  visitedDirectories,
+}) {
+  const entries = [
+    {
+      name: `${zipPath}/`,
+      directory: true,
+      modifiedAt: await getModifiedAt(directory),
+    },
+  ];
+  const directoryEntries = await fs.readdir(directory, { withFileTypes: true });
+
+  for (const entry of directoryEntries) {
+    if (shouldIgnoreEntry(entry)) {
+      continue;
+    }
+
+    const fullPath = path.join(directory, entry.name);
+    const targetRealPath = await resolveExportTarget({
+      entry,
+      fullPath,
+      rootRealPath,
+    });
+
+    if (!targetRealPath) {
+      continue;
+    }
+
+    const stat = await fs.stat(targetRealPath);
+    const childZipPath = `${zipPath}/${sanitizeZipSegment(entry.name)}`;
+
+    if (stat.isDirectory()) {
+      if (visitedDirectories.has(targetRealPath)) {
+        continue;
+      }
+
+      visitedDirectories.add(targetRealPath);
+      entries.push(...(await collectZipEntries({
+        directory: targetRealPath,
+        zipPath: childZipPath,
+        rootRealPath,
+        visitedDirectories,
+      })));
+    } else if (stat.isFile()) {
+      entries.push({
+        name: childZipPath,
+        data: await fs.readFile(targetRealPath),
+        directory: false,
+        modifiedAt: stat.mtime,
+      });
+    }
+  }
+
+  return entries;
+}
+
+async function resolveExportTarget({ entry, fullPath, rootRealPath }) {
+  try {
+    const targetRealPath = entry.isSymbolicLink()
+      ? await fs.realpath(fullPath)
+      : fullPath;
+
+    if (!isPathInside(rootRealPath, targetRealPath)) {
+      return null;
+    }
+
+    return targetRealPath;
+  } catch {
+    return null;
+  }
+}
+
+async function getModifiedAt(target) {
+  try {
+    const stat = await fs.stat(target);
+    return stat.mtime;
+  } catch {
+    return new Date(0);
+  }
+}
+
+function sanitizeZipSegment(value) {
+  return String(value)
+    .replaceAll("\\", "/")
+    .split("/")
+    .filter(Boolean)
+    .join("-");
 }
 
 async function directoryHasVisibleChildren(directory) {

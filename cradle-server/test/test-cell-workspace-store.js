@@ -22,6 +22,13 @@ await fs.mkdir(path.join(workspaceDir, ".git"), { recursive: true });
 await fs.mkdir(path.join(workspaceDir, "node_modules"), { recursive: true });
 await store.writeWorkspaceFile(".gitignore", "dist\n");
 await store.writeWorkspaceFile(".DS_Store", "ignored");
+const outsideFile = path.join(tempRoot, "outside.txt");
+await fs.writeFile(outsideFile, "outside", "utf8");
+try {
+  await fs.symlink(outsideFile, path.join(workspaceDir, "outside-link.txt"));
+} catch {
+  // Some file systems or permission profiles do not allow symlink creation.
+}
 
 assert.equal(await store.readWorkspaceFile("notes/one.md"), "one\ntwo\n");
 assert.deepEqual(await store.listWorkspace(), [
@@ -32,6 +39,7 @@ assert.deepEqual(await store.listWorkspace(), [
   "node_modules/",
   "notes/",
   "notes/one.md",
+  "outside-link.txt",
   "projects/",
   "projects/app/",
   "projects/app/archive.zip",
@@ -103,6 +111,18 @@ assert.equal(binaryPreview.previewable, false);
 assert.equal(binaryPreview.truncated, false);
 assert.equal(binaryPreview.content, undefined);
 
+const zip = await store.exportWorkspaceZip({ rootName: "cell-001-workspace" });
+assert.equal(Buffer.isBuffer(zip), true);
+const zipEntryNames = readZipLocalEntryNames(zip);
+assert.ok(zipEntryNames.includes("cell-001-workspace/"));
+assert.ok(zipEntryNames.includes("cell-001-workspace/notes/one.md"));
+assert.ok(zipEntryNames.includes("cell-001-workspace/projects/app/index.js"));
+assert.ok(zipEntryNames.includes("cell-001-workspace/.gitignore"));
+assert.equal(zipEntryNames.some((name) => name.includes(".git/")), false);
+assert.equal(zipEntryNames.some((name) => name.includes("node_modules/")), false);
+assert.equal(zipEntryNames.some((name) => name.includes(".DS_Store")), false);
+assert.equal(zipEntryNames.some((name) => name.includes("outside-link")), false);
+
 const sections = await store.listWorkspaceSections();
 assert.deepEqual(sections.notes, ["one.md"]);
 assert.deepEqual(sections.projects, [
@@ -133,3 +153,20 @@ assert.throws(
 await fs.rm(tempRoot, { recursive: true, force: true });
 
 console.log("CellWorkspaceStore tests passed");
+
+function readZipLocalEntryNames(buffer) {
+  const names = [];
+  let offset = 0;
+
+  while (offset + 4 <= buffer.length && buffer.readUInt32LE(offset) === 0x04034b50) {
+    const compressedSize = buffer.readUInt32LE(offset + 18);
+    const nameLength = buffer.readUInt16LE(offset + 26);
+    const extraLength = buffer.readUInt16LE(offset + 28);
+    const nameStart = offset + 30;
+    const nameEnd = nameStart + nameLength;
+    names.push(buffer.subarray(nameStart, nameEnd).toString("utf8"));
+    offset = nameEnd + extraLength + compressedSize;
+  }
+
+  return names;
+}

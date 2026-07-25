@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  exportWorkspace,
   getWorkspace,
   getWorkspaceEntries,
   getWorkspaceFile,
@@ -30,6 +31,8 @@ export function CellWorkspacePanel({
   const [rootError, setRootError] = useState(null);
   const [isFileLoading, setIsFileLoading] = useState(false);
   const [fileError, setFileError] = useState(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState(null);
   const fileAbortRef = useRef(null);
   const rootAbortRef = useRef(null);
   const activeCellIdRef = useRef(cellId);
@@ -50,6 +53,8 @@ export function CellWorkspacePanel({
     setRootError(null);
     setFileError(null);
     setIsFileLoading(false);
+    setIsExporting(false);
+    setExportError(null);
   }, []);
 
   const loadWorkspaceRoot = useCallback(async (signal) => {
@@ -200,6 +205,32 @@ export function CellWorkspacePanel({
     }
   }
 
+  async function handleExportWorkspace() {
+    if (!cellId || isExporting) {
+      return;
+    }
+
+    setIsExporting(true);
+    setExportError(null);
+
+    try {
+      const blob = await exportWorkspace(cellId);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+
+      anchor.href = url;
+      anchor.download = `${cellId}-workspace.zip`;
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      setExportError(error.message);
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
   return (
     <section className="workspace-card">
       <div className="workspace-card-header">
@@ -210,12 +241,17 @@ export function CellWorkspacePanel({
         <button
           type="button"
           className="text-button workspace-export-button"
-          disabled
-          title="Workspace export will be available after the export API is connected."
+          disabled={!cellId || isExporting}
+          onClick={handleExportWorkspace}
         >
-          Export Workspace
+          {isExporting ? "Exporting..." : "Export Workspace"}
         </button>
       </div>
+      {exportError && (
+        <div className="workspace-export-error" role="alert">
+          {exportError}
+        </div>
+      )}
 
       <div className="workspace-browser">
         <aside className="workspace-tree-panel">

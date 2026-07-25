@@ -94,6 +94,7 @@ button:focus-visible { outline: 2px solid #9b8cff; outline-offset: 2px; }
 .dashboard-card-label { color: #929292; font-size: 11px; font-weight: 650; letter-spacing: .05em; text-transform: uppercase; } .dashboard-card-value { margin-top: 13px; font-size: 25px; font-weight: 650; } .dashboard-card p { margin: 8px 0 0; color: #929292; font-size: 12px; line-height: 1.5; }
 .workspace-card { margin-top: 14px; padding: 20px; } .workspace-card-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; } .workspace-card-header h3 { margin: 0; font-size: 16px; } .workspace-card-header p { margin: 5px 0 0; overflow: hidden; color: #909090; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; } .workspace-heading { min-width: 0; } .text-button { padding: 8px 12px; }
 .workspace-export-button:disabled { cursor: not-allowed; opacity: .46; }
+.workspace-export-error { margin-top: 12px; padding: 10px 12px; border: 1px solid #603737; border-radius: 8px; background: #3a2424; color: #efaaaa; font-size: 13px; }
 .workspace-browser { display: grid; grid-template-columns: minmax(260px, 34%) minmax(0, 1fr); min-height: 420px; max-height: 620px; margin-top: 18px; overflow: hidden; border: 1px solid #3a3a3a; border-radius: 12px; background: #222; }
 .workspace-tree-panel { min-width: 0; overflow: auto; border-right: 1px solid #3a3a3a; background: #202020; }
 .workspace-preview-panel { min-width: 0; overflow: auto; background: #242424; }

@@ -971,6 +971,10 @@ ${memoryContext}
     return await this.workspaceStore.readWorkspaceFilePreview(relativePath);
   }
 
+  async exportWorkspaceZip(options = {}) {
+    return await this.workspaceStore.exportWorkspaceZip(options);
+  }
+
   async appendWorkspaceFile(relativePath, content) {
     await this.workspaceStore.appendWorkspaceFile(relativePath, content);
   }

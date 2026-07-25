@@ -38,6 +38,10 @@ export function createApiHandler({
 
       const params = matchingRoute.match(route);
       const result = await matchingRoute.execute({ request, route, params });
+      if (result?.rawResponse === true) {
+        return result;
+      }
+
       return jsonResponse(resolveSuccessStatus(route), result);
     } catch (error) {
       const mapped = mapApiError(error);
