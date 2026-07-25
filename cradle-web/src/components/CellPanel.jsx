@@ -97,7 +97,7 @@ export function CellPanel({
         </article>
       </div>
 
-      <CellWorkspacePanel workspacePath={view.workspacePath} />
+      <CellWorkspacePanel cellId={view.id} workspacePath={view.workspacePath} />
     </section>
   );
 }

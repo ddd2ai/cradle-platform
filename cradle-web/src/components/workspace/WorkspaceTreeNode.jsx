@@ -1,5 +1,3 @@
-import { useState } from "react";
-
 /** @import { WorkspaceNode } from "./workspace.types" */
 
 function getFileIcon(node) {
@@ -15,28 +13,41 @@ function getFileIcon(node) {
  *   node: WorkspaceNode;
  *   depth?: number;
  *   selectedPath?: string;
+ *   expandedPaths: Set<string>;
+ *   loadingPaths: Set<string>;
+ *   failedPaths: Map<string, string>;
  *   onSelect: (node: WorkspaceNode) => void;
+ *   onToggleDirectory: (node: WorkspaceNode) => void;
+ *   onRetryDirectory: (node: WorkspaceNode) => void;
  * }} props
  */
 export function WorkspaceTreeNode({
   node,
   depth = 0,
   selectedPath,
+  expandedPaths,
+  loadingPaths,
+  failedPaths,
   onSelect,
+  onToggleDirectory,
+  onRetryDirectory,
 }) {
   const isDirectory = node.type === "directory";
-  const [isExpanded, setIsExpanded] = useState(isDirectory && depth === 0);
+  const isExpanded = expandedPaths.has(node.path);
   const isSelected = selectedPath === node.path;
   const childNodes = node.children ?? [];
   const hasVisibleChildren = isDirectory && childNodes.length > 0;
+  const isLoading = loadingPaths.has(node.path);
+  const error = failedPaths.get(node.path);
   const rowClassName = `workspace-tree-row${isSelected ? " selected" : ""}`;
 
   function handleClick() {
-    onSelect(node);
-
     if (isDirectory) {
-      setIsExpanded((current) => !current);
+      onToggleDirectory(node);
+      return;
     }
+
+    onSelect(node);
   }
 
   return (
@@ -69,10 +80,34 @@ export function WorkspaceTreeNode({
               node={childNode}
               depth={depth + 1}
               selectedPath={selectedPath}
+              expandedPaths={expandedPaths}
+              loadingPaths={loadingPaths}
+              failedPaths={failedPaths}
               onSelect={onSelect}
+              onToggleDirectory={onToggleDirectory}
+              onRetryDirectory={onRetryDirectory}
             />
           ))}
         </ul>
+      )}
+      {isDirectory && isExpanded && isLoading && (
+        <div
+          className="workspace-tree-inline-state"
+          style={{ "--workspace-tree-depth": depth + 1 }}
+        >
+          Loading...
+        </div>
+      )}
+      {isDirectory && isExpanded && error && (
+        <div
+          className="workspace-tree-inline-state error"
+          style={{ "--workspace-tree-depth": depth + 1 }}
+        >
+          <span>{error}</span>
+          <button type="button" onClick={() => onRetryDirectory(node)}>
+            Retry
+          </button>
+        </div>
       )}
     </li>
   );
