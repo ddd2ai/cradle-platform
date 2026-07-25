@@ -102,6 +102,10 @@ const cellStore = new Map([
       lifecycleDecision: {
         action: "stay",
         confidence: 0.7,
+        reasonCode: "maturity_below_threshold",
+        crossTraitVariance: 0.0184,
+        recentFailureRate: 0.08,
+        complementaryCellId: null,
       },
       tasks: [
         {
@@ -552,13 +556,13 @@ const lifecycleDecision = await handler({
 assert.equal(lifecycleDecision.status, 200);
 assert.deepEqual(lifecycleDecision.body, {
   cellId: "cell-001",
+  status: "active",
   decision: {
     action: "stay",
-    confidence: 0.7,
-    request: {
-      hasComplementaryCell: true,
-      recentFailureRate: 0.2,
-    },
+    reason: "maturity_below_threshold",
+    crossTraitVariance: 0.0184,
+    recentFailureRate: 0.08,
+    complementaryCellId: null,
   },
 });
 

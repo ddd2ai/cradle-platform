@@ -94,6 +94,20 @@ export async function fetchCellMaturity(cellId) {
   return response.json();
 }
 
+export async function fetchCellLifecycleDecision(cellId) {
+  const response = await fetch(
+    `/api/v1/cells/${encodeURIComponent(cellId)}/lifecycle-decision`,
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch cell lifecycle decision ${cellId}: ${response.status}`,
+    );
+  }
+
+  return response.json();
+}
+
 export async function activateCell(cellId) {
   return postCellAction(cellId, "activate");
 }

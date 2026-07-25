@@ -1,6 +1,18 @@
 export function toCellViewModel(cell) {
   const id = cell.id ?? cell.cellId;
   const dna = cell.dna?.vector ?? cell.dna ?? cell.profile?.dna ?? {};
+  const lifecycleStatus =
+    cell.lifecycleDecision?.status ??
+    cell.lifecycle?.status ??
+    cell.lifecycle?.state ??
+    cell.lifecycleState ??
+    cell.profile?.lifecycle?.state ??
+    cell.status ??
+    "Unknown";
+  const lifecycleDecision =
+    cell.lifecycleDecision?.decision ??
+    cell.lifecycle?.decision ??
+    null;
   const maturityInfo =
     typeof cell.maturity === "object"
       ? normalizeMaturityInfo(cell.maturity)
@@ -16,13 +28,9 @@ export function toCellViewModel(cell) {
   return {
     id,
     name: cell.name ?? cell.profile?.name ?? id,
-    status: cell.status ?? cell.lifecycle?.status ?? "idle",
-    lifecycle:
-      cell.lifecycle?.state ??
-      cell.lifecycleState ??
-      cell.profile?.lifecycle?.state ??
-      cell.status ??
-      "Unknown",
+    status: cell.status ?? lifecycleStatus ?? "idle",
+    lifecycle: lifecycleStatus,
+    lifecycleInfo: normalizeLifecycleInfo(lifecycleStatus, lifecycleDecision),
     maturity: maturityInfo?.value ?? null,
     maturityInfo,
     dnaDimensions:
@@ -42,5 +50,16 @@ function normalizeMaturityInfo(maturity = {}) {
   return {
     ...maturity,
     value: maturity.value ?? maturity.maturity ?? maturity.percent ?? null,
+  };
+}
+
+function normalizeLifecycleInfo(status, decision) {
+  if (!decision) {
+    return null;
+  }
+
+  return {
+    status,
+    decision,
   };
 }

@@ -8,6 +8,7 @@ import {
   deactivateCell,
   fetchCell,
   fetchCellDna,
+  fetchCellLifecycleDecision,
   fetchCellMaturity,
   fetchCellWorkspace,
   fetchCells,
@@ -165,11 +166,12 @@ function App() {
     setIsLoadingCell(true);
 
     try {
-      const [cell, dna, workspace, maturity] = await Promise.all([
+      const [cell, dna, workspace, maturity, lifecycleDecision] = await Promise.all([
         fetchCell(cellId),
         fetchCellDna(cellId),
         fetchCellWorkspace(cellId),
         fetchCellMaturity(cellId),
+        fetchCellLifecycleDecision(cellId),
       ]);
 
       if (detailRequestRef.current === requestId) {
@@ -178,6 +180,7 @@ function App() {
           dna,
           workspace,
           maturity: maturity.maturity ?? maturity,
+          lifecycleDecision,
         };
 
         setSelectedCell(selectedDetail);

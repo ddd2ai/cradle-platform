@@ -100,6 +100,7 @@ export function decideCellLifecycle({
   crossTraitVariance,
   dominantTrait,
   hasComplementaryCell = false,
+  complementaryCellId = null,
   recentFailureRate = 0,
 } = {}) {
   const {
@@ -114,15 +115,19 @@ export function decideCellLifecycle({
 
   // Rule 1: Not enough data
   if (sampleSize < 5) {
-    return {
+    return createLifecycleDecision({
       action: "stay",
       confidence: "low",
+      reasonCode: "insufficient_samples",
       reason: "not enough dna history",
+      crossTraitVariance,
+      recentFailureRate,
+      complementaryCellId,
       detail: {
         sampleSize,
         requiredSampleSize: 5,
       },
-    };
+    });
   }
 
   // Rule 2: Unstable or high failure rate → repair
@@ -132,12 +137,18 @@ export function decideCellLifecycle({
     recentFailureRate > 0.30;
 
   if (dnaUnstable || artifactFailures) {
-    return {
+    return createLifecycleDecision({
       action: "repair",
       confidence: "medium",
+      reasonCode: artifactFailures
+        ? "high_failure_rate"
+        : "high_temporal_variance",
       reason: artifactFailures
         ? "recent artifact execution failures detected"
         : "dna vector is unstable",
+      crossTraitVariance,
+      recentFailureRate,
+      complementaryCellId,
       detail: {
         repairSignals: {
           dnaUnstable,
@@ -148,22 +159,26 @@ export function decideCellLifecycle({
         repairVarianceThreshold: 0.20,
         repairFailureRateThreshold: 0.30,
       },
-    };
+    });
   }
 
   // Rule 3: Still growing → stay
   if (maturity < 0.60) {
-    return {
+    return createLifecycleDecision({
       action: "stay",
       confidence: "medium",
+      reasonCode: "maturity_below_threshold",
       reason: "cell is still growing",
+      crossTraitVariance,
+      recentFailureRate,
+      complementaryCellId,
       detail: {
         maturity,
         percent,
         state,
         requiredMaturity: 0.60,
       },
-    };
+    });
   }
 
   // Rule 4: Ready to divide (mature + stable + powerful + specialized)
@@ -173,10 +188,14 @@ export function decideCellLifecycle({
     normalizedMagnitude >= 0.60 &&
     crossTraitVariance >= 0.04
   ) {
-    return {
+    return createLifecycleDecision({
       action: "divide",
       confidence: "high",
+      reasonCode: "stable_specialization",
       reason: "cell is mature, stable, powerful, and specialized",
+      crossTraitVariance,
+      recentFailureRate,
+      complementaryCellId,
       detail: {
         maturity,
         percent,
@@ -186,7 +205,7 @@ export function decideCellLifecycle({
         convergence,
         dominantTrait,
       },
-    };
+    });
   }
 
   // Rule 5: Ready to fuse (stable + generalized + has complementary cell)
@@ -197,10 +216,14 @@ export function decideCellLifecycle({
     crossTraitVariance < 0.04 &&
     hasComplementaryCell
   ) {
-    return {
+    return createLifecycleDecision({
       action: "fuse",
       confidence: "medium",
+      reasonCode: "stable_generalization_with_complement",
       reason: "cell is stable and generalized, with complementary cell available",
+      crossTraitVariance,
+      recentFailureRate,
+      complementaryCellId,
       detail: {
         maturity,
         percent,
@@ -211,14 +234,18 @@ export function decideCellLifecycle({
         dominantTrait,
         hasComplementaryCell,
       },
-    };
+    });
   }
 
   // Rule 6: Default → stay (stable but not ready for structural change)
-  return {
+  return createLifecycleDecision({
     action: "stay",
     confidence: "medium",
+    reasonCode: "normal_growth",
     reason: "cell is stable but not ready for structural change",
+    crossTraitVariance,
+    recentFailureRate,
+    complementaryCellId,
     detail: {
       maturity,
       percent,
@@ -230,5 +257,27 @@ export function decideCellLifecycle({
       dominantTrait,
       hasComplementaryCell,
     },
+  });
+}
+
+function createLifecycleDecision({
+  action,
+  confidence,
+  reasonCode,
+  reason,
+  crossTraitVariance = 0,
+  recentFailureRate = 0,
+  complementaryCellId = null,
+  detail = {},
+}) {
+  return {
+    action,
+    confidence,
+    reason,
+    reasonCode,
+    crossTraitVariance,
+    recentFailureRate,
+    complementaryCellId,
+    detail,
   };
 }

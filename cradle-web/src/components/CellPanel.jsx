@@ -1,5 +1,6 @@
 import { toCellViewModel } from "../domain/cellViewModel";
 import { DnaDimensionsCard } from "./cell/DnaDimensionsCard";
+import { LifecycleCard } from "./cell/LifecycleCard";
 import { MaturityCard } from "./cell/MaturityCard";
 import { mapDnaDimensions } from "./cell/dna-dimensions";
 import { CellWorkspacePanel } from "./workspace/CellWorkspacePanel";
@@ -80,11 +81,7 @@ export function CellPanel({
       </div>
 
       <div className="dashboard-grid cell-summary-grid">
-        <article className="dashboard-card">
-          <div className="dashboard-card-label">Lifecycle</div>
-          <div className="dashboard-card-value">{view.lifecycle}</div>
-          <p>Current software life-cycle state.</p>
-        </article>
+        <LifecycleCard lifecycle={view.lifecycleInfo} />
         <MaturityCard maturity={view.maturityInfo} />
         <DnaDimensionsCard dimensions={dnaDimensions} />
       </div>
