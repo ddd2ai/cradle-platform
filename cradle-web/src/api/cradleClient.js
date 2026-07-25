@@ -92,41 +92,16 @@ export async function heartbeatCell() {
   return waitForOperation(accepted.operationId);
 }
 
-export async function fetchCultivationStatus() {
-  const response = await fetch("/api/v1/cultivation/status");
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch cultivation status: ${response.status}`);
-  }
-
-  return response.json();
-}
-
 export async function startCultivation() {
-  const response = await fetch("/api/v1/cultivation/start", { method: "POST" });
-
-  if (!response.ok) {
-    throw new Error(`Failed to start cultivation: ${response.status}`);
-  }
-
-  const accepted = await response.json();
-  const cultivationStatus = toCultivationStatus(accepted);
-
-  if (!accepted.operationId) {
-    return {
-      cultivationStatus,
-      operation: accepted,
-    };
-  }
-
-  return {
-    cultivationStatus,
-    operation: await waitForOperation(accepted.operationId),
-  };
+  return heartbeatCell();
 }
 
 export async function stopCultivation() {
-  const response = await fetch("/api/v1/cultivation/stop", { method: "POST" });
+  const response = await fetch("/api/v1/heartbeat/mode", {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ mode: "manual" }),
+  });
 
   if (!response.ok) {
     throw new Error(`Failed to stop cultivation: ${response.status}`);
@@ -178,12 +153,4 @@ async function postCellAction(cellId, action) {
   }
 
   return null;
-}
-
-function toCultivationStatus(data) {
-  return {
-    running: Boolean(data.running),
-    activeCells: data.activeCells ?? 0,
-    startedAt: data.startedAt ?? null,
-  };
 }

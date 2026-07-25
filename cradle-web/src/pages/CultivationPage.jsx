@@ -3,7 +3,8 @@ export function CultivationPage({
   heartbeatStatus,
   heartbeatError,
   heartbeatMessage,
-  cultivationStatus,
+  activeCellCount,
+  cultivationRunning,
   cultivationAction,
   onStartCultivation,
   onStopCultivation,
@@ -13,7 +14,6 @@ export function CultivationPage({
   );
   const isStopping = cultivationAction === "stop";
   const isBusy = isStarting || isStopping;
-  const cultivationRunning = Boolean(cultivationStatus?.running);
 
   return (
     <section className="platform-page">
@@ -91,7 +91,7 @@ export function CultivationPage({
           <article className="dashboard-card">
             <div className="dashboard-card-label">Active Cells</div>
             <div className="dashboard-card-value">
-              {cultivationStatus?.activeCells ?? 0}
+              {activeCellCount}
             </div>
             <p>Cells currently available for cultivation ticks.</p>
           </article>

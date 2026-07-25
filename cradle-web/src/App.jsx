@@ -8,7 +8,6 @@ import {
   fetchCellMaturity,
   fetchCellWorkspace,
   fetchCells,
-  fetchCultivationStatus,
   startCultivation,
   stopCultivation,
 } from "./api/cradleClient";
@@ -35,14 +34,11 @@ function App() {
   const [heartbeatStatus, setHeartbeatStatus] = useState(null);
   const [heartbeatMessage, setHeartbeatMessage] = useState(null);
   const [heartbeatError, setHeartbeatError] = useState(null);
-  const [cultivationStatus, setCultivationStatus] = useState({
-    running: false,
-    activeCells: 0,
-    startedAt: null,
-  });
+  const [cultivationRunning, setCultivationRunning] = useState(false);
   const [cultivationAction, setCultivationAction] = useState(null);
   const detailRequestRef = useRef(0);
   const selectedCellIdRef = useRef(null);
+  const activeCellCount = cells.filter((cell) => cell.active === true).length;
 
   useEffect(() => {
     let cancelled = false;
@@ -88,29 +84,6 @@ function App() {
     return () => window.clearTimeout(timerId);
   }, [heartbeatMessage]);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadCultivationStatus() {
-      try {
-        const status = await fetchCultivationStatus();
-
-        if (!cancelled) {
-          setCultivationStatus(status);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setHeartbeatError(error.message);
-        }
-      }
-    }
-
-    loadCultivationStatus();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
   async function loadSelectedCell(cellId) {
     const requestId = detailRequestRef.current + 1;
     detailRequestRef.current = requestId;
@@ -229,10 +202,10 @@ function App() {
       setHeartbeatMessage(null);
       setHeartbeatError(null);
 
-      const { operation, cultivationStatus: nextStatus } = await startCultivation();
+      const operation = await startCultivation();
       setHeartbeatRun(operation);
       setHeartbeatStatus(operation.status ?? "completed");
-      setCultivationStatus(nextStatus);
+      setCultivationRunning(true);
       setHeartbeatMessage("Cultivation started successfully.");
     } catch (error) {
       setHeartbeatStatus("failed");
@@ -252,8 +225,8 @@ function App() {
       setHeartbeatMessage(null);
       setHeartbeatError(null);
 
-      const nextStatus = await stopCultivation();
-      setCultivationStatus(nextStatus);
+      await stopCultivation();
+      setCultivationRunning(false);
       setHeartbeatMessage("Cultivation stopped successfully.");
     } catch (error) {
       setHeartbeatError(error.message);
@@ -305,7 +278,8 @@ function App() {
               heartbeatStatus={heartbeatStatus}
               heartbeatError={heartbeatError}
               heartbeatMessage={heartbeatMessage}
-              cultivationStatus={cultivationStatus}
+              activeCellCount={activeCellCount}
+              cultivationRunning={cultivationRunning}
               cultivationAction={cultivationAction}
               onStartCultivation={handleStartCultivation}
               onStopCultivation={handleStopCultivation}

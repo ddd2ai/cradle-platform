@@ -1,5 +1,8 @@
 import path from "path";
-import { readCradleConfig } from "../cradle-config.js";
+import {
+  getHeartbeatMode,
+  readCradleConfig,
+} from "../cradle-config.js";
 import { writeJsonFile } from "../utils/json-file.js";
 import { PROJECT_ROOT } from "../project-root.js";
 
@@ -14,28 +17,15 @@ export class HeartbeatModeStore {
   }
 
   async getMode() {
-    const { mode } = await this.getState();
-
-    return mode;
-  }
-
-  async getState() {
-    const config = await this._readConfig();
     const mode =
-      config.heartbeat?.mode ||
+      getHeartbeatMode({ file: this.file }) ||
       HeartbeatMode.MANUAL;
 
     if (!Object.values(HeartbeatMode).includes(mode)) {
-      return {
-        mode: HeartbeatMode.MANUAL,
-        startedAt: null,
-      };
+      return HeartbeatMode.MANUAL;
     }
 
-    return {
-      mode,
-      startedAt: config.heartbeat?.cultivationStartedAt ?? null,
-    };
+    return mode;
   }
 
   async setMode(mode) {
@@ -50,14 +40,6 @@ export class HeartbeatModeStore {
       ...(config.heartbeat || {}),
       mode,
     };
-
-    if (mode === HeartbeatMode.AUTOMATIC && previous !== HeartbeatMode.AUTOMATIC) {
-      config.heartbeat.cultivationStartedAt = new Date().toISOString();
-    }
-
-    if (mode === HeartbeatMode.MANUAL) {
-      delete config.heartbeat.cultivationStartedAt;
-    }
 
     await writeJsonFile(this.file, config, { dir: path.dirname(this.file) });
 

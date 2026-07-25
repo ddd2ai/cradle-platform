@@ -132,19 +132,10 @@ const cellStore = new Map([
 
 const modeStore = {
   mode: "manual",
-  startedAt: null,
   getMode: async () => modeStore.mode,
-  getState: async () => ({
-    mode: modeStore.mode,
-    startedAt: modeStore.startedAt,
-  }),
   setMode: async (mode) => {
     const previous = modeStore.mode;
     modeStore.mode = mode;
-    modeStore.startedAt =
-      mode === "automatic"
-        ? "2026-07-25T08:49:00.983Z"
-        : null;
     return { previous, current: mode };
   },
 };
@@ -535,45 +526,6 @@ const invalidHeartbeatMode = await handler({
 assert.equal(invalidHeartbeatMode.status, 400);
 assert.equal(invalidHeartbeatMode.body.error.code, "INVALID_HEARTBEAT_MODE");
 
-const cultivationStatus = await handler({
-  method: "GET",
-  url: "/api/v1/cultivation/status",
-});
-
-assert.equal(cultivationStatus.status, 200);
-assert.deepEqual(cultivationStatus.body, {
-  running: true,
-  activeCells: 1,
-  startedAt: "2026-07-25T08:49:00.983Z",
-});
-
-const cultivationStop = await handler({
-  method: "POST",
-  url: "/api/v1/cultivation/stop",
-});
-
-assert.equal(cultivationStop.status, 200);
-assert.deepEqual(cultivationStop.body, {
-  running: false,
-  activeCells: 1,
-  startedAt: null,
-});
-
-const cultivationStart = await handler({
-  method: "POST",
-  url: "/api/v1/cultivation/start",
-});
-
-assert.equal(cultivationStart.status, 202);
-assert.equal(cultivationStart.body.running, true);
-assert.equal(cultivationStart.body.activeCells, 1);
-assert.equal(cultivationStart.body.startedAt, "2026-07-25T08:49:00.983Z");
-assert.equal(cultivationStart.body.type, "heartbeat");
-assert.equal(cultivationStart.body.status, "accepted");
-assert.ok(cultivationStart.body.operationId.startsWith("op-"));
-
-await waitForMicrotasks();
-
 const heartbeatRun = await handler({
   method: "POST",
   url: "/api/v1/heartbeat/runs",
@@ -594,7 +546,7 @@ const operation = await handler({
 assert.equal(operation.status, 200);
 assert.equal(operation.body.operation.status, "completed");
 assert.equal(operation.body.operation.result.action, "stay");
-assert.deepEqual(heartbeatCalls, ["beat", "beat"]);
+assert.deepEqual(heartbeatCalls, ["beat"]);
 
 const operations = await handler({
   method: "GET",
@@ -602,11 +554,8 @@ const operations = await handler({
 });
 
 assert.equal(operations.status, 200);
-assert.equal(operations.body.operations.length, 2);
-assert.equal(
-  operations.body.operations.at(-1).operationId,
-  heartbeatRun.body.operationId
-);
+assert.equal(operations.body.operations.length, 1);
+assert.equal(operations.body.operations[0].operationId, heartbeatRun.body.operationId);
 
 const missingOperation = await handler({
   method: "GET",

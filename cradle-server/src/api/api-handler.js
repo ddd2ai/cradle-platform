@@ -66,13 +66,7 @@ function resolveSuccessStatus(route) {
     return 201;
   }
 
-  if (
-    route.method === "POST" &&
-    (
-      route.pathname === "/api/v1/heartbeat/runs" ||
-      route.pathname === "/api/v1/cultivation/start"
-    )
-  ) {
+  if (route.method === "POST" && route.pathname === "/api/v1/heartbeat/runs") {
     return 202;
   }
 
