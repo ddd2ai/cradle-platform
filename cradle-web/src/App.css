@@ -93,7 +93,7 @@ button:focus-visible { outline: 2px solid #9b8cff; outline-offset: 2px; }
 .dashboard-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: stretch; gap: 14px; margin-top: 14px; } .dashboard-card { padding: 18px; } .cell-summary-grid .dashboard-card { min-height: 300px; }
 .dashboard-card-label { color: #929292; font-size: 11px; font-weight: 650; letter-spacing: .05em; text-transform: uppercase; } .dashboard-card-value { margin-top: 13px; font-size: 25px; font-weight: 650; } .dashboard-card p { margin: 8px 0 0; color: #929292; font-size: 12px; line-height: 1.5; }
 .lifecycle-card { display: flex; min-width: 0; flex-direction: column; }
-.lifecycle-status { margin-top: 28px; color: #f2f2f2; font-size: 46px; font-weight: 700; line-height: 1; text-transform: lowercase; }
+.lifecycle-status { margin-top: 28px; color: #f2f2f2; font-size: 46px; font-weight: 700; line-height: 1; }
 .lifecycle-description { margin-top: 18px; color: #949494; font-size: 13px; line-height: 1.5; }
 .lifecycle-metrics { display: flex; flex-direction: column; margin-top: 24px; padding-top: 14px; border-top: 1px solid #3b3b3b; }
 .lifecycle-metric-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 32px; color: #999; font-size: 13px; }

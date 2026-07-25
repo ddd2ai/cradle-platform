@@ -14,9 +14,14 @@ export async function toCellSummary(cell) {
 
 export async function toCellDetail(cell) {
   const profile = await cell.getProfile();
+  const lifecycle =
+    typeof cell.getLifecycleView === "function"
+      ? await cell.getLifecycleView()
+      : null;
 
   return {
     ...(await toCellSummary(cell)),
+    lifecycle,
     responsibilities: profile.responsibilities ?? [],
     relationships: profile.relationships ?? [],
     profile,

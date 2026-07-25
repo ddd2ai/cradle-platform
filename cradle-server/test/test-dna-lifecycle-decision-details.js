@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
-import { decideCellLifecycle } from "../src/dna/dna-lifecycle.js";
+import {
+  decideCellLifecycle,
+  toLifecycleView,
+} from "../src/dna/dna-lifecycle.js";
 
 const dominantTrait = { trait: "CREATION", value: 0.82 };
 
@@ -119,6 +122,52 @@ assertDecision(
     action: "stay",
     reasonCode: "normal_growth",
   },
+);
+
+assert.deepEqual(
+  toLifecycleView({
+    maturityInfo: createMaturityInfo({
+      state: "growing",
+      convergence: 0.89,
+      temporalVariance: 0.03,
+    }),
+    decision: { action: "stay" },
+    recentFailureRate: 0,
+  }),
+  {
+    phase: "Growing",
+    health: "Healthy",
+    nextEvolution: "Continue",
+    convergence: "Converging",
+    failureRate: 0,
+  },
+);
+
+assert.deepEqual(
+  toLifecycleView({
+    maturityInfo: createMaturityInfo({
+      state: "mature",
+      convergence: 0.91,
+      temporalVariance: 0.21,
+    }),
+    decision: { action: "repair" },
+    recentFailureRate: 0.32,
+  }),
+  {
+    phase: "Mature",
+    health: "Unstable",
+    nextEvolution: "Repair",
+    convergence: "Converged",
+    failureRate: 32,
+  },
+);
+
+assert.equal(
+  toLifecycleView({
+    maturityInfo: createMaturityInfo({ convergence: 0.55 }),
+    decision: { action: "divide" },
+  }).convergence,
+  "Developing",
 );
 
 console.log("DNA lifecycle decision detail tests passed");

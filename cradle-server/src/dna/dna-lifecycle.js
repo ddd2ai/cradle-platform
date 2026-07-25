@@ -260,6 +260,25 @@ export function decideCellLifecycle({
   });
 }
 
+export function toLifecycleView({
+  maturityInfo,
+  decision,
+  recentFailureRate = 0,
+} = {}) {
+  return {
+    phase: resolveLifecyclePhase(maturityInfo?.state),
+    health: resolveLifecycleHealth({
+      recentFailureRate,
+      temporalVariance: maturityInfo?.temporalVariance,
+    }),
+    nextEvolution: resolveNextEvolution(decision?.action),
+    convergence: resolveConvergence(maturityInfo?.convergence),
+    failureRate: Math.round(
+      Math.max(0, Math.min(100, Number(recentFailureRate ?? 0) * 100)),
+    ),
+  };
+}
+
 function createLifecycleDecision({
   action,
   confidence,
@@ -280,4 +299,58 @@ function createLifecycleDecision({
     complementaryCellId,
     detail,
   };
+}
+
+function resolveLifecyclePhase(state) {
+  const phases = {
+    seed: "Seed",
+    growing: "Growing",
+    stable: "Stable",
+    mature: "Mature",
+    saturated: "Saturated",
+  };
+
+  return phases[state] ?? "Seed";
+}
+
+function resolveLifecycleHealth({
+  recentFailureRate = 0,
+  temporalVariance = 0,
+} = {}) {
+  if (recentFailureRate > 0.30 || temporalVariance > 0.20) {
+    return "Unstable";
+  }
+
+  if (recentFailureRate > 0 || temporalVariance > 0.10) {
+    return "Recovering";
+  }
+
+  return "Healthy";
+}
+
+function resolveNextEvolution(action) {
+  const nextEvolution = {
+    stay: "Continue",
+    repair: "Repair",
+    divide: "Divide",
+    fuse: "Fuse",
+  };
+
+  return nextEvolution[action] ?? "Continue";
+}
+
+function resolveConvergence(convergence = 0) {
+  if (convergence < 0.40) {
+    return "Initializing";
+  }
+
+  if (convergence < 0.70) {
+    return "Developing";
+  }
+
+  if (convergence < 0.90) {
+    return "Converging";
+  }
+
+  return "Converged";
 }

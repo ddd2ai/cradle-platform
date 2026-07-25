@@ -104,8 +104,15 @@ const cellStore = new Map([
         confidence: 0.7,
         reasonCode: "maturity_below_threshold",
         crossTraitVariance: 0.0184,
-        recentFailureRate: 0.08,
+        recentFailureRate: 0,
         complementaryCellId: null,
+      },
+      lifecycleView: {
+        phase: "Growing",
+        health: "Healthy",
+        nextEvolution: "Continue",
+        convergence: "Converged",
+        failureRate: 0,
       },
       tasks: [
         {
@@ -318,6 +325,13 @@ const cell = await handler({
 
 assert.equal(cell.status, 200);
 assert.equal(cell.body.cell.cellId, "cell-001");
+assert.deepEqual(cell.body.cell.lifecycle, {
+  phase: "Growing",
+  health: "Healthy",
+  nextEvolution: "Continue",
+  convergence: "Converged",
+  failureRate: 0,
+});
 assert.deepEqual(cell.body.cell.responsibilities, ["planning"]);
 assert.deepEqual(cell.body.cell.relationships, []);
 
@@ -557,11 +571,18 @@ assert.equal(lifecycleDecision.status, 200);
 assert.deepEqual(lifecycleDecision.body, {
   cellId: "cell-001",
   status: "active",
+  lifecycle: {
+    phase: "Growing",
+    health: "Healthy",
+    nextEvolution: "Continue",
+    convergence: "Converged",
+    failureRate: 0,
+  },
   decision: {
     action: "stay",
     reason: "maturity_below_threshold",
     crossTraitVariance: 0.0184,
-    recentFailureRate: 0.08,
+    recentFailureRate: 0,
     complementaryCellId: null,
   },
 });
@@ -780,6 +801,7 @@ function createCell({
   dnaHistory = [],
   maturityInfo = {},
   lifecycleDecision = {},
+  lifecycleView = {},
   tasks = [],
   inbox = [],
   lifecycleEvents = [],
@@ -826,6 +848,7 @@ function createCell({
       ...lifecycleDecision,
       request,
     }),
+    getLifecycleView: async () => lifecycleView,
     readTasks: async () => tasks,
     readInbox: async () => inbox,
     readLifecycleEvents: async () => lifecycleEvents,

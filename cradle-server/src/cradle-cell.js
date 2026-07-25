@@ -510,6 +510,16 @@ ${input}
     });
   }
 
+  async getLifecycleView({
+    hasComplementaryCell = false,
+    recentFailureRate = 0,
+  } = {}) {
+    return await this.lifecycleFacade.getLifecycleView({
+      hasComplementaryCell,
+      recentFailureRate,
+    });
+  }
+
   async observeCradle(snapshot) {
     return await this.lifecycleFacade.observeCradle(snapshot);
   }

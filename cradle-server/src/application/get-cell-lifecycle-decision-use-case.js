@@ -26,10 +26,18 @@ export class GetCellLifecycleDecisionUseCase {
       hasComplementaryCell,
       recentFailureRate,
     });
+    const lifecycle =
+      typeof cell.getLifecycleView === "function"
+        ? await cell.getLifecycleView({
+            hasComplementaryCell,
+            recentFailureRate,
+          })
+        : toLifecycleViewFallback({ profile, decision });
 
     return {
       cellId,
       status: profile.status ?? "unknown",
+      lifecycle,
       decision: toLifecycleDecisionDto(decision),
     };
   }
@@ -70,4 +78,30 @@ function normalizeLegacyReason(reason) {
   };
 
   return reasons[reason] ?? "normal_growth";
+}
+
+function toLifecycleViewFallback({ profile, decision }) {
+  return {
+    phase: toTitleCase(profile?.lifecycle?.state ?? "seed"),
+    health: "Healthy",
+    nextEvolution: decision?.action === "stay"
+      ? "Continue"
+      : toTitleCase(decision?.action ?? "continue"),
+    convergence: "Initializing",
+    failureRate: Math.round(
+      Math.max(0, Math.min(100, Number(decision?.recentFailureRate ?? 0) * 100)),
+    ),
+  };
+}
+
+function toTitleCase(value) {
+  const normalized = String(value ?? "")
+    .replaceAll("_", " ")
+    .trim();
+
+  if (!normalized) {
+    return "";
+  }
+
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 }

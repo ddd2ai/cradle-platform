@@ -2,6 +2,7 @@ import {
   calculateCrossTraitVariance,
   findDominantTrait,
   decideCellLifecycle,
+  toLifecycleView,
 } from "../dna/dna-lifecycle.js";
 import {
   resolveRepairTypeFromDecision,
@@ -36,6 +37,23 @@ export class CellLifecycleFacade {
       crossTraitVariance,
       dominantTrait,
       hasComplementaryCell,
+      recentFailureRate,
+    });
+  }
+
+  async getLifecycleView({
+    hasComplementaryCell = false,
+    recentFailureRate = 0,
+  } = {}) {
+    const maturityInfo = await this.cell.getMaturityInfo();
+    const decision = await this.getLifecycleDecision({
+      hasComplementaryCell,
+      recentFailureRate,
+    });
+
+    return toLifecycleView({
+      maturityInfo,
+      decision,
       recentFailureRate,
     });
   }
