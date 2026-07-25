@@ -1,4 +1,6 @@
 import { toCellViewModel } from "../domain/cellViewModel";
+import { DnaDimensionsCard } from "./cell/DnaDimensionsCard";
+import { mapDnaDimensions } from "./cell/dna-dimensions";
 import { CellWorkspacePanel } from "./workspace/CellWorkspacePanel";
 
 export function CellPanel({
@@ -20,6 +22,7 @@ export function CellPanel({
     typeof view.maturity === "number"
       ? `${Math.round(view.maturity <= 1 ? view.maturity * 100 : view.maturity)}%`
       : "—";
+  const dnaDimensions = mapDnaDimensions(view.dnaVector);
 
   return (
     <section className="cell-panel">
@@ -79,7 +82,7 @@ export function CellPanel({
         </div>
       </div>
 
-      <div className="dashboard-grid">
+      <div className="dashboard-grid cell-summary-grid">
         <article className="dashboard-card">
           <div className="dashboard-card-label">Lifecycle</div>
           <div className="dashboard-card-value">{view.lifecycle}</div>
@@ -90,11 +93,7 @@ export function CellPanel({
           <div className="dashboard-card-value">{maturityText}</div>
           <p>Estimated maturity of the selected cell.</p>
         </article>
-        <article className="dashboard-card">
-          <div className="dashboard-card-label">DNA Dimensions</div>
-          <div className="dashboard-card-value">{view.dnaDimensions ?? "—"}</div>
-          <p>Active DNA traits currently being observed.</p>
-        </article>
+        <DnaDimensionsCard dimensions={dnaDimensions} />
       </div>
 
       <CellWorkspacePanel cellId={view.id} workspacePath={view.workspacePath} />

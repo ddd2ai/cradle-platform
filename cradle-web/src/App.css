@@ -90,8 +90,18 @@ button:focus-visible { outline: 2px solid #9b8cff; outline-offset: 2px; }
 .action-feedback-item.error { border-color: #603737; background: #3a2424; color: #efaaaa; }
 .operation-banner { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; padding: 12px 14px; border: 1px solid #4a4266; border-radius: 10px; background: #302b42; color: #c8bfff; font-size: 13px; }
 .action-error { margin-top: 12px; color: #d88f8f; font-size: 12px; }
-.dashboard-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 14px; } .dashboard-card { padding: 18px; }
+.dashboard-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: stretch; gap: 14px; margin-top: 14px; } .dashboard-card { padding: 18px; } .cell-summary-grid .dashboard-card { min-height: 300px; }
 .dashboard-card-label { color: #929292; font-size: 11px; font-weight: 650; letter-spacing: .05em; text-transform: uppercase; } .dashboard-card-value { margin-top: 13px; font-size: 25px; font-weight: 650; } .dashboard-card p { margin: 8px 0 0; color: #929292; font-size: 12px; line-height: 1.5; }
+.dna-dimensions-card { display: flex; min-width: 0; flex-direction: column; }
+.dna-dimension-list { display: flex; flex-direction: column; gap: 12px; margin-top: 18px; }
+.dna-dimension-item { min-width: 0; }
+.dna-dimension-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 6px; color: #d7d7d7; font-size: 12px; font-weight: 650; letter-spacing: .03em; }
+.dna-dimension-header span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dna-dimension-header span:last-child { flex: none; color: #9a9a9a; font-variant-numeric: tabular-nums; }
+.dna-dimension-track { height: 6px; overflow: hidden; border-radius: 999px; background: #3a3a3a; }
+.dna-dimension-fill { height: 100%; border-radius: inherit; background: #9b8cff; }
+.dna-card-state { display: flex; min-height: 220px; align-items: center; justify-content: center; color: #8f8f8f; text-align: center; font-size: 13px; line-height: 1.5; }
+.dna-card-state.is-error { color: #d88f8f; }
 .workspace-card { margin-top: 14px; padding: 20px; } .workspace-card-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; } .workspace-card-header h3 { margin: 0; font-size: 16px; } .workspace-card-header p { margin: 5px 0 0; overflow: hidden; color: #909090; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; } .workspace-heading { min-width: 0; } .text-button { padding: 8px 12px; }
 .workspace-export-button:disabled { cursor: not-allowed; opacity: .46; }
 .workspace-export-error { margin-top: 12px; padding: 10px 12px; border: 1px solid #603737; border-radius: 8px; background: #3a2424; color: #efaaaa; font-size: 13px; }

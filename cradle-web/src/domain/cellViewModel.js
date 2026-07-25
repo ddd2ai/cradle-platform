@@ -21,6 +21,7 @@ export function toCellViewModel(cell) {
     dnaDimensions:
       cell.dnaDimensions ??
       (Object.keys(dna).length > 0 ? Object.keys(dna).length : null),
+    dnaVector: dna,
     workspacePath:
       cell.workspace?.path ??
       cell.workspacePath ??
