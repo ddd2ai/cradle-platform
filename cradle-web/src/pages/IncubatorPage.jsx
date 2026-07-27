@@ -1,17 +1,23 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   fetchCell,
   fetchCellDna,
   fetchCellLifecycleDecision,
   fetchCellMaturity,
+  fetchCellWorkspace,
   fetchAiSettings,
+  divideCell,
+  fuseCells,
+  stabilizeCell,
   startCultivation,
   updateAiSettings,
 } from "../api/cradleClient";
+import { CellOperationDialogs } from "../components/incubator/CellOperationDialogs";
 import { IncubatorWorkspace } from "../components/incubator/IncubatorWorkspace";
 import { SelectedCellPanel } from "../components/incubator/SelectedCellPanel";
 import { mapCellToVisualState } from "../domain/cellVisualMapper";
 import { getIncubatorSummary } from "../domain/incubatorSummary";
+import { formatStabilizeMessage } from "../domain/stabilizationResult";
 import { useCellCultivationActions } from "../hooks/useCellCultivationActions";
 
 export function IncubatorPage({
@@ -31,6 +37,13 @@ export function IncubatorPage({
   const [dockError, setDockError] = useState("");
   const [aiSettings, setAiSettings] = useState(null);
   const [refreshVersion, setRefreshVersion] = useState(0);
+  const [operationDialog, setOperationDialog] = useState(null);
+  const [activeCellOperation, setActiveCellOperation] = useState(null);
+  const [operationError, setOperationError] = useState("");
+  const [operationChildCellId, setOperationChildCellId] = useState("");
+  const [isFuseMenuOpen, setFuseMenuOpen] = useState(false);
+  const [selectedFuseCellIds, setSelectedFuseCellIds] = useState([]);
+  const operationRequestRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -89,13 +102,20 @@ export function IncubatorPage({
         fetchCellDna(selectedCellId),
         fetchCellMaturity(selectedCellId),
         fetchCellLifecycleDecision(selectedCellId),
+        fetchCellWorkspace(selectedCellId),
       ]);
 
       if (cancelled) {
         return;
       }
 
-      const [cellResult, dnaResult, maturityResult, lifecycleResult] = results;
+      const [
+        cellResult,
+        dnaResult,
+        maturityResult,
+        lifecycleResult,
+        workspaceResult,
+      ] = results;
       const hasFailure = results.some((result) => result.status === "rejected");
       const detail = cellResult.status === "fulfilled"
         ? cellResult.value
@@ -110,6 +130,9 @@ export function IncubatorPage({
           : summary?.maturity,
         lifecycleDecision: lifecycleResult.status === "fulfilled"
           ? lifecycleResult.value
+          : undefined,
+        workspace: workspaceResult.status === "fulfilled"
+          ? workspaceResult.value
           : undefined,
       });
       setCellError(hasFailure ? "Some Cell details could not be loaded." : null);
@@ -140,7 +163,215 @@ export function IncubatorPage({
   );
 
   function handleSelectCell(cellId) {
+    if (cellId !== selectedCellId) {
+      setOperationDialog(null);
+      setOperationError("");
+      setOperationChildCellId("");
+      setFuseMenuOpen(false);
+      setSelectedFuseCellIds([]);
+    }
+
     setSelectedCellId(cellId);
+  }
+
+  function getSuggestedChildCellId() {
+    const existingCellIds = new Set(cells.map((cell) => cell.id));
+    let nextIndex = 1;
+
+    while (existingCellIds.has(`cell-${String(nextIndex).padStart(3, "0")}`)) {
+      nextIndex += 1;
+    }
+
+    return `cell-${String(nextIndex).padStart(3, "0")}`;
+  }
+
+  async function refreshIncubatorData() {
+    await onReloadCells();
+    setRefreshVersion((value) => value + 1);
+  }
+
+  function openStabilizeDialog() {
+    if (!selectedCellId || activeCellOperation) {
+      return;
+    }
+
+    setOperationError("");
+    setOperationDialog("stabilize");
+  }
+
+  function openDivideDialog() {
+    if (!selectedCellId || activeCellOperation) {
+      return;
+    }
+
+    setOperationError("");
+    setOperationChildCellId(getSuggestedChildCellId());
+    setOperationDialog("divide");
+  }
+
+  function closeOperationDialog() {
+    if (activeCellOperation) {
+      return;
+    }
+
+    setOperationDialog(null);
+    setOperationError("");
+  }
+
+  async function handleStabilize() {
+    if (!selectedCellId || activeCellOperation || operationRequestRef.current) {
+      return;
+    }
+
+    try {
+      operationRequestRef.current = true;
+      setActiveCellOperation("stabilize");
+      setOperationError("");
+      setDockError("");
+      setDockMessage("");
+      const result = await stabilizeCell(selectedCellId);
+      await refreshIncubatorData();
+      setOperationDialog(null);
+      setDockMessage(formatStabilizeMessage(selectedCellId, result));
+    } catch (operationFailure) {
+      setOperationError(operationFailure.message);
+      setDockError(operationFailure.message);
+    } finally {
+      operationRequestRef.current = false;
+      setActiveCellOperation(null);
+    }
+  }
+
+  async function handleDivide(event) {
+    event.preventDefault();
+    const childCellId = operationChildCellId.trim();
+
+    if (
+      !selectedCellId ||
+      !childCellId ||
+      activeCellOperation ||
+      operationRequestRef.current
+    ) {
+      return;
+    }
+
+    try {
+      operationRequestRef.current = true;
+      setActiveCellOperation("divide");
+      setOperationError("");
+      setDockError("");
+      setDockMessage("");
+      const result = await divideCell(selectedCellId, { childCellId });
+      await refreshIncubatorData();
+
+      if (!result.complete) {
+        const message =
+          result.errors?.[0]?.message ??
+          `Cell ${result.childCellId} was created, but division is incomplete.`;
+        setOperationError(message);
+        setDockError(message);
+        return;
+      }
+
+      setOperationDialog(null);
+      setOperationChildCellId("");
+      setDockMessage(`Cell ${result.childCellId} created by division.`);
+    } catch (operationFailure) {
+      setOperationError(operationFailure.message);
+      setDockError(operationFailure.message);
+    } finally {
+      operationRequestRef.current = false;
+      setActiveCellOperation(null);
+    }
+  }
+
+  function toggleFuseCell(cellId) {
+    setSelectedFuseCellIds((current) =>
+      current.includes(cellId)
+        ? current.filter((id) => id !== cellId)
+        : [...current, cellId]
+    );
+  }
+
+  function cancelFuseFlow() {
+    if (activeCellOperation) {
+      return;
+    }
+
+    setFuseMenuOpen(false);
+    setOperationDialog(null);
+    setOperationError("");
+    setOperationChildCellId("");
+    setSelectedFuseCellIds([]);
+  }
+
+  function continueFuseFlow() {
+    if (!selectedCellId || selectedFuseCellIds.length === 0) {
+      return;
+    }
+
+    setFuseMenuOpen(false);
+    setOperationError("");
+    setOperationChildCellId((current) => current || getSuggestedChildCellId());
+    setOperationDialog("fuse");
+  }
+
+  function backToFuseSelection() {
+    if (activeCellOperation) {
+      return;
+    }
+
+    setOperationDialog(null);
+    setOperationError("");
+    setFuseMenuOpen(true);
+  }
+
+  async function handleFuse(event) {
+    event.preventDefault();
+    const childCellId = operationChildCellId.trim();
+
+    if (
+      !selectedCellId ||
+      selectedFuseCellIds.length === 0 ||
+      !childCellId ||
+      activeCellOperation ||
+      operationRequestRef.current
+    ) {
+      return;
+    }
+
+    const parentCellIds = [selectedCellId, ...selectedFuseCellIds];
+
+    try {
+      operationRequestRef.current = true;
+      setActiveCellOperation("fuse");
+      setOperationError("");
+      setDockError("");
+      setDockMessage("");
+      const result = await fuseCells({ parentCellIds, childCellId });
+      await refreshIncubatorData();
+
+      if (!result.complete) {
+        const message =
+          result.errors?.[0]?.message ??
+          `Cell ${result.childCellId} was created, but fusion is incomplete.`;
+        setOperationError(message);
+        setDockError(message);
+        return;
+      }
+
+      setOperationDialog(null);
+      setFuseMenuOpen(false);
+      setSelectedFuseCellIds([]);
+      setOperationChildCellId("");
+      setDockMessage(`Cell ${result.childCellId} created by fusion.`);
+    } catch (operationFailure) {
+      setOperationError(operationFailure.message);
+      setDockError(operationFailure.message);
+    } finally {
+      operationRequestRef.current = false;
+      setActiveCellOperation(null);
+    }
   }
 
   async function handleRunOneCycle() {
@@ -197,10 +428,20 @@ export function IncubatorPage({
         aiSettings={aiSettings}
         dockMessage={dockMessage}
         dockError={dockError}
+        activeCellOperation={activeCellOperation}
+        isFuseMenuOpen={isFuseMenuOpen}
+        selectedFuseCellIds={selectedFuseCellIds}
         onSelectCell={handleSelectCell}
         onRunOneCycle={handleRunOneCycle}
         onToggleVisualMotion={() => setVisualMotionPaused((value) => !value)}
         onChangeAiSettings={handleChangeAiSettings}
+        onOpenStabilize={openStabilizeDialog}
+        onOpenDivide={openDivideDialog}
+        onToggleFuseMenu={() => setFuseMenuOpen((value) => !value)}
+        onToggleFuseCell={toggleFuseCell}
+        onCancelFuse={cancelFuseFlow}
+        onContinueFuse={continueFuseFlow}
+        onCloseFuseMenu={() => setFuseMenuOpen(false)}
         onRetry={handleRetry}
         onCreateCell={onCreateCell}
       />
@@ -215,6 +456,21 @@ export function IncubatorPage({
         actionError={cultivationActions.error}
         onActivate={() => cultivationActions.activate(selectedCellId)}
         onDeactivate={() => cultivationActions.deactivate(selectedCellId)}
+      />
+
+      <CellOperationDialogs
+        dialog={operationDialog}
+        selectedCellId={selectedCellId}
+        selectedFuseCellIds={selectedFuseCellIds}
+        childCellId={operationChildCellId}
+        activeOperation={activeCellOperation}
+        error={operationError}
+        onChangeChildCellId={setOperationChildCellId}
+        onClose={closeOperationDialog}
+        onBackToFuseSelection={backToFuseSelection}
+        onConfirmStabilize={handleStabilize}
+        onConfirmDivide={handleDivide}
+        onConfirmFuse={handleFuse}
       />
     </div>
   );

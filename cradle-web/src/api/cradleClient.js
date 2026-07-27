@@ -124,6 +124,75 @@ export async function deactivateAllCells() {
   return postCellsAction("deactivate-all");
 }
 
+/**
+ * @typedef {Object} StabilizeCellResponse
+ * @property {string} cellId
+ * @property {"completed"} status
+ * @property {boolean} diagnosed
+ * @property {boolean} patched
+ * @property {boolean} verified
+ * @property {string} result
+ */
+
+/**
+ * @param {string} cellId
+ * @returns {Promise<StabilizeCellResponse>}
+ */
+export async function stabilizeCell(cellId) {
+  return postJson(
+    `/api/v1/cells/${encodeURIComponent(cellId)}/stabilize`,
+  );
+}
+
+/**
+ * @typedef {Object} DivideCellRequest
+ * @property {string} childCellId
+ */
+
+/**
+ * @typedef {Object} DivideCellResponse
+ * @property {string} parentCellId
+ * @property {string} childCellId
+ * @property {"completed"|"incomplete"} status
+ * @property {boolean} complete
+ * @property {Array<Object>} errors
+ */
+
+/**
+ * @param {string} cellId
+ * @param {DivideCellRequest} request
+ * @returns {Promise<DivideCellResponse>}
+ */
+export async function divideCell(cellId, request) {
+  return postJson(
+    `/api/v1/cells/${encodeURIComponent(cellId)}/divide`,
+    request,
+  );
+}
+
+/**
+ * @typedef {Object} FuseCellsRequest
+ * @property {string[]} parentCellIds
+ * @property {string} childCellId
+ */
+
+/**
+ * @typedef {Object} FuseCellsResponse
+ * @property {string[]} parentCellIds
+ * @property {string} childCellId
+ * @property {"completed"|"incomplete"|"failed"} status
+ * @property {boolean} complete
+ * @property {Array<Object>} errors
+ */
+
+/**
+ * @param {FuseCellsRequest} request
+ * @returns {Promise<FuseCellsResponse>}
+ */
+export async function fuseCells(request) {
+  return postJson("/api/v1/cells/fuse", request);
+}
+
 export async function heartbeatCell() {
   const response = await fetch("/api/v1/heartbeat/runs", { method: "POST" });
 
@@ -278,6 +347,34 @@ async function postCellsAction(action) {
     })),
     cultivation: data.cultivation ?? null,
   };
+}
+
+async function postJson(path, body) {
+  let response;
+
+  try {
+    response = await fetch(path, {
+      method: "POST",
+      headers: body ? { "content-type": "application/json" } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    throw new Error("Backend unavailable");
+  }
+
+  const data = await readJsonResponse(response);
+
+  if (!response.ok) {
+    const message = data?.error?.message;
+    const errorMessage =
+      typeof message === "string"
+        ? message
+        : `Request failed: ${response.status}`;
+
+    throw new Error(errorMessage);
+  }
+
+  return data;
 }
 
 async function readJsonResponse(response) {

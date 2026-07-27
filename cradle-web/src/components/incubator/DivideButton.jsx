@@ -1,11 +1,12 @@
 import { DockAction } from "./DockAction";
 
-export function DivideButton({ onClick }) {
+export function DivideButton({ disabled, isRunning, title, onClick }) {
   return (
     <DockAction
       icon="⌯"
-      label="Divide"
-      title="Divide is coming soon"
+      label={isRunning ? "Dividing..." : "Divide"}
+      disabled={disabled}
+      title={title}
       onClick={onClick}
     />
   );

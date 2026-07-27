@@ -35,6 +35,7 @@ const tests = [
   "test/test-cell-relationship-renderer.js",
   "test/test-cell-runtime-lifecycle-service.js",
   "test/test-cell-snapshot-store.js",
+  "test/test-cell-stabilization-service.js",
   "test/test-cell-status-renderer.js",
   "test/test-cell-task-processing-service.js",
   "test/test-cell-task-store.js",

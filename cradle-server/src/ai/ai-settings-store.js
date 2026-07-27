@@ -6,7 +6,7 @@ import { writeJsonFile } from "../utils/json-file.js";
 export const AI_PROVIDER_OPTIONS = Object.freeze([
   {
     id: "copilot",
-    label: "OpenAI",
+    label: "Copilot",
     models: ["gpt-5.5", "gpt-5.6", "gpt-5-mini"],
   },
   {

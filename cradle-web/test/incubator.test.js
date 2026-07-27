@@ -6,6 +6,9 @@ import { createServer } from "vite";
 import {
   activateCell,
   deactivateCell,
+  divideCell,
+  fuseCells,
+  stabilizeCell,
   startCultivation,
 } from "../src/api/cradleClient.js";
 import { DNA_DIMENSION_ORDER, mapDnaDimensions } from "../src/components/cell/dna-dimensions.js";
@@ -14,6 +17,7 @@ import { CELL_PALETTES } from "../src/constants/incubatorVisuals.js";
 let vite;
 let IncubatorDish;
 let IncubatorWorkspace;
+let CellOperationDialogs;
 let CellControlCard;
 let SelectedCellPanel;
 let Sidebar;
@@ -24,6 +28,7 @@ let getIncubatorSummary;
 let mapCellActivity;
 let mapCellToVisualState;
 let normalizePercentage;
+let formatStabilizeMessage;
 
 before(async () => {
   vite = await createServer({
@@ -37,6 +42,9 @@ before(async () => {
   ));
   ({ IncubatorWorkspace } = await vite.ssrLoadModule(
     "/src/components/incubator/IncubatorWorkspace.jsx",
+  ));
+  ({ CellOperationDialogs } = await vite.ssrLoadModule(
+    "/src/components/incubator/CellOperationDialogs.jsx",
   ));
   ({ CellControlCard } = await vite.ssrLoadModule(
     "/src/components/incubator/CellControlCard.jsx",
@@ -64,6 +72,9 @@ before(async () => {
     mapCellToVisualState,
     normalizePercentage,
   } = await vite.ssrLoadModule("/src/domain/cellVisualMapper.js"));
+  ({ formatStabilizeMessage } = await vite.ssrLoadModule(
+    "/src/domain/stabilizationResult.js",
+  ));
 });
 
 after(async () => {
@@ -182,7 +193,7 @@ test("Incubator workspace renders only incubator controls in the bottom dock", (
   ]);
 
   for (const label of [
-    "OpenAI",
+    "Copilot",
     "gpt-5-mini",
     "Cultivate",
     "Stabilize",
@@ -212,6 +223,66 @@ test("Incubator workspace renders only incubator controls in the bottom dock", (
   assert.doesNotMatch(markup, /Java 21/);
   assert.doesNotMatch(markup, /Spring Boot 3/);
   assert.doesNotMatch(markup, /Hexagonal/);
+});
+
+test("Cell operations are disabled without a selected Cell", () => {
+  const markup = renderWorkspace(createCells(2), { selectedCellId: null });
+
+  for (const label of ["Stabilize", "Divide", "Fuse"]) {
+    assert.match(
+      markup,
+      new RegExp(`<button type="button" class="cradle-dock-item" disabled="">[\\s\\S]*?>${label}<`),
+    );
+  }
+
+  assert.match(markup, /title="Select a cell first"/);
+});
+
+test("Fuse is disabled when no other Cell exists", () => {
+  const markup = renderWorkspace(createCells(1));
+  assert.match(markup, /title="At least two cells are required"/);
+});
+
+test("Stabilize dialog confirms the selected Cell before calling the API", () => {
+  const markup = renderOperationDialog("stabilize");
+  assert.match(markup, /Stabilize Cell/);
+  assert.match(markup, /Diagnose, repair and verify B01\./);
+  assert.match(markup, /may update the Cell workspace and execute validation/);
+});
+
+test("Stabilize feedback distinguishes repair from diagnosis-only results", () => {
+  assert.equal(
+    formatStabilizeMessage("B01", {
+      diagnosed: true,
+      patched: false,
+    }),
+    "Cell B01 checked — no repair was required.",
+  );
+  assert.equal(
+    formatStabilizeMessage("B01", {
+      diagnosed: true,
+      patched: true,
+      diagnosis: { artifactId: "artifact-001" },
+    }),
+    "Cell B01 repaired artifact-001 and verified stable.",
+  );
+});
+
+test("Divide dialog keeps the parent read-only and asks for a child ID", () => {
+  const markup = renderOperationDialog("divide");
+  assert.match(markup, /Parent Cell/);
+  assert.match(markup, /<strong>B01<\/strong>/);
+  assert.match(markup, /Child Cell ID/);
+  assert.match(markup, /value="cell-003"/);
+});
+
+test("Fuse confirmation preserves selected parents and child input", () => {
+  const markup = renderOperationDialog("fuse");
+  assert.match(markup, /Fuse Cells/);
+  assert.match(markup, /<code>B01<\/code>/);
+  assert.match(markup, /<code>cell-001<\/code>/);
+  assert.match(markup, /<code>cell-002<\/code>/);
+  assert.match(markup, /value="cell-003"/);
 });
 
 test("Incubator summary counts only backend active and idle statuses", () => {
@@ -380,6 +451,52 @@ test("Cultivate Run One Cycle uses the existing heartbeat cycle endpoint", async
   }
 });
 
+test("Stabilize posts to the selected Cell endpoint", async () => {
+  await assertJsonRequest({
+    action: () => stabilizeCell("B01"),
+    path: "/api/v1/cells/B01/stabilize",
+    body: undefined,
+  });
+});
+
+test("Divide posts the selected parent and child ID", async () => {
+  await assertJsonRequest({
+    action: () => divideCell("B01", { childCellId: "cell-005" }),
+    path: "/api/v1/cells/B01/divide",
+    body: { childCellId: "cell-005" },
+  });
+});
+
+test("Fuse preserves selected Cell as the first parent", async () => {
+  await assertJsonRequest({
+    action: () => fuseCells({
+      parentCellIds: ["B01", "cell-001", "cell-002"],
+      childCellId: "cell-005",
+    }),
+    path: "/api/v1/cells/fuse",
+    body: {
+      parentCellIds: ["B01", "cell-001", "cell-002"],
+      childCellId: "cell-005",
+    },
+  });
+});
+
+test("Cell operations report an unavailable backend with readable text", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    throw new TypeError("fetch failed");
+  };
+
+  try {
+    await assert.rejects(
+      stabilizeCell("B01"),
+      /Backend unavailable/,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("CellControlCard disables Activate for an active Cell", () => {
   const markup = renderControlCard({ active: true, status: "active" });
   assert.match(markup, /<button type="button" disabled="">Activate<\/button>/);
@@ -408,7 +525,7 @@ function renderDish(cells, overrides = {}) {
   );
 }
 
-function renderWorkspace(cells) {
+function renderWorkspace(cells, overrides = {}) {
   return renderToStaticMarkup(
     React.createElement(IncubatorWorkspace, {
       cells,
@@ -426,7 +543,7 @@ function renderWorkspace(cells) {
         options: [
           {
             id: "copilot",
-            label: "OpenAI",
+            label: "Copilot",
             models: ["gpt-5.5", "gpt-5.6", "gpt-5-mini"],
           },
           {
@@ -449,6 +566,36 @@ function renderWorkspace(cells) {
       onChangeAiSettings: () => {},
       onRetry: () => {},
       onCreateCell: () => {},
+      activeCellOperation: null,
+      isFuseMenuOpen: false,
+      selectedFuseCellIds: [],
+      onOpenStabilize: () => {},
+      onOpenDivide: () => {},
+      onToggleFuseMenu: () => {},
+      onToggleFuseCell: () => {},
+      onCancelFuse: () => {},
+      onContinueFuse: () => {},
+      onCloseFuseMenu: () => {},
+      ...overrides,
+    }),
+  );
+}
+
+function renderOperationDialog(dialog) {
+  return renderToStaticMarkup(
+    React.createElement(CellOperationDialogs, {
+      dialog,
+      selectedCellId: "B01",
+      selectedFuseCellIds: ["cell-001", "cell-002"],
+      childCellId: "cell-003",
+      activeOperation: null,
+      error: "",
+      onChangeChildCellId: () => {},
+      onClose: () => {},
+      onBackToFuseSelection: () => {},
+      onConfirmStabilize: () => {},
+      onConfirmDivide: () => {},
+      onConfirmFuse: () => {},
     }),
   );
 }
@@ -496,6 +643,34 @@ async function assertCellActionRequest(action, expectedPath) {
     assert.equal(request.url, expectedPath);
     assert.equal(request.options.method, "POST");
     assert.doesNotMatch(request.url, /heartbeat/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
+async function assertJsonRequest({ action, path, body }) {
+  const originalFetch = globalThis.fetch;
+  let request = null;
+
+  globalThis.fetch = async (url, options) => {
+    request = { url, options };
+    return Response.json({ status: "completed", complete: true });
+  };
+
+  try {
+    await action();
+    assert.equal(request.url, path);
+    assert.equal(request.options.method, "POST");
+
+    if (body === undefined) {
+      assert.equal(request.options.body, undefined);
+    } else {
+      assert.deepEqual(JSON.parse(request.options.body), body);
+      assert.equal(
+        request.options.headers["content-type"],
+        "application/json",
+      );
+    }
   } finally {
     globalThis.fetch = originalFetch;
   }

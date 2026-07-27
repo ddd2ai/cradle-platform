@@ -4,17 +4,24 @@ export function DockAction({
   disabled = false,
   title,
   onClick,
+  buttonRef,
 }) {
   return (
-    <button
-      type="button"
-      className="cradle-dock-item"
-      disabled={disabled}
-      title={title}
-      onClick={onClick}
+    <span
+      className="cradle-dock-action-shell"
+      title={disabled ? title : undefined}
     >
-      <span className="cradle-dock-item__icon" aria-hidden="true">{icon}</span>
-      <span>{label}</span>
-    </button>
+      <button
+        type="button"
+        className="cradle-dock-item"
+        ref={buttonRef}
+        disabled={disabled}
+        title={disabled ? undefined : title}
+        onClick={onClick}
+      >
+        <span className="cradle-dock-item__icon" aria-hidden="true">{icon}</span>
+        <span>{label}</span>
+      </button>
+    </span>
   );
 }

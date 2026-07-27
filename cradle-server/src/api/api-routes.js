@@ -1,4 +1,5 @@
 import { CreateCellUseCase } from "../application/create-cell-use-case.js";
+import { DivideCellUseCase } from "../application/divide-cell-use-case.js";
 import { ClearLogsUseCase } from "../application/clear-logs-use-case.js";
 import { ExportCellWorkspaceUseCase } from "../application/export-cell-workspace-use-case.js";
 import { GetCellArtifactUseCase } from "../application/get-cell-artifact-use-case.js";
@@ -14,6 +15,7 @@ import { GetCultivationStatusUseCase } from "../application/get-cultivation-stat
 import { GetHeartbeatUseCase } from "../application/get-heartbeat-use-case.js";
 import { GetHealthUseCase } from "../application/get-health-use-case.js";
 import { GetOperationUseCase } from "../application/get-operation-use-case.js";
+import { FuseCellsUseCase } from "../application/fuse-cells-use-case.js";
 import { HeartbeatModeStore } from "../heartbeat/heartbeat-mode.js";
 import { ListCellArtifactsUseCase } from "../application/list-cell-artifacts-use-case.js";
 import { ListCellInboxUseCase } from "../application/list-cell-inbox-use-case.js";
@@ -33,6 +35,7 @@ import { SetAllCellsActiveUseCase } from "../application/set-all-cells-active-us
 import { SetAiSettingsUseCase } from "../application/set-ai-settings-use-case.js";
 import { SetCellActiveUseCase } from "../application/set-cell-active-use-case.js";
 import { SetHeartbeatModeUseCase } from "../application/set-heartbeat-mode-use-case.js";
+import { StabilizeCellUseCase } from "../application/stabilize-cell-use-case.js";
 
 export function createApiRoutes({
   engine,
@@ -42,6 +45,10 @@ export function createApiRoutes({
   logBuffer,
   operationStore,
   operationRunner = new OperationRunner({ operationStore }),
+  cellOperationGuard,
+  stabilizationServiceFactory,
+  divisionServiceFactory,
+  fusionServiceFactory,
 }) {
   return [
     exact("GET", "/health", async () =>
@@ -87,6 +94,39 @@ export function createApiRoutes({
     ),
     exact("POST", "/api/v1/cells/deactivate-all", async () =>
       new SetAllCellsActiveUseCase({ engine }).execute({ active: false })
+    ),
+    exact("POST", "/api/v1/cells/fuse", async ({ request }) =>
+      new FuseCellsUseCase({
+        engine,
+        operationGuard: cellOperationGuard,
+        fusionServiceFactory,
+      }).execute({
+        parentCellIds: request.body?.parentCellIds,
+        childCellId: request.body?.childCellId,
+      })
+    ),
+    pattern(
+      "POST",
+      /^\/api\/v1\/cells\/([^/]+)\/stabilize$/,
+      async ({ params }) =>
+        new StabilizeCellUseCase({
+          engine,
+          operationGuard: cellOperationGuard,
+          stabilizationServiceFactory,
+        }).execute({ cellId: params[0] })
+    ),
+    pattern(
+      "POST",
+      /^\/api\/v1\/cells\/([^/]+)\/divide$/,
+      async ({ params, request }) =>
+        new DivideCellUseCase({
+          engine,
+          operationGuard: cellOperationGuard,
+          divisionServiceFactory,
+        }).execute({
+          cellId: params[0],
+          childCellId: request.body?.childCellId,
+        })
     ),
     pattern("GET", /^\/api\/v1\/cells\/([^/]+)$/, async ({ params }) =>
       new GetCellUseCase({ engine }).execute({ cellId: params[0] })

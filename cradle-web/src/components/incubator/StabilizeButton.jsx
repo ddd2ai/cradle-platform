@@ -1,11 +1,12 @@
 import { DockAction } from "./DockAction";
 
-export function StabilizeButton({ onClick }) {
+export function StabilizeButton({ disabled, isRunning, title, onClick }) {
   return (
     <DockAction
       icon="♢"
-      label="Stabilize"
-      title="Stabilize is coming soon"
+      label={isRunning ? "Stabilizing..." : "Stabilize"}
+      disabled={disabled}
+      title={title}
       onClick={onClick}
     />
   );

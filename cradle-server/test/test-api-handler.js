@@ -205,7 +205,7 @@ const aiSettingsStore = {
   options: [
     {
       id: "copilot",
-      label: "OpenAI",
+      label: "Copilot",
       models: ["gpt-5.5", "gpt-5.6", "gpt-5-mini"],
     },
     {
@@ -246,6 +246,9 @@ const logBuffer = new LogBuffer({
 logBuffer.append({ level: "info", args: ["cell-001 tick"] });
 logBuffer.append({ level: "warn", args: ["cell-003 idle"] });
 const heartbeatCalls = [];
+const stabilizationCalls = [];
+const divisionCalls = [];
+const fusionCalls = [];
 const handler = createApiHandler({
   engine,
   aiSettingsStoreFactory: () => aiSettingsStore,
@@ -263,6 +266,41 @@ const handler = createApiHandler({
   logBuffer,
   operationStore,
   operationRunner,
+  stabilizationServiceFactory: () => ({
+    stabilize: async (cell) => {
+      stabilizationCalls.push(cell.id);
+      return {
+        status: "completed",
+        diagnosed: true,
+        patched: true,
+        verified: true,
+        result: "stable",
+      };
+    },
+  }),
+  divisionServiceFactory: () => ({
+    divide: async ({ parentCell, childId }) => {
+      divisionCalls.push({ parentCellId: parentCell.id, childId });
+      const child = await engine.createCell(childId);
+      return { child, complete: true, errors: [] };
+    },
+  }),
+  fusionServiceFactory: () => ({
+    fuse: async ({ parentCells, childId }) => {
+      fusionCalls.push({
+        parentCellIds: parentCells.map((cell) => cell.id),
+        childId,
+      });
+      const child = await engine.createCell(childId);
+      return {
+        child,
+        success: true,
+        status: "complete",
+        complete: true,
+        errors: [],
+      };
+    },
+  }),
 });
 
 const health = await handler({
@@ -869,6 +907,108 @@ const missingOperation = await handler({
 
 assert.equal(missingOperation.status, 404);
 assert.equal(missingOperation.body.error.code, "OPERATION_NOT_FOUND");
+
+const stabilized = await handler({
+  method: "POST",
+  url: "/api/v1/cells/cell-001/stabilize",
+});
+
+assert.equal(stabilized.status, 200);
+assert.deepEqual(stabilized.body, {
+  cellId: "cell-001",
+  status: "completed",
+  diagnosed: true,
+  patched: true,
+  verified: true,
+  result: "stable",
+});
+assert.deepEqual(stabilizationCalls, ["cell-001"]);
+
+const missingStabilization = await handler({
+  method: "POST",
+  url: "/api/v1/cells/missing-cell/stabilize",
+});
+
+assert.equal(missingStabilization.status, 404);
+assert.equal(
+  missingStabilization.body.error.code,
+  "SELECTED_CELL_NOT_FOUND",
+);
+
+const divided = await handler({
+  method: "POST",
+  url: "/api/v1/cells/cell-001/divide",
+  body: { childCellId: "cell-divided" },
+});
+
+assert.equal(divided.status, 200);
+assert.deepEqual(divided.body, {
+  parentCellId: "cell-001",
+  childCellId: "cell-divided",
+  status: "completed",
+  complete: true,
+  errors: [],
+});
+assert.deepEqual(divisionCalls, [
+  { parentCellId: "cell-001", childId: "cell-divided" },
+]);
+
+const duplicateDivision = await handler({
+  method: "POST",
+  url: "/api/v1/cells/cell-001/divide",
+  body: { childCellId: "cell-divided" },
+});
+
+assert.equal(duplicateDivision.status, 409);
+assert.equal(
+  duplicateDivision.body.error.code,
+  "CHILD_CELL_ALREADY_EXISTS",
+);
+
+const fused = await handler({
+  method: "POST",
+  url: "/api/v1/cells/fuse",
+  body: {
+    parentCellIds: ["cell-001", "cell-002"],
+    childCellId: "cell-fused",
+  },
+});
+
+assert.equal(fused.status, 200);
+assert.deepEqual(fused.body, {
+  parentCellIds: ["cell-001", "cell-002"],
+  childCellId: "cell-fused",
+  status: "completed",
+  complete: true,
+  errors: [],
+});
+assert.deepEqual(fusionCalls, [
+  {
+    parentCellIds: ["cell-001", "cell-002"],
+    childId: "cell-fused",
+  },
+]);
+
+const duplicateParents = await handler({
+  method: "POST",
+  url: "/api/v1/cells/fuse",
+  body: {
+    parentCellIds: ["cell-001", "cell-001"],
+    childCellId: "cell-invalid-fusion",
+  },
+});
+
+assert.equal(duplicateParents.status, 400);
+assert.equal(duplicateParents.body.error.code, "DUPLICATE_PARENT_IDS");
+
+const invalidChildId = await handler({
+  method: "POST",
+  url: "/api/v1/cells/cell-001/divide",
+  body: { childCellId: "../invalid" },
+});
+
+assert.equal(invalidChildId.status, 400);
+assert.equal(invalidChildId.body.error.code, "INVALID_CHILD_CELL_ID");
 
 const notFound = await handler({
   method: "GET",

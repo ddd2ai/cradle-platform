@@ -1,5 +1,6 @@
 import { ApiError, mapApiError } from "./api-error.js";
 import { AiSettingsStore } from "../ai/ai-settings-store.js";
+import { CellOperationGuard } from "../application/cell-operation-guard.js";
 import { createApiRoutes } from "./api-routes.js";
 import { LogBuffer } from "../application/log-buffer.js";
 import { InMemoryOperationStore } from "../application/operation-store.js";
@@ -12,6 +13,10 @@ export function createApiHandler({
   logBuffer = new LogBuffer(),
   operationStore = new InMemoryOperationStore(),
   operationRunner,
+  cellOperationGuard = new CellOperationGuard(),
+  stabilizationServiceFactory,
+  divisionServiceFactory,
+  fusionServiceFactory,
 }) {
   const routes = createApiRoutes({
     engine,
@@ -21,6 +26,10 @@ export function createApiHandler({
     logBuffer,
     operationStore,
     operationRunner,
+    cellOperationGuard,
+    stabilizationServiceFactory,
+    divisionServiceFactory,
+    fusionServiceFactory,
   });
 
   return async function handleApiRequest(request) {

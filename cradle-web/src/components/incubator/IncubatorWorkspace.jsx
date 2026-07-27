@@ -13,10 +13,20 @@ export function IncubatorWorkspace({
   aiSettings,
   dockMessage,
   dockError,
+  activeCellOperation,
+  isFuseMenuOpen,
+  selectedFuseCellIds,
   onSelectCell,
   onRunOneCycle,
   onToggleVisualMotion,
   onChangeAiSettings,
+  onOpenStabilize,
+  onOpenDivide,
+  onToggleFuseMenu,
+  onToggleFuseCell,
+  onCancelFuse,
+  onContinueFuse,
+  onCloseFuseMenu,
   onRetry,
   onCreateCell,
 }) {
@@ -52,9 +62,21 @@ export function IncubatorWorkspace({
           isCultivating={isCultivating}
           message={dockMessage}
           error={dockError}
+          cells={cells}
+          selectedCellId={selectedCellId}
+          activeCellOperation={activeCellOperation}
+          isFuseMenuOpen={isFuseMenuOpen}
+          selectedFuseCellIds={selectedFuseCellIds}
           onRunOneCycle={onRunOneCycle}
           onToggleVisualMotion={onToggleVisualMotion}
           onChangeAiSettings={onChangeAiSettings}
+          onOpenStabilize={onOpenStabilize}
+          onOpenDivide={onOpenDivide}
+          onToggleFuseMenu={onToggleFuseMenu}
+          onToggleFuseCell={onToggleFuseCell}
+          onCancelFuse={onCancelFuse}
+          onContinueFuse={onContinueFuse}
+          onCloseFuseMenu={onCloseFuseMenu}
         />
       </div>
     </section>
