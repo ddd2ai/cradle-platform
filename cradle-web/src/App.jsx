@@ -21,11 +21,12 @@ import { Header } from "./components/Header";
 import { CellPanel } from "./components/CellPanel";
 import { CradleOverviewPage } from "./pages/CradleOverviewPage";
 import { CultivationPage } from "./pages/CultivationPage";
+import { IncubatorPage } from "./pages/IncubatorPage";
 import { LogsPage } from "./pages/LogsPage";
 import { PlaceholderPage } from "./pages/PlaceholderPage";
 
 function App() {
-  const [selectedSection, setSelectedSection] = useState("overview");
+  const [selectedSection, setSelectedSection] = useState("incubator");
   const [selectedCellId, setSelectedCellId] = useState(null);
   const [cells, setCells] = useState([]);
   const [isLoadingCells, setIsLoadingCells] = useState(true);
@@ -383,7 +384,7 @@ function App() {
   }
 
   return (
-    <div className="app-shell">
+    <div className="app-shell is-incubator">
       <Sidebar
         cells={cells}
         selectedCellId={selectedCellId}
@@ -403,6 +404,16 @@ function App() {
         <main className="main-content">
           {selectedSection === "overview" && (
             <CradleOverviewPage cells={cells} />
+          )}
+
+          {selectedSection === "incubator" && (
+            <IncubatorPage
+              cells={cells}
+              isLoading={isLoadingCells}
+              error={cellsError}
+              onReloadCells={loadCells}
+              onCreateCell={handleCreateCell}
+            />
           )}
 
           {selectedSection === "cultivation" && (

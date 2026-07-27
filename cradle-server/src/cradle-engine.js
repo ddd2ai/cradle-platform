@@ -66,6 +66,26 @@ export class CradleEngine {
     ]);
   }
 
+  setAiSettings({ provider, model } = {}) {
+    if (provider) {
+      this.provider = provider;
+    }
+
+    if (model) {
+      this.model = model;
+    }
+
+    for (const cell of this.cells.values()) {
+      if (provider) {
+        cell.provider = provider;
+      }
+
+      if (model) {
+        cell.model = model;
+      }
+    }
+  }
+
   async start() {
     clearScreen();
 

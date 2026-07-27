@@ -64,7 +64,7 @@ export function MaturityCard({
             />
             <MaturityMetric
               label="Dominant Trait"
-              value={maturity.dominantTrait ?? "—"}
+              value={maturity.dominantTrait ?? "--"}
             />
           </div>
         </>
@@ -83,8 +83,8 @@ function MaturityMetric({ label, value }) {
 }
 
 function formatPercent(value) {
-  if (typeof value !== "number") {
-    return "—";
+  if (!Number.isFinite(value)) {
+    return "--";
   }
 
   const normalized = value <= 1 ? value * 100 : value;
@@ -93,16 +93,16 @@ function formatPercent(value) {
 }
 
 function formatDecimal(value, digits) {
-  if (typeof value !== "number") {
-    return "—";
+  if (!Number.isFinite(value)) {
+    return "--";
   }
 
   return value.toFixed(digits);
 }
 
 function formatInteger(value) {
-  if (typeof value !== "number") {
-    return "—";
+  if (!Number.isFinite(value)) {
+    return "--";
   }
 
   return String(Math.round(value));

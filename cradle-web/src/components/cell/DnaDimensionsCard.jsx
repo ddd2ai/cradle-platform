@@ -44,7 +44,7 @@ export function DnaDimensionsCard({
               <div key={dimension.name} className="dna-dimension-item">
                 <div className="dna-dimension-header">
                   <span title={label}>{label}</span>
-                  <span>{percent}%</span>
+                  <span>{percent == null ? "--" : `${percent}%`}</span>
                 </div>
                 <div
                   className="dna-dimension-track"
@@ -52,11 +52,11 @@ export function DnaDimensionsCard({
                   aria-label={label}
                   aria-valuemin={0}
                   aria-valuemax={100}
-                  aria-valuenow={percent}
+                  aria-valuenow={percent ?? undefined}
                 >
                   <div
                     className="dna-dimension-fill"
-                    style={{ width: `${percent}%` }}
+                    style={{ width: `${percent ?? 0}%` }}
                   />
                 </div>
               </div>
@@ -69,6 +69,10 @@ export function DnaDimensionsCard({
 }
 
 function normalizePercent(value) {
+  if (!Number.isFinite(value)) {
+    return null;
+  }
+
   const percent = value <= 1 ? value * 100 : value;
   return Math.round(Math.max(0, Math.min(100, percent)));
 }

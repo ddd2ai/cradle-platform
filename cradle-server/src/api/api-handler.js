@@ -1,10 +1,12 @@
 import { ApiError, mapApiError } from "./api-error.js";
+import { AiSettingsStore } from "../ai/ai-settings-store.js";
 import { createApiRoutes } from "./api-routes.js";
 import { LogBuffer } from "../application/log-buffer.js";
 import { InMemoryOperationStore } from "../application/operation-store.js";
 
 export function createApiHandler({
   engine,
+  aiSettingsStoreFactory = () => new AiSettingsStore(),
   heartbeatModeStoreFactory,
   heartbeatServiceFactory,
   logBuffer = new LogBuffer(),
@@ -13,6 +15,7 @@ export function createApiHandler({
 }) {
   const routes = createApiRoutes({
     engine,
+    aiSettingsStoreFactory,
     heartbeatModeStoreFactory,
     heartbeatServiceFactory,
     logBuffer,

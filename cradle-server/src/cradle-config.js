@@ -97,6 +97,15 @@ export function getAiDefaultModel(options = {}) {
   return config.ai?.defaultModel || null;
 }
 
+export function getAiDefaults(options = {}) {
+  const config = readCradleConfig(options);
+
+  return {
+    provider: config.ai?.defaultProvider || "ollama",
+    model: config.ai?.defaultModel || null,
+  };
+}
+
 export function getAiTimeoutMs(options = {}) {
   return Math.round(getAiTimeoutSeconds(options) * 1000);
 }

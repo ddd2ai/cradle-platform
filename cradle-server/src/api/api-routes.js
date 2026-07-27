@@ -2,6 +2,7 @@ import { CreateCellUseCase } from "../application/create-cell-use-case.js";
 import { ClearLogsUseCase } from "../application/clear-logs-use-case.js";
 import { ExportCellWorkspaceUseCase } from "../application/export-cell-workspace-use-case.js";
 import { GetCellArtifactUseCase } from "../application/get-cell-artifact-use-case.js";
+import { GetAiSettingsUseCase } from "../application/get-ai-settings-use-case.js";
 import { GetCellDnaUseCase } from "../application/get-cell-dna-use-case.js";
 import { GetCellDnaHistoryUseCase } from "../application/get-cell-dna-history-use-case.js";
 import { GetCellLifecycleDecisionUseCase } from "../application/get-cell-lifecycle-decision-use-case.js";
@@ -29,12 +30,14 @@ import { ReadCellWorkspaceFileUseCase } from "../application/read-cell-workspace
 import { ReadCellWorkspacePreviewUseCase } from "../application/read-cell-workspace-preview-use-case.js";
 import { RunHeartbeatUseCase } from "../application/run-heartbeat-use-case.js";
 import { SetAllCellsActiveUseCase } from "../application/set-all-cells-active-use-case.js";
+import { SetAiSettingsUseCase } from "../application/set-ai-settings-use-case.js";
 import { SetCellActiveUseCase } from "../application/set-cell-active-use-case.js";
 import { SetHeartbeatModeUseCase } from "../application/set-heartbeat-mode-use-case.js";
 
 export function createApiRoutes({
   engine,
   heartbeatModeStoreFactory = () => new HeartbeatModeStore(),
+  aiSettingsStoreFactory,
   heartbeatServiceFactory,
   logBuffer,
   operationStore,
@@ -55,6 +58,21 @@ export function createApiRoutes({
     ),
     exact("GET", "/api/v1/logs", async () =>
       new ListLogsUseCase({ logBuffer }).execute()
+    ),
+    exact("GET", "/api/v1/ai/settings", async () =>
+      new GetAiSettingsUseCase({
+        engine,
+        settingsStore: aiSettingsStoreFactory(),
+      }).execute()
+    ),
+    exact("PUT", "/api/v1/ai/settings", async ({ request }) =>
+      new SetAiSettingsUseCase({
+        engine,
+        settingsStore: aiSettingsStoreFactory(),
+      }).execute({
+        provider: request.body?.provider,
+        model: request.body?.model,
+      })
     ),
     exact("DELETE", "/api/v1/logs", async () =>
       new ClearLogsUseCase({ logBuffer }).execute()

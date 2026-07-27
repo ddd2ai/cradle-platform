@@ -7,6 +7,8 @@ import { OperationRunner } from "../src/application/operation-runner.js";
 const engine = {
   activeCellId: "Cradle",
   CRADLE_ID: "Cradle",
+  provider: "ollama",
+  model: "devstral-small-2:24b",
   createdCells: [],
   listCellIds: () => ["cell-001", "cell-002"],
   listCells: () => [
@@ -44,6 +46,14 @@ const engine = {
     for (const cell of cellStore.values()) {
       cell.active = false;
       cell.profile.status = "idle";
+    }
+  },
+  setAiSettings: ({ provider, model }) => {
+    engine.provider = provider;
+    engine.model = model;
+    for (const cell of cellStore.values()) {
+      cell.provider = provider;
+      cell.model = model;
     }
   },
   getCultivationStatus: () => {
@@ -187,6 +197,45 @@ const modeStore = {
     return { previous, current: mode };
   },
 };
+const aiSettingsStore = {
+  current: {
+    provider: "ollama",
+    model: "devstral-small-2:24b",
+  },
+  options: [
+    {
+      id: "copilot",
+      label: "OpenAI",
+      models: ["gpt-5.5", "gpt-5.6", "gpt-5-mini"],
+    },
+    {
+      id: "ollama",
+      label: "Ollama",
+      models: ["devstral-small-2:24b", "gemma3:latest"],
+    },
+  ],
+  getSettings: async () => ({
+    provider: aiSettingsStore.current.provider,
+    model: aiSettingsStore.current.model,
+    options: aiSettingsStore.options,
+  }),
+  setSettings: async ({ provider, model }) => {
+    const option = aiSettingsStore.options.find((item) => item.id === provider);
+
+    if (!option || !option.models.includes(model)) {
+      throw new Error(`Invalid AI settings: ${provider}/${model}`);
+    }
+
+    const previous = { ...aiSettingsStore.current };
+    aiSettingsStore.current = { provider, model };
+
+    return {
+      previous,
+      current: { ...aiSettingsStore.current },
+      options: aiSettingsStore.options,
+    };
+  },
+};
 const operationStore = new InMemoryOperationStore({
   now: () => new Date("2026-07-24T10:00:00.000Z"),
 });
@@ -199,6 +248,7 @@ logBuffer.append({ level: "warn", args: ["cell-003 idle"] });
 const heartbeatCalls = [];
 const handler = createApiHandler({
   engine,
+  aiSettingsStoreFactory: () => aiSettingsStore,
   heartbeatModeStoreFactory: () => modeStore,
   heartbeatServiceFactory: () => ({
     beat: async () => {
@@ -308,6 +358,50 @@ assert.deepEqual(logs.body.logs, [
     message: "cell-003 idle",
   },
 ]);
+
+const aiSettings = await handler({
+  method: "GET",
+  url: "/api/v1/ai/settings",
+});
+
+assert.equal(aiSettings.status, 200);
+assert.deepEqual(aiSettings.body.current, {
+  provider: "ollama",
+  model: "devstral-small-2:24b",
+});
+assert.deepEqual(
+  aiSettings.body.options.map((option) => option.id),
+  ["copilot", "ollama"],
+);
+
+const updatedAiSettings = await handler({
+  method: "PUT",
+  url: "/api/v1/ai/settings",
+  body: { provider: "copilot", model: "gpt-5-mini" },
+});
+
+assert.equal(updatedAiSettings.status, 200);
+assert.deepEqual(updatedAiSettings.body.previous, {
+  provider: "ollama",
+  model: "devstral-small-2:24b",
+});
+assert.deepEqual(updatedAiSettings.body.current, {
+  provider: "copilot",
+  model: "gpt-5-mini",
+});
+assert.equal(engine.provider, "copilot");
+assert.equal(engine.model, "gpt-5-mini");
+assert.equal(cellStore.get("cell-001").provider, "copilot");
+assert.equal(cellStore.get("cell-001").model, "gpt-5-mini");
+
+const invalidAiSettings = await handler({
+  method: "PUT",
+  url: "/api/v1/ai/settings",
+  body: { provider: "copilot", model: "devstral-small-2:24b" },
+});
+
+assert.equal(invalidAiSettings.status, 400);
+assert.equal(invalidAiSettings.body.error.code, "INVALID_AI_SETTINGS");
 
 const clearedLogs = await handler({
   method: "DELETE",

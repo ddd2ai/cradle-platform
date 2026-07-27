@@ -23,7 +23,7 @@ export function CellPanel({
   const dnaDimensions = mapDnaDimensions(view.dnaVector);
 
   return (
-    <section className="cell-panel">
+    <section className="cell-panel cell-detail-page">
       {activeAction && (
         <div className="operation-banner">
           <span className="button-spinner" />

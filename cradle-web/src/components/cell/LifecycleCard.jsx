@@ -33,31 +33,35 @@ export function LifecycleCard({
       {!isLoading && !error && lifecycle && (
         <>
           <div className="lifecycle-status">
-            {lifecycle.phase ?? "—"}
+            {lifecycle.phase ?? "--"}
           </div>
 
           <div className="lifecycle-metrics">
             <LifecycleMetric
               label="Health"
-              value={lifecycle.health ?? "—"}
+              value={lifecycle.health ?? "Unknown"}
             />
             <LifecycleMetric
               label="Next Evolution"
-              value={lifecycle.nextEvolution ?? "—"}
+              value={lifecycle.nextEvolution ?? "--"}
             />
             <LifecycleMetric
               label="Convergence"
-              value={lifecycle.convergence ?? "—"}
+              value={lifecycle.convergence ?? "--"}
             />
             <LifecycleMetric
               label="Failure Rate"
-              value={`${lifecycle.failureRate ?? 0}%`}
+              value={formatFailureRate(lifecycle.failureRate)}
             />
           </div>
         </>
       )}
     </article>
   );
+}
+
+function formatFailureRate(value) {
+  return Number.isFinite(value) ? `${value}%` : "--";
 }
 
 function LifecycleMetric({ label, value }) {

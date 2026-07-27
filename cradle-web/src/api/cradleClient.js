@@ -165,6 +165,33 @@ export async function fetchCultivationStatus() {
   return response.json();
 }
 
+export async function fetchAiSettings() {
+  const response = await fetch("/api/v1/ai/settings");
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch AI settings: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+export async function updateAiSettings({ provider, model }) {
+  const response = await fetch("/api/v1/ai/settings", {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ provider, model }),
+  });
+  const data = await readJsonResponse(response);
+
+  if (!response.ok) {
+    throw new Error(
+      data?.error?.message ?? `Failed to update AI settings: ${response.status}`,
+    );
+  }
+
+  return data;
+}
+
 export async function fetchLogs() {
   const response = await fetch("/api/v1/logs");
 

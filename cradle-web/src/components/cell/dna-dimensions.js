@@ -14,8 +14,7 @@ export function mapDnaDimensions(vector = {}) {
     .map((name) => ({
       name,
       value: resolveDimensionValue(vector[name]),
-    }))
-    .filter((dimension) => typeof dimension.value === "number");
+    }));
 }
 
 function resolveDimensionValue(value) {

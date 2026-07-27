@@ -4,6 +4,10 @@ export function Header({ selectedCell, selectedSection, isServerConnected }) {
       title: "Cradle",
       subtitle: "Software Life Engineering Platform",
     },
+    incubator: {
+      title: "Incubator",
+      subtitle: "Observe and nurture the living cells in Cradle.",
+    },
     cultivation: {
       title: "Cultivation",
       subtitle: "Activate and observe the Cradle environment",
