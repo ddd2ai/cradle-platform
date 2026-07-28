@@ -121,6 +121,17 @@ button:focus-visible { outline: 2px solid #9b8cff; outline-offset: 2px; }
 .settings-select:focus, .settings-input:focus { border-color: rgba(155, 140, 255, .75); box-shadow: 0 0 0 3px rgba(139, 108, 255, .12); }
 .settings-inline-control { display: flex; align-items: center; gap: 10px; min-width: 0; color: var(--text-secondary); font-size: 12px; font-weight: 500; }
 .settings-empty-state { max-width: 620px; padding: 18px; border: 1px dashed var(--border-color-strong); border-radius: 12px; background: rgba(2, 10, 18, .55); color: var(--text-muted); font-size: 13px; line-height: 1.6; }
+.settings-section-block { max-width: 680px; }
+.settings-section-block h3 { margin: 0 0 14px; color: #eef5f8; font-size: 14px; font-weight: 700; letter-spacing: .02em; }
+.settings-row-list, .settings-readonly-list { display: grid; gap: 8px; }
+.settings-row, .settings-readonly-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 54px; padding: 8px 12px; border: 1px solid rgba(107, 148, 179, .13); border-radius: 11px; background: rgba(2, 10, 18, .46); }
+.settings-row-main { color: #e1ebf0; font-size: 13px; font-weight: 650; }
+.settings-readonly-row span { color: var(--text-secondary); font-size: 12px; }
+.settings-readonly-row code { color: #dce8ef; font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; font-size: 12px; }
+.settings-explainer-list { display: grid; gap: 10px; max-width: 620px; margin-top: 20px; }
+.settings-explainer-list div { padding: 13px 14px; border: 1px solid rgba(107, 148, 179, .13); border-radius: 11px; background: rgba(2, 10, 18, .46); }
+.settings-explainer-list strong { color: #f1f7fa; font-size: 13px; }
+.settings-explainer-list p, .settings-muted-note { margin: 6px 0 0; color: var(--text-secondary); font-size: 12px; line-height: 1.6; }
 .settings-save-bar { position: sticky; bottom: 18px; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 14px; width: 100%; padding: 12px 14px; border: 1px solid var(--border-color); border-radius: 14px; background: rgba(3, 12, 22, .94); box-shadow: 0 16px 42px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.025); color: var(--text-secondary); font-size: 12px; backdrop-filter: blur(14px); }
 .settings-dirty { color: var(--warning); }
 .settings-save-actions { display: flex; align-items: center; gap: 10px; }
@@ -323,7 +334,7 @@ button:focus-visible { outline: 2px solid #9b8cff; outline-offset: 2px; }
   font-size: 11px;
 }
 @media (max-width: 800px) { .sidebar { width: 220px; min-width: 220px; } .main-layout { margin-left: 220px; } .dashboard-grid { grid-template-columns: 1fr; } .cell-panel { padding: 18px; } .workspace-card-header { align-items: flex-start; flex-direction: column; } .workspace-export-button { align-self: flex-start; } .workspace-browser { grid-template-columns: 1fr; max-height: none; } .workspace-tree-panel { max-height: 300px; border-right: 0; border-bottom: 1px solid #3a3a3a; } .workspace-preview-empty { min-height: 260px; } }
-@media (max-width: 850px) { .heartbeat-grid { grid-template-columns: 1fr; } .page-heading { flex-direction: column; } .logs-actions { justify-content: flex-start; } .terminal-titlebar { grid-template-columns: 64px 1fr; } .terminal-count { display: none; } .settings-page { padding: 18px; } .settings-shell { grid-template-columns: 1fr; justify-content: stretch; } .settings-nav { flex-direction: row; overflow-x: auto; } .settings-nav-item { min-width: max-content; } .settings-field { grid-template-columns: 1fr; gap: 8px; } .settings-save-bar { position: static; flex-direction: column; align-items: stretch; } .settings-save-actions { justify-content: flex-end; } }
+@media (max-width: 850px) { .heartbeat-grid { grid-template-columns: 1fr; } .page-heading { flex-direction: column; } .logs-actions { justify-content: flex-start; } .terminal-titlebar { grid-template-columns: 64px 1fr; } .terminal-count { display: none; } .settings-page { padding: 18px; } .settings-shell { grid-template-columns: 1fr; justify-content: stretch; } .settings-nav { flex-direction: row; overflow-x: auto; } .settings-nav-item { min-width: max-content; } .settings-field { grid-template-columns: 1fr; gap: 8px; } .settings-row, .settings-readonly-row { align-items: flex-start; flex-direction: column; } .settings-save-bar { position: static; flex-direction: column; align-items: stretch; } .settings-save-actions { justify-content: flex-end; } }
 @media (max-width: 620px) { .sidebar { display: none; } .main-layout { margin-left: 0; } .server-status { display: none; } .welcome-panel { padding: 24px; } }
 
 /* Incubator */

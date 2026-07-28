@@ -141,7 +141,7 @@ test("Sidebar highlights Settings when the Settings page is selected", () => {
   assert.doesNotMatch(markup, /cradle-nav-item selected/);
 });
 
-test("SettingsPage renders the Step 2A mock AI Runtime skeleton", () => {
+test("SettingsPage renders the mock AI Runtime settings", () => {
   const markup = renderToStaticMarkup(React.createElement(SettingsPage));
 
   for (const label of [
@@ -168,9 +168,76 @@ test("SettingsPage renders the Step 2A mock AI Runtime skeleton", () => {
     assert.match(markup, new RegExp(label));
   }
 
-  assert.doesNotMatch(markup, /Provider Overrides/);
-  assert.doesNotMatch(markup, /Operation Timeouts/);
   assert.doesNotMatch(markup, /cradle-config\.json/);
+});
+
+test("SettingsPage renders the mock provider overrides", () => {
+  const markup = renderToStaticMarkup(
+    React.createElement(SettingsPage, { initialSectionId: "providers" }),
+  );
+
+  for (const label of [
+    "Provider Overrides",
+    "Ollama",
+    "Copilot",
+    "Codex",
+    "Gemini",
+    "Timeout",
+    "3600",
+    "seconds",
+    "No unsaved changes",
+  ]) {
+    assert.match(markup, new RegExp(label));
+  }
+});
+
+test("SettingsPage renders the mock operation timeouts", () => {
+  const markup = renderToStaticMarkup(
+    React.createElement(SettingsPage, { initialSectionId: "timeouts" }),
+  );
+
+  for (const label of [
+    "Operation Timeouts",
+    "Reflection",
+    "30",
+    "Maven Execution",
+    "3600",
+    "seconds",
+  ]) {
+    assert.match(markup, new RegExp(label));
+  }
+});
+
+test("SettingsPage renders the mock cultivation settings", () => {
+  const markup = renderToStaticMarkup(
+    React.createElement(SettingsPage, { initialSectionId: "cultivation" }),
+  );
+
+  for (const label of [
+    "Cultivation",
+    "Mode",
+    "Manual",
+    "Auto",
+    "Runs only when cultivation is triggered explicitly.",
+    "Runs cultivation on a configured schedule.",
+  ]) {
+    assert.match(markup, new RegExp(label));
+  }
+});
+
+test("SettingsPage renders the mock advanced configuration source", () => {
+  const markup = renderToStaticMarkup(
+    React.createElement(SettingsPage, { initialSectionId: "advanced" }),
+  );
+
+  for (const label of [
+    "Configuration",
+    "Source",
+    "cradle-server/config/cradle-config.json",
+    "Configuration editing through the raw JSON file is not available yet.",
+  ]) {
+    assert.match(markup, new RegExp(label.replaceAll(".", "\\.")));
+  }
 });
 
 test("IncubatorDish limits the primary field to five Cells", () => {

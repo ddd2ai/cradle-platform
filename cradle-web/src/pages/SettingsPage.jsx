@@ -9,22 +9,22 @@ const SETTINGS_SECTIONS = [
   {
     id: "providers",
     label: "Providers",
-    description: "Provider-specific overrides will be configured in the next step.",
+    description: "Provider-specific timeout overrides.",
   },
   {
     id: "timeouts",
     label: "Timeouts",
-    description: "Operation timeouts will be configured in the next step.",
+    description: "Cradle operation timeout limits.",
   },
   {
     id: "cultivation",
     label: "Cultivation",
-    description: "Cultivation behavior will be configured in the next step.",
+    description: "Configure how cultivation is triggered.",
   },
   {
     id: "advanced",
     label: "Advanced",
-    description: "Configuration source details will be configured in the next step.",
+    description: "Configuration source and low-level settings.",
   },
 ];
 
@@ -36,7 +36,25 @@ const DEFAULT_SETTINGS = {
     maxSourceArtifactOutputLength: "50000",
     maxSourceArtifactContentLength: "30000",
   },
+  providers: {
+    ollama: { timeoutSeconds: "3600" },
+    copilot: { timeoutSeconds: "3600" },
+    codex: { timeoutSeconds: "3600" },
+    gemini: { timeoutSeconds: "3600" },
+  },
+  timeouts: {
+    reflectionSeconds: "30",
+    mavenExecutionSeconds: "3600",
+  },
+  heartbeatMode: "manual",
 };
+
+const PROVIDER_ROWS = [
+  { id: "ollama", label: "Ollama" },
+  { id: "copilot", label: "Copilot" },
+  { id: "codex", label: "Codex" },
+  { id: "gemini", label: "Gemini" },
+];
 
 const PROVIDER_OPTIONS = [
   { value: "codex", label: "Codex" },
@@ -46,8 +64,8 @@ const MODEL_OPTIONS = [
   { value: "gpt-5.6", label: "gpt-5.6" },
 ];
 
-export function SettingsPage() {
-  const [selectedSectionId, setSelectedSectionId] = useState("ai-runtime");
+export function SettingsPage({ initialSectionId = "ai-runtime" } = {}) {
+  const [selectedSectionId, setSelectedSectionId] = useState(initialSectionId);
   const [savedSettings, setSavedSettings] = useState(DEFAULT_SETTINGS);
   const [draftSettings, setDraftSettings] = useState(DEFAULT_SETTINGS);
   const [toastMessage, setToastMessage] = useState("");
@@ -77,6 +95,36 @@ export function SettingsPage() {
         ...currentSettings.ai,
         [key]: value,
       },
+    }));
+  }
+
+  function updateProviderTimeout(providerId, value) {
+    setDraftSettings((currentSettings) => ({
+      ...currentSettings,
+      providers: {
+        ...currentSettings.providers,
+        [providerId]: {
+          ...currentSettings.providers[providerId],
+          timeoutSeconds: value,
+        },
+      },
+    }));
+  }
+
+  function updateTimeoutSetting(key, value) {
+    setDraftSettings((currentSettings) => ({
+      ...currentSettings,
+      timeouts: {
+        ...currentSettings.timeouts,
+        [key]: value,
+      },
+    }));
+  }
+
+  function updateHeartbeatMode(value) {
+    setDraftSettings((currentSettings) => ({
+      ...currentSettings,
+      heartbeatMode: value,
     }));
   }
 
@@ -119,13 +167,32 @@ export function SettingsPage() {
               <p>{selectedSection.description}</p>
             </div>
 
-            {selectedSectionId === "ai-runtime" ? (
+            {selectedSectionId === "ai-runtime" && (
               <AiRuntimeForm settings={draftSettings.ai} onChange={updateAiSetting} />
-            ) : (
-              <div className="settings-empty-state">
-                This section is reserved for the next Settings step.
-              </div>
             )}
+
+            {selectedSectionId === "providers" && (
+              <ProvidersForm
+                providers={draftSettings.providers}
+                onChange={updateProviderTimeout}
+              />
+            )}
+
+            {selectedSectionId === "timeouts" && (
+              <TimeoutsForm
+                timeouts={draftSettings.timeouts}
+                onChange={updateTimeoutSetting}
+              />
+            )}
+
+            {selectedSectionId === "cultivation" && (
+              <CultivationForm
+                heartbeatMode={draftSettings.heartbeatMode}
+                onChange={updateHeartbeatMode}
+              />
+            )}
+
+            {selectedSectionId === "advanced" && <AdvancedConfiguration />}
           </section>
 
           <div className="settings-save-bar" role="status" aria-live="polite">
@@ -238,6 +305,115 @@ function AiRuntimeForm({ settings, onChange }) {
           <span>characters</span>
         </span>
       </label>
+    </div>
+  );
+}
+
+function ProvidersForm({ providers, onChange }) {
+  return (
+    <div className="settings-section-block">
+      <h3>Provider Overrides</h3>
+      <div className="settings-row-list">
+        {PROVIDER_ROWS.map((provider) => (
+          <label className="settings-row" key={provider.id}>
+            <span className="settings-row-main">{provider.label}</span>
+            <span className="settings-inline-control">
+              <span>Timeout</span>
+              <input
+                className="settings-input"
+                inputMode="numeric"
+                value={providers[provider.id].timeoutSeconds}
+                onChange={(event) => onChange(provider.id, event.target.value)}
+              />
+              <span>seconds</span>
+            </span>
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TimeoutsForm({ timeouts, onChange }) {
+  return (
+    <div className="settings-section-block">
+      <h3>Operation Timeouts</h3>
+      <div className="settings-form-grid">
+        <label className="settings-field">
+          <span>Reflection</span>
+          <span className="settings-inline-control">
+            <input
+              className="settings-input"
+              inputMode="numeric"
+              value={timeouts.reflectionSeconds}
+              onChange={(event) => onChange("reflectionSeconds", event.target.value)}
+            />
+            <span>seconds</span>
+          </span>
+        </label>
+
+        <label className="settings-field">
+          <span>Maven Execution</span>
+          <span className="settings-inline-control">
+            <input
+              className="settings-input"
+              inputMode="numeric"
+              value={timeouts.mavenExecutionSeconds}
+              onChange={(event) =>
+                onChange("mavenExecutionSeconds", event.target.value)
+              }
+            />
+            <span>seconds</span>
+          </span>
+        </label>
+      </div>
+    </div>
+  );
+}
+
+function CultivationForm({ heartbeatMode, onChange }) {
+  return (
+    <div className="settings-section-block">
+      <h3>Cultivation</h3>
+      <label className="settings-field">
+        <span>Mode</span>
+        <select
+          className="settings-select"
+          value={heartbeatMode}
+          onChange={(event) => onChange(event.target.value)}
+        >
+          <option value="manual">Manual</option>
+          <option value="auto">Auto</option>
+        </select>
+      </label>
+
+      <div className="settings-explainer-list">
+        <div>
+          <strong>Manual</strong>
+          <p>Runs only when cultivation is triggered explicitly.</p>
+        </div>
+        <div>
+          <strong>Automatic</strong>
+          <p>Runs cultivation on a configured schedule.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AdvancedConfiguration() {
+  return (
+    <div className="settings-section-block">
+      <h3>Configuration</h3>
+      <div className="settings-readonly-list">
+        <div className="settings-readonly-row">
+          <span>Source</span>
+          <code>cradle-server/config/cradle-config.json</code>
+        </div>
+      </div>
+      <p className="settings-muted-note">
+        Configuration editing through the raw JSON file is not available yet.
+      </p>
     </div>
   );
 }
