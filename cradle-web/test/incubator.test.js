@@ -297,8 +297,7 @@ test("IncubatorDish renders an empty state when no Cells exist", () => {
 
 test("IncubatorDish preserves its visual shell when the API fails", () => {
   const markup = renderDish([], { error: "offline" });
-  assert.match(markup, /incubator-dish__liquid/);
-  assert.match(markup, /incubator-dish__bottom-reflection/);
+  assert.match(markup, /incubator-dish__field/);
   assert.match(markup, /Unable to load cells/);
 });
 

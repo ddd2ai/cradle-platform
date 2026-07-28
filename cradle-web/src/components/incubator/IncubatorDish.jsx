@@ -30,10 +30,7 @@ export function IncubatorDish({
 
   return (
     <div ref={dishRef} className={className}>
-      <div className="incubator-dish__outer-rim" aria-hidden="true" />
-      <div className="incubator-dish__glass-depth" aria-hidden="true" />
-
-      <div className="incubator-dish__liquid">
+      <div className="incubator-dish__field">
         <AmbientParticles />
 
         {!isLoading && positionedCells.map(({ visual, layout }) => (
@@ -77,9 +74,6 @@ export function IncubatorDish({
           <div className="incubator-overflow-count">+{hiddenCellCount}</div>
         )}
 
-        <div className="incubator-dish__caustics" aria-hidden="true" />
-        <div className="incubator-dish__highlight" aria-hidden="true" />
-        <div className="incubator-dish__bottom-reflection" aria-hidden="true" />
       </div>
     </div>
   );

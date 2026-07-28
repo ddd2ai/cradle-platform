@@ -518,115 +518,17 @@ button:focus-visible { outline: 2px solid #9b8cff; outline-offset: 2px; }
   max-height: calc(100vh - 245px);
   aspect-ratio: 1.42 / 1;
   margin-inline: auto;
-  border: 2px solid rgba(155, 222, 255, .48);
-  border-radius: 50%;
-  box-shadow:
-    inset 0 0 30px rgba(104, 204, 255, .12),
-    inset 0 -34px 76px rgba(1, 10, 18, .72),
-    0 0 18px rgba(84, 188, 241, .2),
-    0 20px 60px rgba(0, 0, 0, .42);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
-.incubator-dish__outer-rim,
-.incubator-dish__glass-depth,
-.incubator-dish__liquid {
+.incubator-dish__field {
   position: absolute;
-  border-radius: 50%;
-}
-
-.incubator-dish__outer-rim {
   inset: 0;
-  z-index: 0;
-  border: 1px solid rgba(197, 237, 242, .42);
-  background:
-    radial-gradient(ellipse at 50% 2%, rgba(214, 250, 255, .24), transparent 37%),
-    radial-gradient(ellipse at 51% 99%, rgba(10, 30, 40, .92), transparent 47%),
-    rgba(41, 78, 89, .28);
-  box-shadow:
-    inset 0 8px 16px rgba(213, 249, 255, .09),
-    inset 0 -18px 28px rgba(0, 8, 14, .72),
-    0 0 0 8px rgba(80, 123, 135, .09),
-    0 0 0 9px rgba(189, 231, 238, .08);
-}
-
-.incubator-dish__glass-depth {
-  inset: 13px;
-  z-index: 1;
-  border: 2px solid rgba(163, 215, 225, .17);
-  box-shadow:
-    inset 0 0 0 8px rgba(9, 26, 34, .5),
-    inset 0 12px 16px rgba(173, 225, 233, .08),
-    0 5px 18px rgba(0, 0, 0, .55);
-}
-
-.incubator-dish__liquid {
-  inset: 24px;
   z-index: 2;
   overflow: hidden;
-  border: 1px solid rgba(105, 188, 208, .17);
-  background:
-    radial-gradient(circle at 50% 48%, rgba(29, 138, 168, .23), transparent 33%),
-    radial-gradient(circle at 28% 61%, rgba(92, 68, 153, .13), transparent 27%),
-    radial-gradient(circle at 76% 36%, rgba(45, 128, 126, .1), transparent 25%),
-    linear-gradient(180deg, rgba(7, 42, 55, .98), rgba(2, 16, 24, .995));
-  box-shadow:
-    inset 0 16px 30px rgba(104, 187, 205, .08),
-    inset 0 -30px 55px rgba(0, 5, 10, .6),
-    0 0 34px rgba(28, 133, 158, .09);
-}
-
-.incubator-dish__liquid::before {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  background-image:
-    linear-gradient(112deg, transparent 34%, rgba(123, 217, 228, .025) 35%, transparent 36%),
-    linear-gradient(68deg, transparent 56%, rgba(129, 213, 225, .02) 57%, transparent 58%);
-  background-size: 120px 96px, 148px 132px;
-  content: "";
-  opacity: .7;
-}
-
-.incubator-dish__caustics {
-  position: absolute;
-  inset: -20%;
-  z-index: 7;
-  pointer-events: none;
-  background:
-    radial-gradient(ellipse at 40% 60%, transparent 0 30%, rgba(95, 199, 214, .06) 31%, transparent 33%),
-    radial-gradient(ellipse at 65% 35%, transparent 0 28%, rgba(154, 121, 226, .04) 29%, transparent 31%);
-  filter: blur(3px);
-  animation: incubator-caustics 18s ease-in-out infinite alternate;
-}
-
-.incubator-dish__highlight {
-  position: absolute;
-  inset: 2% 6% auto;
-  z-index: 8;
-  height: 27%;
-  border-radius: 50%;
-  pointer-events: none;
-  background: linear-gradient(180deg, rgba(201, 244, 248, .1), transparent);
-  filter: blur(6px);
-  opacity: .65;
-}
-
-.incubator-dish__bottom-reflection {
-  position: absolute;
-  right: 10%;
-  bottom: 3%;
-  left: 10%;
-  z-index: 8;
-  height: 18%;
-  border-radius: 50%;
-  pointer-events: none;
-  background: radial-gradient(
-    ellipse at center,
-    rgba(134, 220, 255, .2),
-    transparent 66%
-  );
-  filter: blur(8px);
-  opacity: .72;
 }
 
 .ambient-particles {
@@ -1855,16 +1757,8 @@ button:focus-visible { outline: 2px solid #9b8cff; outline-offset: 2px; }
   filter: none;
 }
 
-.incubator-dish:fullscreen .incubator-dish__outer-rim {
+.incubator-dish:fullscreen .incubator-dish__field {
   inset: 4vh 3vw;
-}
-
-.incubator-dish:fullscreen .incubator-dish__glass-depth {
-  inset: calc(4vh + 13px) calc(3vw + 13px);
-}
-
-.incubator-dish:fullscreen .incubator-dish__liquid {
-  inset: calc(4vh + 24px) calc(3vw + 24px);
 }
 
 @keyframes cell-drift {
@@ -2061,14 +1955,6 @@ button:focus-visible { outline: 2px solid #9b8cff; outline-offset: 2px; }
     grid-template-rows: minmax(390px, 1fr) 28px auto;
   }
 
-  .incubator-dish__liquid {
-    inset: 16px;
-  }
-
-  .incubator-dish__glass-depth {
-    inset: 8px;
-  }
-
   .floating-cell {
     width: min(var(--cell-size), 20%);
   }
@@ -2155,7 +2041,6 @@ button:focus-visible { outline: 2px solid #9b8cff; outline-offset: 2px; }
   .floating-cell__glow,
   .floating-cell__filament,
   .ambient-particle,
-  .incubator-dish__caustics,
   .incubator-card-skeleton span,
   .incubator-dish__loading span {
     animation: none !important;
@@ -2480,77 +2365,9 @@ button:focus-visible { outline: 2px solid #9b8cff; outline-offset: 2px; }
   width: min(calc(100% - 36px), 900px);
   max-height: calc(100vh - 202px);
   aspect-ratio: 1.23 / 1;
-  border: 2px solid rgba(83, 187, 255, .62);
-  background: rgba(1, 15, 28, .4);
-  box-shadow:
-    inset 0 0 44px rgba(20, 135, 220, .17),
-    inset 0 -54px 100px rgba(0, 3, 12, .82),
-    0 0 16px rgba(29, 144, 227, .36),
-    0 24px 70px rgba(0, 0, 0, .52);
-}
-
-.app-shell.is-incubator .incubator-dish__outer-rim {
-  border-color: rgba(158, 227, 255, .5);
-  background:
-    radial-gradient(ellipse at 51% 1%, rgba(221, 250, 255, .42), transparent 22%),
-    radial-gradient(ellipse at 51% 98%, rgba(52, 154, 221, .18), transparent 31%),
-    rgba(30, 86, 126, .24);
-  box-shadow:
-    inset 0 8px 15px rgba(190, 238, 255, .18),
-    inset 0 -22px 34px rgba(0, 5, 15, .82),
-    0 0 0 7px rgba(61, 144, 209, .16),
-    0 0 0 10px rgba(111, 207, 255, .08),
-    0 0 24px rgba(29, 145, 224, .28);
-}
-
-.app-shell.is-incubator .incubator-dish__glass-depth {
-  inset: 12px 14px;
-  border-color: rgba(124, 210, 255, .27);
-  box-shadow:
-    inset 0 0 0 9px rgba(2, 22, 39, .58),
-    inset 0 13px 16px rgba(167, 225, 255, .1),
-    0 7px 21px rgba(0, 0, 0, .65);
-}
-
-.app-shell.is-incubator .incubator-dish__liquid {
-  inset: 25px 27px;
-  border-color: rgba(57, 164, 231, .23);
-  background:
-    radial-gradient(circle at 51% 46%, rgba(0, 118, 126, .26), transparent 28%),
-    radial-gradient(circle at 27% 36%, rgba(82, 16, 151, .15), transparent 24%),
-    radial-gradient(circle at 75% 33%, rgba(0, 108, 214, .18), transparent 24%),
-    radial-gradient(circle at 72% 69%, rgba(157, 96, 0, .08), transparent 21%),
-    linear-gradient(180deg, rgba(2, 28, 52, .99), rgba(0, 15, 33, .995) 52%, rgba(0, 9, 23, .998));
-  box-shadow:
-    inset 0 22px 38px rgba(74, 172, 236, .09),
-    inset 0 -48px 74px rgba(0, 2, 12, .76),
-    0 0 42px rgba(11, 109, 187, .13);
-}
-
-.app-shell.is-incubator .incubator-dish__liquid::before {
-  background-image:
-    radial-gradient(circle, rgba(21, 138, 236, .68) 0 1px, transparent 1.7px),
-    radial-gradient(circle, rgba(0, 86, 170, .7) 0 1px, transparent 1.8px),
-    radial-gradient(circle, rgba(48, 219, 154, .46) 0 1px, transparent 1.8px);
-  background-position: 5px 8px, 29px 17px, 17px 37px;
-  background-size: 43px 37px, 67px 59px, 89px 73px;
-  filter: drop-shadow(0 0 3px rgba(19, 126, 221, .4));
-  opacity: .22;
-}
-
-.app-shell.is-incubator .incubator-dish__liquid::after {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 15% 49%, rgba(35, 135, 233, .18) 0 13px, rgba(105, 190, 255, .18) 14px, transparent 16px),
-    radial-gradient(circle at 88% 48%, rgba(31, 118, 225, .17) 0 15px, rgba(111, 195, 255, .16) 16px, transparent 18px),
-    radial-gradient(circle at 61% 19%, rgba(38, 193, 135, .2) 0 8px, rgba(119, 248, 169, .15) 9px, transparent 11px),
-    radial-gradient(circle at 44% 84%, rgba(34, 112, 203, .16) 0 10px, rgba(100, 183, 255, .14) 11px, transparent 13px),
-    radial-gradient(circle at 76% 78%, rgba(100, 149, 27, .17) 0 7px, rgba(186, 231, 91, .14) 8px, transparent 10px);
-  content: "";
-  opacity: .82;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .app-shell.is-incubator .ambient-particle {
