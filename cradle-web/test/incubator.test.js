@@ -104,7 +104,7 @@ test("Cell detail keeps the shared Sidebar and selected Cell state", () => {
     "New Cell",
     "Overview",
     "Incubator",
-    "OpenDNA",
+    "Observatory",
     "Artifacts",
     "Logs",
     "Cells",

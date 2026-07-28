@@ -431,9 +431,9 @@ function App() {
 
           {selectedSection === "opendna" && (
             <PlaceholderPage
-              title="OpenDNA"
-              description="Observe DNA traits and relationships across the Cradle."
-              icon="🧬"
+              title="Observatory"
+              description="Observe cell traits, relationships, and evolution."
+              icon="◎"
             />
           )}
 

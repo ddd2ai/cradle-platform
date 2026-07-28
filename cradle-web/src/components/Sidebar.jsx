@@ -1,7 +1,7 @@
 const cradleItems = [
   { id: "overview", label: "Overview" },
   { id: "incubator", label: "Incubator" },
-  { id: "opendna", label: "OpenDNA" },
+  { id: "opendna", label: "Observatory" },
   { id: "artifacts", label: "Artifacts" },
   { id: "logs", label: "Logs" },
 ];
@@ -106,8 +106,8 @@ function NavIcon({ id }) {
     incubator: <path d="M10 19S3 14.2 3 8.8A4 4 0 0 1 10 6a4 4 0 0 1 7 2.8C17 14.2 10 19 10 19Z" />,
     opendna: (
       <>
-        <path d="M6 3c0 5 8 9 8 14" />
-        <path d="M14 3c0 5-8 9-8 14M7 6h6M6 10h8M7 14h6" />
+        <path d="M3.5 10s2.4-4 6.5-4 6.5 4 6.5 4-2.4 4-6.5 4-6.5-4-6.5-4Z" />
+        <path d="M10 8.1a1.9 1.9 0 1 1 0 3.8 1.9 1.9 0 0 1 0-3.8ZM5.5 4.5l1.6 1.6M14.5 4.5l-1.6 1.6M10 3.5v2" />
       </>
     ),
     artifacts: (

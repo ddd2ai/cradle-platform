@@ -12,7 +12,10 @@ export function Header({ selectedCell, selectedSection, isServerConnected }) {
       title: "Cultivation",
       subtitle: "Activate and observe the Cradle environment",
     },
-    opendna: { title: "OpenDNA", subtitle: "Software DNA visualization" },
+    opendna: {
+      title: "Observatory",
+      subtitle: "Observe cell traits, relationships, and evolution.",
+    },
     artifacts: { title: "Artifacts", subtitle: "Generated software products" },
     logs: { title: "Logs", subtitle: "Cradle runtime activity" },
   };

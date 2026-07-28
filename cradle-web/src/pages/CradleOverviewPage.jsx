@@ -44,7 +44,7 @@ export function CradleOverviewPage({ cells }) {
           </div>
         </div>
         <div className="overview-placeholder">
-          Heartbeat, OpenDNA, artifacts and runtime activity will appear here.
+          Heartbeat, Observatory, artifacts and runtime activity will appear here.
         </div>
       </div>
     </section>
