@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { fetchCradleConfig } from "../api/cradleClient";
 
 const SETTINGS_SECTIONS = [
   {
@@ -69,6 +70,7 @@ export function SettingsPage({ initialSectionId = "ai-runtime" } = {}) {
   const [savedSettings, setSavedSettings] = useState(DEFAULT_SETTINGS);
   const [draftSettings, setDraftSettings] = useState(DEFAULT_SETTINGS);
   const [toastMessage, setToastMessage] = useState("");
+  const [loadError, setLoadError] = useState("");
 
   const selectedSection = useMemo(
     () => SETTINGS_SECTIONS.find((section) => section.id === selectedSectionId)
@@ -87,6 +89,33 @@ export function SettingsPage({ initialSectionId = "ai-runtime" } = {}) {
     const timerId = window.setTimeout(() => setToastMessage(""), 2000);
     return () => window.clearTimeout(timerId);
   }, [toastMessage]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadCradleConfig() {
+      try {
+        setLoadError("");
+        const config = await fetchCradleConfig();
+        const settings = mapConfigToSettings(config);
+
+        if (!cancelled) {
+          setSavedSettings(settings);
+          setDraftSettings(settings);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setLoadError(error.message);
+        }
+      }
+    }
+
+    loadCradleConfig();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function updateAiSetting(key, value) {
     setDraftSettings((currentSettings) => ({
@@ -167,6 +196,12 @@ export function SettingsPage({ initialSectionId = "ai-runtime" } = {}) {
               <p>{selectedSection.description}</p>
             </div>
 
+            {loadError && (
+              <div className="settings-load-error" role="alert">
+                Unable to load configuration: {loadError}
+              </div>
+            )}
+
             {selectedSectionId === "ai-runtime" && (
               <AiRuntimeForm settings={draftSettings.ai} onChange={updateAiSetting} />
             )}
@@ -228,6 +263,50 @@ export function SettingsPage({ initialSectionId = "ai-runtime" } = {}) {
       )}
     </section>
   );
+}
+
+function mapConfigToSettings(config) {
+  return {
+    ai: {
+      defaultProvider: String(config.ai?.defaultProvider ?? "codex"),
+      defaultModel: String(config.ai?.defaultModel ?? "gpt-5.6"),
+      timeoutSeconds: stringifySetting(config.ai?.timeoutSeconds, "3600"),
+      maxSourceArtifactOutputLength: stringifySetting(
+        config.ai?.maxSourceArtifactOutputLength,
+        "50000",
+      ),
+      maxSourceArtifactContentLength: stringifySetting(
+        config.ai?.maxSourceArtifactContentLength,
+        "30000",
+      ),
+    },
+    providers: Object.fromEntries(
+      PROVIDER_ROWS.map((provider) => [
+        provider.id,
+        {
+          timeoutSeconds: stringifySetting(
+            config.providers?.[provider.id]?.timeoutSeconds,
+            "3600",
+          ),
+        },
+      ]),
+    ),
+    timeouts: {
+      reflectionSeconds: stringifySetting(
+        config.timeouts?.reflectionSeconds,
+        "30",
+      ),
+      mavenExecutionSeconds: stringifySetting(
+        config.timeouts?.mavenExecutionSeconds,
+        "3600",
+      ),
+    },
+    heartbeatMode: String(config.heartbeat?.mode ?? "manual"),
+  };
+}
+
+function stringifySetting(value, fallback) {
+  return value === undefined || value === null ? fallback : String(value);
 }
 
 function AiRuntimeForm({ settings, onChange }) {

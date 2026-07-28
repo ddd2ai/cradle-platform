@@ -17,6 +17,7 @@ export function createApiHandler({
   stabilizationServiceFactory,
   divisionServiceFactory,
   fusionServiceFactory,
+  cradleConfigFile,
 }) {
   const routes = createApiRoutes({
     engine,
@@ -30,6 +31,7 @@ export function createApiHandler({
     stabilizationServiceFactory,
     divisionServiceFactory,
     fusionServiceFactory,
+    cradleConfigFile,
   });
 
   return async function handleApiRequest(request) {

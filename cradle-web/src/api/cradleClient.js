@@ -261,6 +261,19 @@ export async function updateAiSettings({ provider, model }) {
   return data;
 }
 
+export async function fetchCradleConfig() {
+  const response = await fetch("/api/v1/config");
+  const data = await readJsonResponse(response);
+
+  if (!response.ok) {
+    throw new Error(
+      data?.error?.message ?? `Failed to fetch configuration: ${response.status}`,
+    );
+  }
+
+  return data;
+}
+
 export async function fetchLogs() {
   const response = await fetch("/api/v1/logs");
 

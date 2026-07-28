@@ -11,6 +11,7 @@ import { GetCellMaturityUseCase } from "../application/get-cell-maturity-use-cas
 import { GetCellArtifactStabilityUseCase } from "../application/get-cell-artifact-stability-use-case.js";
 import { GetCellUseCase } from "../application/get-cell-use-case.js";
 import { GetColonyUseCase } from "../application/get-colony-use-case.js";
+import { GetCradleConfigUseCase } from "../application/get-cradle-config-use-case.js";
 import { GetCultivationStatusUseCase } from "../application/get-cultivation-status-use-case.js";
 import { GetHeartbeatUseCase } from "../application/get-heartbeat-use-case.js";
 import { GetHealthUseCase } from "../application/get-health-use-case.js";
@@ -49,6 +50,7 @@ export function createApiRoutes({
   stabilizationServiceFactory,
   divisionServiceFactory,
   fusionServiceFactory,
+  cradleConfigFile,
 }) {
   return [
     exact("GET", "/health", async () =>
@@ -65,6 +67,9 @@ export function createApiRoutes({
     ),
     exact("GET", "/api/v1/logs", async () =>
       new ListLogsUseCase({ logBuffer }).execute()
+    ),
+    exact("GET", "/api/v1/config", async () =>
+      new GetCradleConfigUseCase({ file: cradleConfigFile }).execute()
     ),
     exact("GET", "/api/v1/ai/settings", async () =>
       new GetAiSettingsUseCase({

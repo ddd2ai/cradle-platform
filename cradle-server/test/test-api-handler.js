@@ -1,4 +1,7 @@
 import assert from "assert";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { createApiHandler } from "../src/api/api-handler.js";
 import { LogBuffer } from "../src/application/log-buffer.js";
 import { InMemoryOperationStore } from "../src/application/operation-store.js";
@@ -249,6 +252,33 @@ const heartbeatCalls = [];
 const stabilizationCalls = [];
 const divisionCalls = [];
 const fusionCalls = [];
+const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "cradle-api-config-"));
+const cradleConfigFile = path.join(tempRoot, "cradle-config.json");
+await fs.writeFile(
+  cradleConfigFile,
+  JSON.stringify({
+    ai: {
+      defaultProvider: "codex",
+      defaultModel: "gpt-5.6",
+      timeoutSeconds: 3600,
+      maxSourceArtifactOutputLength: 50000,
+      maxSourceArtifactContentLength: 30000,
+    },
+    providers: {
+      ollama: { timeoutSeconds: 3600 },
+      copilot: { timeoutSeconds: 3600 },
+      codex: { timeoutSeconds: 3600 },
+      gemini: { timeoutSeconds: 3600 },
+    },
+    timeouts: {
+      reflectionSeconds: 30,
+      mavenExecutionSeconds: 3600,
+    },
+    heartbeat: {
+      mode: "manual",
+    },
+  }),
+);
 const handler = createApiHandler({
   engine,
   aiSettingsStoreFactory: () => aiSettingsStore,
@@ -301,6 +331,7 @@ const handler = createApiHandler({
       };
     },
   }),
+  cradleConfigFile,
 });
 
 const health = await handler({
@@ -449,6 +480,61 @@ const clearedLogs = await handler({
 assert.equal(clearedLogs.status, 200);
 assert.deepEqual(clearedLogs.body.logs, []);
 assert.deepEqual(logBuffer.list(), []);
+
+const cradleConfig = await handler({
+  method: "GET",
+  url: "/api/v1/config",
+});
+
+assert.equal(cradleConfig.status, 200);
+assert.deepEqual(cradleConfig.body, {
+  ai: {
+    defaultProvider: "codex",
+    defaultModel: "gpt-5.6",
+    timeoutSeconds: 3600,
+    maxSourceArtifactOutputLength: 50000,
+    maxSourceArtifactContentLength: 30000,
+  },
+  providers: {
+    ollama: { timeoutSeconds: 3600 },
+    copilot: { timeoutSeconds: 3600 },
+    codex: { timeoutSeconds: 3600 },
+    gemini: { timeoutSeconds: 3600 },
+  },
+  timeouts: {
+    reflectionSeconds: 30,
+    mavenExecutionSeconds: 3600,
+  },
+  heartbeat: {
+    mode: "manual",
+  },
+});
+
+const missingConfigHandler = createApiHandler({
+  engine,
+  cradleConfigFile: path.join(tempRoot, "missing-config.json"),
+});
+const missingConfig = await missingConfigHandler({
+  method: "GET",
+  url: "/api/v1/config",
+});
+
+assert.equal(missingConfig.status, 500);
+assert.equal(missingConfig.body.error.code, "CRADLE_CONFIG_NOT_FOUND");
+
+const invalidConfigFile = path.join(tempRoot, "invalid-config.json");
+await fs.writeFile(invalidConfigFile, "{ invalid json");
+const invalidConfigHandler = createApiHandler({
+  engine,
+  cradleConfigFile: invalidConfigFile,
+});
+const invalidConfig = await invalidConfigHandler({
+  method: "GET",
+  url: "/api/v1/config",
+});
+
+assert.equal(invalidConfig.status, 500);
+assert.equal(invalidConfig.body.error.code, "CRADLE_CONFIG_INVALID_JSON");
 
 const cell = await handler({
   method: "GET",
