@@ -258,8 +258,8 @@ await fs.writeFile(
   cradleConfigFile,
   JSON.stringify({
     ai: {
-      defaultProvider: "codex",
-      defaultModel: "gpt-5.6",
+      defaultProvider: "ollama",
+      defaultModel: "devstral-small-2:24b",
       timeoutSeconds: 3600,
       maxSourceArtifactOutputLength: 50000,
       maxSourceArtifactContentLength: 30000,
@@ -489,8 +489,8 @@ const cradleConfig = await handler({
 assert.equal(cradleConfig.status, 200);
 assert.deepEqual(cradleConfig.body, {
   ai: {
-    defaultProvider: "codex",
-    defaultModel: "gpt-5.6",
+    defaultProvider: "ollama",
+    defaultModel: "devstral-small-2:24b",
     timeoutSeconds: 3600,
     maxSourceArtifactOutputLength: 50000,
     maxSourceArtifactContentLength: 30000,

@@ -31,8 +31,8 @@ const SETTINGS_SECTIONS = [
 
 const DEFAULT_SETTINGS = {
   ai: {
-    defaultProvider: "codex",
-    defaultModel: "gpt-5.6",
+    defaultProvider: "ollama",
+    defaultModel: "devstral-small-2:24b",
     timeoutSeconds: "3600",
     maxSourceArtifactOutputLength: "50000",
     maxSourceArtifactContentLength: "30000",
@@ -58,11 +58,26 @@ const PROVIDER_ROWS = [
 ];
 
 const PROVIDER_OPTIONS = [
-  { value: "codex", label: "Codex" },
-];
-
-const MODEL_OPTIONS = [
-  { value: "gpt-5.6", label: "gpt-5.6" },
+  {
+    value: "ollama",
+    label: "Ollama",
+    models: ["devstral-small-2:24b", "gemma3:latest"],
+  },
+  {
+    value: "copilot",
+    label: "Copilot",
+    models: ["gpt-5.5", "gpt-5.6", "gpt-5-mini"],
+  },
+  {
+    value: "codex",
+    label: "Codex",
+    models: ["auto", "gpt-5.6"],
+  },
+  {
+    value: "gemini",
+    label: "Gemini",
+    models: ["auto", "gemini-2.5-pro", "gemini-2.5-flash"],
+  },
 ];
 
 export function SettingsPage({ initialSectionId = "ai-runtime" } = {}) {
@@ -126,7 +141,12 @@ export function SettingsPage({ initialSectionId = "ai-runtime" } = {}) {
       ...currentSettings,
       ai: {
         ...currentSettings.ai,
-        [key]: value,
+        ...(key === "defaultProvider"
+          ? {
+              defaultProvider: value,
+              defaultModel: getDefaultModelForProvider(value),
+            }
+          : { [key]: value }),
       },
     }));
   }
@@ -293,8 +313,11 @@ export function SettingsPage({ initialSectionId = "ai-runtime" } = {}) {
 function mapConfigToSettings(config) {
   return {
     ai: {
-      defaultProvider: String(config.ai?.defaultProvider ?? "codex"),
-      defaultModel: String(config.ai?.defaultModel ?? "gpt-5.6"),
+      defaultProvider: String(config.ai?.defaultProvider ?? "ollama"),
+      defaultModel: String(
+        config.ai?.defaultModel
+          ?? getDefaultModelForProvider(config.ai?.defaultProvider ?? "ollama")
+      ),
       timeoutSeconds: stringifySetting(config.ai?.timeoutSeconds, "3600"),
       maxSourceArtifactOutputLength: stringifySetting(
         config.ai?.maxSourceArtifactOutputLength,
@@ -425,6 +448,13 @@ function parseIntegerSetting(value) {
 }
 
 function AiRuntimeForm({ settings, onChange }) {
+  const selectedProvider = PROVIDER_OPTIONS.find(
+    (provider) => provider.value === settings.defaultProvider
+  ) ?? PROVIDER_OPTIONS[0];
+  const modelOptions = selectedProvider.models.includes(settings.defaultModel)
+    ? selectedProvider.models
+    : [settings.defaultModel, ...selectedProvider.models];
+
   return (
     <div className="settings-form-grid">
       <label className="settings-field">
@@ -434,9 +464,9 @@ function AiRuntimeForm({ settings, onChange }) {
           value={settings.defaultProvider}
           onChange={(event) => onChange("defaultProvider", event.target.value)}
         >
-          {PROVIDER_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
+          {PROVIDER_OPTIONS.map((provider) => (
+            <option key={provider.value} value={provider.value}>
+              {provider.label}
             </option>
           ))}
         </select>
@@ -449,9 +479,9 @@ function AiRuntimeForm({ settings, onChange }) {
           value={settings.defaultModel}
           onChange={(event) => onChange("defaultModel", event.target.value)}
         >
-          {MODEL_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
+          {modelOptions.map((model) => (
+            <option key={model} value={model}>
+              {model}
             </option>
           ))}
         </select>
@@ -501,6 +531,11 @@ function AiRuntimeForm({ settings, onChange }) {
       </label>
     </div>
   );
+}
+
+function getDefaultModelForProvider(provider) {
+  return PROVIDER_OPTIONS.find((option) => option.value === provider)?.models[0]
+    ?? "devstral-small-2:24b";
 }
 
 function ProvidersForm({ providers, onChange }) {
