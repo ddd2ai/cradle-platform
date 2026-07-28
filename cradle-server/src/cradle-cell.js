@@ -977,6 +977,14 @@ ${memoryContext}
     return await this.workspaceStore.readWorkspaceFile(relativePath);
   }
 
+  async readWorkspaceBinaryFile(relativePath) {
+    return await this.workspaceStore.readWorkspaceBinaryFile(relativePath);
+  }
+
+  async hasWorkspacePath(relativePath) {
+    return await this.workspaceStore.hasWorkspacePath(relativePath);
+  }
+
   async readWorkspaceFilePreview(relativePath) {
     return await this.workspaceStore.readWorkspaceFilePreview(relativePath);
   }

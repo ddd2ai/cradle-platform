@@ -1,6 +1,7 @@
 import { CreateCellUseCase } from "../application/create-cell-use-case.js";
 import { DivideCellUseCase } from "../application/divide-cell-use-case.js";
 import { ClearLogsUseCase } from "../application/clear-logs-use-case.js";
+import { ExportCellArtifactUseCase } from "../application/export-cell-artifact-use-case.js";
 import { ExportCellWorkspaceUseCase } from "../application/export-cell-workspace-use-case.js";
 import { GetCellArtifactUseCase } from "../application/get-cell-artifact-use-case.js";
 import { GetAiSettingsUseCase } from "../application/get-ai-settings-use-case.js";
@@ -17,6 +18,7 @@ import { GetHeartbeatUseCase } from "../application/get-heartbeat-use-case.js";
 import { GetHealthUseCase } from "../application/get-health-use-case.js";
 import { GetOperationUseCase } from "../application/get-operation-use-case.js";
 import { FuseCellsUseCase } from "../application/fuse-cells-use-case.js";
+import { GetCreationPreviewUseCase } from "../application/get-creation-preview-use-case.js";
 import { HeartbeatModeStore } from "../heartbeat/heartbeat-mode.js";
 import { ListCellArtifactsUseCase } from "../application/list-cell-artifacts-use-case.js";
 import { ListCellInboxUseCase } from "../application/list-cell-inbox-use-case.js";
@@ -26,6 +28,7 @@ import { ListCellSnapshotsUseCase } from "../application/list-cell-snapshots-use
 import { ListCellWorkspaceEntriesUseCase } from "../application/list-cell-workspace-entries-use-case.js";
 import { ListCellWorkspaceUseCase } from "../application/list-cell-workspace-use-case.js";
 import { ListCellsUseCase } from "../application/list-cells-use-case.js";
+import { ListCreationsUseCase } from "../application/list-creations-use-case.js";
 import { ListLogsUseCase } from "../application/list-logs-use-case.js";
 import { ListOperationsUseCase } from "../application/list-operations-use-case.js";
 import { OperationRunner } from "../application/operation-runner.js";
@@ -59,6 +62,17 @@ export function createApiRoutes({
     ),
     exact("GET", "/api/v1/cells", async () =>
       new ListCellsUseCase({ engine }).execute()
+    ),
+    exact("GET", "/api/v1/creations", async () =>
+      new ListCreationsUseCase({ engine }).execute()
+    ),
+    pattern(
+      "GET",
+      /^\/api\/v1\/creations\/([^/]+)\/preview$/,
+      async ({ params }) =>
+        new GetCreationPreviewUseCase({ engine }).execute({
+          artifactId: params[0],
+        })
     ),
     exact("GET", "/api/v1/colony", async () =>
       new GetColonyUseCase({ engine }).execute()
@@ -197,6 +211,15 @@ export function createApiRoutes({
       /^\/api\/v1\/cells\/([^/]+)\/artifacts$/,
       async ({ params }) =>
         new ListCellArtifactsUseCase({ engine }).execute({ cellId: params[0] })
+    ),
+    pattern(
+      "GET",
+      /^\/api\/v1\/cells\/([^/]+)\/artifacts\/([^/]+)\/export$/,
+      async ({ params }) =>
+        new ExportCellArtifactUseCase({ engine }).execute({
+          cellId: params[0],
+          artifactId: params[1],
+        })
     ),
     pattern(
       "GET",

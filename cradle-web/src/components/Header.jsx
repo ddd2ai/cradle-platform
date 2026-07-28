@@ -16,7 +16,7 @@ export function Header({ selectedCell, selectedSection, isServerConnected }) {
       title: "Observatory",
       subtitle: "Observe cell traits, relationships, and evolution.",
     },
-    artifacts: { title: "Artifacts", subtitle: "Generated software products" },
+    artifacts: { title: "Creations", subtitle: "Explore artifacts cultivated by Cradle cells." },
     logs: { title: "Logs", subtitle: "Cradle runtime activity" },
     settings: {
       title: "Settings",

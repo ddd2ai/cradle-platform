@@ -14,6 +14,17 @@ export async function fetchCells() {
   }));
 }
 
+export async function fetchCreations() {
+  const response = await fetch("/api/v1/creations");
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch creations: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return Array.isArray(data) ? data : data.items ?? [];
+}
+
 export async function createCell(cellId) {
   const response = await fetch("/api/v1/cells", {
     method: "POST",

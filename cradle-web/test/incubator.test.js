@@ -22,6 +22,7 @@ let CellControlCard;
 let SelectedCellPanel;
 let Sidebar;
 let SettingsPage;
+let CreationsPage;
 let LifecycleCard;
 let MaturityCard;
 let DnaDimensionsCard;
@@ -30,6 +31,8 @@ let mapCellActivity;
 let mapCellToVisualState;
 let normalizePercentage;
 let formatStabilizeMessage;
+let mapCreationDtoToCreation;
+let getArtifactDownloadUrl;
 
 before(async () => {
   vite = await createServer({
@@ -59,6 +62,9 @@ before(async () => {
   ({ SettingsPage } = await vite.ssrLoadModule(
     "/src/pages/SettingsPage.jsx",
   ));
+  ({ CreationsPage } = await vite.ssrLoadModule(
+    "/src/pages/CreationsPage.jsx",
+  ));
   ({ LifecycleCard } = await vite.ssrLoadModule(
     "/src/components/cell/LifecycleCard.jsx",
   ));
@@ -78,6 +84,9 @@ before(async () => {
   } = await vite.ssrLoadModule("/src/domain/cellVisualMapper.js"));
   ({ formatStabilizeMessage } = await vite.ssrLoadModule(
     "/src/domain/stabilizationResult.js",
+  ));
+  ({ mapCreationDtoToCreation, getArtifactDownloadUrl } = await vite.ssrLoadModule(
+    "/src/features/creations/api.ts",
   ));
 });
 
@@ -109,7 +118,7 @@ test("Cell detail keeps the shared Sidebar and selected Cell state", () => {
     "Overview",
     "Incubator",
     "Observatory",
-    "Artifacts",
+    "Creations",
     "Logs",
     "Cells",
     "Settings",
@@ -319,7 +328,7 @@ test("Incubator workspace renders only incubator controls in the bottom dock", (
   assert.doesNotMatch(markup, />Cultivation</);
   assert.doesNotMatch(markup, />DNA</);
   assert.doesNotMatch(markup, />Workspace</);
-  assert.doesNotMatch(markup, />Artifacts</);
+  assert.doesNotMatch(markup, />Creations</);
   assert.doesNotMatch(markup, />Logs</);
   assert.doesNotMatch(markup, />Environment<\/dt>/);
   assert.doesNotMatch(markup, />Alerts<\/dt>/);
@@ -328,6 +337,113 @@ test("Incubator workspace renders only incubator controls in the bottom dock", (
   assert.doesNotMatch(markup, /Java 21/);
   assert.doesNotMatch(markup, /Spring Boot 3/);
   assert.doesNotMatch(markup, /Hexagonal/);
+});
+
+test("Creation adapter maps API DTOs into Creation view models", () => {
+  assert.deepEqual(
+    mapCreationDtoToCreation({
+      id: "artifact-001",
+      artifactId: "artifact-001",
+      title: "Option Pricing API",
+      originCellId: "cell-001",
+      type: "code",
+      status: "draft",
+      stage: "seed",
+      description: "以 Java 21、Spring Boot 與六角形架構建立選擇權評價 API，第一版支援歐式買權與賣權的 Black-Scholes 評價及 Greeks 計算。",
+      planSummary: "以 Java 21、Spring Boot 與六角形架構建立選擇權評價 API，第一版支援歐式買權與賣權的 Black-Scholes 評價及 Greeks 計算。",
+      summary: "This generic summary should not drive the card.",
+      goal: "Create an option pricing system.",
+      provider: "codex",
+      model: "gpt-5.6-sol",
+      languages: ["java", "xml"],
+      previewImageUrl: "/api/v1/creations/artifact-001/preview",
+      workspaceAvailable: true,
+      updatedAt: "2026-07-28T12:00:00Z",
+    }),
+    {
+      id: "artifact-001",
+      artifactId: "artifact-001",
+      title: "Option Pricing API",
+      originCellId: "cell-001",
+      type: "code",
+      stage: "seed",
+      status: "idle",
+      description: "以 Java 21、Spring Boot 與六角形架構建立選擇權評價 API，第一版支援歐式買權與賣權的 Black-Scholes 評價及 Greeks 計算。",
+      planSummary: "以 Java 21、Spring Boot 與六角形架構建立選擇權評價 API，第一版支援歐式買權與賣權的 Black-Scholes 評價及 Greeks 計算。",
+      summary: "以 Java 21、Spring Boot 與六角形架構建立選擇權評價 API，第一版支援歐式買權與賣權的 Black-Scholes 評價及 Greeks 計算。",
+      goal: "Create an option pricing system.",
+      provider: "codex",
+      model: "gpt-5.6-sol",
+      tags: ["code", "java", "xml"],
+      previewImageUrl: "/api/v1/creations/artifact-001/preview",
+      previewUrl: undefined,
+      workspaceAvailable: true,
+      createdAt: undefined,
+      updatedAt: "2026-07-28T12:00:00Z",
+    },
+  );
+});
+
+test("Creation artifact download URL targets the artifact export endpoint", () => {
+  assert.equal(
+    getArtifactDownloadUrl({
+      artifactId: "artifact-001",
+      originCellId: "cell-001",
+    }),
+    "/api/v1/cells/cell-001/artifacts/artifact-001/export",
+  );
+});
+
+test("CreationsPage renders API-driven creation cards", () => {
+  const markup = renderToStaticMarkup(
+    React.createElement(CreationsPage, {
+      skipInitialLoad: true,
+      onOpenWorkspace: () => {},
+      initialCreations: [
+        {
+          id: "artifact-001",
+          artifactId: "artifact-001",
+          title: "Option Pricing API",
+          originCellId: "cell-001",
+          type: "code",
+          stage: "seed",
+          status: "healthy",
+          description: "以 Java 21、Spring Boot 與六角形架構建立選擇權評價 API，第一版支援歐式買權與賣權的 Black-Scholes 評價及 Greeks 計算。",
+          planSummary: "以 Java 21、Spring Boot 與六角形架構建立選擇權評價 API，第一版支援歐式買權與賣權的 Black-Scholes 評價及 Greeks 計算。",
+          summary: "This generic summary should not render.",
+          goal: "Create an option pricing system.",
+          provider: "codex",
+          model: "gpt-5.6-sol",
+          tags: ["code", "java"],
+          previewImageUrl: "/api/v1/creations/artifact-001/preview",
+          previewUrl: undefined,
+          workspaceAvailable: true,
+        },
+      ],
+    }),
+  );
+
+  for (const label of [
+    "Search...",
+    "Option Pricing API preview",
+    "Option Pricing API",
+    "以 Java 21、Spring Boot 與六角形架構建立選擇權評價 API，第一版支援歐式買權與賣權的 Black-Scholes 評價及 Greeks 計算。",
+    "Created by",
+    "cell-001",
+    "artifact-001",
+    "codex / gpt-5.6-sol",
+    "Healthy",
+    "code",
+    "java",
+    "Artifact",
+    "Show Cell",
+  ]) {
+    assert.match(markup, new RegExp(label));
+  }
+
+  assert.doesNotMatch(markup, /REST API Starter/);
+  assert.doesNotMatch(markup, /This generic summary should not render/);
+  assert.doesNotMatch(markup, /Create an option pricing system/);
 });
 
 test("Cell operations are disabled without a selected Cell", () => {

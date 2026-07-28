@@ -116,6 +116,20 @@ export class CellWorkspaceStore {
     return await fs.readFile(file, "utf8");
   }
 
+  async readWorkspaceBinaryFile(relativePath) {
+    const file = await this.resolveExistingInside(relativePath);
+    return await fs.readFile(file);
+  }
+
+  async hasWorkspacePath(relativePath) {
+    try {
+      await this.resolveExistingInside(relativePath);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async readWorkspaceFilePreview(relativePath) {
     const normalizedPath = normalizeWorkspacePath(relativePath);
 
@@ -174,8 +188,11 @@ export class CellWorkspaceStore {
     }
   }
 
-  async exportWorkspaceZip({ rootName = "workspace" } = {}) {
-    const rootRealPath = await fs.realpath(this.workspaceDir);
+  async exportWorkspaceZip({ rootName = "workspace", relativePath = "" } = {}) {
+    const exportRoot = relativePath
+      ? await this.resolveExistingInside(relativePath)
+      : this.workspaceDir;
+    const rootRealPath = await fs.realpath(exportRoot);
     const entries = await collectZipEntries({
       directory: rootRealPath,
       zipPath: sanitizeZipSegment(rootName),

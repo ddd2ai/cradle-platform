@@ -96,6 +96,7 @@ const cellStore = new Map([
       },
       workspaceFiles: {
         "notes/source.md": "source content",
+        "productions/artifact-001/.cradle/preview.png": "preview image",
       },
       dnaVector: {
         PERCEPTION: { strength: 0.8 },
@@ -165,7 +166,19 @@ const cellStore = new Map([
           type: "document",
           title: "Design",
           status: "completed",
+          goal: "Design a resilient Cradle workspace",
+          context: {
+            cellId: "cell-001",
+            provider: "codex",
+            model: "gpt-5.6-sol",
+          },
+          plan: {
+            summary: "Define the workspace structure and operating conventions for a Cradle cell.",
+          },
           outputs: [{ kind: "file", path: "design.md", content: "# Design" }],
+          notes: ["Initial design draft"],
+          createdAt: "2026-07-23T11:40:35.495Z",
+          updatedAt: "2026-07-23T11:40:35.496Z",
         },
       },
       stabilityState: {
@@ -949,6 +962,52 @@ assert.deepEqual(artifacts.body, {
   errors: [],
 });
 
+const creations = await handler({
+  method: "GET",
+  url: "/api/v1/creations",
+});
+
+assert.equal(creations.status, 200);
+assert.deepEqual(creations.body, {
+  items: [
+    {
+      id: "artifact-001",
+      artifactId: "artifact-001",
+      name: "Design",
+      title: "Design",
+      originCellId: "cell-001",
+      type: "document",
+      status: "completed",
+      stage: "stable",
+      description: "Define the workspace structure and operating conventions for a Cradle cell.",
+      planSummary: "Define the workspace structure and operating conventions for a Cradle cell.",
+      summary: "Define the workspace structure and operating conventions for a Cradle cell.",
+      goal: "Design a resilient Cradle workspace",
+      provider: "codex",
+      model: "gpt-5.6-sol",
+      outputPaths: ["design.md"],
+      languages: [],
+      notes: ["Initial design draft"],
+      previewImageUrl: "/api/v1/creations/artifact-001/preview",
+      previewUrl: null,
+      workspaceAvailable: true,
+      createdAt: "2026-07-23T11:40:35.495Z",
+      updatedAt: "2026-07-23T11:40:35.496Z",
+    },
+  ],
+  errors: [],
+});
+
+const creationPreview = await handler({
+  method: "GET",
+  url: "/api/v1/creations/artifact-001/preview",
+});
+
+assert.equal(creationPreview.status, 200);
+assert.equal(creationPreview.rawResponse, true);
+assert.equal(creationPreview.headers["content-type"], "image/png");
+assert.deepEqual(creationPreview.body, Buffer.from("preview image"));
+
 const artifact = await handler({
   method: "GET",
   url: "/api/v1/cells/cell-001/artifacts/artifact-001",
@@ -956,6 +1015,20 @@ const artifact = await handler({
 
 assert.equal(artifact.status, 200);
 assert.equal(artifact.body.artifact.id, "artifact-001");
+
+const artifactExport = await handler({
+  method: "GET",
+  url: "/api/v1/cells/cell-001/artifacts/artifact-001/export",
+});
+
+assert.equal(artifactExport.status, 200);
+assert.equal(artifactExport.rawResponse, true);
+assert.equal(artifactExport.headers["content-type"], "application/zip");
+assert.equal(
+  artifactExport.headers["content-disposition"],
+  'attachment; filename="artifact-001.zip"',
+);
+assert.deepEqual(artifactExport.body, Buffer.from("zip"));
 
 const stability = await handler({
   method: "GET",
@@ -1268,6 +1341,14 @@ function createCell({
 
       return workspaceFiles[relativePath];
     },
+    readWorkspaceBinaryFile: async (relativePath) => {
+      if (!(relativePath in workspaceFiles)) {
+        throw new Error("missing");
+      }
+
+      return Buffer.from(workspaceFiles[relativePath]);
+    },
+    hasWorkspacePath: async (relativePath) => relativePath in workspaceFiles,
     readWorkspaceFilePreview: async (relativePath) => {
       if (!(relativePath in workspaceFiles)) {
         throw new Error("missing");
@@ -1285,8 +1366,13 @@ function createCell({
         previewable: true,
       };
     },
-    exportWorkspaceZip: async ({ rootName }) => {
-      assert.equal(rootName, `${id}-workspace`);
+    exportWorkspaceZip: async ({ rootName, relativePath = "" }) => {
+      if (relativePath) {
+        assert.equal(rootName, "artifact-001");
+        assert.equal(relativePath, "productions/artifact-001");
+      } else {
+        assert.equal(rootName, `${id}-workspace`);
+      }
       return Buffer.from("zip");
     },
   };

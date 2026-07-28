@@ -21,6 +21,7 @@ import { Header } from "./components/Header";
 import { CellPanel } from "./components/CellPanel";
 import { CradleOverviewPage } from "./pages/CradleOverviewPage";
 import { CultivationPage } from "./pages/CultivationPage";
+import { CreationsPage } from "./pages/CreationsPage";
 import { IncubatorPage } from "./pages/IncubatorPage";
 import { LogsPage } from "./pages/LogsPage";
 import { PlaceholderPage } from "./pages/PlaceholderPage";
@@ -439,11 +440,7 @@ function App() {
           )}
 
           {selectedSection === "artifacts" && (
-            <PlaceholderPage
-              title="Artifacts"
-              description="Browse software artifacts produced by Cradle cells."
-              icon="◈"
-            />
+            <CreationsPage onOpenWorkspace={(creation) => handleSelectCell(creation.originCellId)} />
           )}
 
           {selectedSection === "logs" && (
