@@ -4,18 +4,13 @@ import { fetchCradleConfig, updateCradleConfig } from "../api/cradleClient";
 const SETTINGS_SECTIONS = [
   {
     id: "ai-runtime",
-    label: "AI Runtime",
-    description: "Default provider, model, and AI execution limits.",
+    label: "Runtime",
+    description: "Default provider, model, execution limits, and operation timeouts.",
   },
   {
     id: "providers",
-    label: "Providers",
+    label: "LLM Providers",
     description: "Provider-specific timeout overrides.",
-  },
-  {
-    id: "timeouts",
-    label: "Timeouts",
-    description: "Cradle operation timeout limits.",
   },
   {
     id: "cultivation",
@@ -51,10 +46,10 @@ const DEFAULT_SETTINGS = {
 };
 
 const PROVIDER_ROWS = [
-  { id: "ollama", label: "Ollama" },
-  { id: "copilot", label: "Copilot" },
-  { id: "codex", label: "Codex" },
-  { id: "gemini", label: "Gemini" },
+  { id: "ollama", label: "Ollama Provider" },
+  { id: "copilot", label: "Copilot Provider" },
+  { id: "codex", label: "Codex Provider" },
+  { id: "gemini", label: "Gemini Provider" },
 ];
 
 const PROVIDER_OPTIONS = [
@@ -248,20 +243,18 @@ export function SettingsPage({ initialSectionId = "ai-runtime" } = {}) {
             )}
 
             {selectedSectionId === "ai-runtime" && (
-              <AiRuntimeForm settings={draftSettings.ai} onChange={updateAiSetting} />
+              <RuntimeForm
+                settings={draftSettings.ai}
+                timeouts={draftSettings.timeouts}
+                onChange={updateAiSetting}
+                onChangeTimeout={updateTimeoutSetting}
+              />
             )}
 
             {selectedSectionId === "providers" && (
               <ProvidersForm
                 providers={draftSettings.providers}
                 onChange={updateProviderTimeout}
-              />
-            )}
-
-            {selectedSectionId === "timeouts" && (
-              <TimeoutsForm
-                timeouts={draftSettings.timeouts}
-                onChange={updateTimeoutSetting}
               />
             )}
 
@@ -447,7 +440,7 @@ function parseIntegerSetting(value) {
   return Number.parseInt(value, 10);
 }
 
-function AiRuntimeForm({ settings, onChange }) {
+function RuntimeForm({ settings, timeouts, onChange, onChangeTimeout }) {
   const selectedProvider = PROVIDER_OPTIONS.find(
     (provider) => provider.value === settings.defaultProvider
   ) ?? PROVIDER_OPTIONS[0];
@@ -529,6 +522,36 @@ function AiRuntimeForm({ settings, onChange }) {
           <span>characters</span>
         </span>
       </label>
+
+      <label className="settings-field">
+        <span>Reflection</span>
+        <span className="settings-inline-control">
+          <input
+            className="settings-input"
+            inputMode="numeric"
+            value={timeouts.reflectionSeconds}
+            onChange={(event) =>
+              onChangeTimeout("reflectionSeconds", event.target.value)
+            }
+          />
+          <span>seconds</span>
+        </span>
+      </label>
+
+      <label className="settings-field">
+        <span>Maven Execution</span>
+        <span className="settings-inline-control">
+          <input
+            className="settings-input"
+            inputMode="numeric"
+            value={timeouts.mavenExecutionSeconds}
+            onChange={(event) =>
+              onChangeTimeout("mavenExecutionSeconds", event.target.value)
+            }
+          />
+          <span>seconds</span>
+        </span>
+      </label>
     </div>
   );
 }
@@ -541,13 +564,11 @@ function getDefaultModelForProvider(provider) {
 function ProvidersForm({ providers, onChange }) {
   return (
     <div className="settings-section-block">
-      <h3>Provider Overrides</h3>
-      <div className="settings-row-list">
+      <div className="settings-form-grid">
         {PROVIDER_ROWS.map((provider) => (
-          <label className="settings-row" key={provider.id}>
-            <span className="settings-row-main">{provider.label}</span>
+          <label className="settings-field" key={provider.id}>
+            <span>{provider.label}</span>
             <span className="settings-inline-control">
-              <span>Timeout</span>
               <input
                 className="settings-input"
                 inputMode="numeric"
@@ -558,43 +579,6 @@ function ProvidersForm({ providers, onChange }) {
             </span>
           </label>
         ))}
-      </div>
-    </div>
-  );
-}
-
-function TimeoutsForm({ timeouts, onChange }) {
-  return (
-    <div className="settings-section-block">
-      <h3>Operation Timeouts</h3>
-      <div className="settings-form-grid">
-        <label className="settings-field">
-          <span>Reflection</span>
-          <span className="settings-inline-control">
-            <input
-              className="settings-input"
-              inputMode="numeric"
-              value={timeouts.reflectionSeconds}
-              onChange={(event) => onChange("reflectionSeconds", event.target.value)}
-            />
-            <span>seconds</span>
-          </span>
-        </label>
-
-        <label className="settings-field">
-          <span>Maven Execution</span>
-          <span className="settings-inline-control">
-            <input
-              className="settings-input"
-              inputMode="numeric"
-              value={timeouts.mavenExecutionSeconds}
-              onChange={(event) =>
-                onChange("mavenExecutionSeconds", event.target.value)
-              }
-            />
-            <span>seconds</span>
-          </span>
-        </label>
       </div>
     </div>
   );

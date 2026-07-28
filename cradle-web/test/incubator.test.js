@@ -141,16 +141,15 @@ test("Sidebar highlights Settings when the Settings page is selected", () => {
   assert.doesNotMatch(markup, /cradle-nav-item selected/);
 });
 
-test("SettingsPage renders the mock AI Runtime settings", () => {
+test("SettingsPage renders the mock Runtime settings", () => {
   const markup = renderToStaticMarkup(React.createElement(SettingsPage));
 
   for (const label of [
-    "AI Runtime",
-    "Providers",
-    "Timeouts",
+    "Runtime",
+    "LLM Providers",
     "Cultivation",
     "Advanced",
-    "Default provider, model, and AI execution limits.",
+    "Default provider, model, execution limits, and operation timeouts.",
     "Default Provider",
     "Ollama",
     "Codex",
@@ -164,6 +163,9 @@ test("SettingsPage renders the mock AI Runtime settings", () => {
     "50000",
     "Source Artifact Content Limit",
     "30000",
+    "Reflection",
+    "30",
+    "Maven Execution",
     "No unsaved changes",
     "Reset",
     "Save changes",
@@ -172,6 +174,7 @@ test("SettingsPage renders the mock AI Runtime settings", () => {
   }
 
   assert.doesNotMatch(markup, /cradle-config\.json/);
+  assert.doesNotMatch(markup, />Timeouts</);
 });
 
 test("SettingsPage renders the mock provider overrides", () => {
@@ -180,32 +183,13 @@ test("SettingsPage renders the mock provider overrides", () => {
   );
 
   for (const label of [
-    "Provider Overrides",
-    "Ollama",
-    "Copilot",
-    "Codex",
-    "Gemini",
-    "Timeout",
+    "Ollama Provider",
+    "Copilot Provider",
+    "Codex Provider",
+    "Gemini Provider",
     "3600",
     "seconds",
     "No unsaved changes",
-  ]) {
-    assert.match(markup, new RegExp(label));
-  }
-});
-
-test("SettingsPage renders the mock operation timeouts", () => {
-  const markup = renderToStaticMarkup(
-    React.createElement(SettingsPage, { initialSectionId: "timeouts" }),
-  );
-
-  for (const label of [
-    "Operation Timeouts",
-    "Reflection",
-    "30",
-    "Maven Execution",
-    "3600",
-    "seconds",
   ]) {
     assert.match(markup, new RegExp(label));
   }
