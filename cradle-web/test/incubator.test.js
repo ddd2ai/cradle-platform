@@ -192,17 +192,14 @@ test("Incubator workspace renders only incubator controls in the bottom dock", (
     { id: "B03", status: "running", maturity: "not available" },
   ]);
 
-  for (const label of [
-    "Copilot",
-    "gpt-5-mini",
-    "Cultivate",
-    "Stabilize",
-    "Divide",
-    "Fuse",
-  ]) {
+  for (const label of ["Cultivate", "Stabilize", "Divide", "Fuse"]) {
     assert.match(markup, new RegExp(`>${label}<`));
   }
 
+  assert.doesNotMatch(markup, />Copilot</);
+  assert.doesNotMatch(markup, />gpt-5-mini</);
+  assert.doesNotMatch(markup, />Provider</);
+  assert.doesNotMatch(markup, />Model</);
   assert.match(markup, />3<\/dd><dt>Total Cells</);
   assert.match(markup, />1<\/dd><dt>Active Cells</);
   assert.match(markup, />1<\/dd><dt>Idle Cells</);

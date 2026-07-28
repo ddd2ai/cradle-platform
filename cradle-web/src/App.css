@@ -1084,11 +1084,11 @@ button:focus-visible { outline: 2px solid #9b8cff; outline-offset: 2px; }
 
 .cradle-control-dock {
   position: relative;
-  display: grid;
-  grid-template-columns: minmax(248px, 1fr) 106px minmax(354px, 1fr);
-  min-width: 720px;
+  display: flex;
+  min-width: 520px;
   min-height: 86px;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   padding: 9px 10px;
   border: 1px solid rgba(138, 200, 239, .13);
@@ -1107,11 +1107,9 @@ button:focus-visible { outline: 2px solid #9b8cff; outline-offset: 2px; }
   gap: 5px;
 }
 
-.cradle-control-dock__group--settings {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
 .cradle-control-dock__group--cell-actions {
+  width: min(354px, 100%);
+  flex: 0 1 354px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
@@ -1375,7 +1373,7 @@ button:focus-visible { outline: 2px solid #9b8cff; outline-offset: 2px; }
   justify-content: center;
   flex-direction: column;
   gap: 2px;
-  margin: -28px auto -10px;
+  margin: -28px 0 -10px;
   border: 1px solid rgba(135, 130, 255, .7);
   border-radius: 50%;
   background: radial-gradient(
@@ -2026,7 +2024,7 @@ button:focus-visible { outline: 2px solid #9b8cff; outline-offset: 2px; }
   }
 
   .cradle-control-dock {
-    min-width: 760px;
+    min-width: 520px;
   }
 }
 
@@ -2583,8 +2581,7 @@ button:focus-visible { outline: 2px solid #9b8cff; outline-offset: 2px; }
 }
 
 .app-shell.is-incubator .cradle-control-dock {
-  grid-template-columns: minmax(258px, 1fr) 112px minmax(360px, 1fr);
-  min-width: 760px;
+  min-width: 540px;
   min-height: 120px;
   gap: 10px;
   padding: 10px 12px;
@@ -2597,6 +2594,11 @@ button:focus-visible { outline: 2px solid #9b8cff; outline-offset: 2px; }
 
 .app-shell.is-incubator .cradle-control-dock__group {
   gap: 7px;
+}
+
+.app-shell.is-incubator .cradle-control-dock__group--cell-actions {
+  width: min(360px, 100%);
+  flex-basis: 360px;
 }
 
 .app-shell.is-incubator .cradle-dock-item {
@@ -2616,7 +2618,7 @@ button:focus-visible { outline: 2px solid #9b8cff; outline-offset: 2px; }
 .app-shell.is-incubator .cultivate-button {
   width: 108px;
   height: 108px;
-  margin: -42px auto -4px;
+  margin: -42px 0 -4px;
   border-color: rgba(145, 128, 255, .9);
   background:
     radial-gradient(circle at 50% 36%, rgba(102, 131, 255, .42), rgba(20, 25, 58, .98) 55%, #050917 100%);
@@ -2853,8 +2855,7 @@ button:focus-visible { outline: 2px solid #9b8cff; outline-offset: 2px; }
   }
 
   .app-shell.is-incubator .cradle-control-dock {
-    grid-template-columns: minmax(230px, 1fr) 105px minmax(330px, 1fr);
-    min-width: 705px;
+    min-width: 520px;
     gap: 8px;
   }
 

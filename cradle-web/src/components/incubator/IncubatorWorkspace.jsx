@@ -10,7 +10,6 @@ export function IncubatorWorkspace({
   isVisualMotionPaused,
   isCultivating,
   summary,
-  aiSettings,
   dockMessage,
   dockError,
   activeCellOperation,
@@ -19,7 +18,6 @@ export function IncubatorWorkspace({
   onSelectCell,
   onRunOneCycle,
   onToggleVisualMotion,
-  onChangeAiSettings,
   onOpenStabilize,
   onOpenDivide,
   onToggleFuseMenu,
@@ -57,7 +55,6 @@ export function IncubatorWorkspace({
         </div>
 
         <IncubatorControlBar
-          aiSettings={aiSettings}
           isVisualMotionPaused={isVisualMotionPaused}
           isCultivating={isCultivating}
           message={dockMessage}
@@ -69,7 +66,6 @@ export function IncubatorWorkspace({
           selectedFuseCellIds={selectedFuseCellIds}
           onRunOneCycle={onRunOneCycle}
           onToggleVisualMotion={onToggleVisualMotion}
-          onChangeAiSettings={onChangeAiSettings}
           onOpenStabilize={onOpenStabilize}
           onOpenDivide={onOpenDivide}
           onToggleFuseMenu={onToggleFuseMenu}
