@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { fetchCradleConfig } from "../api/cradleClient";
+import { fetchCradleConfig, updateCradleConfig } from "../api/cradleClient";
 
 const SETTINGS_SECTIONS = [
   {
@@ -71,6 +71,8 @@ export function SettingsPage({ initialSectionId = "ai-runtime" } = {}) {
   const [draftSettings, setDraftSettings] = useState(DEFAULT_SETTINGS);
   const [toastMessage, setToastMessage] = useState("");
   const [loadError, setLoadError] = useState("");
+  const [saveError, setSaveError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   const selectedSection = useMemo(
     () => SETTINGS_SECTIONS.find((section) => section.id === selectedSectionId)
@@ -80,6 +82,8 @@ export function SettingsPage({ initialSectionId = "ai-runtime" } = {}) {
 
   const hasUnsavedChanges =
     JSON.stringify(draftSettings) !== JSON.stringify(savedSettings);
+  const validationError = validateDraftSettings(draftSettings);
+  const canSave = hasUnsavedChanges && !validationError && !isSaving;
 
   useEffect(() => {
     if (!toastMessage) {
@@ -160,15 +164,30 @@ export function SettingsPage({ initialSectionId = "ai-runtime" } = {}) {
   function handleReset() {
     setDraftSettings(savedSettings);
     setToastMessage("");
+    setSaveError("");
   }
 
-  function handleSave() {
-    if (!hasUnsavedChanges) {
+  async function handleSave() {
+    if (!canSave) {
       return;
     }
 
-    setSavedSettings(draftSettings);
-    setToastMessage("Configuration saved");
+    try {
+      setIsSaving(true);
+      setSaveError("");
+      const savedConfig = await updateCradleConfig(
+        mapSettingsToConfig(draftSettings)
+      );
+      const saved = mapConfigToSettings(savedConfig);
+
+      setSavedSettings(saved);
+      setDraftSettings(saved);
+      setToastMessage("Configuration saved");
+    } catch (error) {
+      setSaveError(error.message);
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -199,6 +218,12 @@ export function SettingsPage({ initialSectionId = "ai-runtime" } = {}) {
             {loadError && (
               <div className="settings-load-error" role="alert">
                 Unable to load configuration: {loadError}
+              </div>
+            )}
+
+            {(validationError || saveError) && (
+              <div className="settings-load-error" role="alert">
+                {validationError || `Unable to save configuration: ${saveError}`}
               </div>
             )}
 
@@ -247,9 +272,9 @@ export function SettingsPage({ initialSectionId = "ai-runtime" } = {}) {
                 type="button"
                 className="primary-button settings-save-button"
                 onClick={handleSave}
-                disabled={!hasUnsavedChanges}
+                disabled={!canSave}
               >
-                Save changes
+                {isSaving ? "Saving..." : "Save changes"}
               </button>
             </div>
           </div>
@@ -301,12 +326,102 @@ function mapConfigToSettings(config) {
         "3600",
       ),
     },
-    heartbeatMode: String(config.heartbeat?.mode ?? "manual"),
+    heartbeatMode: normalizeHeartbeatMode(config.heartbeat?.mode),
   };
 }
 
 function stringifySetting(value, fallback) {
   return value === undefined || value === null ? fallback : String(value);
+}
+
+function normalizeHeartbeatMode(mode) {
+  return mode === "automatic" ? "auto" : String(mode ?? "manual");
+}
+
+function mapSettingsToConfig(settings) {
+  return {
+    ai: {
+      defaultProvider: settings.ai.defaultProvider,
+      defaultModel: settings.ai.defaultModel,
+      timeoutSeconds: parseIntegerSetting(settings.ai.timeoutSeconds),
+      maxSourceArtifactOutputLength: parseIntegerSetting(
+        settings.ai.maxSourceArtifactOutputLength
+      ),
+      maxSourceArtifactContentLength: parseIntegerSetting(
+        settings.ai.maxSourceArtifactContentLength
+      ),
+    },
+    providers: Object.fromEntries(
+      PROVIDER_ROWS.map((provider) => [
+        provider.id,
+        {
+          timeoutSeconds: parseIntegerSetting(
+            settings.providers[provider.id].timeoutSeconds
+          ),
+        },
+      ]),
+    ),
+    timeouts: {
+      reflectionSeconds: parseIntegerSetting(settings.timeouts.reflectionSeconds),
+      mavenExecutionSeconds: parseIntegerSetting(
+        settings.timeouts.mavenExecutionSeconds
+      ),
+    },
+    heartbeat: {
+      mode: settings.heartbeatMode,
+    },
+  };
+}
+
+function validateDraftSettings(settings) {
+  if (!settings.ai.defaultModel.trim()) {
+    return "Default Model must not be empty.";
+  }
+
+  const positiveIntegerFields = [
+    ["Default Timeout", settings.ai.timeoutSeconds],
+    [
+      "Source Artifact Output Limit",
+      settings.ai.maxSourceArtifactOutputLength,
+    ],
+    [
+      "Source Artifact Content Limit",
+      settings.ai.maxSourceArtifactContentLength,
+    ],
+    ...PROVIDER_ROWS.map((provider) => [
+      `${provider.label} Timeout`,
+      settings.providers[provider.id].timeoutSeconds,
+    ]),
+    ["Reflection", settings.timeouts.reflectionSeconds],
+    ["Maven Execution", settings.timeouts.mavenExecutionSeconds],
+  ];
+
+  for (const [label, value] of positiveIntegerFields) {
+    if (!isPositiveIntegerString(value)) {
+      return `${label} must be a positive integer.`;
+    }
+  }
+
+  const outputLimit = parseIntegerSetting(
+    settings.ai.maxSourceArtifactOutputLength
+  );
+  const contentLimit = parseIntegerSetting(
+    settings.ai.maxSourceArtifactContentLength
+  );
+
+  if (contentLimit > outputLimit) {
+    return "Source Artifact Content Limit must not exceed Source Artifact Output Limit.";
+  }
+
+  return "";
+}
+
+function isPositiveIntegerString(value) {
+  return /^\d+$/.test(String(value)) && Number(value) > 0;
+}
+
+function parseIntegerSetting(value) {
+  return Number.parseInt(value, 10);
 }
 
 function AiRuntimeForm({ settings, onChange }) {

@@ -274,6 +274,23 @@ export async function fetchCradleConfig() {
   return data;
 }
 
+export async function updateCradleConfig(config) {
+  const response = await fetch("/api/v1/config", {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(config),
+  });
+  const data = await readJsonResponse(response);
+
+  if (!response.ok) {
+    throw new Error(
+      data?.error?.message ?? `Failed to update configuration: ${response.status}`,
+    );
+  }
+
+  return data;
+}
+
 export async function fetchLogs() {
   const response = await fetch("/api/v1/logs");
 

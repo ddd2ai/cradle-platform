@@ -536,6 +536,80 @@ const invalidConfig = await invalidConfigHandler({
 assert.equal(invalidConfig.status, 500);
 assert.equal(invalidConfig.body.error.code, "CRADLE_CONFIG_INVALID_JSON");
 
+const updatedCradleConfig = await handler({
+  method: "PUT",
+  url: "/api/v1/config",
+  body: {
+    ai: {
+      defaultProvider: "copilot",
+      defaultModel: "gpt-5-mini",
+      timeoutSeconds: 1800,
+      maxSourceArtifactOutputLength: 64000,
+      maxSourceArtifactContentLength: 32000,
+    },
+    providers: {
+      ollama: { timeoutSeconds: 3601 },
+      copilot: { timeoutSeconds: 3602 },
+      codex: { timeoutSeconds: 3603 },
+      gemini: { timeoutSeconds: 3604 },
+    },
+    timeouts: {
+      reflectionSeconds: 45,
+      mavenExecutionSeconds: 2400,
+    },
+    heartbeat: {
+      mode: "auto",
+    },
+  },
+});
+
+assert.equal(updatedCradleConfig.status, 200);
+assert.deepEqual(updatedCradleConfig.body.ai, {
+  defaultProvider: "copilot",
+  defaultModel: "gpt-5-mini",
+  timeoutSeconds: 1800,
+  maxSourceArtifactOutputLength: 64000,
+  maxSourceArtifactContentLength: 32000,
+});
+assert.deepEqual(updatedCradleConfig.body.heartbeat, { mode: "auto" });
+const persistedCradleConfig = JSON.parse(await fs.readFile(cradleConfigFile, "utf8"));
+assert.deepEqual(persistedCradleConfig, updatedCradleConfig.body);
+assert.match(
+  await fs.readFile(cradleConfigFile, "utf8"),
+  /\n  "ai": \{/,
+);
+
+const invalidUpdate = await handler({
+  method: "PUT",
+  url: "/api/v1/config",
+  body: {
+    ...updatedCradleConfig.body,
+    ai: {
+      ...updatedCradleConfig.body.ai,
+      defaultProvider: "openai",
+    },
+  },
+});
+
+assert.equal(invalidUpdate.status, 400);
+assert.equal(invalidUpdate.body.error.code, "INVALID_CRADLE_CONFIG");
+
+const invalidLimitUpdate = await handler({
+  method: "PUT",
+  url: "/api/v1/config",
+  body: {
+    ...updatedCradleConfig.body,
+    ai: {
+      ...updatedCradleConfig.body.ai,
+      maxSourceArtifactOutputLength: 100,
+      maxSourceArtifactContentLength: 101,
+    },
+  },
+});
+
+assert.equal(invalidLimitUpdate.status, 400);
+assert.equal(invalidLimitUpdate.body.error.code, "INVALID_CRADLE_CONFIG");
+
 const cell = await handler({
   method: "GET",
   url: "/api/v1/cells/cell-001",

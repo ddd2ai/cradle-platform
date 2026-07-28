@@ -37,6 +37,7 @@ import { SetAiSettingsUseCase } from "../application/set-ai-settings-use-case.js
 import { SetCellActiveUseCase } from "../application/set-cell-active-use-case.js";
 import { SetHeartbeatModeUseCase } from "../application/set-heartbeat-mode-use-case.js";
 import { StabilizeCellUseCase } from "../application/stabilize-cell-use-case.js";
+import { UpdateCradleConfigUseCase } from "../application/update-cradle-config-use-case.js";
 
 export function createApiRoutes({
   engine,
@@ -70,6 +71,11 @@ export function createApiRoutes({
     ),
     exact("GET", "/api/v1/config", async () =>
       new GetCradleConfigUseCase({ file: cradleConfigFile }).execute()
+    ),
+    exact("PUT", "/api/v1/config", async ({ request }) =>
+      new UpdateCradleConfigUseCase({ file: cradleConfigFile }).execute({
+        config: request.body,
+      })
     ),
     exact("GET", "/api/v1/ai/settings", async () =>
       new GetAiSettingsUseCase({
