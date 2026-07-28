@@ -82,7 +82,13 @@ export function Sidebar({
       </div>
 
       <div className="sidebar-footer">
-        <button type="button" className="sidebar-footer-button">
+        <button
+          type="button"
+          className={`sidebar-footer-button ${
+            selectedSection === "settings" ? "selected" : ""
+          }`}
+          onClick={() => onSelectSection("settings")}
+        >
           <span>⚙️</span>
           <span>Settings</span>
         </button>

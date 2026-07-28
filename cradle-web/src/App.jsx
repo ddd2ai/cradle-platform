@@ -24,6 +24,7 @@ import { CultivationPage } from "./pages/CultivationPage";
 import { IncubatorPage } from "./pages/IncubatorPage";
 import { LogsPage } from "./pages/LogsPage";
 import { PlaceholderPage } from "./pages/PlaceholderPage";
+import { SettingsPage } from "./pages/SettingsPage";
 
 function App() {
   const [selectedSection, setSelectedSection] = useState("incubator");
@@ -447,6 +448,10 @@ function App() {
 
           {selectedSection === "logs" && (
             <LogsPage />
+          )}
+
+          {selectedSection === "settings" && (
+            <SettingsPage />
           )}
 
           {selectedSection === "cell" && selectedCellId && isLoadingCell && (

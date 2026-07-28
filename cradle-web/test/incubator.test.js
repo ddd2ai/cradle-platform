@@ -21,6 +21,7 @@ let CellOperationDialogs;
 let CellControlCard;
 let SelectedCellPanel;
 let Sidebar;
+let SettingsPage;
 let LifecycleCard;
 let MaturityCard;
 let DnaDimensionsCard;
@@ -54,6 +55,9 @@ before(async () => {
   ));
   ({ Sidebar } = await vite.ssrLoadModule(
     "/src/components/Sidebar.jsx",
+  ));
+  ({ SettingsPage } = await vite.ssrLoadModule(
+    "/src/pages/SettingsPage.jsx",
   ));
   ({ LifecycleCard } = await vite.ssrLoadModule(
     "/src/components/cell/LifecycleCard.jsx",
@@ -117,6 +121,56 @@ test("Cell detail keeps the shared Sidebar and selected Cell state", () => {
   assert.match(markup, /cell-item selected/);
   assert.match(markup, /\/cells\/cell-green\.webp/);
   assert.doesNotMatch(markup, /cradle-nav-item selected/);
+});
+
+test("Sidebar highlights Settings when the Settings page is selected", () => {
+  const markup = renderToStaticMarkup(
+    React.createElement(Sidebar, {
+      cells: createCells(1),
+      selectedCellId: null,
+      selectedSection: "settings",
+      onSelectCell: () => {},
+      onSelectSection: () => {},
+      onCreateCell: () => {},
+      isLoading: false,
+      error: null,
+    }),
+  );
+
+  assert.match(markup, /sidebar-footer-button selected/);
+  assert.doesNotMatch(markup, /cradle-nav-item selected/);
+});
+
+test("SettingsPage renders the Step 2A mock AI Runtime skeleton", () => {
+  const markup = renderToStaticMarkup(React.createElement(SettingsPage));
+
+  for (const label of [
+    "AI Runtime",
+    "Providers",
+    "Timeouts",
+    "Cultivation",
+    "Advanced",
+    "Default provider, model, and AI execution limits.",
+    "Default Provider",
+    "Codex",
+    "Default Model",
+    "gpt-5.6",
+    "Default Timeout",
+    "3600",
+    "Source Artifact Output Limit",
+    "50000",
+    "Source Artifact Content Limit",
+    "30000",
+    "No unsaved changes",
+    "Reset",
+    "Save changes",
+  ]) {
+    assert.match(markup, new RegExp(label));
+  }
+
+  assert.doesNotMatch(markup, /Provider Overrides/);
+  assert.doesNotMatch(markup, /Operation Timeouts/);
+  assert.doesNotMatch(markup, /cradle-config\.json/);
 });
 
 test("IncubatorDish limits the primary field to five Cells", () => {

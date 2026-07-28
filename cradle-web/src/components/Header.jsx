@@ -18,6 +18,10 @@ export function Header({ selectedCell, selectedSection, isServerConnected }) {
     },
     artifacts: { title: "Artifacts", subtitle: "Generated software products" },
     logs: { title: "Logs", subtitle: "Cradle runtime activity" },
+    settings: {
+      title: "Settings",
+      subtitle: "Configure Cradle runtime and system behavior.",
+    },
   };
   const section = sectionTitles[selectedSection] ?? sectionTitles.overview;
   const title =
