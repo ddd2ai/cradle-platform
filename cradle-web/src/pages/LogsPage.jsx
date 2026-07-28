@@ -141,17 +141,8 @@ export function LogsPage() {
       )}
 
       <div className="terminal-shell">
-        <div className="terminal-titlebar">
-          <div className="terminal-lights" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-          </div>
-          <div className="terminal-title">Cradle Console</div>
-          <div className="terminal-count">{logs.length} lines</div>
-        </div>
         <pre ref={terminalRef} className="terminal-output">{isLoading
-          ? "Connecting to Cradle Console..."
+          ? "Loading logs..."
           : terminalText || "No console output yet."}</pre>
       </div>
     </section>

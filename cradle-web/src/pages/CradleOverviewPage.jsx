@@ -13,7 +13,7 @@ export function CradleOverviewPage({ cells }) {
     <section className="platform-page">
       <div className="page-heading">
         <div>
-          <h1>Cradle Overview</h1>
+          <h1>Overview</h1>
           <p>Observe the overall state of the software life environment.</p>
         </div>
       </div>
