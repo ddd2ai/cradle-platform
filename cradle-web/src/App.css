@@ -848,22 +848,6 @@ button:focus-visible { outline: 2px solid #9b8cff; outline-offset: 2px; }
   animation-play-state: paused !important;
 }
 
-.incubator-overflow-count {
-  position: absolute;
-  right: 10%;
-  bottom: 14%;
-  z-index: 6;
-  display: grid;
-  width: 38px;
-  height: 38px;
-  border: 1px solid rgba(157, 222, 229, .2);
-  border-radius: 50%;
-  background: rgba(7, 24, 31, .8);
-  color: #9fc2c7;
-  font-size: 11px;
-  place-items: center;
-}
-
 .incubator-dish__loading {
   position: absolute;
   inset: 0;

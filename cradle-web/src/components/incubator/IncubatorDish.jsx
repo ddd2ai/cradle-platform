@@ -6,7 +6,7 @@ import { mapCellToVisualState } from "../../domain/cellVisualMapper";
 import { AmbientParticles } from "./AmbientParticles";
 import { FloatingCell } from "./FloatingCell";
 
-const MAX_VISIBLE_CELLS = 5;
+const GENERATED_RING_CENTER = { x: 50, y: 49 };
 
 export function IncubatorDish({
   dishRef,
@@ -21,7 +21,6 @@ export function IncubatorDish({
   onCreateCell,
 }) {
   const positionedCells = arrangeCells(cells, selectedCellId);
-  const hiddenCellCount = Math.max(0, cells.length - MAX_VISIBLE_CELLS);
   const className = [
     "incubator-dish",
     isMotionPaused ? "is-motion-paused" : "",
@@ -70,10 +69,6 @@ export function IncubatorDish({
           </div>
         )}
 
-        {hiddenCellCount > 0 && (
-          <div className="incubator-overflow-count">+{hiddenCellCount}</div>
-        )}
-
       </div>
     </div>
   );
@@ -84,13 +79,77 @@ function arrangeCells(cells, selectedCellId) {
   const selected = visuals.find((cell) => cell.id === selectedCellId) ?? visuals[0];
   const remaining = visuals.filter((cell) => cell.id !== selected?.id);
   const visible = selected
-    ? [selected, ...remaining].slice(0, MAX_VISIBLE_CELLS)
+    ? [selected, ...remaining]
     : [];
+  const peripheralCount = Math.max(0, visible.length - 1);
 
   return visible.map((visual, index) => ({
     visual,
     layout: index === 0
       ? CENTER_CELL_LAYOUT
-      : PERIPHERAL_CELL_LAYOUTS[index - 1],
+      : getPeripheralLayout(index - 1, peripheralCount),
   }));
+}
+
+function getPeripheralLayout(index, count) {
+  const baseLayout = count <= PERIPHERAL_CELL_LAYOUTS.length
+    ? PERIPHERAL_CELL_LAYOUTS[index]
+    : null;
+
+  if (baseLayout) {
+    return scalePeripheralLayout(baseLayout, count);
+  }
+
+  return createGeneratedPeripheralLayout(index, count);
+}
+
+function scalePeripheralLayout(layout, count) {
+  if (count <= 8) {
+    return layout;
+  }
+
+  return {
+    ...layout,
+    size: getPeripheralCellSize(count),
+  };
+}
+
+function createGeneratedPeripheralLayout(index, count) {
+  const ringCount = count > 18 ? 2 : 1;
+  const ringIndex = ringCount === 1 ? 0 : index % ringCount;
+  const slotIndex = ringCount === 1 ? index : Math.floor(index / ringCount);
+  const slotsInRing = Math.ceil(count / ringCount);
+  const angle = ((slotIndex / slotsInRing) * Math.PI * 2)
+    + (ringIndex === 0 ? -Math.PI / 2 : -Math.PI / 2 + Math.PI / slotsInRing);
+  const radiusX = ringIndex === 0 ? 40 : 29;
+  const radiusY = ringIndex === 0 ? 35 : 24;
+
+  return {
+    x: Math.round((GENERATED_RING_CENTER.x + Math.cos(angle) * radiusX) * 10) / 10,
+    y: Math.round((GENERATED_RING_CENTER.y + Math.sin(angle) * radiusY) * 10) / 10,
+    size: getPeripheralCellSize(count),
+    delay: Number((-1.4 - index * 0.37).toFixed(2)),
+    driftDuration: Number((9.6 + (index % 7) * 0.7).toFixed(1)),
+    breatheDuration: Number((3.8 + (index % 5) * 0.24).toFixed(1)),
+    coreDuration: Number((2.6 + (index % 4) * 0.18).toFixed(1)),
+    glowDuration: Number((4.2 + (index % 6) * 0.2).toFixed(1)),
+    driftX: index % 2 === 0 ? 7 : -8,
+    driftY: index % 3 === 0 ? -10 : 9,
+  };
+}
+
+function getPeripheralCellSize(count) {
+  if (count > 28) {
+    return 42;
+  }
+
+  if (count > 18) {
+    return 50;
+  }
+
+  if (count > 10) {
+    return 58;
+  }
+
+  return 70;
 }

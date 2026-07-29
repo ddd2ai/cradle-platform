@@ -236,10 +236,11 @@ test("SettingsPage renders the mock advanced configuration source", () => {
   }
 });
 
-test("IncubatorDish limits the primary field to five Cells", () => {
+test("IncubatorDish renders every Cell in the primary field", () => {
   const markup = renderDish(createCells(13));
-  assert.equal((markup.match(/data-cell-id=/g) ?? []).length, 5);
-  assert.match(markup, /\+8/);
+  assert.equal((markup.match(/data-cell-id=/g) ?? []).length, 13);
+  assert.doesNotMatch(markup, /incubator-overflow-count/);
+  assert.match(markup, /data-cell-id="B13"/);
 });
 
 test("IncubatorDish marks the selected Cell", () => {
