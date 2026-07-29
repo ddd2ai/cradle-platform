@@ -12,9 +12,9 @@ import {
   startCultivation,
   updateAiSettings,
 } from "../api/cradleClient";
+import { CellInspectorDrawer } from "../components/incubator/CellInspectorDrawer";
 import { CellOperationDialogs } from "../components/incubator/CellOperationDialogs";
 import { IncubatorWorkspace } from "../components/incubator/IncubatorWorkspace";
-import { SelectedCellPanel } from "../components/incubator/SelectedCellPanel";
 import { mapCellToVisualState } from "../domain/cellVisualMapper";
 import { getIncubatorSummary } from "../domain/incubatorSummary";
 import { formatStabilizeMessage } from "../domain/stabilizationResult";
@@ -27,11 +27,11 @@ export function IncubatorPage({
   onReloadCells,
   onCreateCell,
 }) {
-  const [selectedCellId, setSelectedCellId] = useState(null);
+  const [selectedCellId, setSelectedCellId] = useState(undefined);
   const [selectedCell, setSelectedCell] = useState(null);
   const [isLoadingCell, setIsLoadingCell] = useState(false);
   const [cellError, setCellError] = useState(null);
-  const [isVisualMotionPaused, setVisualMotionPaused] = useState(false);
+  const isVisualMotionPaused = false;
   const [isCultivating, setCultivating] = useState(false);
   const [dockMessage, setDockMessage] = useState("");
   const [dockError, setDockError] = useState("");
@@ -41,7 +41,6 @@ export function IncubatorPage({
   const [activeCellOperation, setActiveCellOperation] = useState(null);
   const [operationError, setOperationError] = useState("");
   const [operationChildCellId, setOperationChildCellId] = useState("");
-  const [isFuseMenuOpen, setFuseMenuOpen] = useState(false);
   const [selectedFuseCellIds, setSelectedFuseCellIds] = useState([]);
   const operationRequestRef = useRef(false);
 
@@ -76,16 +75,26 @@ export function IncubatorPage({
       return;
     }
 
+    if (selectedCellId === undefined) {
+      setSelectedCellId(null);
+      return;
+    }
+
     if (selectedCellId && cells.some((cell) => cell.id === selectedCellId)) {
       return;
     }
 
-    const nextCell = cells.find((cell) => cell.active === true) ?? cells[0];
-    setSelectedCellId(nextCell.id);
+    if (selectedCellId) {
+      setSelectedCellId(null);
+      setSelectedCell(null);
+    }
   }, [cells, selectedCellId]);
 
   useEffect(() => {
     if (!selectedCellId) {
+      setSelectedCell(null);
+      setIsLoadingCell(false);
+      setCellError(null);
       return undefined;
     }
 
@@ -161,17 +170,29 @@ export function IncubatorPage({
     () => getIncubatorSummary(cells, { unavailable: isLoading || Boolean(error) }),
     [cells, error, isLoading],
   );
+  const fuseCandidates = useMemo(
+    () => cells.filter((cell) => cell.id !== selectedCellId),
+    [cells, selectedCellId],
+  );
 
   function handleSelectCell(cellId) {
     if (cellId !== selectedCellId) {
       setOperationDialog(null);
       setOperationError("");
       setOperationChildCellId("");
-      setFuseMenuOpen(false);
       setSelectedFuseCellIds([]);
     }
 
     setSelectedCellId(cellId);
+  }
+
+  function handleClearSelectedCell() {
+    setSelectedCellId(null);
+    setSelectedCell(null);
+    setOperationDialog(null);
+    setOperationError("");
+    setOperationChildCellId("");
+    setSelectedFuseCellIds([]);
   }
 
   function getSuggestedChildCellId() {
@@ -298,7 +319,17 @@ export function IncubatorPage({
       return;
     }
 
-    setFuseMenuOpen(false);
+    setOperationDialog(null);
+    setOperationError("");
+    setOperationChildCellId("");
+    setSelectedFuseCellIds([]);
+  }
+
+  function openFuseSelection() {
+    if (!selectedCellId || activeCellOperation) {
+      return;
+    }
+
     setOperationDialog(null);
     setOperationError("");
     setOperationChildCellId("");
@@ -310,7 +341,6 @@ export function IncubatorPage({
       return;
     }
 
-    setFuseMenuOpen(false);
     setOperationError("");
     setOperationChildCellId((current) => current || getSuggestedChildCellId());
     setOperationDialog("fuse");
@@ -323,7 +353,6 @@ export function IncubatorPage({
 
     setOperationDialog(null);
     setOperationError("");
-    setFuseMenuOpen(true);
   }
 
   async function handleFuse(event) {
@@ -361,7 +390,6 @@ export function IncubatorPage({
       }
 
       setOperationDialog(null);
-      setFuseMenuOpen(false);
       setSelectedFuseCellIds([]);
       setOperationChildCellId("");
       setDockMessage(`Cell ${result.childCellId} created by fusion.`);
@@ -428,34 +456,36 @@ export function IncubatorPage({
         aiSettings={aiSettings}
         dockMessage={dockMessage}
         dockError={dockError}
-        activeCellOperation={activeCellOperation}
-        isFuseMenuOpen={isFuseMenuOpen}
-        selectedFuseCellIds={selectedFuseCellIds}
         onSelectCell={handleSelectCell}
+        onClearSelectedCell={handleClearSelectedCell}
         onRunOneCycle={handleRunOneCycle}
-        onToggleVisualMotion={() => setVisualMotionPaused((value) => !value)}
         onChangeAiSettings={handleChangeAiSettings}
-        onOpenStabilize={openStabilizeDialog}
-        onOpenDivide={openDivideDialog}
-        onToggleFuseMenu={() => setFuseMenuOpen((value) => !value)}
-        onToggleFuseCell={toggleFuseCell}
-        onCancelFuse={cancelFuseFlow}
-        onContinueFuse={continueFuseFlow}
-        onCloseFuseMenu={() => setFuseMenuOpen(false)}
         onRetry={handleRetry}
         onCreateCell={onCreateCell}
       />
 
-      <SelectedCellPanel
+      <CellInspectorDrawer
         cell={selectedCell}
         visual={selectedVisual}
+        isOpen={Boolean(selectedCellId)}
         isLoading={isLoading || isLoadingCell}
         error={cellError}
         activeAction={cultivationActions.activeAction}
         actionMessage={cultivationActions.message}
         actionError={cultivationActions.error}
-        onActivate={() => cultivationActions.activate(selectedCellId)}
-        onDeactivate={() => cultivationActions.deactivate(selectedCellId)}
+        activeOperation={activeCellOperation}
+        operationError={operationError}
+        fuseCandidates={fuseCandidates}
+        selectedFuseCellIds={selectedFuseCellIds}
+        onActivate={() => selectedCellId && cultivationActions.activate(selectedCellId)}
+        onDeactivate={() => selectedCellId && cultivationActions.deactivate(selectedCellId)}
+        onClose={handleClearSelectedCell}
+        onStabilize={openStabilizeDialog}
+        onDivide={openDivideDialog}
+        onOpenFuseSelection={openFuseSelection}
+        onToggleFuseCell={toggleFuseCell}
+        onCancelFuse={cancelFuseFlow}
+        onContinueFuse={continueFuseFlow}
       />
 
       <CellOperationDialogs

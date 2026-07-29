@@ -1,26 +1,16 @@
+import { useMemo, useState } from "react";
+import { CellFeedComposer } from "./CellFeedComposer";
 import { CultivateButton } from "./CultivateButton";
 import { DigitalMicroscopeControls } from "./DigitalMicroscopeControls";
-import { DivideButton } from "./DivideButton";
-import { FuseButton } from "./FuseButton";
-import { StabilizeButton } from "./StabilizeButton";
 
 export function IncubatorControlBar({
+  cells,
   isCultivating,
   message,
   error,
-  cells,
   selectedCellId,
-  activeCellOperation,
-  isFuseMenuOpen,
-  selectedFuseCellIds,
+  isInspectorOpen,
   onRunOneCycle,
-  onOpenStabilize,
-  onOpenDivide,
-  onToggleFuseMenu,
-  onToggleFuseCell,
-  onCancelFuse,
-  onContinueFuse,
-  onCloseFuseMenu,
   camera,
   onOrbitLeft,
   onMoveForward,
@@ -29,56 +19,53 @@ export function IncubatorControlBar({
   onFocusSelectedCell,
   onResetCamera,
 }) {
+  const [feedInput, setFeedInput] = useState("");
   const hasSelectedCell = Boolean(selectedCellId);
-  const hasFuseTarget = cells.some((cell) => cell.id !== selectedCellId);
-  const isOperationRunning = Boolean(activeCellOperation);
+  const selectedCell = useMemo(
+    () => cells.find((cell) => cell.id === selectedCellId) ?? null,
+    [cells, selectedCellId],
+  );
+  const viewportClassName = [
+    "cradle-control-dock__viewport",
+    isInspectorOpen ? "cradle-control-dock__viewport--inspector-open" : "",
+  ].filter(Boolean).join(" ");
+  const isFeedDisabled = !selectedCell;
+
+  function handleFeedSubmit() {
+    const content = feedInput.trim();
+
+    if (!selectedCellId || !content) {
+      return;
+    }
+
+    console.log({
+      cellId: selectedCellId,
+      content,
+    });
+    setFeedInput("");
+  }
 
   return (
-    <div className="cradle-control-dock__viewport">
+    <div className={viewportClassName}>
       <div className="cradle-control-dock incubator-control-bar">
         <div
           className="incubator-control-bar__actions"
           aria-label="Cultivation actions"
         >
           <CultivateButton isRunning={isCultivating} onClick={onRunOneCycle} />
-
-          <StabilizeButton
-            disabled={!hasSelectedCell || isOperationRunning}
-            isRunning={activeCellOperation === "stabilize"}
-            title={!hasSelectedCell ? "Select a cell first" : "Stabilize selected Cell"}
-            onClick={onOpenStabilize}
-          />
-          <DivideButton
-            disabled={!hasSelectedCell || isOperationRunning}
-            isRunning={activeCellOperation === "divide"}
-            title={!hasSelectedCell ? "Select a cell first" : "Divide selected Cell"}
-            onClick={onOpenDivide}
-          />
-          <FuseButton
-            cells={cells}
-            selectedCellId={selectedCellId}
-            selectedCellIds={selectedFuseCellIds}
-            disabled={!hasSelectedCell || !hasFuseTarget || isOperationRunning}
-            isRunning={activeCellOperation === "fuse"}
-            isOpen={isFuseMenuOpen}
-            title={
-              !hasSelectedCell
-                ? "Select a cell first"
-                : !hasFuseTarget
-                  ? "At least two cells are required"
-                  : "Fuse selected Cell with other Cells"
-            }
-            onToggle={() => {
-              onToggleFuseMenu();
-            }}
-            onToggleCell={onToggleFuseCell}
-            onCancel={onCancelFuse}
-            onContinue={onContinueFuse}
-            onClose={onCloseFuseMenu}
-          />
         </div>
 
         <div className="incubator-control-bar__divider" aria-hidden="true" />
+
+        {selectedCell ? (
+          <CellFeedComposer
+            value={feedInput}
+            selectedCell={selectedCell}
+            onChange={setFeedInput}
+            onSubmit={handleFeedSubmit}
+            disabled={isFeedDisabled}
+          />
+        ) : null}
 
         <DigitalMicroscopeControls
           camera={camera}

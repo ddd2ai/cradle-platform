@@ -23,6 +23,8 @@ const MIN_PITCH = -35;
 const MAX_PITCH = 35;
 const DRAG_THRESHOLD = 4;
 const CELL_SPHERE_RADIUS = 280;
+const CELL_INSPECTOR_WIDTH = 380;
+const MIN_OBSERVATION_WIDTH = 320;
 
 export function IncubatorWorkspace({
   cells,
@@ -34,19 +36,9 @@ export function IncubatorWorkspace({
   summary,
   dockMessage,
   dockError,
-  activeCellOperation,
-  isFuseMenuOpen,
-  selectedFuseCellIds,
   onSelectCell,
+  onClearSelectedCell,
   onRunOneCycle,
-  onToggleVisualMotion,
-  onOpenStabilize,
-  onOpenDivide,
-  onToggleFuseMenu,
-  onToggleFuseCell,
-  onCancelFuse,
-  onContinueFuse,
-  onCloseFuseMenu,
   onRetry,
   onCreateCell,
 }) {
@@ -64,6 +56,13 @@ export function IncubatorWorkspace({
   const [camera, setCamera] = useState(DEFAULT_CAMERA);
   const [viewportSize, setViewportSize] = useState(DEFAULT_VIEWPORT_SIZE);
   const [isDragging, setIsDragging] = useState(false);
+  const isInspectorOpen = Boolean(selectedCellId);
+  const inspectorWidth = isInspectorOpen ? CELL_INSPECTOR_WIDTH : 0;
+  const usableViewportWidth = Math.max(
+    viewportSize.width - inspectorWidth,
+    MIN_OBSERVATION_WIDTH,
+  );
+  const observationCenterX = usableViewportWidth / 2;
   const spatialCells = useMemo(() => createSphericalLayout(cells), [cells]);
   const projectedCells = useMemo(
     () => spatialCells.map((cell, index) => ({
@@ -71,8 +70,9 @@ export function IncubatorWorkspace({
       projection: projectCellToViewport({
         position: cell.position3d,
         camera,
-        viewportWidth: viewportSize.width,
+        viewportWidth: usableViewportWidth,
         viewportHeight: viewportSize.height,
+        centerX: observationCenterX,
       }),
       size: getProjectedCellSize({
         count: spatialCells.length,
@@ -81,7 +81,14 @@ export function IncubatorWorkspace({
       }),
       primary: index === 0,
     })),
-    [camera, selectedCellId, spatialCells, viewportSize],
+    [
+      camera,
+      observationCenterX,
+      selectedCellId,
+      spatialCells,
+      usableViewportWidth,
+      viewportSize.height,
+    ],
   );
 
   useEffect(() => {
@@ -183,6 +190,10 @@ export function IncubatorWorkspace({
       return;
     }
 
+    if (event.target?.closest?.(".floating-cell")) {
+      return;
+    }
+
     viewportRef.current?.focus({ preventScroll: true });
 
     dragStateRef.current = {
@@ -258,6 +269,15 @@ export function IncubatorWorkspace({
     focusCellById(cellId);
   }
 
+  function handleViewportClick() {
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      return;
+    }
+
+    onClearSelectedCell();
+  }
+
   function handleViewportKeyDown(event) {
     if (isInteractiveControl(event.target)) {
       return;
@@ -282,7 +302,11 @@ export function IncubatorWorkspace({
         break;
       case "Escape":
         event.preventDefault();
-        resetCamera();
+        if (selectedCellId) {
+          onClearSelectedCell();
+        } else {
+          resetCamera();
+        }
         break;
       default:
         break;
@@ -302,6 +326,7 @@ export function IncubatorWorkspace({
           onPointerMove={handleViewportPointerMove}
           onPointerUp={handleViewportPointerUp}
           onPointerCancel={handleViewportPointerUp}
+          onClick={handleViewportClick}
           aria-label="Interactive digital microscope viewport"
         >
           <div className="incubator-stage__stats">
@@ -327,24 +352,13 @@ export function IncubatorWorkspace({
         </div>
 
         <IncubatorControlBar
-          isVisualMotionPaused={isVisualMotionPaused}
+          cells={cells}
           isCultivating={isCultivating}
           message={dockMessage}
           error={dockError}
-          cells={cells}
           selectedCellId={selectedCellId}
-          activeCellOperation={activeCellOperation}
-          isFuseMenuOpen={isFuseMenuOpen}
-          selectedFuseCellIds={selectedFuseCellIds}
+          isInspectorOpen={isInspectorOpen}
           onRunOneCycle={onRunOneCycle}
-          onToggleVisualMotion={onToggleVisualMotion}
-          onOpenStabilize={onOpenStabilize}
-          onOpenDivide={onOpenDivide}
-          onToggleFuseMenu={onToggleFuseMenu}
-          onToggleFuseCell={onToggleFuseCell}
-          onCancelFuse={onCancelFuse}
-          onContinueFuse={onContinueFuse}
-          onCloseFuseMenu={onCloseFuseMenu}
           camera={camera}
           onOrbitLeft={orbitLeft}
           onMoveForward={moveCameraForward}

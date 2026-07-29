@@ -20,7 +20,7 @@ let IncubatorWorkspace;
 let DigitalMicroscopeControls;
 let CellOperationDialogs;
 let CellControlCard;
-let SelectedCellPanel;
+let CellInspectorDrawer;
 let Sidebar;
 let SettingsPage;
 let CreationsPage;
@@ -58,8 +58,8 @@ before(async () => {
   ({ CellControlCard } = await vite.ssrLoadModule(
     "/src/components/incubator/CellControlCard.jsx",
   ));
-  ({ SelectedCellPanel } = await vite.ssrLoadModule(
-    "/src/components/incubator/SelectedCellPanel.jsx",
+  ({ CellInspectorDrawer } = await vite.ssrLoadModule(
+    "/src/components/incubator/CellInspectorDrawer.jsx",
   ));
   ({ Sidebar } = await vite.ssrLoadModule(
     "/src/components/Sidebar.jsx",
@@ -125,6 +125,18 @@ test("projectCellToViewport makes closer Cells larger and higher in stacking", (
   assert.ok(near.scale > far.scale);
   assert.ok(near.opacity >= far.opacity);
   assert.ok(near.zIndex > far.zIndex);
+});
+
+test("projectCellToViewport can shift the observation center away from the drawer", () => {
+  const projection = projectCellToViewport({
+    position: { x: 0, y: 0, z: 0 },
+    camera: { yaw: 0, pitch: 0, distance: 900 },
+    viewportWidth: 520,
+    viewportHeight: 560,
+    centerX: 260,
+  });
+
+  assert.equal(projection.screenX, 260);
 });
 
 test("Cell detail keeps the shared Sidebar and selected Cell state", () => {
@@ -338,10 +350,21 @@ test("Incubator workspace renders only incubator controls in the bottom dock", (
     { id: "B03", status: "running", maturity: "not available" },
   ]);
 
-  for (const label of ["Cultivate", "Stabilize", "Divide", "Fuse"]) {
+  for (const label of ["Cultivate"]) {
     assert.match(markup, new RegExp(`>${label}<`));
   }
 
+  assert.match(markup, /Feed information to B01\.\.\./);
+  assert.match(markup, /aria-label="Feed selected Cell"/);
+  assert.doesNotMatch(markup, />Feed</);
+  assert.doesNotMatch(markup, />Microscope</);
+  assert.doesNotMatch(markup, />Run One Cycle</);
+  assert.match(markup, /aria-label="Orbit left"/);
+  assert.match(markup, /aria-label="Move camera forward"/);
+  assert.doesNotMatch(markup, />Command</);
+  assert.doesNotMatch(markup, />Stabilize</);
+  assert.doesNotMatch(markup, />Divide</);
+  assert.doesNotMatch(markup, />Fuse</);
   assert.doesNotMatch(markup, />Copilot</);
   assert.doesNotMatch(markup, />gpt-5-mini</);
   assert.doesNotMatch(markup, />Provider</);
@@ -368,7 +391,7 @@ test("Incubator workspace renders only incubator controls in the bottom dock", (
   assert.doesNotMatch(markup, /Hexagonal/);
 });
 
-test("DigitalMicroscopeControls renders orbit, distance, focus, and reset controls", () => {
+test("DigitalMicroscopeControls renders d-pad, magnification, and reset controls", () => {
   const markup = renderToStaticMarkup(
     React.createElement(DigitalMicroscopeControls, {
       camera: { yaw: 0, pitch: 0, distance: 900 },
@@ -384,22 +407,71 @@ test("DigitalMicroscopeControls renders orbit, distance, focus, and reset contro
 
   for (const label of [
     "Digital microscope navigation",
-    "Microscope",
     "Orbit left",
     "Move camera forward",
     "Move camera backward",
     "Orbit right",
     "Focus selected cell",
     "Reset microscope camera",
-    "Standard view",
+    "100%",
+    "Reset",
   ]) {
     assert.match(markup, new RegExp(label));
   }
+
+  assert.doesNotMatch(markup, /Colony overview/);
 });
 
 test("Microscope focus is disabled without a selected Cell", () => {
   const markup = renderWorkspace(createCells(1), { selectedCellId: null });
   assert.match(markup, /disabled="" aria-label="Focus selected cell" title="Focus selected cell">◎<\/button>/);
+});
+
+test("Cell feed composer is hidden until a Cell is selected", () => {
+  const markup = renderWorkspace(createCells(1), { selectedCellId: null });
+  assert.doesNotMatch(markup, /Select a Cell to begin feeding\.\.\./);
+  assert.doesNotMatch(markup, /aria-label="Attach feeding material"/);
+  assert.doesNotMatch(markup, /aria-label="Feed selected Cell"/);
+});
+
+test("Control dock reserves space when the inspector drawer is open", () => {
+  const markup = renderWorkspace(createCells(2), { selectedCellId: "B01" });
+  assert.match(markup, /cradle-control-dock__viewport--inspector-open/);
+});
+
+test("CellInspectorDrawer stays collapsed without a selected Cell", () => {
+  const markup = renderInspectorDrawer({
+    cell: null,
+    visual: null,
+    isOpen: false,
+  });
+
+  assert.match(markup, /cell-inspector-drawer--closed/);
+  assert.doesNotMatch(markup, /No Cell selected/);
+  assert.doesNotMatch(markup, />Stabilize</);
+});
+
+test("CellInspectorDrawer renders selected Cell details and contextual actions", () => {
+  const markup = renderInspectorDrawer();
+
+  for (const label of [
+    "cell-inspector-drawer--open",
+    "Selected cell inspector",
+    "B01",
+    "Active",
+    "Close cell inspector",
+    "Cell operations",
+    "Activate",
+    "Deactivate",
+    "Lifecycle",
+    "Maturity",
+    "DNA Dimensions",
+    "Stabilize",
+    "Divide",
+    "Fuse",
+  ]) {
+    assert.match(markup, new RegExp(label));
+  }
 });
 
 test("Creation adapter maps API DTOs into Creation view models", () => {
@@ -509,22 +581,9 @@ test("CreationsPage renders API-driven creation cards", () => {
   assert.doesNotMatch(markup, /Create an option pricing system/);
 });
 
-test("Cell operations are disabled without a selected Cell", () => {
-  const markup = renderWorkspace(createCells(2), { selectedCellId: null });
-
-  for (const label of ["Stabilize", "Divide", "Fuse"]) {
-    assert.match(
-      markup,
-      new RegExp(`<button type="button" class="cradle-dock-item" disabled="">[\\s\\S]*?>${label}<`),
-    );
-  }
-
-  assert.match(markup, /title="Select a cell first"/);
-});
-
-test("Fuse is disabled when no other Cell exists", () => {
-  const markup = renderWorkspace(createCells(1));
-  assert.match(markup, /title="At least two cells are required"/);
+test("CellInspectorDrawer disables Fuse when no candidate Cell exists", () => {
+  const markup = renderInspectorDrawer({ fuseCandidates: [] });
+  assert.match(markup, /<button type="button" disabled="" aria-label="Fuse B01">[\s\S]*?Fuse<\/button>/);
 });
 
 test("Stabilize dialog confirms the selected Cell before calling the API", () => {
@@ -607,27 +666,38 @@ test("Incubator summary converts 0 to 1 maturity values to percentages", () => {
   assert.equal(summary.averageMaturityLabel, "50%");
 });
 
-test("Selected Cell details do not render a separate bottom action bar", () => {
+test("Cell inspector details keep operations inside the drawer operation row", () => {
   const cell = { id: "B01", name: "B01", status: "active", maturity: 0.25 };
   const visual = mapCellToVisualState(cell);
   const markup = renderToStaticMarkup(
-    React.createElement(SelectedCellPanel, {
+    React.createElement(CellInspectorDrawer, {
       cell,
       visual,
+      isOpen: true,
       isLoading: false,
       error: null,
       activeAction: null,
       actionMessage: null,
       actionError: null,
+      activeOperation: null,
+      operationError: "",
+      fuseCandidates: createCells(2).slice(1),
+      selectedFuseCellIds: [],
       onActivate: () => {},
       onDeactivate: () => {},
+      onClose: () => {},
+      onStabilize: () => {},
+      onDivide: () => {},
+      onOpenFuseSelection: () => {},
+      onToggleFuseCell: () => {},
+      onCancelFuse: () => {},
+      onContinueFuse: () => {},
     }),
   );
 
   assert.doesNotMatch(markup, /cell-action-bar/);
-  assert.doesNotMatch(markup, />Divide</);
-  assert.doesNotMatch(markup, />Fuse</);
-  assert.doesNotMatch(markup, />Stabilize</);
+  assert.match(markup, /cell-inspector-drawer__actions/);
+  assert.match(markup, /aria-label="Cell operations"/);
 });
 
 test("maturity fractions normalize to percentages", () => {
@@ -861,21 +931,53 @@ function renderWorkspace(cells, overrides = {}) {
       dockMessage: "",
       dockError: "",
       onSelectCell: () => {},
+      onClearSelectedCell: () => {},
       onRunOneCycle: () => {},
-      onToggleVisualMotion: () => {},
-      onChangeAiSettings: () => {},
       onRetry: () => {},
       onCreateCell: () => {},
       activeCellOperation: null,
-      isFuseMenuOpen: false,
       selectedFuseCellIds: [],
       onOpenStabilize: () => {},
       onOpenDivide: () => {},
-      onToggleFuseMenu: () => {},
+      onOpenFuseSelection: () => {},
       onToggleFuseCell: () => {},
       onCancelFuse: () => {},
       onContinueFuse: () => {},
-      onCloseFuseMenu: () => {},
+      ...overrides,
+    }),
+  );
+}
+
+function renderInspectorDrawer(overrides = {}) {
+  const cell = { id: "B01", name: "B01", status: "active", active: true, maturity: 0.25 };
+  const visual = mapCellToVisualState(cell);
+
+  return renderToStaticMarkup(
+    React.createElement(CellInspectorDrawer, {
+      cell,
+      visual,
+      isOpen: true,
+      isLoading: false,
+      error: null,
+      activeAction: null,
+      actionMessage: null,
+      actionError: null,
+      activeOperation: null,
+      operationError: "",
+      fuseCandidates: [
+        { id: "B02", name: "B02", status: "idle" },
+        { id: "B03", name: "B03", status: "running" },
+      ],
+      selectedFuseCellIds: [],
+      onActivate: () => {},
+      onDeactivate: () => {},
+      onClose: () => {},
+      onStabilize: () => {},
+      onDivide: () => {},
+      onOpenFuseSelection: () => {},
+      onToggleFuseCell: () => {},
+      onCancelFuse: () => {},
+      onContinueFuse: () => {},
       ...overrides,
     }),
   );

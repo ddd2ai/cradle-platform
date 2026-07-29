@@ -7,6 +7,7 @@ export function projectCellToViewport({
   camera,
   viewportWidth,
   viewportHeight,
+  centerX = viewportWidth / 2,
 }) {
   const yaw = degreesToRadians(camera.yaw);
   const pitch = degreesToRadians(camera.pitch);
@@ -24,7 +25,7 @@ export function projectCellToViewport({
   const depth = camera.distance + rotatedZ;
   const safeDepth = Math.max(depth, 120);
   const perspective = camera.distance / safeDepth;
-  const screenX = viewportWidth / 2 + yawX * perspective;
+  const screenX = centerX + yawX * perspective;
   const screenY = viewportHeight / 2 + rotatedY * perspective;
   const scale = Math.max(0.42, Math.min(1.65, perspective));
   const normalizedDepth = (rotatedZ + 300) / 600;
