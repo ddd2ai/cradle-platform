@@ -1,5 +1,6 @@
 import { mapCellToVisualState } from "../../domain/cellVisualMapper";
 import { FloatingCell } from "./FloatingCell";
+import { LivingMedium } from "./LivingMedium";
 
 export function IncubatorDish({
   dishRef,
@@ -22,6 +23,8 @@ export function IncubatorDish({
   return (
     <div ref={dishRef} className={className}>
       <div className="incubator-dish__field">
+        <LivingMedium />
+
         <div className="incubator-depth-field" aria-hidden="true">
           <span />
           <span />
