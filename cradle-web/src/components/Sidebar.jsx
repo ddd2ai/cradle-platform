@@ -94,7 +94,7 @@ export function Sidebar({
         </button>
         <div className="platform-version">
           Cradle Platform
-          <span>v0.1.0</span>
+          <span>v1.0.0</span>
         </div>
       </div>
     </aside>
