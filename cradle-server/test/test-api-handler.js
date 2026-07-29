@@ -13,6 +13,7 @@ const engine = {
   provider: "ollama",
   model: "devstral-small-2:24b",
   createdCells: [],
+  fedMessages: [],
   listCellIds: () => ["cell-001", "cell-002"],
   listCells: () => [
     ...cellStore.values(),
@@ -58,6 +59,22 @@ const engine = {
       cell.provider = provider;
       cell.model = model;
     }
+  },
+  pushMessage: async ({ from, to, content, type = "message" }) => {
+    const targetCell = cellStore.get(to);
+    const message = {
+      id: `msg-${engine.fedMessages.length + 1}`,
+      from,
+      to,
+      type,
+      content,
+      createdAt: "2026-07-29T10:00:00.000Z",
+    };
+
+    engine.fedMessages.push(message);
+    targetCell.inbox.push(message);
+
+    return message;
   },
   getCultivationStatus: () => {
     const activeTickCellIds = [...cellStore.values()]
@@ -1198,6 +1215,45 @@ assert.equal(
   "CHILD_CELL_ALREADY_EXISTS",
 );
 
+const fed = await handler({
+  method: "POST",
+  url: "/api/v1/cells/cell-001/feed",
+  body: { content: "Study the error-handling patterns." },
+});
+
+assert.equal(fed.status, 200);
+assert.deepEqual(fed.body, {
+  cellId: "cell-001",
+  message: {
+    id: "msg-1",
+    from: "user",
+    to: "cell-001",
+    type: "feed",
+    content: "Study the error-handling patterns.",
+    createdAt: "2026-07-29T10:00:00.000Z",
+  },
+});
+assert.deepEqual(engine.fedMessages, [fed.body.message]);
+assert.deepEqual(cellStore.get("cell-001").inbox.at(-1), fed.body.message);
+
+const emptyFeed = await handler({
+  method: "POST",
+  url: "/api/v1/cells/cell-001/feed",
+  body: { content: "   " },
+});
+
+assert.equal(emptyFeed.status, 400);
+assert.equal(emptyFeed.body.error.code, "INVALID_FEED_CONTENT");
+
+const missingFeedCell = await handler({
+  method: "POST",
+  url: "/api/v1/cells/missing-cell/feed",
+  body: { content: "hello" },
+});
+
+assert.equal(missingFeedCell.status, 404);
+assert.equal(missingFeedCell.body.error.code, "CELL_NOT_FOUND");
+
 const fused = await handler({
   method: "POST",
   url: "/api/v1/cells/fuse",
@@ -1318,6 +1374,7 @@ function createCell({
     getLifecycleView: async () => lifecycleView,
     readTasks: async () => tasks,
     readInbox: async () => inbox,
+    inbox,
     readLifecycleEvents: async () => lifecycleEvents,
     artifactStore: {
       listArtifactSummaries: async () => artifactSummaries,

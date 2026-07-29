@@ -3,6 +3,7 @@ import { DivideCellUseCase } from "../application/divide-cell-use-case.js";
 import { ClearLogsUseCase } from "../application/clear-logs-use-case.js";
 import { ExportCellArtifactUseCase } from "../application/export-cell-artifact-use-case.js";
 import { ExportCellWorkspaceUseCase } from "../application/export-cell-workspace-use-case.js";
+import { FeedCellUseCase } from "../application/feed-cell-use-case.js";
 import { GetCellArtifactUseCase } from "../application/get-cell-artifact-use-case.js";
 import { GetAiSettingsUseCase } from "../application/get-ai-settings-use-case.js";
 import { GetCellDnaUseCase } from "../application/get-cell-dna-use-case.js";
@@ -151,6 +152,15 @@ export function createApiRoutes({
         }).execute({
           cellId: params[0],
           childCellId: request.body?.childCellId,
+        })
+    ),
+    pattern(
+      "POST",
+      /^\/api\/v1\/cells\/([^/]+)\/feed$/,
+      async ({ params, request }) =>
+        new FeedCellUseCase({ engine }).execute({
+          cellId: params[0],
+          content: request.body?.content,
         })
     ),
     pattern("GET", /^\/api\/v1\/cells\/([^/]+)$/, async ({ params }) =>

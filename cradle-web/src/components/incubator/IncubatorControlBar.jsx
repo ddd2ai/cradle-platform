@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { feedCell } from "../../api/cradleClient";
 import { CellFeedComposer } from "./CellFeedComposer";
 import { CultivateButton } from "./CultivateButton";
 import { DigitalMicroscopeControls } from "./DigitalMicroscopeControls";
@@ -20,6 +21,9 @@ export function IncubatorControlBar({
   onResetCamera,
 }) {
   const [feedInput, setFeedInput] = useState("");
+  const [isFeeding, setIsFeeding] = useState(false);
+  const [feedMessage, setFeedMessage] = useState(null);
+  const [feedError, setFeedError] = useState(null);
   const hasSelectedCell = Boolean(selectedCellId);
   const selectedCell = useMemo(
     () => cells.find((cell) => cell.id === selectedCellId) ?? null,
@@ -29,20 +33,44 @@ export function IncubatorControlBar({
     "cradle-control-dock__viewport",
     isInspectorOpen ? "cradle-control-dock__viewport--inspector-open" : "",
   ].filter(Boolean).join(" ");
-  const isFeedDisabled = !selectedCell;
+  const isFeedDisabled = !selectedCell || isFeeding;
+  const feedStatusMessage = feedError || feedMessage;
+  const feedStatusTone = feedError ? "error" : "success";
 
-  function handleFeedSubmit() {
+  useEffect(() => {
+    if (!feedMessage || isFeeding) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setFeedMessage(null);
+    }, 3200);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [feedMessage, isFeeding]);
+
+  async function handleFeedSubmit() {
     const content = feedInput.trim();
 
     if (!selectedCellId || !content) {
       return;
     }
 
-    console.log({
-      cellId: selectedCellId,
-      content,
-    });
-    setFeedInput("");
+    setIsFeeding(true);
+    setFeedError(null);
+    setFeedMessage(`Feeding ${selectedCellId}...`);
+
+    try {
+      await feedCell(selectedCellId, { content });
+      setFeedInput("");
+      setFeedMessage(`Feed delivered to ${selectedCellId}. Run Cultivate to metabolize it.`);
+    } catch (feedFailure) {
+      setFeedError(feedFailure.message);
+    } finally {
+      setIsFeeding(false);
+    }
   }
 
   return (
@@ -64,6 +92,8 @@ export function IncubatorControlBar({
             onChange={setFeedInput}
             onSubmit={handleFeedSubmit}
             disabled={isFeedDisabled}
+            statusMessage={feedStatusMessage}
+            statusTone={feedStatusTone}
           />
         ) : null}
 

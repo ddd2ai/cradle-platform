@@ -7,6 +7,7 @@ import {
   activateCell,
   deactivateCell,
   divideCell,
+  feedCell,
   fuseCells,
   stabilizeCell,
   startCultivation,
@@ -832,6 +833,14 @@ test("Fuse preserves selected Cell as the first parent", async () => {
       parentCellIds: ["B01", "cell-001", "cell-002"],
       childCellId: "cell-005",
     },
+  });
+});
+
+test("Feed posts content to the selected Cell inbox endpoint", async () => {
+  await assertJsonRequest({
+    action: () => feedCell("B01", { content: "Study error handling." }),
+    path: "/api/v1/cells/B01/feed",
+    body: { content: "Study error handling." },
   });
 });
 

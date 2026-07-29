@@ -242,6 +242,8 @@ export class CradleEngine {
     if (cell) {
       await cell.appendInboxMessage(message);
     }
+
+    return message;
   }
 
   async activateCell(cellId) {

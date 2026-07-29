@@ -4,6 +4,8 @@ export function CellFeedComposer({
   onChange,
   onSubmit,
   disabled,
+  statusMessage,
+  statusTone = "success",
 }) {
   const targetLabel = selectedCell?.name ?? selectedCell?.id;
   const placeholder = selectedCell
@@ -19,6 +21,19 @@ export function CellFeedComposer({
 
   return (
     <section className="cell-feed" aria-label="Feed information to selected Cell">
+      {statusMessage ? (
+        <div
+          className={[
+            "cell-feed__status",
+            `cell-feed__status--${statusTone}`,
+          ].join(" ")}
+          aria-live="polite"
+        >
+          <span className="cell-feed__status-dot" />
+          <span>{statusMessage}</span>
+        </div>
+      ) : null}
+
       <div
         className={[
           "cell-feed__composer",

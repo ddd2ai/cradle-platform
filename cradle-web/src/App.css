@@ -1155,8 +1155,53 @@ button:focus-visible { outline: 2px solid #9b8cff; outline-offset: 2px; }
 }
 
 .cell-feed {
+  position: relative;
   grid-column: 2;
   min-width: 0;
+}
+
+.cell-feed__status {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 8px;
+  display: inline-flex;
+  max-width: min(100%, 540px);
+  align-items: center;
+  gap: 7px;
+  padding: 7px 11px;
+  overflow: hidden;
+  border: 1px solid #294638;
+  border-radius: 999px;
+  background: #20332a;
+  color: #8fd8ae;
+  font-size: 11px;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cell-feed__status-dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: #60d394;
+}
+
+.cell-feed__status span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cell-feed__status--error {
+  border-color: #493030;
+  background: #312222;
+  color: #e4a4a4;
+}
+
+.cell-feed__status--error .cell-feed__status-dot {
+  background: #d96f6f;
 }
 
 .cell-feed__header {

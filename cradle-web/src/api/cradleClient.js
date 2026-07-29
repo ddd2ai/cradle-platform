@@ -204,6 +204,29 @@ export async function fuseCells(request) {
   return postJson("/api/v1/cells/fuse", request);
 }
 
+/**
+ * @typedef {Object} FeedCellRequest
+ * @property {string} content
+ */
+
+/**
+ * @typedef {Object} FeedCellResponse
+ * @property {string} cellId
+ * @property {Object} message
+ */
+
+/**
+ * @param {string} cellId
+ * @param {FeedCellRequest} request
+ * @returns {Promise<FeedCellResponse>}
+ */
+export async function feedCell(cellId, request) {
+  return postJson(
+    `/api/v1/cells/${encodeURIComponent(cellId)}/feed`,
+    request,
+  );
+}
+
 export async function heartbeatCell() {
   const response = await fetch("/api/v1/heartbeat/runs", { method: "POST" });
 
