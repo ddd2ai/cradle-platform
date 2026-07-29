@@ -17,6 +17,7 @@ import { CELL_PALETTES } from "../src/constants/incubatorVisuals.js";
 let vite;
 let IncubatorDish;
 let IncubatorWorkspace;
+let DigitalMicroscopeControls;
 let CellOperationDialogs;
 let CellControlCard;
 let SelectedCellPanel;
@@ -33,6 +34,7 @@ let normalizePercentage;
 let formatStabilizeMessage;
 let mapCreationDtoToCreation;
 let getArtifactDownloadUrl;
+let projectCellToViewport;
 
 before(async () => {
   vite = await createServer({
@@ -46,6 +48,9 @@ before(async () => {
   ));
   ({ IncubatorWorkspace } = await vite.ssrLoadModule(
     "/src/components/incubator/IncubatorWorkspace.jsx",
+  ));
+  ({ DigitalMicroscopeControls } = await vite.ssrLoadModule(
+    "/src/components/incubator/DigitalMicroscopeControls.jsx",
   ));
   ({ CellOperationDialogs } = await vite.ssrLoadModule(
     "/src/components/incubator/CellOperationDialogs.jsx",
@@ -88,6 +93,9 @@ before(async () => {
   ({ mapCreationDtoToCreation, getArtifactDownloadUrl } = await vite.ssrLoadModule(
     "/src/features/creations/api.ts",
   ));
+  ({ projectCellToViewport } = await vite.ssrLoadModule(
+    "/src/features/incubator/utils/projectCellToViewport.js",
+  ));
 });
 
 after(async () => {
@@ -97,6 +105,26 @@ after(async () => {
 test("IncubatorDish renders one selectable organism per visible Cell", () => {
   const markup = renderDish(createCells(5));
   assert.equal((markup.match(/data-cell-id=/g) ?? []).length, 5);
+});
+
+test("projectCellToViewport makes closer Cells larger and higher in stacking", () => {
+  const camera = { yaw: 0, pitch: 0, distance: 900 };
+  const near = projectCellToViewport({
+    position: { x: 0, y: 0, z: -220 },
+    camera,
+    viewportWidth: 900,
+    viewportHeight: 560,
+  });
+  const far = projectCellToViewport({
+    position: { x: 0, y: 0, z: 220 },
+    camera,
+    viewportWidth: 900,
+    viewportHeight: 560,
+  });
+
+  assert.ok(near.scale > far.scale);
+  assert.ok(near.opacity >= far.opacity);
+  assert.ok(near.zIndex > far.zIndex);
 });
 
 test("Cell detail keeps the shared Sidebar and selected Cell state", () => {
@@ -254,10 +282,11 @@ test("FloatingCell renders independent selection and organism animation layers",
   assert.match(markup, /floating-cell__organism/);
   assert.match(markup, /floating-cell__texture/);
   assert.match(markup, /\/cells\/cell-[a-z]+\.webp/);
-  assert.match(markup, /--drift-duration:11.4s/);
-  assert.match(markup, /--breathe-duration:5.4s/);
-  assert.match(markup, /--drift-x:8px/);
-  assert.match(markup, /--drift-y:-12px/);
+  assert.match(markup, /left:450px/);
+  assert.match(markup, /top:280px/);
+  assert.match(markup, /--cell-projection-scale:1/);
+  assert.match(markup, /--drift-duration:/);
+  assert.match(markup, /--breathe-duration:/);
   assert.match(markup, /--cell-rim:/);
   assert.match(markup, /--cell-deep:/);
   assert.match(markup, /--cell-glow:rgba\(/);
@@ -337,6 +366,40 @@ test("Incubator workspace renders only incubator controls in the bottom dock", (
   assert.doesNotMatch(markup, /Java 21/);
   assert.doesNotMatch(markup, /Spring Boot 3/);
   assert.doesNotMatch(markup, /Hexagonal/);
+});
+
+test("DigitalMicroscopeControls renders orbit, distance, focus, and reset controls", () => {
+  const markup = renderToStaticMarkup(
+    React.createElement(DigitalMicroscopeControls, {
+      camera: { yaw: 0, pitch: 0, distance: 900 },
+      hasSelectedCell: true,
+      onOrbitLeft: () => {},
+      onMoveForward: () => {},
+      onMoveBackward: () => {},
+      onOrbitRight: () => {},
+      onFocusSelected: () => {},
+      onReset: () => {},
+    }),
+  );
+
+  for (const label of [
+    "Digital microscope navigation",
+    "Microscope",
+    "Orbit left",
+    "Move camera forward",
+    "Move camera backward",
+    "Orbit right",
+    "Focus selected cell",
+    "Reset microscope camera",
+    "Standard view",
+  ]) {
+    assert.match(markup, new RegExp(label));
+  }
+});
+
+test("Microscope focus is disabled without a selected Cell", () => {
+  const markup = renderWorkspace(createCells(1), { selectedCellId: null });
+  assert.match(markup, /disabled="" aria-label="Focus selected cell" title="Focus selected cell">◎<\/button>/);
 });
 
 test("Creation adapter maps API DTOs into Creation view models", () => {
@@ -732,18 +795,34 @@ function renderDish(cells, overrides = {}) {
   return renderToStaticMarkup(
     React.createElement(IncubatorDish, {
       dishRef: null,
-      cells,
+      projectedCells: createProjectedCells(cells),
       selectedCellId: cells[0]?.id ?? null,
       isLoading: false,
       error: null,
       isMotionPaused: false,
-      isFocusActive: false,
       onSelectCell: () => {},
+      onFocusCell: () => {},
       onRetry: () => {},
       onCreateCell: () => {},
       ...overrides,
     }),
   );
+}
+
+function createProjectedCells(cells) {
+  return cells.map((cell, index) => ({
+    cell,
+    projection: {
+      screenX: 450 + index * 12,
+      screenY: 280 + index * 4,
+      scale: 1 - index * 0.02,
+      opacity: 1 - index * 0.01,
+      depth: -index,
+      zIndex: 1000 - index,
+    },
+    size: index === 0 ? 154 : 92,
+    primary: index === 0,
+  }));
 }
 
 function renderWorkspace(cells, overrides = {}) {

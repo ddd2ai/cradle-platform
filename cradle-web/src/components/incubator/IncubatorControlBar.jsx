@@ -1,4 +1,5 @@
 import { CultivateButton } from "./CultivateButton";
+import { DigitalMicroscopeControls } from "./DigitalMicroscopeControls";
 import { DivideButton } from "./DivideButton";
 import { FuseButton } from "./FuseButton";
 import { StabilizeButton } from "./StabilizeButton";
@@ -20,6 +21,13 @@ export function IncubatorControlBar({
   onCancelFuse,
   onContinueFuse,
   onCloseFuseMenu,
+  camera,
+  onOrbitLeft,
+  onMoveForward,
+  onMoveBackward,
+  onOrbitRight,
+  onFocusSelectedCell,
+  onResetCamera,
 }) {
   const hasSelectedCell = Boolean(selectedCellId);
   const hasFuseTarget = cells.some((cell) => cell.id !== selectedCellId);
@@ -28,13 +36,12 @@ export function IncubatorControlBar({
   return (
     <div className="cradle-control-dock__viewport">
       <div className="cradle-control-dock incubator-control-bar">
-        <CultivateButton isRunning={isCultivating} onClick={onRunOneCycle} />
-
         <div
-          className="cradle-control-dock__group cradle-control-dock__group--cell-actions"
-          role="group"
-          aria-label="Cell operations"
+          className="incubator-control-bar__actions"
+          aria-label="Cultivation actions"
         >
+          <CultivateButton isRunning={isCultivating} onClick={onRunOneCycle} />
+
           <StabilizeButton
             disabled={!hasSelectedCell || isOperationRunning}
             isRunning={activeCellOperation === "stabilize"}
@@ -70,6 +77,19 @@ export function IncubatorControlBar({
             onClose={onCloseFuseMenu}
           />
         </div>
+
+        <div className="incubator-control-bar__divider" aria-hidden="true" />
+
+        <DigitalMicroscopeControls
+          camera={camera}
+          hasSelectedCell={hasSelectedCell}
+          onOrbitLeft={onOrbitLeft}
+          onMoveForward={onMoveForward}
+          onMoveBackward={onMoveBackward}
+          onOrbitRight={onOrbitRight}
+          onFocusSelected={onFocusSelectedCell}
+          onReset={onResetCamera}
+        />
 
         <div
           className={`cradle-dock-feedback${error ? " is-error" : ""}`}
