@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="320" viewBox="0 0 1024 320" role="img" aria-label="Cradle logo">
+  <title>Cradle Logo Dark Background</title>
+  <rect width="1024" height="320" fill="#050507"/>
+  <image href="./logo-mark.svg" x="42" y="32" width="256" height="256" preserveAspectRatio="xMidYMid meet"/>
+  <text x="336" y="204" fill="#ffffff" font-family="Orbitron, Montserrat, Avenir Next, Arial Black, sans-serif" font-size="104" font-weight="800" letter-spacing="12">CRADLE</text>
+</svg>
