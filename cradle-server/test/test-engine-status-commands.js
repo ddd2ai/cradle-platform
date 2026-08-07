@@ -1,6 +1,7 @@
 import assert from "assert";
 import {
-  buildEngineStatusRows,
+  buildCellStatusRow,
+  buildCellsStatusRows,
   createEngineStatusCommands,
   renderCellIdentity,
   renderCradleIdentity,
@@ -36,13 +37,13 @@ async function captureConsoleAsync(fn) {
   return output.join("\n");
 }
 
-function createEngine({ cradleMode = true } = {}) {
-  const cell = {
-    id: "cell-001",
-    name: "Planner",
+function createCell({ id, name, status = "active" }) {
+  return {
+    id,
+    name,
     model: "test-model",
     getEvolutionInfo: async () => ({
-      status: "active",
+      status,
       generation: 2,
     }),
     getMaturityInfo: async () => ({
@@ -56,17 +57,33 @@ function createEngine({ cradleMode = true } = {}) {
     }),
     isActive: () => true,
   };
+}
+
+function createEngine({ cradleMode = true, multipleCells = false } = {}) {
+  const cell = createCell({ id: "cell-001", name: "Planner" });
+  const cells = new Map([[cell.id, cell]]);
+  const inboxes = new Map([[cell.id, [{ content: "hello" }]]]);
+
+  if (multipleCells) {
+    const otherCell = createCell({
+      id: "cell-002",
+      name: "Builder",
+      status: "idle",
+    });
+    cells.set(otherCell.id, otherCell);
+    inboxes.set(otherCell.id, []);
+  }
 
   return {
     model: "engine-model",
-    cells: new Map([["cell-001", cell]]),
-    inboxes: new Map([["cell-001", [{ content: "hello" }]]]),
+    cells,
+    inboxes,
     isCradleMode: () => cradleMode,
     getActiveCell: () => cell,
   };
 }
 
-const rows = await buildEngineStatusRows(createEngine());
+const rows = await buildCellsStatusRows(createEngine());
 assert.deepEqual(rows, [
   {
     Cell: "cell-001",
@@ -81,6 +98,12 @@ assert.deepEqual(rows, [
     Inbox: 1,
   },
 ]);
+
+const cellRow = await buildCellStatusRow(
+  createEngine({ cradleMode: false }),
+  createEngine({ cradleMode: false }).getActiveCell()
+);
+assert.deepEqual(cellRow, rows[0]);
 
 const cradle = captureConsole(() => renderCradleIdentity(createEngine()));
 assert.ok(cradle.includes("Mode      : Cradle"));
@@ -98,18 +121,49 @@ assert.ok(cellIdentity.includes("Inbox     : 1"));
 const commands = createEngineStatusCommands();
 assert.deepEqual(
   commands.map((command) => command.name),
-  ["/status", "/whoami"]
+  ["/cells-status", "/status", "/whoami"]
 );
 
 const byName = new Map(commands.map((command) => [command.name, command]));
-assert.equal(byName.get("/status").match("/status"), true);
+const cradleEngine = createEngine({ multipleCells: true });
+const cellEngine = createEngine({ cradleMode: false, multipleCells: true });
+
+assert.equal(
+  byName.get("/cells-status").match("/cells-status", { engine: cradleEngine }),
+  true
+);
+assert.equal(
+  byName.get("/cells-status").match("/cells-status", { engine: cellEngine }),
+  false
+);
+assert.equal(
+  byName.get("/status").match("/status", { engine: cradleEngine }),
+  false
+);
+assert.equal(
+  byName.get("/status").match("/status", { engine: cellEngine }),
+  true
+);
 assert.equal(byName.get("/whoami").match("/whoami"), true);
 
+const cellsStatusOutput = await captureConsoleAsync(() =>
+  byName.get("/cells-status").execute({ engine: cradleEngine })
+);
+assert.ok(cellsStatusOutput.includes("cell-001"));
+assert.ok(cellsStatusOutput.includes("cell-002"));
+assert.ok(cellsStatusOutput.includes("active"));
+
 const statusOutput = await captureConsoleAsync(() =>
-  byName.get("/status").execute({ engine: createEngine() })
+  byName.get("/status").execute({ engine: cellEngine })
 );
 assert.ok(statusOutput.includes("cell-001"));
 assert.ok(statusOutput.includes("active"));
+assert.ok(!statusOutput.includes("cell-002"));
+assert.ok(!statusOutput.includes("idle"));
+assert.ok(statusOutput.includes("Item"));
+assert.ok(statusOutput.includes("Value"));
+assert.ok(statusOutput.includes("Maturity State"));
+assert.ok(statusOutput.includes("Temporal Variance"));
 
 const whoamiOutput = await captureConsoleAsync(() =>
   byName.get("/whoami").execute({ engine: createEngine({ cradleMode: false }) })

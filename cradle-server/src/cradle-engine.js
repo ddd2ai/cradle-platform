@@ -522,7 +522,7 @@ export class CradleEngine {
       /whoami                  Show current mode or cell
 
       /cells                   List cells
-      /status                  Show cell status
+      /cells-status            Show all cell statuses
 
       /activate <cell-id>      Activate a cell
       /deactivate <cell-id>    Deactivate a cell
@@ -585,6 +585,7 @@ export class CradleEngine {
                                REF (Reflection)
 
     Cell Growth:
+      /status                  Show current cell status
       /think                   Generate one thought
       /thoughts                Show recent thoughts
 
