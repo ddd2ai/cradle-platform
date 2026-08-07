@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { startTransition, useEffect, useMemo, useState } from "react";
 import { getArtifactDownloadUrl, getCreations } from "../features/creations/api";
 import { subscribeToCradleEvents } from "../services/cradle-event-stream";
 import {
@@ -32,7 +32,7 @@ export function CreationsPage({
         const result = await getCreations();
 
         if (!cancelled) {
-          setCreations(result);
+          startTransition(() => setCreations(result));
         }
       } catch (loadError) {
         if (!cancelled) {

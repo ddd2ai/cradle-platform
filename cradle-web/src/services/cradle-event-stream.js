@@ -1,4 +1,5 @@
 import { updateOperationProgress } from "./operation-progress.js";
+import { bufferLogEntry, flushLogBuffer } from "./log-buffer.js";
 
 const EVENT_TYPES = [
   "log.appended",
@@ -46,6 +47,17 @@ function ensureEventSource() {
       // Operation progress 使用 throttling
       if (type === "operation.updated" && data.operation) {
         updateOperationProgress(data.operation);
+      }
+
+      // Log entries 走 batch buffer,不直接 dispatch 給 subscribers
+      // logs.cleared 需要先 flush 再立即通知,確保順序正確
+      if (type === "log.appended" && data.entry) {
+        bufferLogEntry(data.entry);
+        return; // 不 dispatch 給一般 subscribers
+      }
+
+      if (type === "logs.cleared") {
+        flushLogBuffer(); // flush 殘留的 pending entries
       }
 
       // 仍然發送給所有 subscribers (向後相容)

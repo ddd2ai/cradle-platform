@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { startTransition, useEffect, useRef, useState } from "react";
 import "./App.css";
 import {
   activateAllCells,
@@ -115,10 +115,11 @@ function App() {
   }, []);
 
   // 註冊 resource loaders
+  // startTransition: 告訴 React「這些是 REST snapshot 更新,優先級低於使用者互動與 progress 動畫」
   useEffect(() => {
     registerResourceLoader("cells", async () => {
       const loadedCells = await fetchCells();
-      setCells(loadedCells);
+      startTransition(() => setCells(loadedCells));
     });
 
     registerResourceLoader("selectedCell", async () => {
@@ -130,7 +131,7 @@ function App() {
 
     registerResourceLoader("cultivation", async () => {
       const status = await fetchCultivationStatus();
-      setCultivationStatus(status);
+      startTransition(() => setCultivationStatus(status));
     });
   }, []);
 
