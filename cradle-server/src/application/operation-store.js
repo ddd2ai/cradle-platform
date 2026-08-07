@@ -1,9 +1,10 @@
 import { randomUUID } from "crypto";
 
 export class InMemoryOperationStore {
-  constructor({ now = () => new Date(), eventStream = null } = {}) {
+  constructor({ now = () => new Date(), eventStream = null, eventBus = null } = {}) {
     this.now = now;
-    this.eventStream = eventStream;
+    // 接受 eventBus (新) 或 eventStream (舊) — 兩者 API 相同
+    this.eventBus = eventBus ?? eventStream;
     this.operations = new Map();
   }
 
@@ -25,7 +26,7 @@ export class InMemoryOperationStore {
     };
 
     this.operations.set(operation.operationId, operation);
-    this.eventStream?.publish("operation.updated", { operation });
+    this.eventBus?.publish("operation.updated", { operation });
 
     return operation;
   }
@@ -54,23 +55,23 @@ export class InMemoryOperationStore {
     };
 
     this.operations.set(operationId, updated);
-    this.eventStream?.publish("operation.updated", { operation: updated });
+    this.eventBus?.publish("operation.updated", { operation: updated });
 
     if (["completed", "failed"].includes(updated.status)) {
-      this.eventStream?.publish("cell.updated", {
+      this.eventBus?.publish("cell.updated", {
         cellIds: updated.context?.cellIds ?? [],
         operationId: updated.operationId,
       });
 
       if (["cell-division", "cell-fusion", "cell-stabilization"].includes(updated.type)) {
-        this.eventStream?.publish("artifacts.updated", {
+        this.eventBus?.publish("artifacts.updated", {
           cellIds: updated.context?.cellIds ?? [],
           operationId: updated.operationId,
         });
       }
 
       if (updated.type === "heartbeat") {
-        this.eventStream?.publish("cultivation.updated", {
+        this.eventBus?.publish("cultivation.updated", {
           operationId: updated.operationId,
         });
       }

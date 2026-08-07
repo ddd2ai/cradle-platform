@@ -4,16 +4,22 @@ import { CellOperationGuard } from "../application/cell-operation-guard.js";
 import { createApiRoutes } from "./api-routes.js";
 import { LogBuffer } from "../application/log-buffer.js";
 import { InMemoryOperationStore } from "../application/operation-store.js";
-import { ApplicationEventStream } from "../application/application-event-stream.js";
+import { RuntimeEventBus } from "../application/runtime-event-bus.js";
+import { RuntimeEventAggregator } from "../application/runtime-event-aggregator.js";
+
+// ApplicationEventStream re-export 保留 backward compat (測試與舊 callsite 用)
+export { RuntimeEventBus as ApplicationEventStream } from "../application/runtime-event-bus.js";
 
 export function createApiHandler({
   engine,
   aiSettingsStoreFactory = () => new AiSettingsStore(),
   heartbeatModeStoreFactory,
   heartbeatServiceFactory,
-  eventStream = new ApplicationEventStream(),
-  logBuffer = new LogBuffer({ eventStream }),
-  operationStore = new InMemoryOperationStore({ eventStream }),
+  // 接受舊的 eventStream 參數名稱 (backward compat),也接受新的 eventBus
+  eventStream = new RuntimeEventBus(),
+  eventBus,
+  logBuffer,
+  operationStore,
   operationRunner,
   cellOperationGuard = new CellOperationGuard(),
   stabilizationServiceFactory,
@@ -21,14 +27,25 @@ export function createApiHandler({
   fusionServiceFactory,
   cradleConfigFile,
 }) {
+  // 新架構:將 eventBus (或舊的 eventStream) 包裝進 RuntimeEventAggregator
+  // Domain/Application 程式碼透過 aggregator 發佈事件,不知道 transport 細節
+  const bus = eventBus ?? eventStream;
+  const aggregator = new RuntimeEventAggregator({ eventBus: bus });
+
+  // 預設值使用 aggregator 作為 eventStream,確保所有事件經過分類層
+  const resolvedLogBuffer = logBuffer ?? new LogBuffer({ eventBus: aggregator });
+  const resolvedOperationStore = operationStore
+    ?? new InMemoryOperationStore({ eventBus: aggregator });
+
   const routes = createApiRoutes({
     engine,
-    eventStream,
+    // SSE endpoint 訂閱的是 aggregator (Phase 4: 可在此換成 WebSocketTransport)
+    eventStream: aggregator,
     aiSettingsStoreFactory,
     heartbeatModeStoreFactory,
     heartbeatServiceFactory,
-    logBuffer,
-    operationStore,
+    logBuffer: resolvedLogBuffer,
+    operationStore: resolvedOperationStore,
     operationRunner,
     cellOperationGuard,
     stabilizationServiceFactory,

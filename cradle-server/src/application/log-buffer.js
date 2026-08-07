@@ -7,10 +7,12 @@ export class LogBuffer {
     limit = DEFAULT_LIMIT,
     now = () => new Date(),
     eventStream = null,
+    eventBus = null,
   } = {}) {
     this.limit = limit;
     this.now = now;
-    this.eventStream = eventStream;
+    // 接受 eventBus (新) 或 eventStream (舊) — 兩者 API 相同
+    this.eventBus = eventBus ?? eventStream;
     this.entries = [];
     this.nextId = 1;
   }
@@ -31,7 +33,7 @@ export class LogBuffer {
       this.entries.splice(0, this.entries.length - this.limit);
     }
 
-    this.eventStream?.publish("log.appended", { entry });
+    this.eventBus?.publish("log.appended", { entry });
 
     return entry;
   }
@@ -42,7 +44,7 @@ export class LogBuffer {
 
   clear() {
     this.entries = [];
-    this.eventStream?.publish("logs.cleared", {});
+    this.eventBus?.publish("logs.cleared", {});
   }
 }
 

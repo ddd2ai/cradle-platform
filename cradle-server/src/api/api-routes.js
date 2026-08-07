@@ -42,7 +42,7 @@ import { SetCellActiveUseCase } from "../application/set-cell-active-use-case.js
 import { SetHeartbeatModeUseCase } from "../application/set-heartbeat-mode-use-case.js";
 import { StabilizeCellUseCase } from "../application/stabilize-cell-use-case.js";
 import { UpdateCradleConfigUseCase } from "../application/update-cradle-config-use-case.js";
-import { createApplicationEventResponse } from "../application/application-event-stream.js";
+import { createSseResponse } from "./sse-transport.js";
 import { StartOperationUseCase } from "../application/start-operation-use-case.js";
 
 export function createApiRoutes({
@@ -62,8 +62,8 @@ export function createApiRoutes({
 }) {
   return [
     exact("GET", "/api/v1/events", async ({ request }) =>
-      createApplicationEventResponse({
-        eventStream,
+      createSseResponse({
+        eventBus: eventStream,
         lastEventId: request.headers?.["last-event-id"],
       })
     ),
