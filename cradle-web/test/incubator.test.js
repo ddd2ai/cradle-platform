@@ -620,6 +620,22 @@ test("Divide dialog keeps the parent read-only and asks for a child ID", () => {
   assert.match(markup, /value="cell-003"/);
 });
 
+test("Divide dialog renders live operation stage and progress", () => {
+  const markup = renderOperationDialog("divide", {
+    activeOperation: "divide",
+    operationProgress: {
+      status: "running",
+      progress: 25,
+      currentStage: "planning-living-context",
+    },
+  });
+
+  assert.match(markup, /Planning Living Context/);
+  assert.match(markup, /25%/);
+  assert.match(markup, /role="progressbar"/);
+  assert.match(markup, /aria-valuenow="25"/);
+});
+
 test("Fuse confirmation preserves selected parents and child input", () => {
   const markup = renderOperationDialog("fuse");
   assert.match(markup, /Fuse Cells/);
@@ -822,6 +838,53 @@ test("Divide posts the selected parent and child ID", async () => {
   });
 });
 
+test("Divide waits for an accepted operation and returns its business result", async () => {
+  const originalFetch = globalThis.fetch;
+  const requests = [];
+  const progress = [];
+
+  globalThis.fetch = async (url, options) => {
+    requests.push({ url, options });
+    if (url === "/api/v1/cells/B01/divide") {
+      return Response.json({
+        operationId: "op-divide",
+        type: "cell-division",
+        status: "accepted",
+        progress: 0,
+        currentStage: "accepted",
+      }, { status: 202 });
+    }
+
+    return Response.json({
+      operation: {
+        operationId: "op-divide",
+        type: "cell-division",
+        status: "completed",
+        progress: 100,
+        currentStage: "completed",
+        result: { childCellId: "cell-005", complete: true },
+      },
+    });
+  };
+
+  try {
+    const result = await divideCell(
+      "B01",
+      { childCellId: "cell-005" },
+      { onProgress: (operation) => progress.push(operation.currentStage) },
+    );
+
+    assert.deepEqual(result, { childCellId: "cell-005", complete: true });
+    assert.deepEqual(requests.map((request) => request.url), [
+      "/api/v1/cells/B01/divide",
+      "/api/v1/operations/op-divide",
+    ]);
+    assert.deepEqual(progress, ["accepted", "completed"]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("Fuse preserves selected Cell as the first parent", async () => {
   await assertJsonRequest({
     action: () => fuseCells({
@@ -992,7 +1055,7 @@ function renderInspectorDrawer(overrides = {}) {
   );
 }
 
-function renderOperationDialog(dialog) {
+function renderOperationDialog(dialog, overrides = {}) {
   return renderToStaticMarkup(
     React.createElement(CellOperationDialogs, {
       dialog,
@@ -1007,6 +1070,7 @@ function renderOperationDialog(dialog) {
       onConfirmStabilize: () => {},
       onConfirmDivide: () => {},
       onConfirmFuse: () => {},
+      ...overrides,
     }),
   );
 }

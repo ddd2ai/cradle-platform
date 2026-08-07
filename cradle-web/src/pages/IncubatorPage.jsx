@@ -39,6 +39,7 @@ export function IncubatorPage({
   const [refreshVersion, setRefreshVersion] = useState(0);
   const [operationDialog, setOperationDialog] = useState(null);
   const [activeCellOperation, setActiveCellOperation] = useState(null);
+  const [operationProgress, setOperationProgress] = useState(null);
   const [operationError, setOperationError] = useState("");
   const [operationChildCellId, setOperationChildCellId] = useState("");
   const [selectedFuseCellIds, setSelectedFuseCellIds] = useState([]);
@@ -247,10 +248,13 @@ export function IncubatorPage({
     try {
       operationRequestRef.current = true;
       setActiveCellOperation("stabilize");
+      setOperationProgress(null);
       setOperationError("");
       setDockError("");
       setDockMessage("");
-      const result = await stabilizeCell(selectedCellId);
+      const result = await stabilizeCell(selectedCellId, {
+        onProgress: setOperationProgress,
+      });
       await refreshIncubatorData();
       setOperationDialog(null);
       setDockMessage(formatStabilizeMessage(selectedCellId, result));
@@ -260,6 +264,7 @@ export function IncubatorPage({
     } finally {
       operationRequestRef.current = false;
       setActiveCellOperation(null);
+      setOperationProgress(null);
     }
   }
 
@@ -279,10 +284,15 @@ export function IncubatorPage({
     try {
       operationRequestRef.current = true;
       setActiveCellOperation("divide");
+      setOperationProgress(null);
       setOperationError("");
       setDockError("");
       setDockMessage("");
-      const result = await divideCell(selectedCellId, { childCellId });
+      const result = await divideCell(
+        selectedCellId,
+        { childCellId },
+        { onProgress: setOperationProgress },
+      );
       await refreshIncubatorData();
 
       if (!result.complete) {
@@ -303,6 +313,7 @@ export function IncubatorPage({
     } finally {
       operationRequestRef.current = false;
       setActiveCellOperation(null);
+      setOperationProgress(null);
     }
   }
 
@@ -374,10 +385,14 @@ export function IncubatorPage({
     try {
       operationRequestRef.current = true;
       setActiveCellOperation("fuse");
+      setOperationProgress(null);
       setOperationError("");
       setDockError("");
       setDockMessage("");
-      const result = await fuseCells({ parentCellIds, childCellId });
+      const result = await fuseCells(
+        { parentCellIds, childCellId },
+        { onProgress: setOperationProgress },
+      );
       await refreshIncubatorData();
 
       if (!result.complete) {
@@ -399,6 +414,7 @@ export function IncubatorPage({
     } finally {
       operationRequestRef.current = false;
       setActiveCellOperation(null);
+      setOperationProgress(null);
     }
   }
 
@@ -494,6 +510,7 @@ export function IncubatorPage({
         selectedFuseCellIds={selectedFuseCellIds}
         childCellId={operationChildCellId}
         activeOperation={activeCellOperation}
+        operationProgress={operationProgress}
         error={operationError}
         onChangeChildCellId={setOperationChildCellId}
         onClose={closeOperationDialog}

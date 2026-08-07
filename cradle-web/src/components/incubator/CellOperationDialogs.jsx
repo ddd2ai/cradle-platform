@@ -6,6 +6,7 @@ export function CellOperationDialogs({
   selectedFuseCellIds,
   childCellId,
   activeOperation,
+  operationProgress,
   error,
   onChangeChildCellId,
   onClose,
@@ -44,6 +45,7 @@ export function CellOperationDialogs({
         <p className="cell-operation-dialog__note">
           This operation may update the Cell workspace and execute validation.
         </p>
+        <OperationProgress operation={operationProgress} />
         <DialogError error={error} />
         <div className="dialog-actions">
           <button
@@ -89,6 +91,7 @@ export function CellOperationDialogs({
             disabled={Boolean(activeOperation)}
             autoComplete="off"
           />
+          <OperationProgress operation={operationProgress} />
           <DialogError error={error} />
           <div className="dialog-actions">
             <button
@@ -146,6 +149,7 @@ export function CellOperationDialogs({
           disabled={Boolean(activeOperation)}
           autoComplete="off"
         />
+        <OperationProgress operation={operationProgress} />
         <DialogError error={error} />
         <div className="dialog-actions">
           <button
@@ -166,6 +170,35 @@ export function CellOperationDialogs({
         </div>
       </form>
     </OperationDialog>
+  );
+}
+
+function OperationProgress({ operation }) {
+  if (!operation || ["completed", "failed"].includes(operation.status)) {
+    return null;
+  }
+
+  const progress = Math.max(0, Math.min(100, Number(operation.progress) || 0));
+  const stage = String(operation.currentStage ?? operation.status ?? "working")
+    .replaceAll("-", " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+
+  return (
+    <div className="cell-operation-progress" aria-live="polite">
+      <div className="cell-operation-progress__label">
+        <span>{stage}</span>
+        <strong>{progress}%</strong>
+      </div>
+      <div
+        className="cell-operation-progress__track"
+        role="progressbar"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        aria-valuenow={progress}
+      >
+        <span style={{ width: `${progress}%` }} />
+      </div>
+    </div>
   );
 }
 

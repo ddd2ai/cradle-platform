@@ -348,6 +348,39 @@ button:focus-visible { outline: 2px solid #9b8cff; outline-offset: 2px; }
   font-size: 12px;
   line-height: 1.6;
 }
+
+.cell-operation-progress {
+  display: grid;
+  gap: 6px;
+  margin: 14px 0;
+}
+
+.cell-operation-progress__label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.cell-operation-progress__label strong {
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.cell-operation-progress__track {
+  height: 4px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+
+.cell-operation-progress__track span {
+  display: block;
+  height: 100%;
+  background: #58c79a;
+  transition: width 180ms ease;
+}
 .cell-operation-dialog__readonly,
 .cell-operation-dialog__parents {
   margin-bottom: 18px;

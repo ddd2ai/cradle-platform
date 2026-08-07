@@ -26,6 +26,7 @@ import { IncubatorPage } from "./pages/IncubatorPage";
 import { LogsPage } from "./pages/LogsPage";
 import { PlaceholderPage } from "./pages/PlaceholderPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { subscribeToCradleEvents } from "./services/cradle-event-stream";
 
 function App() {
   const [selectedSection, setSelectedSection] = useState("incubator");
@@ -60,9 +61,11 @@ function App() {
   const selectedCellIdRef = useRef(null);
   const activeCellCount = cells.filter((cell) => cell.active === true).length;
 
-  async function loadCells() {
+  async function loadCells({ showLoading = true } = {}) {
     try {
-      setIsLoadingCells(true);
+      if (showLoading) {
+        setIsLoadingCells(true);
+      }
       setCellsError(null);
       const loadedCells = await fetchCells();
       setCells(loadedCells);
@@ -71,7 +74,9 @@ function App() {
       setCellsError(error.message);
       throw error;
     } finally {
-      setIsLoadingCells(false);
+      if (showLoading) {
+        setIsLoadingCells(false);
+      }
     }
   }
 
@@ -104,6 +109,47 @@ function App() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => subscribeToCradleEvents((event) => {
+    if (["cell.created", "cell.updated"].includes(event.type)) {
+      loadCells({ showLoading: false }).catch(() => {});
+
+      const selectedId = selectedCellIdRef.current;
+      const affectedCellIds = event.data.cellIds ?? [
+        event.data.cellId ?? event.data.cell?.cellId,
+      ];
+      if (selectedId && affectedCellIds.includes(selectedId)) {
+        loadSelectedCell(selectedId).catch(() => {});
+      }
+      return;
+    }
+
+    if (event.type === "cultivation.updated") {
+      if (event.data.cultivation) {
+        setCultivationStatus(event.data.cultivation);
+      } else {
+        fetchCultivationStatus()
+          .then(setCultivationStatus)
+          .catch((error) => setHeartbeatError(error.message));
+      }
+      return;
+    }
+
+    if (event.type !== "operation.updated") {
+      return;
+    }
+
+    const operation = event.data.operation;
+    if (!operation) {
+      return;
+    }
+
+    if (operation.type === "heartbeat") {
+      setHeartbeatRun(operation);
+      setHeartbeatStatus(operation.status);
+    }
+
+  }), []);
 
   useEffect(() => {
     let cancelled = false;

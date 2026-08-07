@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { getArtifactDownloadUrl, getCreations } from "../features/creations/api";
+import { subscribeToCradleEvents } from "../services/cradle-event-stream";
 
 export function CreationsPage({
   onOpenWorkspace,
@@ -46,8 +47,15 @@ export function CreationsPage({
 
     loadCreations();
 
+    const unsubscribe = subscribeToCradleEvents((event) => {
+      if (event.type === "artifacts.updated") {
+        loadCreations();
+      }
+    });
+
     return () => {
       cancelled = true;
+      unsubscribe();
     };
   }, [skipInitialLoad]);
 

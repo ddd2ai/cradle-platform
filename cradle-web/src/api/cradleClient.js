@@ -1,3 +1,5 @@
+import { subscribeToCradleEvents } from "../services/cradle-event-stream.js";
+
 export async function fetchCells() {
   const response = await fetch("/api/v1/cells");
 
@@ -149,9 +151,11 @@ export async function deactivateAllCells() {
  * @param {string} cellId
  * @returns {Promise<StabilizeCellResponse>}
  */
-export async function stabilizeCell(cellId) {
-  return postJson(
+export async function stabilizeCell(cellId, options = {}) {
+  return postOperation(
     `/api/v1/cells/${encodeURIComponent(cellId)}/stabilize`,
+    undefined,
+    options,
   );
 }
 
@@ -174,10 +178,11 @@ export async function stabilizeCell(cellId) {
  * @param {DivideCellRequest} request
  * @returns {Promise<DivideCellResponse>}
  */
-export async function divideCell(cellId, request) {
-  return postJson(
+export async function divideCell(cellId, request, options = {}) {
+  return postOperation(
     `/api/v1/cells/${encodeURIComponent(cellId)}/divide`,
     request,
+    options,
   );
 }
 
@@ -200,8 +205,8 @@ export async function divideCell(cellId, request) {
  * @param {FuseCellsRequest} request
  * @returns {Promise<FuseCellsResponse>}
  */
-export async function fuseCells(request) {
-  return postJson("/api/v1/cells/fuse", request);
+export async function fuseCells(request, options = {}) {
+  return postOperation("/api/v1/cells/fuse", request, options);
 }
 
 /**
@@ -349,28 +354,69 @@ export async function clearLogs() {
   return data.logs ?? [];
 }
 
-async function waitForOperation(operationId) {
-  const deadline = Date.now() + 60_000;
+async function waitForOperation(
+  operationId,
+  { onProgress, returnResult = false } = {},
+) {
+  const deadline = Date.now() + 3_600_000;
+  let terminalOperation = null;
+  let wake = null;
+  const unsubscribe = subscribeToCradleEvents((event) => {
+    const operation = event.type === "operation.updated"
+      ? event.data.operation
+      : null;
 
-  while (Date.now() < deadline) {
-    const response = await fetch(
-      `/api/v1/operations/${encodeURIComponent(operationId)}`,
-    );
-
-    if (!response.ok) {
-      throw new Error(`Failed to read heartbeat operation: ${response.status}`);
+    if (operation?.operationId === operationId) {
+      onProgress?.(operation);
     }
 
-    const { operation } = await response.json();
-    if (operation.status === "completed") return operation;
-    if (operation.status === "failed") {
-      throw new Error(operation.error?.message ?? "Heartbeat operation failed");
+    if (
+      operation?.operationId === operationId &&
+      ["completed", "failed"].includes(operation.status)
+    ) {
+      terminalOperation = operation;
+      wake?.();
+    }
+  });
+
+  try {
+    while (Date.now() < deadline) {
+      const operation = terminalOperation ?? await fetchOperation(operationId);
+      onProgress?.(operation);
+      if (operation.status === "completed") {
+        return returnResult ? operation.result ?? operation : operation;
+      }
+      if (operation.status === "failed") {
+        throw new Error(operation.error?.message ?? "Operation failed");
+      }
+
+      await new Promise((resolve) => {
+        const timerId = window.setTimeout(resolve, 2_000);
+        wake = () => {
+          window.clearTimeout(timerId);
+          resolve();
+        };
+      });
+      wake = null;
     }
 
-    await new Promise((resolve) => window.setTimeout(resolve, 250));
+    throw new Error("Operation timed out");
+  } finally {
+    unsubscribe();
+  }
+}
+
+async function fetchOperation(operationId) {
+  const response = await fetch(
+    `/api/v1/operations/${encodeURIComponent(operationId)}`,
+  );
+
+  if (!response.ok) {
+    throw new Error(`Failed to read operation: ${response.status}`);
   }
 
-  throw new Error("Heartbeat operation timed out");
+  const { operation } = await response.json();
+  return operation;
 }
 
 async function postCellAction(cellId, action) {
@@ -439,6 +485,20 @@ async function postJson(path, body) {
   }
 
   return data;
+}
+
+async function postOperation(path, body, { onProgress } = {}) {
+  const accepted = await postJson(path, body);
+
+  if (!accepted?.operationId) {
+    return accepted;
+  }
+
+  onProgress?.(accepted);
+  return waitForOperation(accepted.operationId, {
+    onProgress,
+    returnResult: true,
+  });
 }
 
 async function readJsonResponse(response) {

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { clearLogs, fetchLogs } from "../api/cradleClient";
-
-const REFRESH_INTERVAL_MS = 1500;
+import { subscribeToCradleEvents } from "../services/cradle-event-stream";
 
 export function LogsPage() {
   const [logs, setLogs] = useState([]);
@@ -15,24 +14,6 @@ export function LogsPage() {
     () => logs.map(formatLogLine).join("\n"),
     [logs],
   );
-
-  async function loadLogs({ showLoading = false } = {}) {
-    try {
-      if (showLoading) {
-        setIsLoading(true);
-      }
-
-      const loadedLogs = await fetchLogs();
-      setLogs(loadedLogs);
-      setError(null);
-    } catch (loadError) {
-      setError(loadError.message);
-    } finally {
-      if (showLoading) {
-        setIsLoading(false);
-      }
-    }
-  }
 
   useEffect(() => {
     let cancelled = false;
@@ -59,15 +40,24 @@ export function LogsPage() {
 
     loadInitialLogs();
 
-    const timerId = window.setInterval(() => {
-      if (!cancelled) {
-        loadLogs();
+    const unsubscribe = subscribeToCradleEvents((event) => {
+      if (cancelled) {
+        return;
       }
-    }, REFRESH_INTERVAL_MS);
+
+      if (event.type === "logs.cleared") {
+        setLogs([]);
+        return;
+      }
+
+      if (event.type === "log.appended" && event.data.entry) {
+        setLogs((current) => appendLogEntry(current, event.data.entry));
+      }
+    });
 
     return () => {
       cancelled = true;
-      window.clearInterval(timerId);
+      unsubscribe();
     };
   }, []);
 
@@ -147,6 +137,14 @@ export function LogsPage() {
       </div>
     </section>
   );
+}
+
+function appendLogEntry(logs, entry) {
+  if (logs.some((current) => current.id === entry.id)) {
+    return logs;
+  }
+
+  return [...logs, entry].slice(-500);
 }
 
 function formatLogLine(log) {
