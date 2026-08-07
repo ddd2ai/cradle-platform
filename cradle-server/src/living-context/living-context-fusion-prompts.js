@@ -218,6 +218,20 @@ function createFusionPlanExample(
   childId,
   parentSources
 ) {
+  const sourceArtifacts = parentSources.flatMap((source) =>
+    (source.artifactCatalog ?? [])
+      .filter((artifact) => artifact?.artifactId)
+      .map((artifact) => ({
+        cellId: source.cellId,
+        artifactId: artifact.artifactId,
+        type: artifact.type || "generic",
+      }))
+  );
+  const exampleType =
+    sourceArtifacts.find((artifact) => artifact.type === "code")?.type ??
+    sourceArtifacts[0]?.type ??
+    "generic";
+
   return {
     type: "living-context-fusion",
 
@@ -247,7 +261,17 @@ function createFusionPlanExample(
 
     capabilityResolutions: [],
     knowledgeConflicts: [],
-    productionPlan: [],
+    productionPlan: sourceArtifacts.length === 0 ? [] : [{
+      type: exampleType,
+      title: "融合後產物",
+      goal: "依 Parent Source Materials 產生融合後的完整產物",
+      constraints: [],
+      sourceArtifacts: sourceArtifacts.map(({ cellId, artifactId }) => ({
+        cellId,
+        artifactId,
+      })),
+      sourceUsage: "reference",
+    }],
     assumptions: [],
   };
 }

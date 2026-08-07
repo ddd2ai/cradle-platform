@@ -136,6 +136,11 @@ export class LivingContextFusionService {
     parsedPlan.childCellId =
       childId;
 
+    this.completeProductionPlanFromCatalog(
+      parsedPlan,
+      parentSources
+    );
+
     let normalized;
 
     try {
@@ -172,6 +177,73 @@ export class LivingContextFusionService {
     );
 
     return normalized;
+  }
+
+  completeProductionPlanFromCatalog(plan, parentSources) {
+    const catalogByArtifactId = new Map();
+
+    for (const source of parentSources) {
+      for (const artifact of source.artifactCatalog ?? []) {
+        if (!artifact?.artifactId) {
+          continue;
+        }
+
+        const refs = catalogByArtifactId.get(artifact.artifactId) ?? [];
+        refs.push({
+          cellId: source.cellId,
+          artifactId: artifact.artifactId,
+          type: artifact.type || "generic",
+        });
+        catalogByArtifactId.set(artifact.artifactId, refs);
+      }
+    }
+
+    for (const item of plan.productionPlan ?? []) {
+      const completedRefs = [];
+
+      for (const sourceArtifact of item.sourceArtifacts ?? []) {
+        if (typeof sourceArtifact === "string") {
+          completedRefs.push(...(catalogByArtifactId.get(sourceArtifact) ?? []));
+          continue;
+        }
+
+        if (!sourceArtifact || typeof sourceArtifact !== "object") {
+          continue;
+        }
+
+        if (sourceArtifact.cellId && sourceArtifact.artifactId) {
+          completedRefs.push(sourceArtifact);
+          continue;
+        }
+
+        if (sourceArtifact.artifactId) {
+          completedRefs.push(
+            ...(catalogByArtifactId.get(sourceArtifact.artifactId) ?? [])
+          );
+        }
+      }
+
+      const uniqueRefs = new Map();
+      for (const ref of completedRefs) {
+        uniqueRefs.set(`${ref.cellId}/${ref.artifactId}`, {
+          cellId: ref.cellId,
+          artifactId: ref.artifactId,
+        });
+      }
+      item.sourceArtifacts = [...uniqueRefs.values()];
+
+      if (!item.type?.trim()) {
+        const sourceTypes = completedRefs
+          .map((ref) => ref.type ?? catalogByArtifactId
+            .get(ref.artifactId)
+            ?.find((candidate) => candidate.cellId === ref.cellId)
+            ?.type)
+          .filter(Boolean);
+        item.type = sourceTypes.includes("code")
+          ? "code"
+          : sourceTypes[0] ?? "generic";
+      }
+    }
   }
 
   /**

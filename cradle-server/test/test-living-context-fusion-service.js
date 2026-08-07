@@ -695,6 +695,53 @@ test("Unknown artifact throws error with 'unknown artifact'", async () => {
   }
 });
 
+test("Production plan completes type and string artifact refs from catalogs", async () => {
+  const { parentA, parentB, sourceMaterialService } = setupService();
+  const requester = new FakeRequesterCell("cell-a", () => ({
+    text: JSON.stringify({
+      type: "living-context-fusion",
+      parentCellIds: ["cell-a", "cell-b"],
+      childCellId: "cell-fused",
+      fusedLivingContext: {
+        purpose: "Unified payment",
+        responsibilities: ["Handle payments"]
+      },
+      fusedMemorySeed: { knowledge: "", history: "", thought: "" },
+      capabilityResolutions: [],
+      knowledgeConflicts: [],
+      productionPlan: [{
+        title: "Unified Payment",
+        goal: "Create unified payment",
+        constraints: [],
+        sourceArtifacts: ["artifact-a", "artifact-b"],
+        sourceUsage: "behavior-reference"
+      }],
+      assumptions: []
+    })
+  }));
+  const service = new LivingContextFusionService({
+    requesterCell: requester,
+    sourceMaterialService
+  });
+
+  const plan = await service.createFusionPlan({
+    parentCells: [parentA, parentB],
+    childId: "cell-fused",
+    dnaFusionPlan: {}
+  });
+
+  if (plan.productionPlan[0].type !== "code") {
+    throw new Error(`Expected inferred code type, got ${plan.productionPlan[0].type}`);
+  }
+  const refs = plan.productionPlan[0].sourceArtifacts;
+  if (!refs.some((ref) => ref.cellId === "cell-a" && ref.artifactId === "artifact-a")) {
+    throw new Error("Expected artifact-a to resolve to cell-a");
+  }
+  if (!refs.some((ref) => ref.cellId === "cell-b" && ref.artifactId === "artifact-b")) {
+    throw new Error("Expected artifact-b to resolve to cell-b");
+  }
+});
+
 test("Empty fusedLivingContext fails validation", async () => {
   const { parentA, parentB, sourceMaterialService } = setupService();
 
