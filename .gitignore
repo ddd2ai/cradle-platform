@@ -106,10 +106,8 @@ context/
 # Generated Skills
 # ==========================================================
 
+.github/**
 .agents/**
-.agents/generated/
-.agents/cache/
-.agents/runtime/
 
 # ==========================================================
 # VM Sandbox
