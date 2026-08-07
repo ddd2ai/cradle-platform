@@ -37,6 +37,11 @@ let mapCreationDtoToCreation;
 let getArtifactDownloadUrl;
 let projectCellToViewport;
 
+// operation-progress.js 必須透過 vite SSR 載入,才能與 CellOperationDialogs 共用同一個 store 實例
+let updateOperationProgress;
+let clearAllOperationStates;
+let flushAllPendingProgress;
+
 before(async () => {
   vite = await createServer({
     appType: "custom",
@@ -97,6 +102,13 @@ before(async () => {
   ({ projectCellToViewport } = await vite.ssrLoadModule(
     "/src/features/incubator/utils/projectCellToViewport.js",
   ));
+
+  // 透過 vite SSR 載入 operation-progress,確保與 CellOperationDialogs 共用同一個模組實例
+  ({
+    updateOperationProgress,
+    clearAllOperationStates,
+    flushAllPendingProgress,
+  } = await vite.ssrLoadModule("/src/services/operation-progress.js"));
 });
 
 after(async () => {
@@ -621,14 +633,24 @@ test("Divide dialog keeps the parent read-only and asks for a child ID", () => {
 });
 
 test("Divide dialog renders live operation stage and progress", () => {
+  // Phase 4: CellOperationDialogs 改為透過 operationId + useOperationProgress hook 取得 progress。
+  // renderToStaticMarkup 不執行 useEffect,但會執行 useState initializer,
+  // 所以先把 operation 放進 store,useOperationProgress 的 useState(() => getOperationState(id)) 即可讀到。
+  const operationId = "test-op-divide-progress";
+  updateOperationProgress({
+    operationId,
+    status: "running",
+    progress: 25,
+    currentStage: "planning-living-context",
+  });
+  flushAllPendingProgress();
+
   const markup = renderOperationDialog("divide", {
     activeOperation: "divide",
-    operationProgress: {
-      status: "running",
-      progress: 25,
-      currentStage: "planning-living-context",
-    },
+    operationId,
   });
+
+  clearAllOperationStates();
 
   assert.match(markup, /Planning Living Context/);
   assert.match(markup, /25%/);

@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { getArtifactDownloadUrl, getCreations } from "../features/creations/api";
 import { subscribeToCradleEvents } from "../services/cradle-event-stream";
+import {
+  registerResourceLoader,
+  invalidateResource,
+} from "../services/resource-invalidation";
 
 export function CreationsPage({
   onOpenWorkspace,
@@ -47,9 +51,17 @@ export function CreationsPage({
 
     loadCreations();
 
+    // 註冊 artifacts resource loader
+    registerResourceLoader("artifacts", async () => {
+      if (!cancelled) {
+        await loadCreations();
+      }
+    });
+
     const unsubscribe = subscribeToCradleEvents((event) => {
       if (event.type === "artifacts.updated") {
-        loadCreations();
+        // 使用 invalidation queue 而非立即 reload
+        invalidateResource("artifacts");
       }
     });
 

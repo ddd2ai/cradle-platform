@@ -1,3 +1,5 @@
+import { updateOperationProgress } from "./operation-progress.js";
+
 const EVENT_TYPES = [
   "log.appended",
   "logs.cleared",
@@ -41,6 +43,12 @@ function ensureEventSource() {
         return;
       }
 
+      // Operation progress 使用 throttling
+      if (type === "operation.updated" && data.operation) {
+        updateOperationProgress(data.operation);
+      }
+
+      // 仍然發送給所有 subscribers (向後相容)
       for (const subscriber of subscribers) {
         subscriber({ type, data });
       }

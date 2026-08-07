@@ -379,7 +379,9 @@ button:focus-visible { outline: 2px solid #9b8cff; outline-offset: 2px; }
   display: block;
   height: 100%;
   background: #58c79a;
-  transition: width 180ms ease;
+  /* 略短於 throttle min interval (100ms),確保動畫完成再收到下次更新 */
+  transition: width 80ms linear;
+  will-change: width;
 }
 .cell-operation-dialog__readonly,
 .cell-operation-dialog__parents {

@@ -27,6 +27,10 @@ import { LogsPage } from "./pages/LogsPage";
 import { PlaceholderPage } from "./pages/PlaceholderPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { subscribeToCradleEvents } from "./services/cradle-event-stream";
+import {
+  registerResourceLoader,
+  invalidateResource,
+} from "./services/resource-invalidation";
 
 function App() {
   const [selectedSection, setSelectedSection] = useState("incubator");
@@ -110,16 +114,37 @@ function App() {
     };
   }, []);
 
+  // 註冊 resource loaders
+  useEffect(() => {
+    registerResourceLoader("cells", async () => {
+      const loadedCells = await fetchCells();
+      setCells(loadedCells);
+    });
+
+    registerResourceLoader("selectedCell", async () => {
+      const selectedId = selectedCellIdRef.current;
+      if (selectedId) {
+        await loadSelectedCell(selectedId);
+      }
+    });
+
+    registerResourceLoader("cultivation", async () => {
+      const status = await fetchCultivationStatus();
+      setCultivationStatus(status);
+    });
+  }, []);
+
   useEffect(() => subscribeToCradleEvents((event) => {
     if (["cell.created", "cell.updated"].includes(event.type)) {
-      loadCells({ showLoading: false }).catch(() => {});
+      // 使用 invalidation queue 而非立即 refetch
+      invalidateResource("cells");
 
       const selectedId = selectedCellIdRef.current;
       const affectedCellIds = event.data.cellIds ?? [
         event.data.cellId ?? event.data.cell?.cellId,
       ];
       if (selectedId && affectedCellIds.includes(selectedId)) {
-        loadSelectedCell(selectedId).catch(() => {});
+        invalidateResource("selectedCell");
       }
       return;
     }
@@ -128,9 +153,8 @@ function App() {
       if (event.data.cultivation) {
         setCultivationStatus(event.data.cultivation);
       } else {
-        fetchCultivationStatus()
-          .then(setCultivationStatus)
-          .catch((error) => setHeartbeatError(error.message));
+        // 使用 invalidation queue
+        invalidateResource("cultivation");
       }
       return;
     }

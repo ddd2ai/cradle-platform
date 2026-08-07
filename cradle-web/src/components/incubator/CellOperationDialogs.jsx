@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useOperationProgress } from "../../hooks/useOperationProgress.js";
 
 export function CellOperationDialogs({
   dialog,
@@ -6,7 +7,7 @@ export function CellOperationDialogs({
   selectedFuseCellIds,
   childCellId,
   activeOperation,
-  operationProgress,
+  operationId,
   error,
   onChangeChildCellId,
   onClose,
@@ -15,6 +16,9 @@ export function CellOperationDialogs({
   onConfirmDivide,
   onConfirmFuse,
 }) {
+  // 直接訂閱 operation-progress store:progress 更新只會觸發本元件 re-render,
+  // 不影響 IncubatorPage、IncubatorWorkspace、CellInspectorDrawer 等父/兄弟元件。
+  const operationProgress = useOperationProgress(operationId);
   useEffect(() => {
     if (!dialog) {
       return undefined;

@@ -1,4 +1,5 @@
 import { subscribeToCradleEvents } from "../services/cradle-event-stream.js";
+import { subscribeOperationProgress } from "../services/operation-progress.js";
 
 export async function fetchCells() {
   const response = await fetch("/api/v1/cells");
@@ -361,21 +362,25 @@ async function waitForOperation(
   const deadline = Date.now() + 3_600_000;
   let terminalOperation = null;
   let wake = null;
-  const unsubscribe = subscribeToCradleEvents((event) => {
-    const operation = event.type === "operation.updated"
-      ? event.data.operation
-      : null;
 
-    if (operation?.operationId === operationId) {
+  // 使用 throttled progress subscription
+  const unsubscribeProgress = subscribeOperationProgress(
+    operationId,
+    (operation) => {
       onProgress?.(operation);
-    }
 
-    if (
-      operation?.operationId === operationId &&
-      ["completed", "failed"].includes(operation.status)
-    ) {
-      terminalOperation = operation;
-      wake?.();
+      if (["completed", "failed"].includes(operation.status)) {
+        terminalOperation = operation;
+        wake?.();
+      }
+    }
+  );
+
+  // 保留原有的 SSE subscription (for other events)
+  const unsubscribe = subscribeToCradleEvents((event) => {
+    // operation.updated 已由 operation-progress 處理
+    if (event.type === "operation.updated") {
+      return;
     }
   });
 
@@ -402,6 +407,7 @@ async function waitForOperation(
 
     throw new Error("Operation timed out");
   } finally {
+    unsubscribeProgress();
     unsubscribe();
   }
 }
