@@ -7,6 +7,7 @@
 export function createDivisionProductionResult({
   produced = [],
   parentRevisions = [],
+  relations = [],
   failed = [],
   skipped = [],
   complete = true,
@@ -14,6 +15,7 @@ export function createDivisionProductionResult({
   return {
     produced,
     parentRevisions,
+    relations,
     failed,
     skipped,
     complete,

@@ -36,6 +36,9 @@ export class DivideCellUseCase {
         return {
           parentCellId: parentCell.id,
           childCellId: result.child?.id ?? childId,
+          parentProducts: result.parentProducts ?? [],
+          childProducts: result.childProducts ?? [],
+          productRelations: result.productRelations ?? [],
           status: result.complete ? "completed" : "incomplete",
           complete: result.complete === true,
           errors: result.errors ?? [],

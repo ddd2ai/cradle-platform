@@ -9,13 +9,12 @@
 
 import { LivingContextService } from "../living-context/living-context-service.js";
 import { ArtifactRegenerationService } from "../production/artifact-regeneration-service.js";
-import { createDivisionProductionResult } from "../production/production-result.js";
+import { CellDivisionRollback } from "./cell-division-rollback.js";
 import { createLivingContext, normalizeLivingContext } from "../living-context/living-context-schema.js";
 import { deduplicateRelationships } from "../living-context/relationship-utils.js";
 import { block } from "../utils/text.js";
 import {
   logProductionResult,
-  runApplicationStage,
 } from "./application-stage.js";
 import {
   validateBasicDivisionSemantics,
@@ -28,10 +27,12 @@ export class CellDivisionService {
    * @param {Object} options
    * @param {Function} [options.livingContextServiceFactory] - Factory for LivingContextService
    * @param {Object} [options.artifactRegenerationService] - Artifact Regeneration Service
+   * @param {Function} [options.rollbackFactory] - Division rollback factory
    */
   constructor({ 
     livingContextServiceFactory,
-    artifactRegenerationService 
+    artifactRegenerationService,
+    rollbackFactory,
   } = {}) {
     this.livingContextServiceFactory = livingContextServiceFactory || ((requesterCell) => {
       return new LivingContextService({ requesterCell });
@@ -40,6 +41,8 @@ export class CellDivisionService {
     this.artifactRegenerationService = 
       artifactRegenerationService ?? 
       new ArtifactRegenerationService();
+    this.rollbackFactory = rollbackFactory ?? ((options) =>
+      new CellDivisionRollback(options));
   }
 
   /**
@@ -54,6 +57,8 @@ export class CellDivisionService {
   async divide({ engine, parentCell, childId }) {
     this._validateParameters({ engine, parentCell, childId });
 
+    await parentCell.assertCanDivide();
+
     if (this._childExists(engine, childId)) {
       throw new Error(`CellDivisionService: child cell already exists: ${childId}`);
     }
@@ -67,26 +72,24 @@ export class CellDivisionService {
       childId,
     });
 
+    const rollback = this.rollbackFactory({ engine, parentCell, childId });
+    await rollback.begin();
+
     let child;
-    const errors = [];
 
     try {
       console.log(`  Creating child cell...`);
-      child = await engine.createCell(childId);
+      child = await engine.createCell(childId, { staged: true });
 
-      await runApplicationStage(errors, "apply-dna", async () => {
-        console.log(`  Applying DNA division...`);
-        await parentCell.applyDivisionPlanBySVD(child, dnaDivisionPlan);
-      });
+      console.log(`  Applying DNA division...`);
+      await parentCell.applyDivisionPlanBySVD(child, dnaDivisionPlan);
 
-      await runApplicationStage(errors, "apply-living-context", async () => {
-        console.log(`  Applying Living Context transformation...`);
-        await this._applyLivingContextPlan({
-          parentCell,
-          childCell: child,
-          plan: livingContextPlan,
-          dnaDivisionPlan,
-        });
+      console.log(`  Applying Living Context transformation...`);
+      await this._applyLivingContextPlan({
+        parentCell,
+        childCell: child,
+        plan: livingContextPlan,
+        dnaDivisionPlan,
       });
 
       const productionResult =
@@ -94,38 +97,36 @@ export class CellDivisionService {
           parentCell,
           child,
           livingContextPlan,
-          errors,
         });
 
-      console.log(`  ✅ Application phase complete`);
+      this._assertCompleteProductionResult(productionResult);
+      await this._recordProductionHistory(parentCell, child, productionResult);
 
-      return this._createDivisionResult({
+      const result = this._createDivisionResult({
         parentCell,
         child,
         dnaDivisionPlan,
         livingContextPlan,
         productionResult,
-        errors,
       });
+
+      if (typeof engine.markCellReady === "function") {
+        await engine.markCellReady(child.id);
+      }
+
+      this._handoffControl(engine, child);
+      await rollback.complete();
+
+      console.log(`  ✅ Application phase complete`);
+
+      return result;
 
     } catch (error) {
-      await this._recordIncompleteApplication({
-        parentCell,
-        child,
-        childId,
-        errors,
-        error,
-      });
-
-      return {
-        parentCell,
-        child,
-        dnaDivisionPlan,
-        livingContextPlan,
-        productionResult: this._createFailedProductionResult(),
-        complete: false,
-        errors,
-      };
+      await rollback.compensate();
+      throw new Error(
+        `CellDivisionService: division rolled back: ${error.message}`,
+        { cause: error }
+      );
     }
   }
 
@@ -149,6 +150,12 @@ export class CellDivisionService {
 
       livingContextPlan.productionPlan ??= [];
       livingContextPlan.sharedContracts ??= [];
+
+      if (!livingContextPlan.productionPlan.some((item) => item.action === "derive")) {
+        throw new Error(
+          "CellDivisionService: division requires at least one parent/child product pair"
+        );
+      }
 
       validateProductionPlan({
         parentArtifacts,
@@ -182,36 +189,18 @@ export class CellDivisionService {
     }
   }
 
-  async _regenerateProductions({ parentCell, child, livingContextPlan, errors }) {
+  async _regenerateProductions({ parentCell, child, livingContextPlan }) {
     console.log(`  Regenerating productions...`);
 
-    try {
-      const productionResult =
-        await this.artifactRegenerationService.regenerateForDivision({
-          parentCell,
-          childCell: child,
-          divisionPlan: livingContextPlan
-        });
-
-      logProductionResult(productionResult);
-      await this._recordProductionHistory(parentCell, child, productionResult);
-      return productionResult;
-    } catch (error) {
-      errors.push({
-        stage: "production",
-        message: error.message,
+    const productionResult =
+      await this.artifactRegenerationService.regenerateForDivision({
+        parentCell,
+        childCell: child,
+        divisionPlan: livingContextPlan
       });
 
-      return createDivisionProductionResult({
-        failed: [{
-          index: -1,
-          title: "unknown",
-          stage: "production",
-          message: error.message
-        }],
-        complete: false,
-      });
-    }
+    logProductionResult(productionResult);
+    return productionResult;
   }
 
   _createDivisionResult({
@@ -220,74 +209,58 @@ export class CellDivisionService {
     dnaDivisionPlan,
     livingContextPlan,
     productionResult,
-    errors,
   }) {
     return {
       parentCell,
       child,
+      parentProducts: productionResult.parentRevisions,
+      childProducts: productionResult.produced,
+      productRelations: productionResult.relations,
       dnaDivisionPlan,
       livingContextPlan,
       productionResult,
-      complete: errors.length === 0 && productionResult.complete,
-      errors: [
-        ...errors,
-        ...productionResult.failed.map(failure => ({
-          stage: "production",
-          message: failure.message,
-          title: failure.title
-        }))
-      ],
+      status: "completed",
+      complete: true,
+      errors: [],
     };
   }
 
-  async _recordIncompleteApplication({
-    parentCell,
-    child,
-    childId,
-    errors,
-    error,
-  }) {
-    // Application 失敗：Child 已經建立，記錄 incomplete 狀態
-    if (!child) {
-      return;
+  _assertCompleteProductionResult(productionResult) {
+    const parentProducts = productionResult.parentRevisions ?? [];
+    const childProducts = productionResult.produced ?? [];
+    const relations = productionResult.relations ?? [];
+
+    if (
+      productionResult.complete !== true ||
+      parentProducts.length === 0 ||
+      parentProducts.length !== childProducts.length ||
+      parentProducts.length !== relations.length
+    ) {
+      throw new Error("division products or relations are incomplete");
     }
 
-    try {
-      await child.appendHistory(
-        block([
-          `## Division Application Incomplete`,
-          "",
-          `Failed at: ${errors[0]?.stage || "unknown"}`,
-          `Error: ${errors[0]?.message || error.message}`,
-          `Time: ${new Date().toISOString()}`,
-          "",
-        ])
-      );
-    } catch {
-      // 記錄失敗不應中斷
-    }
-
-    try {
-      await parentCell.appendHistory(
-        block([
-          `## Division Application Incomplete`,
-          "",
-          `Child: ${childId}`,
-          `Failed at: ${errors[0]?.stage || "unknown"}`,
-          `Error: ${errors[0]?.message || error.message}`,
-          `Time: ${new Date().toISOString()}`,
-          "",
-        ])
-      );
-    } catch {
-      // 記錄失敗不應中斷
+    for (let index = 0; index < relations.length; index += 1) {
+      const relation = relations[index];
+      const relatedProductIds = new Set([
+        relation.sourceProduct?.artifactId,
+        relation.targetProduct?.artifactId,
+      ]);
+      if (!(
+        relatedProductIds.has(parentProducts[index].artifactId) &&
+        relatedProductIds.has(childProducts[index].artifactId)
+      )) {
+        throw new Error("division relation references incorrect product IDs");
+      }
     }
   }
 
-  _createFailedProductionResult() {
-    return createDivisionProductionResult({
-      complete: false,
-    });
+  _handoffControl(engine, child) {
+    if (typeof engine.useCell === "function") {
+      engine.useCell(child.id);
+      return;
+    }
+
+    engine.activeCellId = child.id;
   }
 
   /**
@@ -312,6 +285,9 @@ export class CellDivisionService {
     }
     if (!engine.createCell || typeof engine.createCell !== 'function') {
       throw new Error("CellDivisionService: engine.createCell must exist");
+    }
+    if (!parentCell.assertCanDivide || typeof parentCell.assertCanDivide !== "function") {
+      throw new Error("CellDivisionService: parentCell.assertCanDivide must exist");
     }
   }
 

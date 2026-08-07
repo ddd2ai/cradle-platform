@@ -54,9 +54,9 @@ async function runTests() {
   let passed = 0;
   let failed = 0;
 
-  // Test 1: Empty productionPlan returns complete true
+  // Test 1: Empty productionPlan cannot form a complete division
   {
-    console.log("Test 1: Empty productionPlan returns complete true");
+    console.log("Test 1: Empty productionPlan is rejected");
     
     const service = new ArtifactRegenerationService({
       sourceMaterialService: new FakeSourceMaterialService()
@@ -73,23 +73,22 @@ async function runTests() {
       childMemorySeed: {}
     };
 
-    const result = await service.regenerateForDivision({
-      parentCell,
-      childCell,
-      divisionPlan
-    });
-
-    if (
-      result.produced.length === 0 &&
-      result.failed.length === 0 &&
-      result.parentRevisions.length === 0 &&
-      result.complete === true
-    ) {
-      console.log("  ✅ PASS\n");
-      passed++;
-    } else {
-      console.log("  ❌ FAIL: Expected complete=true with empty arrays\n");
+    try {
+      await service.regenerateForDivision({
+        parentCell,
+        childCell,
+        divisionPlan
+      });
+      console.log("  ❌ FAIL: Expected empty plan to fail\n");
       failed++;
+    } catch (error) {
+      if (error.message.includes("must create parent and child products")) {
+        console.log("  ✅ PASS\n");
+        passed++;
+      } else {
+        console.log(`  ❌ FAIL: Unexpected error ${error.message}\n`);
+        failed++;
+      }
     }
   }
 
@@ -487,9 +486,9 @@ async function runTests() {
     }
   }
 
-  // Test 10: Single failure doesn't affect others
+  // Test 10: A failure stops additional product creation
   {
-    console.log("Test 10: Single failure doesn't affect others");
+    console.log("Test 10: Failure stops additional product creation");
     
     class FailingProductionService {
       constructor() {
@@ -538,15 +537,15 @@ async function runTests() {
     });
 
     if (
-      failingService.callCount === 3 &&
-      result.produced.length === 2 &&
+      failingService.callCount === 2 &&
+      result.produced.length === 1 &&
       result.failed.length === 1 &&
       result.failed[0].title === "Failing Item"
     ) {
       console.log("  ✅ PASS\n");
       passed++;
     } else {
-      console.log("  ❌ FAIL: Failures should not stop other items\n");
+      console.log("  ❌ FAIL: Failure should stop later items\n");
       console.log(`    Calls: ${failingService.callCount}, Produced: ${result.produced.length}, Failed: ${result.failed.length}`);
       failed++;
     }
@@ -631,6 +630,75 @@ async function runTests() {
       passed++;
     } else {
       console.log("  ❌ FAIL: Should return artifactId\n");
+      failed++;
+    }
+  }
+
+  // Test 13: Parent, child, and relation are created in strict order
+  {
+    console.log("Test 13: Division product order is strict");
+    const events = [];
+    const parentCell = {
+      id: "cell-parent",
+      productionService: {
+        async produceFromTransformation() {
+          events.push("createParentProduct");
+          return { id: "artifact-parent" };
+        }
+      }
+    };
+    const childCell = {
+      id: "cell-child",
+      productionService: {
+        async produceFromTransformation() {
+          events.push("createChildProduct");
+          return { id: "artifact-child" };
+        }
+      }
+    };
+    const service = new ArtifactRegenerationService({
+      sourceMaterialService: new FakeSourceMaterialService(),
+      artifactRelationService: {
+        async linkDivisionProducts({ parentProduct, childProduct }) {
+          events.push("linkProducts");
+          return {
+            id: "relation-001",
+            sourceProduct: { artifactId: parentProduct.artifactId },
+            targetProduct: { artifactId: childProduct.artifactId },
+          };
+        }
+      }
+    });
+
+    const result = await service.regenerateForDivision({
+      parentCell,
+      childCell,
+      divisionPlan: {
+        productionPlan: [{
+          sourceArtifactId: "source-artifact",
+          action: "derive",
+          targetCellId: childCell.id,
+        }],
+        childLivingContext: {},
+        revisedParentLivingContext: {},
+        childMemorySeed: {},
+        sharedContracts: [],
+      }
+    });
+
+    if (
+      JSON.stringify(events) === JSON.stringify([
+        "createParentProduct",
+        "createChildProduct",
+        "linkProducts",
+      ]) &&
+      result.relations[0].sourceProduct.artifactId === "artifact-parent" &&
+      result.relations[0].targetProduct.artifactId === "artifact-child"
+    ) {
+      console.log("  ✅ PASS\n");
+      passed++;
+    } else {
+      console.log(`  ❌ FAIL: Unexpected order ${events.join(", ")}\n`);
       failed++;
     }
   }

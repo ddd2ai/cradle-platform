@@ -6,6 +6,7 @@
  */
 
 import { SourceMaterialService } from "../living-context/source-material-service.js";
+import { ArtifactRelationService } from "./artifact-relation-service.js";
 import {
   createDivisionProductionResult,
   createFusionProductionResult,
@@ -13,11 +14,15 @@ import {
 
 export class ArtifactRegenerationService {
   constructor({
-    sourceMaterialService
+    sourceMaterialService,
+    artifactRelationService,
   } = {}) {
     this.sourceMaterialService = 
       sourceMaterialService ?? 
       new SourceMaterialService();
+    this.artifactRelationService =
+      artifactRelationService ??
+      new ArtifactRelationService();
   }
 
   /**
@@ -27,7 +32,7 @@ export class ArtifactRegenerationService {
    * @param {Object} options.parentCell - Parent Cell
    * @param {Object} options.childCell - Child Cell
    * @param {Object} options.divisionPlan - Living Context Division Plan
-   * @returns {Promise<Object>} { produced, failed, skipped, complete }
+   * @returns {Promise<Object>} paired parent/child products and relations
    */
   async regenerateForDivision({ parentCell, childCell, divisionPlan }) {
     // Validate inputs
@@ -46,9 +51,10 @@ export class ArtifactRegenerationService {
 
     const productionPlan = divisionPlan.productionPlan;
 
-    // Empty production plan is valid, not an error
     if (productionPlan.length === 0) {
-      return createDivisionProductionResult();
+      throw new Error(
+        "regenerateForDivision: productionPlan must create parent and child products"
+      );
     }
 
     if (!childCell.productionService) {
@@ -61,6 +67,7 @@ export class ArtifactRegenerationService {
 
     const produced = [];
     const parentRevisions = [];
+    const relations = [];
     const failed = [];
     const skipped = [];
 
@@ -85,9 +92,10 @@ export class ArtifactRegenerationService {
 
         produced.push(result.produced);
         parentRevisions.push(result.parentRevision);
+        relations.push(result.relation);
 
       } catch (error) {
-        // Record failure but continue with other items
+        // Stop at the first incomplete pair so the coordinator can roll back.
         console.error(`Failed to regenerate artifact: ${item.title || item.sourceArtifactId}`, error);
 
         failed.push({
@@ -96,12 +104,14 @@ export class ArtifactRegenerationService {
           stage: 'production',
           message: error.message
         });
+        break;
       }
     }
 
     return { 
       produced, 
       parentRevisions,
+      relations,
       failed, 
       skipped,
       complete: failed.length === 0
@@ -153,21 +163,6 @@ export class ArtifactRegenerationService {
       type,
     });
 
-    const producedResult = await childCell.productionService.produceFromTransformation(
-      this._createChildDivisionProductionRequest({
-        item,
-        parentCell,
-        childCell,
-        divisionPlan,
-        sourceResult,
-        sourceWarnings,
-        sourceArtifactIds,
-        type,
-        title,
-        goal,
-      })
-    );
-
     const parentRevisionTitle =
       this._resolveParentRevisionTitle({
         item,
@@ -197,21 +192,49 @@ export class ArtifactRegenerationService {
         })
       );
 
-    return {
-      produced: this._createDivisionProducedRecord({
-        index,
-        title,
-        childCell,
-        producedResult,
-        sourceArtifactIds,
-      }),
-      parentRevision: this._createParentRevisionRecord({
-        index,
-        title: parentRevisionTitle,
+    const parentRevision = this._createParentRevisionRecord({
+      index,
+      title: parentRevisionTitle,
+      parentCell,
+      parentRevisionResult,
+      sourceArtifactIds,
+    });
+
+    const producedResult = await childCell.productionService.produceFromTransformation(
+      this._createChildDivisionProductionRequest({
+        item,
         parentCell,
-        parentRevisionResult,
+        childCell,
+        divisionPlan,
+        sourceResult,
+        sourceWarnings,
         sourceArtifactIds,
-      }),
+        type,
+        title,
+        goal,
+      })
+    );
+
+    const produced = this._createDivisionProducedRecord({
+      index,
+      title,
+      childCell,
+      producedResult,
+      sourceArtifactIds,
+    });
+
+    const relation = await this.artifactRelationService.linkDivisionProducts({
+      parentCell,
+      childCell,
+      parentProduct: parentRevision,
+      childProduct: produced,
+      divisionPlan,
+    });
+
+    return {
+      produced,
+      parentRevision,
+      relation,
     };
   }
 

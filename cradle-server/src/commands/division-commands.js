@@ -83,10 +83,7 @@ export function createDivisionCommands() {
         console.log(`Child: ${childId}`);
 
 
-        if (result.complete) {
-          engine.activeCellId = result.child.id;
-          console.log(`Switched to ${result.child.id}`);
-        }
+        console.log(`Switched to ${result.child.id}`);
       },
     },
   ];

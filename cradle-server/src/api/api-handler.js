@@ -36,6 +36,10 @@ export function createApiHandler({
 
   return async function handleApiRequest(request) {
     try {
+      if (typeof engine.syncCellsFromDisk === "function") {
+        await engine.syncCellsFromDisk();
+      }
+
       const route = normalizeRoute(request);
       const matchingRoute = routes.find((candidate) => {
         if (candidate.method !== route.method) return false;

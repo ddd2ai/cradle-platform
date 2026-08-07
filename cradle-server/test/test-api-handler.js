@@ -342,7 +342,18 @@ const handler = createApiHandler({
     divide: async ({ parentCell, childId }) => {
       divisionCalls.push({ parentCellId: parentCell.id, childId });
       const child = await engine.createCell(childId);
-      return { child, complete: true, errors: [] };
+      return {
+        child,
+        parentProducts: [{ artifactId: "artifact-parent" }],
+        childProducts: [{ artifactId: "artifact-child" }],
+        productRelations: [{
+          id: "relation-001",
+          sourceProduct: { artifactId: "artifact-parent" },
+          targetProduct: { artifactId: "artifact-child" },
+        }],
+        complete: true,
+        errors: [],
+      };
     },
   }),
   fusionServiceFactory: () => ({
@@ -1195,6 +1206,13 @@ assert.equal(divided.status, 200);
 assert.deepEqual(divided.body, {
   parentCellId: "cell-001",
   childCellId: "cell-divided",
+  parentProducts: [{ artifactId: "artifact-parent" }],
+  childProducts: [{ artifactId: "artifact-child" }],
+  productRelations: [{
+    id: "relation-001",
+    sourceProduct: { artifactId: "artifact-parent" },
+    targetProduct: { artifactId: "artifact-child" },
+  }],
   status: "completed",
   complete: true,
   errors: [],

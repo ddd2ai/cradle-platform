@@ -14,6 +14,7 @@ class FakeEngine {
   constructor() {
     this.cells = new Map();
     this.createdCells = [];
+    this.activeCellId = "parent-control";
   }
 
   hasCell(childId) {
@@ -29,6 +30,19 @@ class FakeEngine {
     this.cells.set(childId, cell);
     this.createdCells.push(childId);
     return cell;
+  }
+
+  useCell(cellId) {
+    assert.ok(this.cells.has(cellId), "handoff target must exist");
+    this.activeCellId = cellId;
+  }
+}
+
+let nextArtifactId = 1;
+
+class FakeProductionService {
+  async produceFromTransformation() {
+    return { id: `artifact-${nextArtifactId++}` };
   }
 }
 
@@ -46,6 +60,13 @@ class FakeCell {
     this.relationships = [];
     this.generation = 1;
     this.parent = null;
+    this.productionService = new FakeProductionService();
+    this.artifactStore = {
+      listArtifactSummaries: async () => ({
+        artifacts: [{ artifactId: "source-artifact", type: "code" }],
+        errors: [],
+      }),
+    };
   }
 
   async assertCanDivide() {
@@ -180,6 +201,20 @@ class FakeLivingContextService {
         history: "Test history",
         thought: "Test thought",
       },
+      productionPlan: [{
+        sourceArtifactId: "source-artifact",
+        action: "derive",
+        targetCellId: childId,
+        title: "Split capability",
+      }],
+      sharedContracts: [{
+        name: "Split capability API",
+        ownerCellId: childId,
+        consumerCellIds: [parentCell.id],
+        inputs: ["Request"],
+        outputs: ["Response"],
+        description: "Parent invokes the child capability.",
+      }],
     };
   }
 }
@@ -665,6 +700,204 @@ async function testParameterValidation() {
   console.log("✅ Parameter validation works correctly");
 }
 
+function createCompleteProductionResult() {
+  return {
+    parentRevisions: [{
+      artifactId: "artifact-parent",
+      title: "Parent product",
+    }],
+    produced: [{
+      artifactId: "artifact-child",
+      title: "Child product",
+    }],
+    relations: [{
+      id: "relation-001",
+      type: "api-invocation",
+      sourceProduct: {
+        cellId: "parent-atomic",
+        artifactId: "artifact-parent",
+      },
+      targetProduct: {
+        cellId: "child-atomic",
+        artifactId: "artifact-child",
+      },
+    }],
+    failed: [],
+    skipped: [],
+    complete: true,
+  };
+}
+
+async function testCompleteResultAndHandoffOrder() {
+  console.log("\n=== Test: Complete Result And Handoff Order ===\n");
+
+  const events = [];
+  const engine = new FakeEngine();
+  const parentCell = new FakeCell("parent-atomic");
+  engine.cells.set(parentCell.id, parentCell);
+  engine.activeCellId = parentCell.id;
+
+  const originalCreateCell = engine.createCell.bind(engine);
+  engine.createCell = async (childId) => {
+    events.push("createChild");
+    return originalCreateCell(childId);
+  };
+  engine.useCell = (cellId) => {
+    events.push("handoffControl");
+    engine.activeCellId = cellId;
+  };
+
+  const service = new CellDivisionService({
+    livingContextServiceFactory: (requesterCell) =>
+      new FakeLivingContextService({ requesterCell }),
+    artifactRegenerationService: {
+      async regenerateForDivision() {
+        assert.equal(engine.activeCellId, parentCell.id);
+        events.push("createParentProduct");
+        events.push("createChildProduct");
+        events.push("linkProducts");
+        assert.equal(engine.activeCellId, parentCell.id);
+        return createCompleteProductionResult();
+      },
+    },
+  });
+
+  const result = await service.divide({
+    engine,
+    parentCell,
+    childId: "child-atomic",
+  });
+
+  assert.deepEqual(events, [
+    "createChild",
+    "createParentProduct",
+    "createChildProduct",
+    "linkProducts",
+    "handoffControl",
+  ]);
+  assert.equal(engine.activeCellId, "child-atomic");
+  assert.equal(result.parentProducts[0].artifactId, "artifact-parent");
+  assert.equal(result.childProducts[0].artifactId, "artifact-child");
+  assert.equal(result.productRelations[0].id, "relation-001");
+  assert.equal(result.complete, true);
+
+  console.log("✅ Complete result is linked before control handoff");
+}
+
+async function testFailuresRollbackWithoutHandoff() {
+  console.log("\n=== Test: Failures Roll Back Without Handoff ===\n");
+
+  for (const failureStage of [
+    "parent-product",
+    "child-product",
+    "product-relation",
+  ]) {
+    const engine = new FakeEngine();
+    const parentCell = new FakeCell(`parent-${failureStage}`);
+    engine.cells.set(parentCell.id, parentCell);
+    engine.activeCellId = parentCell.id;
+
+    const service = new CellDivisionService({
+      livingContextServiceFactory: (requesterCell) =>
+        new FakeLivingContextService({ requesterCell }),
+      artifactRegenerationService: {
+        async regenerateForDivision() {
+          throw new Error(`${failureStage} failed`);
+        },
+      },
+    });
+
+    await assert.rejects(() => service.divide({
+      engine,
+      parentCell,
+      childId: `child-${failureStage}`,
+    }), /division rolled back/);
+
+    assert.equal(engine.activeCellId, parentCell.id);
+    assert.equal(engine.hasCell(`child-${failureStage}`), false);
+  }
+
+  console.log("✅ Product and relation failures keep parent control");
+}
+
+async function testChildCreationFailureDoesNotHandoff() {
+  console.log("\n=== Test: Child Creation Failure ===\n");
+
+  const engine = new FakeEngine();
+  const parentCell = new FakeCell("parent-child-failure");
+  engine.activeCellId = parentCell.id;
+  engine.createCell = async () => {
+    throw new Error("child creation failed");
+  };
+
+  const service = new CellDivisionService({
+    livingContextServiceFactory: (requesterCell) =>
+      new FakeLivingContextService({ requesterCell }),
+  });
+
+  await assert.rejects(() => service.divide({
+    engine,
+    parentCell,
+    childId: "child-creation-failure",
+  }), /division rolled back/);
+  assert.equal(engine.activeCellId, parentCell.id);
+  assert.equal(engine.hasCell("child-creation-failure"), false);
+
+  console.log("✅ Child creation failure keeps parent control");
+}
+
+async function testDisallowedDivisionFailsBeforeCreation() {
+  console.log("\n=== Test: Disallowed Division ===\n");
+
+  const engine = new FakeEngine();
+  const parentCell = new FakeCell("parent-disallowed");
+  parentCell.assertCanDivide = async () => {
+    throw new Error("division not allowed");
+  };
+
+  const service = new CellDivisionService();
+  await assert.rejects(() => service.divide({
+    engine,
+    parentCell,
+    childId: "child-disallowed",
+  }), /division not allowed/);
+  assert.deepEqual(engine.createdCells, []);
+
+  console.log("✅ Disallowed division creates no data");
+}
+
+async function testRepeatedCommandDoesNotDuplicateProducts() {
+  console.log("\n=== Test: Repeated Division Command ===\n");
+
+  const engine = new FakeEngine();
+  const parentCell = new FakeCell("parent-repeat");
+  let productionCalls = 0;
+  const completeResult = createCompleteProductionResult();
+  completeResult.relations[0].sourceProduct.cellId = parentCell.id;
+  completeResult.relations[0].targetProduct.cellId = "child-repeat";
+
+  const service = new CellDivisionService({
+    livingContextServiceFactory: (requesterCell) =>
+      new FakeLivingContextService({ requesterCell }),
+    artifactRegenerationService: {
+      async regenerateForDivision() {
+        productionCalls += 1;
+        return completeResult;
+      },
+    },
+  });
+
+  await service.divide({ engine, parentCell, childId: "child-repeat" });
+  await assert.rejects(() => service.divide({
+    engine,
+    parentCell,
+    childId: "child-repeat",
+  }), /already exists/);
+  assert.equal(productionCalls, 1);
+
+  console.log("✅ Repeated command does not duplicate products or relations");
+}
+
 // ===== 執行測試 =====
 
 async function runAllTests() {
@@ -685,6 +918,11 @@ async function runAllTests() {
   await testParentMemoryNotCopied();
   await testSharedContractExistingCellReference();
   await testSharedContractUnknownCellReferenceFails();
+  await testCompleteResultAndHandoffOrder();
+  await testFailuresRollbackWithoutHandoff();
+  await testChildCreationFailureDoesNotHandoff();
+  await testDisallowedDivisionFailsBeforeCreation();
+  await testRepeatedCommandDoesNotDuplicateProducts();
 
   console.log("\n╔═══════════════════════════════════════════════════════╗");
   console.log("║   ✅ All Tests Passed                                 ║");

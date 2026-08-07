@@ -39,6 +39,8 @@ export class CradleEngine {
 
     this.cells = new Map();
     this.inboxes = new Map();
+    this.stagedCellIds = new Set();
+    this.cellSyncPromise = null;
 
     this.CRADLE_ID = "Cradle";
     this.activeCellId = this.CRADLE_ID;
@@ -118,9 +120,7 @@ export class CradleEngine {
     if (cellDirs.length === 0) {
       await this.createCell("cell-001");
     } else {
-      for (const dir of cellDirs) {
-        await this.registerCell(dir.name);
-      }
+      await this.syncCellsFromDisk();
     }
 
     this.activeCellId = this.CRADLE_ID;
@@ -130,7 +130,7 @@ export class CradleEngine {
     return this.activeCellId === this.CRADLE_ID;
   }
 
-  async createCell(id) {
+  async createCell(id, { staged = false } = {}) {
     const cell = new CradleCell({
       id,
       name: id,
@@ -139,11 +139,73 @@ export class CradleEngine {
       projectRoot: this.projectRoot,
     });
 
+    if (staged) {
+      await fs.mkdir(cell.rootDir, { recursive: true });
+      await fs.writeFile(this._cellInitializingFile(cell.rootDir), "");
+      this.stagedCellIds.add(id);
+    }
+
     await cell.prepare();
     this.cells.set(id, cell);
     this.inboxes.set(id, await cell.readInbox());
 
     return cell;
+  }
+
+  async markCellReady(cellId) {
+    const cell = this.cells.get(cellId);
+    if (!cell) {
+      throw new Error(`Cell not found: ${cellId}`);
+    }
+
+    await fs.rm(this._cellInitializingFile(cell.rootDir), { force: true });
+    this.stagedCellIds.delete(cellId);
+  }
+
+  async syncCellsFromDisk() {
+    if (this.cellSyncPromise) {
+      return this.cellSyncPromise;
+    }
+
+    this.cellSyncPromise = this._syncCellsFromDisk();
+
+    try {
+      return await this.cellSyncPromise;
+    } finally {
+      this.cellSyncPromise = null;
+    }
+  }
+
+  async _syncCellsFromDisk() {
+    const cellsDir = path.join(this.projectRoot, "cells");
+    await fs.mkdir(cellsDir, { recursive: true });
+    const entries = await fs.readdir(cellsDir, { withFileTypes: true });
+
+    for (const entry of entries) {
+      if (!entry.isDirectory() || this.cells.has(entry.name)) {
+        continue;
+      }
+
+      const rootDir = path.join(cellsDir, entry.name);
+      if (await this._isCellInitializing(rootDir)) {
+        continue;
+      }
+
+      await this.registerCell(entry.name);
+    }
+  }
+
+  async _isCellInitializing(rootDir) {
+    try {
+      await fs.access(this._cellInitializingFile(rootDir));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  _cellInitializingFile(rootDir) {
+    return path.join(rootDir, ".cell-initializing");
   }
 
   async registerCell(id) {
@@ -171,6 +233,10 @@ export class CradleEngine {
       throw new Error("cellId is required");
     }
 
+    if (this.stagedCellIds.has(cellId)) {
+      return null;
+    }
+
     return this.cells.get(cellId) ?? null;
   }
 
@@ -189,11 +255,13 @@ export class CradleEngine {
   }
 
   listCells() {
-    return [...this.cells.values()];
+    return [...this.cells.values()].filter(
+      (cell) => !this.stagedCellIds.has(cell.id)
+    );
   }
 
   listCellIds() {
-    return [...this.cells.keys()];
+    return this.listCells().map((cell) => cell.id);
   }
 
   useCell(cellId) {
@@ -399,6 +467,8 @@ export class CradleEngine {
 
   async handleInput(input) {
     if (!input) return;
+
+    await this.syncCellsFromDisk();
 
     const context = {
       engine: this,
