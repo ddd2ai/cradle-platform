@@ -7,6 +7,7 @@ export class ArtifactRelationService {
     parentProduct,
     childProduct,
     divisionPlan,
+    productContract,
   }) {
     const parentRef = {
       cellId: parentCell.id,
@@ -16,11 +17,17 @@ export class ArtifactRelationService {
       cellId: childCell.id,
       artifactId: childProduct.artifactId,
     };
-    const apiInvocations = this._createApiInvocations({
-      parentRef,
-      childRef,
-      sharedContracts: divisionPlan.sharedContracts ?? [],
-    });
+    const apiInvocations = productContract?.apiInvocations?.length
+      ? this._resolveGeneratedInvocations({
+          parentRef,
+          childRef,
+          invocations: productContract.apiInvocations,
+        })
+      : this._createApiInvocations({
+          parentRef,
+          childRef,
+          sharedContracts: divisionPlan.sharedContracts ?? [],
+        });
     const primaryInvocation = apiInvocations[0] ?? {
       sourceProduct: parentRef,
       targetProduct: childRef,
@@ -33,6 +40,7 @@ export class ArtifactRelationService {
       targetProduct: primaryInvocation.targetProduct,
       apiInvocations,
       contracts: structuredClone(divisionPlan.sharedContracts ?? []),
+      productContract: productContract ? structuredClone(productContract) : null,
       createdAt: new Date().toISOString(),
     };
 
@@ -40,6 +48,19 @@ export class ArtifactRelationService {
     await this._persistRelation(childCell, childProduct.artifactId, relation);
 
     return relation;
+  }
+
+  _resolveGeneratedInvocations({ parentRef, childRef, invocations }) {
+    const productByRole = {
+      parent: parentRef,
+      child: childRef,
+    };
+
+    return invocations.map((invocation) => ({
+      ...structuredClone(invocation),
+      sourceProduct: productByRole[invocation.sourceRole],
+      targetProduct: productByRole[invocation.targetRole],
+    }));
   }
 
   _createApiInvocations({ parentRef, childRef, sharedContracts }) {

@@ -44,6 +44,31 @@ class FakeProductionService {
   async produceFromTransformation() {
     return { id: `artifact-${nextArtifactId++}` };
   }
+
+  async produceDivisionProductPair({ parentCell, childCell }) {
+    return {
+      parentProduct: {
+        artifact: { id: `artifact-${nextArtifactId++}` },
+        saved: {},
+      },
+      childProduct: {
+        artifact: { id: `artifact-${nextArtifactId++}` },
+        saved: {},
+      },
+      productContract: {
+        apiInvocations: [{
+          sourceRole: "parent",
+          targetRole: "child",
+          method: "POST",
+          path: "/api/division",
+          requestSchema: [],
+          responseSchema: [],
+          parentCellId: parentCell.id,
+          childCellId: childCell.id,
+        }],
+      },
+    };
+  }
 }
 
 // Fake Cell
@@ -753,8 +778,7 @@ async function testCompleteResultAndHandoffOrder() {
     artifactRegenerationService: {
       async regenerateForDivision() {
         assert.equal(engine.activeCellId, parentCell.id);
-        events.push("createParentProduct");
-        events.push("createChildProduct");
+        events.push("createProductPairByParent");
         events.push("linkProducts");
         assert.equal(engine.activeCellId, parentCell.id);
         return createCompleteProductionResult();
@@ -770,8 +794,7 @@ async function testCompleteResultAndHandoffOrder() {
 
   assert.deepEqual(events, [
     "createChild",
-    "createParentProduct",
-    "createChildProduct",
+    "createProductPairByParent",
     "linkProducts",
     "handoffControl",
   ]);

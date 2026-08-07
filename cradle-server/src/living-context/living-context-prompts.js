@@ -88,7 +88,7 @@ Artifact Catalog 只能用來：
 4. **Parent 不應同時保留已轉移給 Child 的主要 ownership**
 5. **跨邊界依賴應放進 inputs、outputs、relationships 或 sharedContracts**
 6. **childMemorySeed 必須是萃取後的知識，不可整包複製 Parent Memory**
-7. **productionPlan 可以是空的**
+7. **只要 Parent 有 Artifact，productionPlan 就不可為空，且至少一項必須是 derive**
 8. **sourceArtifactId 只能引用 Parent Artifacts 中存在的 artifactId**
 9. **不可直接生成 Artifact JSON**
 10. **不可直接生成程式碼**
@@ -177,6 +177,8 @@ Rules:
 8. Never invent sourceArtifactId.
 9. Use artifactId from Parent Artifacts as sourceArtifactId.
 10. derive preserves product continuity: if the source artifact is a Spring Boot code project, the child artifact must also be a Spring Boot code project specialized for the Child Living Context, not only a Markdown explanation.
+11. At least one productionPlan item must use derive. A division is incomplete without a linked Parent/Child product pair.
+12. derive does not transfer source ownership: Parent keeps the source while both Parent and Child receive coordinated division products. Insufficient evidence for transfer is not a reason to keep every artifact.
 
 Shared contract rules:
 1. ownerCellId and consumerCellIds may reference Parent, Child, or an existing Cell from the Colony.

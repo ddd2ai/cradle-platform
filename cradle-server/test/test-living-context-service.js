@@ -455,6 +455,44 @@ await test('Markdown code fence is handled correctly', async () => {
 
   assert(plan, 'Should parse JSON with code fence');
   assert(plan.childLivingContext.purpose === "Child", 'Should extract correct data');
+  assert(plan.productionPlan.length === 1, 'Should restore omitted parent artifact');
+  assert(plan.productionPlan[0].action === "derive", 'Should guarantee one derive item');
+});
+
+await test('All-keep plan is normalized to include one derive pair', async () => {
+  const fakeSourceService = new FakeSourceMaterialService();
+  const fakeRequester = new FakeRequesterCell(JSON.stringify({
+    type: "living-context-division",
+    parentCellId: "cell-parent",
+    childCellId: "cell-payment",
+    revisedParentLivingContext: { purpose: "Coordinate orders", responsibilities: ["Order"] },
+    childLivingContext: { purpose: "Process payments", responsibilities: ["Payment"] },
+    childMemorySeed: { knowledge: "", history: "", thought: "" },
+    productionPlan: [{
+      sourceArtifactId: "artifact-payment",
+      action: "keep",
+      targetCellId: "cell-parent",
+      title: "Payment Module",
+      reason: "Insufficient evidence for ownership transfer"
+    }],
+    sharedContracts: [],
+    assumptions: []
+  }));
+  const service = new LivingContextService({
+    requesterCell: fakeRequester,
+    sourceMaterialService: fakeSourceService
+  });
+
+  const plan = await service.createDivisionPlan({
+    parentCell: { id: "cell-parent" },
+    childId: "cell-payment",
+    dnaDivisionPlan: fakeDnaDivisionPlan
+  });
+
+  assert(plan.productionPlan[0].action === "derive", 'All-keep plan must become derive');
+  assert(plan.productionPlan[0].targetCellId === "cell-payment", 'derive must target child');
+  assert(plan.assumptions.some((item) => item.includes('linked Parent/Child product pair')),
+    'Correction must be documented');
 });
 
 // Test 12: AI 回傳非 JSON 時失敗

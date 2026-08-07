@@ -135,6 +135,13 @@ export class LivingContextService {
       });
     }
 
+    this._ensureDivisionProductPair({
+      plan: normalized,
+      parentArtifacts: artifactSummaries,
+      parentCellId: parentCell.id,
+      childId,
+    });
+
     // 8. 驗證
     const validation = validateDivisionPlan(normalized);
     if (!validation.valid) {
@@ -282,5 +289,61 @@ export class LivingContextService {
     if (errors.length > 0) {
       throw new Error(`Invalid division plan: ${errors.join("; ")}`);
     }
+  }
+
+  _ensureDivisionProductPair({
+    plan,
+    parentArtifacts,
+    parentCellId,
+    childId,
+  }) {
+    if (parentArtifacts.length === 0) {
+      throw new Error(
+        "LivingContextService: division requires at least one parent artifact"
+      );
+    }
+
+    const plannedIds = new Set(
+      plan.productionPlan.map((item) => item.sourceArtifactId)
+    );
+
+    for (const artifact of parentArtifacts) {
+      if (plannedIds.has(artifact.artifactId)) {
+        continue;
+      }
+
+      plan.productionPlan.push({
+        sourceArtifactId: artifact.artifactId,
+        action: "keep",
+        targetCellId: parentCellId,
+        type: artifact.type ?? "",
+        title: artifact.title ?? "Parent Artifact",
+        reason: "Parent artifact retained because the planner omitted it.",
+      });
+    }
+
+    if (plan.productionPlan.some((item) => item.action === "derive")) {
+      return;
+    }
+
+    const candidate = plan.productionPlan.find(
+      (item) => item.action === "keep" || item.action === "transfer"
+    );
+
+    if (!candidate) {
+      return;
+    }
+
+    candidate.action = "derive";
+    candidate.targetCellId = childId;
+    candidate.reason = [
+      candidate.reason,
+      "Derived to guarantee the linked Parent/Child product pair required by division.",
+    ].filter(Boolean).join(" ");
+
+    plan.assumptions ??= [];
+    plan.assumptions.push(
+      `Cradle selected ${candidate.sourceArtifactId} for derive because division requires a linked Parent/Child product pair; source ownership remains with the Parent.`
+    );
   }
 }

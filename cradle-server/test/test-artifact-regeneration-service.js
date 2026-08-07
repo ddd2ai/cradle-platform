@@ -1,721 +1,268 @@
-/**
- * test-artifact-regeneration-service.js
- * 
- * Test ArtifactRegenerationService
- */
-
+import assert from "node:assert/strict";
 import { ArtifactRegenerationService } from "../src/production/artifact-regeneration-service.js";
 
-// Fake SourceMaterialService
 class FakeSourceMaterialService {
-  constructor(options = {}) {
-    this.artifactsToReturn = options.artifactsToReturn || [];
-    this.errorsToReturn = options.errorsToReturn || [];
+  constructor({ artifacts = [], errors = [] } = {}) {
+    this.artifacts = artifacts;
+    this.errors = errors;
   }
 
-  async loadSelectedArtifacts(cell, artifactIds) {
-    return {
-      artifacts: this.artifactsToReturn,
-      errors: this.errorsToReturn
-    };
+  async loadSelectedArtifacts() {
+    return { artifacts: this.artifacts, errors: this.errors };
   }
 }
 
-// Fake ProductionService
-class FakeProductionService {
-  constructor() {
+class FakePairProductionService {
+  constructor({ failOnCall } = {}) {
     this.calls = [];
+    this.failOnCall = failOnCall;
   }
 
-  async produceFromTransformation(options) {
+  async produceDivisionProductPair(options) {
     this.calls.push(options);
+    if (this.calls.length === this.failOnCall) {
+      throw new Error("Pair production failed");
+    }
 
-    // Return a fake artifact
+    const index = this.calls.length;
     return {
-      id: `artifact-test-${Date.now()}`,
-      type: options.type,
-      title: options.title,
-      goal: options.goal,
-      origin: options.origin
+      parentProduct: {
+        artifact: { id: `artifact-parent-${index}` },
+        saved: { dir: `/parent/${index}` },
+      },
+      childProduct: {
+        artifact: { id: `artifact-child-${index}` },
+        saved: { dir: `/child/${index}` },
+      },
+      productContract: {
+        apiInvocations: [{
+          contractName: "Payment API",
+          sourceRole: "parent",
+          targetRole: "child",
+          method: "POST",
+          path: "/api/payments",
+          requestSchema: [],
+          responseSchema: [],
+        }],
+      },
     };
   }
 }
 
-function makeParentCell(id = "cell-parent") {
+function createCells(productionService = new FakePairProductionService()) {
   return {
-    id,
-    productionService: new FakeProductionService()
+    parentCell: { id: "cell-parent", productionService },
+    childCell: {
+      id: "cell-child",
+      productionService: {
+        async produceDivisionProductPair() {
+          throw new Error("Child Cell must not produce division products");
+        },
+      },
+    },
   };
 }
 
-async function runTests() {
-  console.log("Testing ArtifactRegenerationService...\n");
-
-  let passed = 0;
-  let failed = 0;
-
-  // Test 1: Empty productionPlan cannot form a complete division
-  {
-    console.log("Test 1: Empty productionPlan is rejected");
-    
-    const service = new ArtifactRegenerationService({
-      sourceMaterialService: new FakeSourceMaterialService()
-    });
-
-    const parentCell = { id: "cell-parent" };
-    const childCell = { 
-      id: "cell-child",
-      productionService: new FakeProductionService()
-    };
-    const divisionPlan = {
-      productionPlan: [],
-      childLivingContext: {},
-      childMemorySeed: {}
-    };
-
-    try {
-      await service.regenerateForDivision({
-        parentCell,
-        childCell,
-        divisionPlan
-      });
-      console.log("  ❌ FAIL: Expected empty plan to fail\n");
-      failed++;
-    } catch (error) {
-      if (error.message.includes("must create parent and child products")) {
-        console.log("  ✅ PASS\n");
-        passed++;
-      } else {
-        console.log(`  ❌ FAIL: Unexpected error ${error.message}\n`);
-        failed++;
-      }
-    }
-  }
-
-  // Test 2: Each item calls produceFromTransformation once
-  {
-    console.log("Test 2: Each item calls produceFromTransformation once");
-    
-    const fakeProductionService = new FakeProductionService();
-    const service = new ArtifactRegenerationService({
-      sourceMaterialService: new FakeSourceMaterialService()
-    });
-
-    const parentCell = makeParentCell("cell-parent");
-    const childCell = { 
-      id: "cell-child",
-      productionService: fakeProductionService
-    };
-    const divisionPlan = {
-      productionPlan: [
-        { type: "code", title: "Service A", goal: "Create A", sourceArtifactIds: [] },
-        { type: "test", title: "Test B", goal: "Create B", sourceArtifactIds: [] }
-      ],
-      childLivingContext: { purpose: "Test" },
-      childMemorySeed: {}
-    };
-
-    await service.regenerateForDivision({
-      parentCell,
-      childCell,
-      divisionPlan
-    });
-
-    if (fakeProductionService.calls.length === 2) {
-      console.log("  ✅ PASS\n");
-      passed++;
-    } else {
-      console.log(`  ❌ FAIL: Expected 2 calls, got ${fakeProductionService.calls.length}\n`);
-      failed++;
-    }
-  }
-
-  // Test 3: Living Context passed correctly
-  {
-    console.log("Test 3: Living Context passed correctly");
-    
-    const fakeProductionService = new FakeProductionService();
-    const service = new ArtifactRegenerationService({
-      sourceMaterialService: new FakeSourceMaterialService()
-    });
-
-    const parentCell = makeParentCell("cell-parent");
-    const childCell = { 
-      id: "cell-child",
-      productionService: fakeProductionService
-    };
-    const divisionPlan = {
-      productionPlan: [
-        { type: "code", title: "Service", goal: "Create", sourceArtifactIds: [] }
-      ],
-      childLivingContext: { purpose: "Payment Processing", responsibilities: ["payments"] },
-      childMemorySeed: { knowledge: "Payment rules" }
-    };
-
-    await service.regenerateForDivision({
-      parentCell,
-      childCell,
-      divisionPlan
-    });
-
-    const call = fakeProductionService.calls[0];
-    if (
-      call.livingContext.purpose === "Payment Processing" &&
-      call.distilledMemory.knowledge === "Payment rules"
-    ) {
-      console.log("  ✅ PASS\n");
-      passed++;
-    } else {
-      console.log("  ❌ FAIL: Living Context not passed correctly\n");
-      failed++;
-    }
-  }
-
-  // Test 4: origin.mode is division
-  {
-    console.log("Test 4: origin.mode is division");
-    
-    const fakeProductionService = new FakeProductionService();
-    const service = new ArtifactRegenerationService({
-      sourceMaterialService: new FakeSourceMaterialService()
-    });
-
-    const parentCell = makeParentCell("cell-parent");
-    const childCell = { 
-      id: "cell-child",
-      productionService: fakeProductionService
-    };
-    const divisionPlan = {
-      productionPlan: [
-        { type: "code", title: "Service", goal: "Create", sourceArtifactIds: [] }
-      ],
-      childLivingContext: {},
-      childMemorySeed: {}
-    };
-
-    await service.regenerateForDivision({
-      parentCell,
-      childCell,
-      divisionPlan
-    });
-
-    const call = fakeProductionService.calls[0];
-    if (call.origin.mode === "division") {
-      console.log("  ✅ PASS\n");
-      passed++;
-    } else {
-      console.log(`  ❌ FAIL: Expected origin.mode=division, got ${call.origin.mode}\n`);
-      failed++;
-    }
-  }
-
-  // Test 5: sourceCellIds correct
-  {
-    console.log("Test 5: sourceCellIds correct");
-    
-    const fakeProductionService = new FakeProductionService();
-    const service = new ArtifactRegenerationService({
-      sourceMaterialService: new FakeSourceMaterialService()
-    });
-
-    const parentCell = makeParentCell("cell-parent-123");
-    const childCell = { 
-      id: "cell-child",
-      productionService: fakeProductionService
-    };
-    const divisionPlan = {
-      productionPlan: [
-        { type: "code", title: "Service", goal: "Create", sourceArtifactIds: [] }
-      ],
-      childLivingContext: {},
-      childMemorySeed: {}
-    };
-
-    await service.regenerateForDivision({
-      parentCell,
-      childCell,
-      divisionPlan
-    });
-
-    const call = fakeProductionService.calls[0];
-    if (
-      call.origin.sourceCellIds.length === 1 &&
-      call.origin.sourceCellIds[0] === "cell-parent-123"
-    ) {
-      console.log("  ✅ PASS\n");
-      passed++;
-    } else {
-      console.log("  ❌ FAIL: sourceCellIds incorrect\n");
-      failed++;
-    }
-  }
-
-  // Test 6: sourceArtifactIds correct
-  {
-    console.log("Test 6: sourceArtifactIds correct");
-    
-    const fakeProductionService = new FakeProductionService();
-    const service = new ArtifactRegenerationService({
-      sourceMaterialService: new FakeSourceMaterialService()
-    });
-
-    const parentCell = makeParentCell("cell-parent");
-    const childCell = { 
-      id: "cell-child",
-      productionService: fakeProductionService
-    };
-    const divisionPlan = {
-      productionPlan: [
-        { 
-          type: "code", 
-          title: "Service", 
-          goal: "Create", 
-          sourceArtifactIds: ["artifact-123", "artifact-456"] 
-        }
-      ],
-      childLivingContext: {},
-      childMemorySeed: {}
-    };
-
-    await service.regenerateForDivision({
-      parentCell,
-      childCell,
-      divisionPlan
-    });
-
-    const call = fakeProductionService.calls[0];
-    if (
-      call.origin.sourceArtifactIds.length === 2 &&
-      call.origin.sourceArtifactIds[0] === "artifact-123"
-    ) {
-      console.log("  ✅ PASS\n");
-      passed++;
-    } else {
-      console.log("  ❌ FAIL: sourceArtifactIds incorrect\n");
-      failed++;
-    }
-  }
-
-  // Test 7: livingContextId correct
-  {
-    console.log("Test 7: livingContextId correct");
-    
-    const fakeProductionService = new FakeProductionService();
-    const service = new ArtifactRegenerationService({
-      sourceMaterialService: new FakeSourceMaterialService()
-    });
-
-    const parentCell = makeParentCell("cell-parent");
-    const childCell = { 
-      id: "cell-payment",
-      productionService: fakeProductionService
-    };
-    const divisionPlan = {
-      productionPlan: [
-        { type: "code", title: "Service", goal: "Create", sourceArtifactIds: [] }
-      ],
-      childLivingContext: {},
-      childMemorySeed: {}
-    };
-
-    await service.regenerateForDivision({
-      parentCell,
-      childCell,
-      divisionPlan
-    });
-
-    const call = fakeProductionService.calls[0];
-    if (call.origin.livingContextId === "living-context-cell-payment") {
-      console.log("  ✅ PASS\n");
-      passed++;
-    } else {
-      console.log(`  ❌ FAIL: Expected living-context-cell-payment, got ${call.origin.livingContextId}\n`);
-      failed++;
-    }
-  }
-
-  // Test 8: No sourceArtifact still generates
-  {
-    console.log("Test 8: No sourceArtifact still generates");
-    
-    const fakeProductionService = new FakeProductionService();
-    const service = new ArtifactRegenerationService({
-      sourceMaterialService: new FakeSourceMaterialService({
-        artifactsToReturn: []
-      })
-    });
-
-    const parentCell = makeParentCell("cell-parent");
-    const childCell = { 
-      id: "cell-child",
-      productionService: fakeProductionService
-    };
-    const divisionPlan = {
-      productionPlan: [
-        { type: "code", title: "Service", goal: "Create", sourceArtifactIds: [] }
-      ],
-      childLivingContext: {},
-      childMemorySeed: {}
-    };
-
-    const result = await service.regenerateForDivision({
-      parentCell,
-      childCell,
-      divisionPlan
-    });
-
-    if (result.produced.length === 1 && result.failed.length === 0) {
-      console.log("  ✅ PASS\n");
-      passed++;
-    } else {
-      console.log("  ❌ FAIL: Should generate even without source artifacts\n");
-      failed++;
-    }
-  }
-
-  // Test 8.5: Planning child preserves source code artifact type
-  {
-    console.log("Test 8.5: Planning child preserves source code artifact type");
-
-    const fakeProductionService = new FakeProductionService();
-    const service = new ArtifactRegenerationService({
-      sourceMaterialService: new FakeSourceMaterialService({
-        artifactsToReturn: [
-          {
-            id: "artifact-rbac",
-            type: "code",
-            title: "RBAC Module",
-            goal: "Implement RBAC"
-          }
-        ]
-      })
-    });
-
-    const parentCell = makeParentCell("cell-parent");
-    const childCell = {
-      id: "cell-child",
-      productionService: fakeProductionService
-    };
-    const divisionPlan = {
-      productionPlan: [
-        {
-          sourceArtifactId: "artifact-rbac",
-          action: "derive",
-          targetCellId: "cell-child",
-          title: "新能力孵化說明",
-          reason: "萃取 bounded context 與 shared contract 草案"
-        }
-      ],
-      childLivingContext: {
-        purpose: "bounded context 探索與契約規劃",
-        responsibilities: [
-          "產出新子領域分化建議與 sharedContracts 草案",
-          "不直接產生業務程式碼"
-        ]
-      },
-      childMemorySeed: {}
-    };
-
-    await service.regenerateForDivision({
-      parentCell,
-      childCell,
-      divisionPlan
-    });
-
-    const call = fakeProductionService.calls[0];
-    if (
-      call.type === "code" &&
-      call.goal.includes("Spring Boot") &&
-      call.goal.includes("Hexagonal Architecture") &&
-      parentCell.productionService.calls.length === 1 &&
-      parentCell.productionService.calls[0].goal.includes("Parent service") &&
-      parentCell.productionService.calls[0].goal.includes("output port")
-    ) {
-      console.log("  ✅ PASS\n");
-      passed++;
-    } else {
-      console.log(`  ❌ FAIL: Expected child code and parent boundary revision, got type=${call.type}, childGoal=${call.goal}, parentCalls=${parentCell.productionService.calls.length}\n`);
-      failed++;
-    }
-  }
-
-  // Test 9: Source loading errors become warnings
-  {
-    console.log("Test 9: Source loading errors become warnings");
-    
-    const fakeProductionService = new FakeProductionService();
-    const service = new ArtifactRegenerationService({
-      sourceMaterialService: new FakeSourceMaterialService({
-        artifactsToReturn: [],
-        errorsToReturn: [
-          { artifactId: "artifact-missing", error: "Not found" }
-        ]
-      })
-    });
-
-    const parentCell = makeParentCell("cell-parent");
-    const childCell = { 
-      id: "cell-child",
-      productionService: fakeProductionService
-    };
-    const divisionPlan = {
-      productionPlan: [
-        { type: "code", title: "Service", goal: "Create", sourceArtifactIds: ["artifact-missing"] }
-      ],
-      childLivingContext: {},
-      childMemorySeed: {}
-    };
-
-    const result = await service.regenerateForDivision({
-      parentCell,
-      childCell,
-      divisionPlan
-    });
-
-    const call = fakeProductionService.calls[0];
-    if (
-      result.produced.length === 1 &&
-      call.sourceWarnings.length === 1 &&
-      call.sourceWarnings[0].includes("artifact-missing")
-    ) {
-      console.log("  ✅ PASS\n");
-      passed++;
-    } else {
-      console.log("  ❌ FAIL: Source errors should become warnings\n");
-      failed++;
-    }
-  }
-
-  // Test 10: A failure stops additional product creation
-  {
-    console.log("Test 10: Failure stops additional product creation");
-    
-    class FailingProductionService {
-      constructor() {
-        this.callCount = 0;
-      }
-
-      async produceFromTransformation(options) {
-        this.callCount++;
-        
-        if (options.title === "Failing Item") {
-          throw new Error("Production failed");
-        }
-
-        return {
-          id: `artifact-test-${Date.now()}`,
-          type: options.type,
-          title: options.title
-        };
-      }
-    }
-
-    const failingService = new FailingProductionService();
-    const service = new ArtifactRegenerationService({
-      sourceMaterialService: new FakeSourceMaterialService()
-    });
-
-    const parentCell = makeParentCell("cell-parent");
-    const childCell = { 
-      id: "cell-child",
-      productionService: failingService
-    };
-    const divisionPlan = {
-      productionPlan: [
-        { type: "code", title: "Good Item 1", goal: "Create 1", sourceArtifactIds: [] },
-        { type: "code", title: "Failing Item", goal: "Create 2", sourceArtifactIds: [] },
-        { type: "code", title: "Good Item 2", goal: "Create 3", sourceArtifactIds: [] }
-      ],
-      childLivingContext: {},
-      childMemorySeed: {}
-    };
-
-    const result = await service.regenerateForDivision({
-      parentCell,
-      childCell,
-      divisionPlan
-    });
-
-    if (
-      failingService.callCount === 2 &&
-      result.produced.length === 1 &&
-      result.failed.length === 1 &&
-      result.failed[0].title === "Failing Item"
-    ) {
-      console.log("  ✅ PASS\n");
-      passed++;
-    } else {
-      console.log("  ❌ FAIL: Failure should stop later items\n");
-      console.log(`    Calls: ${failingService.callCount}, Produced: ${result.produced.length}, Failed: ${result.failed.length}`);
-      failed++;
-    }
-  }
-
-  // Test 11: complete based on failures
-  {
-    console.log("Test 11: complete based on failures");
-    
-    class AlwaysFailingService {
-      async produceFromTransformation() {
-        throw new Error("Always fails");
-      }
-    }
-
-    const service = new ArtifactRegenerationService({
-      sourceMaterialService: new FakeSourceMaterialService()
-    });
-
-    const parentCell = makeParentCell("cell-parent");
-    const childCell = { 
-      id: "cell-child",
-      productionService: new AlwaysFailingService()
-    };
-    const divisionPlan = {
-      productionPlan: [
-        { type: "code", title: "Item", goal: "Create", sourceArtifactIds: [] }
-      ],
-      childLivingContext: {},
-      childMemorySeed: {}
-    };
-
-    const result = await service.regenerateForDivision({
-      parentCell,
-      childCell,
-      divisionPlan
-    });
-
-    if (result.complete === false && result.failed.length === 1) {
-      console.log("  ✅ PASS\n");
-      passed++;
-    } else {
-      console.log("  ❌ FAIL: complete should be false when items fail\n");
-      failed++;
-    }
-  }
-
-  // Test 12: Returns artifactId
-  {
-    console.log("Test 12: Returns artifactId");
-    
-    const fakeProductionService = new FakeProductionService();
-    const service = new ArtifactRegenerationService({
-      sourceMaterialService: new FakeSourceMaterialService()
-    });
-
-    const parentCell = makeParentCell("cell-parent");
-    const childCell = { 
-      id: "cell-child",
-      productionService: fakeProductionService
-    };
-    const divisionPlan = {
-      productionPlan: [
-        { type: "code", title: "Service", goal: "Create", sourceArtifactIds: [] }
-      ],
-      childLivingContext: {},
-      childMemorySeed: {}
-    };
-
-    const result = await service.regenerateForDivision({
-      parentCell,
-      childCell,
-      divisionPlan
-    });
-
-    if (
-      result.produced.length === 1 &&
-      result.produced[0].artifactId &&
-      result.produced[0].artifactId.startsWith("artifact-test-")
-    ) {
-      console.log("  ✅ PASS\n");
-      passed++;
-    } else {
-      console.log("  ❌ FAIL: Should return artifactId\n");
-      failed++;
-    }
-  }
-
-  // Test 13: Parent, child, and relation are created in strict order
-  {
-    console.log("Test 13: Division product order is strict");
-    const events = [];
-    const parentCell = {
-      id: "cell-parent",
-      productionService: {
-        async produceFromTransformation() {
-          events.push("createParentProduct");
-          return { id: "artifact-parent" };
-        }
-      }
-    };
-    const childCell = {
-      id: "cell-child",
-      productionService: {
-        async produceFromTransformation() {
-          events.push("createChildProduct");
-          return { id: "artifact-child" };
-        }
-      }
-    };
-    const service = new ArtifactRegenerationService({
-      sourceMaterialService: new FakeSourceMaterialService(),
-      artifactRelationService: {
-        async linkDivisionProducts({ parentProduct, childProduct }) {
-          events.push("linkProducts");
-          return {
-            id: "relation-001",
-            sourceProduct: { artifactId: parentProduct.artifactId },
-            targetProduct: { artifactId: childProduct.artifactId },
-          };
-        }
-      }
-    });
-
-    const result = await service.regenerateForDivision({
-      parentCell,
-      childCell,
-      divisionPlan: {
-        productionPlan: [{
-          sourceArtifactId: "source-artifact",
-          action: "derive",
-          targetCellId: childCell.id,
-        }],
-        childLivingContext: {},
-        revisedParentLivingContext: {},
-        childMemorySeed: {},
-        sharedContracts: [],
-      }
-    });
-
-    if (
-      JSON.stringify(events) === JSON.stringify([
-        "createParentProduct",
-        "createChildProduct",
-        "linkProducts",
-      ]) &&
-      result.relations[0].sourceProduct.artifactId === "artifact-parent" &&
-      result.relations[0].targetProduct.artifactId === "artifact-child"
-    ) {
-      console.log("  ✅ PASS\n");
-      passed++;
-    } else {
-      console.log(`  ❌ FAIL: Unexpected order ${events.join(", ")}\n`);
-      failed++;
-    }
-  }
-
-  // Summary
-  console.log("=".repeat(50));
-  console.log(`Total: ${passed + failed}`);
-  console.log(`Passed: ${passed}`);
-  console.log(`Failed: ${failed}`);
-  console.log("=".repeat(50));
-
-  if (failed > 0) {
-    process.exit(1);
-  }
+function createDivisionPlan(productionPlan = [{
+  sourceArtifactId: "artifact-source",
+  action: "derive",
+  type: "code",
+  title: "Child Payment Service",
+}]) {
+  return {
+    productionPlan,
+    revisedParentLivingContext: { purpose: "Orders" },
+    childLivingContext: { purpose: "Payments" },
+    childMemorySeed: { knowledge: "Payment rules" },
+    sharedContracts: [{ name: "Payment API" }],
+  };
 }
 
-runTests().catch(error => {
-  console.error("Test runner error:", error);
+async function testRejectsIncompletePlan() {
+  const service = new ArtifactRegenerationService({
+    sourceMaterialService: new FakeSourceMaterialService(),
+  });
+  const { parentCell, childCell } = createCells();
+
+  await assert.rejects(
+    service.regenerateForDivision({
+      parentCell,
+      childCell,
+      divisionPlan: createDivisionPlan([]),
+    }),
+    /must create parent and child products/
+  );
+}
+
+async function testParentProducesPairWithOneCall() {
+  const events = [];
+  const pairService = new FakePairProductionService();
+  const originalProduce = pairService.produceDivisionProductPair.bind(pairService);
+  pairService.produceDivisionProductPair = async (options) => {
+    events.push("createProductPair");
+    return originalProduce(options);
+  };
+  const { parentCell, childCell } = createCells(pairService);
+  const service = new ArtifactRegenerationService({
+    sourceMaterialService: new FakeSourceMaterialService({
+      artifacts: [{
+        id: "artifact-source",
+        type: "code",
+        title: "Order Service",
+        goal: "Manage orders",
+      }],
+    }),
+    artifactRelationService: {
+      async linkDivisionProducts(options) {
+        events.push("linkProducts");
+        assert.equal(options.productContract.apiInvocations[0].path, "/api/payments");
+        return {
+          id: "relation-1",
+          sourceProduct: {
+            cellId: parentCell.id,
+            artifactId: options.parentProduct.artifactId,
+          },
+          targetProduct: {
+            cellId: childCell.id,
+            artifactId: options.childProduct.artifactId,
+          },
+        };
+      },
+    },
+  });
+
+  const result = await service.regenerateForDivision({
+    parentCell,
+    childCell,
+    divisionPlan: createDivisionPlan(),
+  });
+
+  assert.equal(pairService.calls.length, 1);
+  assert.deepEqual(events, ["createProductPair", "linkProducts"]);
+  assert.equal(result.parentRevisions[0].artifactId, "artifact-parent-1");
+  assert.equal(result.produced[0].artifactId, "artifact-child-1");
+  assert.equal(result.relations[0].id, "relation-1");
+  assert.equal(result.complete, true);
+
+  const request = pairService.calls[0];
+  assert.equal(request.parentCell, parentCell);
+  assert.equal(request.childCell, childCell);
+  assert.equal(request.parentLivingContext.purpose, "Orders");
+  assert.equal(request.childLivingContext.purpose, "Payments");
+  assert.equal(request.sourceArtifacts[0].id, "artifact-source");
+  assert.match(request.parentGoal, /Parent service/);
+  assert.match(request.childGoal, /Spring Boot/);
+}
+
+async function testSourceErrorsBecomePairWarnings() {
+  const pairService = new FakePairProductionService();
+  const { parentCell, childCell } = createCells(pairService);
+  const service = new ArtifactRegenerationService({
+    sourceMaterialService: new FakeSourceMaterialService({
+      errors: [{ artifactId: "missing", error: "Not found" }],
+    }),
+    artifactRelationService: {
+      async linkDivisionProducts() {
+        return { id: "relation-1" };
+      },
+    },
+  });
+
+  await service.regenerateForDivision({
+    parentCell,
+    childCell,
+    divisionPlan: createDivisionPlan(),
+  });
+
+  assert.deepEqual(pairService.calls[0].sourceWarnings, ["missing: Not found"]);
+}
+
+async function testMultipleDerivationsUseOnePrompt() {
+  const pairService = new FakePairProductionService();
+  const { parentCell, childCell } = createCells(pairService);
+  const service = new ArtifactRegenerationService({
+    sourceMaterialService: new FakeSourceMaterialService(),
+    artifactRelationService: {
+      async linkDivisionProducts() {
+        return { id: "relation-1" };
+      },
+    },
+  });
+
+  const result = await service.regenerateForDivision({
+    parentCell,
+    childCell,
+    divisionPlan: createDivisionPlan([
+      { sourceArtifactId: "one", action: "derive", title: "One" },
+      { sourceArtifactId: "two", action: "derive", title: "Two" },
+      { sourceArtifactId: "three", action: "derive", title: "Three" },
+    ]),
+  });
+
+  assert.equal(pairService.calls.length, 1);
+  assert.equal(result.produced.length, 1);
+  assert.equal(result.parentRevisions.length, 1);
+  assert.equal(result.failed.length, 0);
+  assert.equal(result.complete, true);
+  assert.deepEqual(pairService.calls[0].sourceArtifactIds, ["one", "two", "three"]);
+}
+
+async function testPairFailureLeavesNoCompleteProducts() {
+  const pairService = new FakePairProductionService({ failOnCall: 1 });
+  const { parentCell, childCell } = createCells(pairService);
+  const service = new ArtifactRegenerationService({
+    sourceMaterialService: new FakeSourceMaterialService(),
+  });
+
+  const result = await service.regenerateForDivision({
+    parentCell,
+    childCell,
+    divisionPlan: createDivisionPlan(),
+  });
+
+  assert.equal(pairService.calls.length, 1);
+  assert.equal(result.produced.length, 0);
+  assert.equal(result.parentRevisions.length, 0);
+  assert.equal(result.relations.length, 0);
+  assert.equal(result.failed.length, 1);
+  assert.equal(result.complete, false);
+}
+
+async function testKeepCannotCompleteDivision() {
+  const pairService = new FakePairProductionService();
+  const { parentCell, childCell } = createCells(pairService);
+  const service = new ArtifactRegenerationService({
+    sourceMaterialService: new FakeSourceMaterialService(),
+  });
+
+  await assert.rejects(
+    service.regenerateForDivision({
+      parentCell,
+      childCell,
+      divisionPlan: createDivisionPlan([{
+        sourceArtifactId: "kept",
+        action: "keep",
+        title: "Kept",
+      }]),
+    }),
+    /requires at least one derive action/
+  );
+
+  assert.equal(pairService.calls.length, 0);
+}
+
+async function runTests() {
+  console.log("Testing ArtifactRegenerationService...");
+  await testRejectsIncompletePlan();
+  await testParentProducesPairWithOneCall();
+  await testSourceErrorsBecomePairWarnings();
+  await testMultipleDerivationsUseOnePrompt();
+  await testPairFailureLeavesNoCompleteProducts();
+  await testKeepCannotCompleteDivision();
+  console.log("ArtifactRegenerationService tests passed.");
+}
+
+runTests().catch((error) => {
+  console.error(error);
   process.exit(1);
 });

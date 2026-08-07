@@ -65,6 +65,36 @@ const persistedChild = await childStore.readArtifact("artifact-child");
 assert.deepEqual(persistedParent.relations, [relation]);
 assert.deepEqual(persistedChild.relations, [relation]);
 
+const generatedRelation = await service.linkDivisionProducts({
+  parentCell: { id: "parent-cell", artifactStore: parentStore },
+  childCell: { id: "child-cell", artifactStore: childStore },
+  parentProduct: { artifactId: "artifact-parent" },
+  childProduct: { artifactId: "artifact-child" },
+  divisionPlan: { sharedContracts: [] },
+  productContract: {
+    apiInvocations: [{
+      contractName: "Generated Child API",
+      sourceRole: "parent",
+      targetRole: "child",
+      method: "POST",
+      path: "/api/payments",
+      requestSchema: [{ name: "orderId", type: "string" }],
+      responseSchema: [{ name: "paymentId", type: "string" }],
+    }],
+  },
+});
+
+assert.equal(generatedRelation.apiInvocations[0].method, "POST");
+assert.equal(generatedRelation.apiInvocations[0].path, "/api/payments");
+assert.deepEqual(generatedRelation.apiInvocations[0].sourceProduct, {
+  cellId: "parent-cell",
+  artifactId: "artifact-parent",
+});
+assert.deepEqual(generatedRelation.apiInvocations[0].targetProduct, {
+  cellId: "child-cell",
+  artifactId: "artifact-child",
+});
+
 await fs.rm(rootDir, { recursive: true, force: true });
 
 console.log("Artifact relation service tests passed");

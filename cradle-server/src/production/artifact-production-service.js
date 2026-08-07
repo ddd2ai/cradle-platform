@@ -12,6 +12,7 @@ import { ArtifactParser } from "./artifact-parser.js";
 import { ArtifactNormalizer } from "./artifact-normalizer.js";
 import { ArtifactValidator } from "./artifact-validator.js";
 import { produceFromTransformation as _produceFromTransformation } from "./artifact-production-transformation.js";
+import { produceDivisionProductPair as _produceDivisionProductPair } from "./division-product-pair-production.js";
 import { getAiTimeoutMs } from "../cradle-config.js";
 
 export class ArtifactProductionService {
@@ -264,6 +265,10 @@ This repair changed how the cell improves an artifact after real execution feedb
    */
   async produceFromTransformation(options) {
     return await _produceFromTransformation(this, options);
+  }
+
+  async produceDivisionProductPair(options) {
+    return await _produceDivisionProductPair(this, options);
   }
 
   async produce({

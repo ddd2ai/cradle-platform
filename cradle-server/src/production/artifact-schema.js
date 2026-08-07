@@ -70,7 +70,9 @@ export function createArtifact({
       sourceCellIds: Array.isArray(origin.sourceCellIds) ? origin.sourceCellIds : [],
       sourceArtifactIds: Array.isArray(origin.sourceArtifactIds) ? origin.sourceArtifactIds : [],
       sourceArtifactRefs: Array.isArray(origin.sourceArtifactRefs) ? origin.sourceArtifactRefs : [],
-      livingContextId: origin.livingContextId || null
+      livingContextId: origin.livingContextId || null,
+      ...(origin.producerCellId ? { producerCellId: origin.producerCellId } : {}),
+      ...(origin.targetCellId ? { targetCellId: origin.targetCellId } : {}),
     };
   }
 

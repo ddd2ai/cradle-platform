@@ -7,6 +7,7 @@ const tests = [
   "test/test-artifact-execution-service.js",
   "test/test-artifact-production-transformation.js",
   "test/test-artifact-regeneration-service.js",
+  "test/test-division-product-pair-production.js",
   "test/test-artifact-relation-service.js",
   "test/test-artifact-type-policy.js",
   "test/test-artifact-validation.js",
