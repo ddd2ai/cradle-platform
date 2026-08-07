@@ -3,8 +3,8 @@ export class OperationRunner {
     this.operationStore = operationStore;
   }
 
-  start({ type, task }) {
-    const operation = this.operationStore.create({ type });
+  start({ type, context, task }) {
+    const operation = this.operationStore.create({ type, context });
 
     queueMicrotask(async () => {
       this.operationStore.update(operation.operationId, {

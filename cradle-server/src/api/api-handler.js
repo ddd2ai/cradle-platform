@@ -4,14 +4,16 @@ import { CellOperationGuard } from "../application/cell-operation-guard.js";
 import { createApiRoutes } from "./api-routes.js";
 import { LogBuffer } from "../application/log-buffer.js";
 import { InMemoryOperationStore } from "../application/operation-store.js";
+import { ApplicationEventStream } from "../application/application-event-stream.js";
 
 export function createApiHandler({
   engine,
   aiSettingsStoreFactory = () => new AiSettingsStore(),
   heartbeatModeStoreFactory,
   heartbeatServiceFactory,
-  logBuffer = new LogBuffer(),
-  operationStore = new InMemoryOperationStore(),
+  eventStream = new ApplicationEventStream(),
+  logBuffer = new LogBuffer({ eventStream }),
+  operationStore = new InMemoryOperationStore({ eventStream }),
   operationRunner,
   cellOperationGuard = new CellOperationGuard(),
   stabilizationServiceFactory,
@@ -21,6 +23,7 @@ export function createApiHandler({
 }) {
   const routes = createApiRoutes({
     engine,
+    eventStream,
     aiSettingsStoreFactory,
     heartbeatModeStoreFactory,
     heartbeatServiceFactory,
@@ -56,11 +59,11 @@ export function createApiHandler({
 
       const params = matchingRoute.match(route);
       const result = await matchingRoute.execute({ request, route, params });
-      if (result?.rawResponse === true) {
+      if (result?.rawResponse === true || result?.streamResponse === true) {
         return result;
       }
 
-      return jsonResponse(resolveSuccessStatus(route), result);
+      return jsonResponse(resolveSuccessStatus(route, result), result);
     } catch (error) {
       const mapped = mapApiError(error);
       return jsonResponse(mapped.status, mapped.body);
@@ -86,7 +89,11 @@ function stripTrailingSlash(pathname) {
   return pathname;
 }
 
-function resolveSuccessStatus(route) {
+function resolveSuccessStatus(route, result) {
+  if (result?.operationId && result.status === "accepted") {
+    return 202;
+  }
+
   if (route.method === "POST" && route.pathname === "/api/v1/cells") {
     return 201;
   }

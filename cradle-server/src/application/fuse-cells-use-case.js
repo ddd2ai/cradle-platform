@@ -17,7 +17,7 @@ export class FuseCellsUseCase {
     this.fusionServiceFactory = fusionServiceFactory;
   }
 
-  async execute({ parentCellIds, childCellId }) {
+  prepare({ parentCellIds, childCellId }) {
     if (!Array.isArray(parentCellIds) || parentCellIds.length < 2) {
       throw new ApiError({
         status: 400,
@@ -52,6 +52,18 @@ export class FuseCellsUseCase {
       parentCellIds: normalizedParentIds,
     });
 
+    return { normalizedParentIds, parentCells, childId };
+  }
+
+  async execute({
+    parentCellIds,
+    childCellId,
+    prepared,
+    onProgress = () => {},
+  }) {
+    const { normalizedParentIds, parentCells, childId } =
+      prepared ?? this.prepare({ parentCellIds, childCellId });
+
     return this.operationGuard.run(
       [...normalizedParentIds, childId],
       async () => {
@@ -60,6 +72,7 @@ export class FuseCellsUseCase {
             engine: this.engine,
             parentCells,
             childId,
+            onStage: onProgress,
           });
 
           return {

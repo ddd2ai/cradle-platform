@@ -1,8 +1,9 @@
 import { toCellSummary } from "./cell-dto.js";
 
 export class SetAllCellsActiveUseCase {
-  constructor({ engine }) {
+  constructor({ engine, eventStream = null }) {
     this.engine = engine;
+    this.eventStream = eventStream;
   }
 
   async execute({ active }) {
@@ -16,9 +17,15 @@ export class SetAllCellsActiveUseCase {
       this.engine.listCells().map((cell) => toCellSummary(cell))
     );
 
+    const cultivation = this.engine.getCultivationStatus?.() ?? null;
+    this.eventStream?.publish("cell.updated", {
+      cellIds: cells.map((cell) => cell.cellId),
+    });
+    this.eventStream?.publish("cultivation.updated", { cultivation });
+
     return {
       cells,
-      cultivation: this.engine.getCultivationStatus?.() ?? null,
+      cultivation,
     };
   }
 }

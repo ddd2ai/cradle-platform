@@ -63,7 +63,8 @@ export class CellFusionService {
    * @param {string} options.childId - Child Cell ID
    * @returns {Promise<object>} Fusion result
    */
-  async fuse({ engine, parentCells, childId }) {
+  async fuse({ engine, parentCells, childId, onStage = () => {} }) {
+    onStage({ progress: 10, currentStage: "validating" });
     this._validateParameters({ engine, parentCells, childId });
 
     if (this._childExists(engine, childId)) {
@@ -74,6 +75,7 @@ export class CellFusionService {
       await this._createFusionPlans({
         parentCells,
         childId,
+        onStage,
       });
 
     let child;
@@ -81,10 +83,12 @@ export class CellFusionService {
 
     try {
       console.log(`  Creating child cell...`);
+      onStage({ progress: 40, currentStage: "creating-child" });
       child = await engine.createCell(childId);
 
       await runApplicationStage(errors, "apply-dna", async () => {
         console.log(`  Applying DNA fusion...`);
+        onStage({ progress: 50, currentStage: "applying-dna" });
         await this.dnaFusionService.applyPlan({
           childCell: child,
           parentCells,
@@ -94,6 +98,7 @@ export class CellFusionService {
 
       await runApplicationStage(errors, "apply-living-context", async () => {
         console.log(`  Applying Living Context fusion...`);
+        onStage({ progress: 60, currentStage: "applying-living-context" });
         await this._applyFusedLivingContext({
           parentCells,
           childCell: child,
@@ -103,6 +108,7 @@ export class CellFusionService {
 
       await runApplicationStage(errors, "apply-memory", async () => {
         console.log(`  Applying fused memory...`);
+        onStage({ progress: 68, currentStage: "applying-memory" });
         await this._applyFusedMemory({
           parentCells,
           childCell: child,
@@ -112,6 +118,7 @@ export class CellFusionService {
 
       // 12. archive Parent memory snapshots
       console.log(`  Archiving parent memories...`);
+      onStage({ progress: 74, currentStage: "archiving-parent-memory" });
       try {
         await this._archiveParentMemories({
           parentCells,
@@ -124,6 +131,7 @@ export class CellFusionService {
 
       await runApplicationStage(errors, "relationships", async () => {
         console.log(`  Creating relationships...`);
+        onStage({ progress: 80, currentStage: "creating-relationships" });
         await this._createRelationships({
           parentCells,
           childCell: child,
@@ -131,6 +139,7 @@ export class CellFusionService {
         });
       });
 
+      onStage({ progress: 86, currentStage: "creating-products" });
       const productionResult =
         await this._regenerateProductions({
           parentCells,
@@ -138,6 +147,8 @@ export class CellFusionService {
           fusionPlan,
           errors,
         });
+
+      onStage({ progress: 92, currentStage: "validating-products" });
 
       await this._recordFusionHistory({
         parentCells,
@@ -173,9 +184,10 @@ export class CellFusionService {
     }
   }
 
-  async _createFusionPlans({ parentCells, childId }) {
+  async _createFusionPlans({ parentCells, childId, onStage }) {
     try {
       console.log(`  Planning DNA fusion...`);
+      onStage({ progress: 15, currentStage: "planning-dna" });
 
       const dnaFusionPlan = await this.dnaFusionService.createPlan({
         parentCells,
@@ -183,6 +195,7 @@ export class CellFusionService {
       });
 
       console.log(`  Planning Living Context fusion...`);
+      onStage({ progress: 25, currentStage: "planning-living-context" });
       const firstParent = parentCells[0];
       const fusionService = this.livingContextFusionServiceFactory(firstParent);
 

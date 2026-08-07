@@ -2,8 +2,9 @@ import { ApiError } from "../api/api-error.js";
 import { toCellDetail } from "./cell-dto.js";
 
 export class CreateCellUseCase {
-  constructor({ engine }) {
+  constructor({ engine, eventStream = null }) {
     this.engine = engine;
+    this.eventStream = eventStream;
   }
 
   async execute({ cellId }) {
@@ -37,6 +38,8 @@ export class CreateCellUseCase {
 
     const cell = await this.engine.createCell(normalizedCellId);
 
-    return { cell: await toCellDetail(cell) };
+    const detail = await toCellDetail(cell);
+    this.eventStream?.publish("cell.created", { cell: detail });
+    return { cell: detail };
   }
 }

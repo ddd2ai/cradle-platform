@@ -17,10 +17,21 @@ export class StabilizeCellUseCase {
     this.stabilizationServiceFactory = stabilizationServiceFactory;
   }
 
-  async execute({ cellId }) {
-    const cell = requireCell(this.engine, cellId, {
-      code: "SELECTED_CELL_NOT_FOUND",
-      label: "Selected Cell",
+  prepare({ cellId }) {
+    return {
+      cell: requireCell(this.engine, cellId, {
+        code: "SELECTED_CELL_NOT_FOUND",
+        label: "Selected Cell",
+      }),
+    };
+  }
+
+  async execute({ cellId, prepared, onProgress = () => {} }) {
+    const { cell } = prepared ?? this.prepare({ cellId });
+
+    onProgress({
+      progress: 15,
+      currentStage: "stabilizing",
     });
 
     return this.operationGuard.run([cell.id], async () => {
@@ -41,6 +52,11 @@ export class StabilizeCellUseCase {
             },
           });
         }
+
+        onProgress({
+          progress: 90,
+          currentStage: "verifying",
+        });
 
         return {
           cellId: cell.id,

@@ -2,8 +2,9 @@ import { ApiError } from "../api/api-error.js";
 import { toCellDetail } from "./cell-dto.js";
 
 export class SetCellActiveUseCase {
-  constructor({ engine }) {
+  constructor({ engine, eventStream = null }) {
     this.engine = engine;
+    this.eventStream = eventStream;
   }
 
   async execute({ cellId, active }) {
@@ -24,6 +25,8 @@ export class SetCellActiveUseCase {
       await this.engine.deactivateCell(cellId);
     }
 
-    return { cell: await toCellDetail(cell) };
+    const detail = await toCellDetail(cell);
+    this.eventStream?.publish("cell.updated", { cell: detail });
+    return { cell: detail };
   }
 }

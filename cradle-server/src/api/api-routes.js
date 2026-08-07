@@ -42,9 +42,12 @@ import { SetCellActiveUseCase } from "../application/set-cell-active-use-case.js
 import { SetHeartbeatModeUseCase } from "../application/set-heartbeat-mode-use-case.js";
 import { StabilizeCellUseCase } from "../application/stabilize-cell-use-case.js";
 import { UpdateCradleConfigUseCase } from "../application/update-cradle-config-use-case.js";
+import { createApplicationEventResponse } from "../application/application-event-stream.js";
+import { StartOperationUseCase } from "../application/start-operation-use-case.js";
 
 export function createApiRoutes({
   engine,
+  eventStream,
   heartbeatModeStoreFactory = () => new HeartbeatModeStore(),
   aiSettingsStoreFactory,
   heartbeatServiceFactory,
@@ -58,6 +61,12 @@ export function createApiRoutes({
   cradleConfigFile,
 }) {
   return [
+    exact("GET", "/api/v1/events", async ({ request }) =>
+      createApplicationEventResponse({
+        eventStream,
+        lastEventId: request.headers?.["last-event-id"],
+      })
+    ),
     exact("GET", "/health", async () =>
       new GetHealthUseCase({ engine }).execute()
     ),
@@ -111,54 +120,86 @@ export function createApiRoutes({
       new ClearLogsUseCase({ logBuffer }).execute()
     ),
     exact("POST", "/api/v1/cells", async ({ request }) =>
-      new CreateCellUseCase({ engine }).execute({
+      new CreateCellUseCase({ engine, eventStream }).execute({
         cellId: request.body?.cellId,
       })
     ),
     exact("POST", "/api/v1/cells/activate-all", async () =>
-      new SetAllCellsActiveUseCase({ engine }).execute({ active: true })
+      new SetAllCellsActiveUseCase({ engine, eventStream }).execute({ active: true })
     ),
     exact("POST", "/api/v1/cells/deactivate-all", async () =>
-      new SetAllCellsActiveUseCase({ engine }).execute({ active: false })
+      new SetAllCellsActiveUseCase({ engine, eventStream }).execute({ active: false })
     ),
-    exact("POST", "/api/v1/cells/fuse", async ({ request }) =>
-      new FuseCellsUseCase({
+    exact("POST", "/api/v1/cells/fuse", async ({ request }) => {
+      const useCase = new FuseCellsUseCase({
         engine,
         operationGuard: cellOperationGuard,
         fusionServiceFactory,
-      }).execute({
+      });
+      const input = {
         parentCellIds: request.body?.parentCellIds,
         childCellId: request.body?.childCellId,
-      })
-    ),
+      };
+      const prepared = useCase.prepare(input);
+
+      return new StartOperationUseCase({ operationRunner }).execute({
+        type: "cell-fusion",
+        context: {
+          cellIds: [...prepared.normalizedParentIds, prepared.childId],
+          childCellId: prepared.childId,
+        },
+        task: ({ update }) => useCase.execute({ ...input, prepared, onProgress: update }),
+      });
+    }),
     pattern(
       "POST",
       /^\/api\/v1\/cells\/([^/]+)\/stabilize$/,
-      async ({ params }) =>
-        new StabilizeCellUseCase({
+      async ({ params }) => {
+        const useCase = new StabilizeCellUseCase({
           engine,
           operationGuard: cellOperationGuard,
           stabilizationServiceFactory,
-        }).execute({ cellId: params[0] })
+        });
+        const input = { cellId: params[0] };
+        const prepared = useCase.prepare(input);
+
+        return new StartOperationUseCase({ operationRunner }).execute({
+          type: "cell-stabilization",
+          context: { cellIds: [prepared.cell.id] },
+          task: ({ update }) => useCase.execute({ ...input, prepared, onProgress: update }),
+        });
+      }
     ),
     pattern(
       "POST",
       /^\/api\/v1\/cells\/([^/]+)\/divide$/,
-      async ({ params, request }) =>
-        new DivideCellUseCase({
+      async ({ params, request }) => {
+        const useCase = new DivideCellUseCase({
           engine,
           operationGuard: cellOperationGuard,
           divisionServiceFactory,
-        }).execute({
+        });
+        const input = {
           cellId: params[0],
           childCellId: request.body?.childCellId,
-        })
+        };
+        const prepared = useCase.prepare(input);
+
+        return new StartOperationUseCase({ operationRunner }).execute({
+          type: "cell-division",
+          context: {
+            cellIds: [prepared.parentCell.id, prepared.childId],
+            childCellId: prepared.childId,
+          },
+          task: ({ update }) => useCase.execute({ ...input, prepared, onProgress: update }),
+        });
+      }
     ),
     pattern(
       "POST",
       /^\/api\/v1\/cells\/([^/]+)\/feed$/,
       async ({ params, request }) =>
-        new FeedCellUseCase({ engine }).execute({
+        new FeedCellUseCase({ engine, eventStream }).execute({
           cellId: params[0],
           content: request.body?.content,
         })
@@ -170,7 +211,7 @@ export function createApiRoutes({
       "POST",
       /^\/api\/v1\/cells\/([^/]+)\/(activate|deactivate)$/,
       async ({ params }) =>
-        new SetCellActiveUseCase({ engine }).execute({
+        new SetCellActiveUseCase({ engine, eventStream }).execute({
           cellId: params[0],
           active: params[1] === "activate",
         })
@@ -303,7 +344,10 @@ export function createApiRoutes({
       new GetHeartbeatUseCase({ heartbeatModeStoreFactory }).execute()
     ),
     exact("PUT", "/api/v1/heartbeat/mode", async ({ request }) =>
-      new SetHeartbeatModeUseCase({ heartbeatModeStoreFactory }).execute({
+      new SetHeartbeatModeUseCase({
+        heartbeatModeStoreFactory,
+        eventStream,
+      }).execute({
         mode: request.body?.mode,
       })
     ),

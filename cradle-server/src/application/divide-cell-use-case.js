@@ -16,7 +16,7 @@ export class DivideCellUseCase {
     this.divisionServiceFactory = divisionServiceFactory;
   }
 
-  async execute({ cellId, childCellId }) {
+  prepare({ cellId, childCellId }) {
     const parentCell = requireCell(this.engine, cellId, {
       code: "SELECTED_CELL_NOT_FOUND",
       label: "Parent Cell",
@@ -25,12 +25,25 @@ export class DivideCellUseCase {
       parentCellIds: [parentCell.id],
     });
 
+    return { parentCell, childId };
+  }
+
+  async execute({
+    cellId,
+    childCellId,
+    prepared,
+    onProgress = () => {},
+  }) {
+    const { parentCell, childId } =
+      prepared ?? this.prepare({ cellId, childCellId });
+
     return this.operationGuard.run([parentCell.id, childId], async () => {
       try {
         const result = await this.divisionServiceFactory().divide({
           engine: this.engine,
           parentCell,
           childId,
+          onStage: onProgress,
         });
 
         return {

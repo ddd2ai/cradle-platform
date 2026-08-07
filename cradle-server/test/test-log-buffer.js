@@ -1,9 +1,15 @@
 import assert from "assert";
 import { installConsoleLogBuffer, LogBuffer } from "../src/application/log-buffer.js";
+import { ApplicationEventStream } from "../src/application/application-event-stream.js";
+
+const logEvents = [];
+const eventStream = new ApplicationEventStream();
+eventStream.subscribe((event) => logEvents.push(event));
 
 const logBuffer = new LogBuffer({
   limit: 2,
   now: () => new Date("2026-07-25T10:31:21.000Z"),
+  eventStream,
 });
 
 logBuffer.append({ level: "info", args: ["cell-%s tick", "001"] });
@@ -17,6 +23,8 @@ assert.ok(logBuffer.list()[1].message.includes("Build failed"));
 
 logBuffer.clear();
 assert.deepEqual(logBuffer.list(), []);
+assert.equal(logEvents.filter((event) => event.type === "log.appended").length, 3);
+assert.equal(logEvents.at(-1).type, "logs.cleared");
 
 const output = [];
 const fakeConsole = {

@@ -6,6 +6,7 @@ import { createApiHandler } from "../src/api/api-handler.js";
 import { LogBuffer } from "../src/application/log-buffer.js";
 import { InMemoryOperationStore } from "../src/application/operation-store.js";
 import { OperationRunner } from "../src/application/operation-runner.js";
+import { ApplicationEventStream } from "../src/application/application-event-stream.js";
 
 const engine = {
   activeCellId: "Cradle",
@@ -269,12 +270,17 @@ const aiSettingsStore = {
     };
   },
 };
+const eventStream = new ApplicationEventStream();
+const applicationEvents = [];
+eventStream.subscribe((event) => applicationEvents.push(event));
 const operationStore = new InMemoryOperationStore({
   now: () => new Date("2026-07-24T10:00:00.000Z"),
+  eventStream,
 });
 const operationRunner = new OperationRunner({ operationStore });
 const logBuffer = new LogBuffer({
   now: () => new Date("2026-07-25T10:31:21.000Z"),
+  eventStream,
 });
 logBuffer.append({ level: "info", args: ["cell-001 tick"] });
 logBuffer.append({ level: "warn", args: ["cell-003 idle"] });
@@ -311,6 +317,7 @@ await fs.writeFile(
 );
 const handler = createApiHandler({
   engine,
+  eventStream,
   aiSettingsStoreFactory: () => aiSettingsStore,
   heartbeatModeStoreFactory: () => modeStore,
   heartbeatServiceFactory: () => ({
@@ -1174,8 +1181,10 @@ const stabilized = await handler({
   url: "/api/v1/cells/cell-001/stabilize",
 });
 
-assert.equal(stabilized.status, 200);
-assert.deepEqual(stabilized.body, {
+assert.equal(stabilized.status, 202);
+assert.equal(stabilized.body.type, "cell-stabilization");
+const stabilizedOperation = await waitForOperationResult(handler, stabilized.body);
+assert.deepEqual(stabilizedOperation.result, {
   cellId: "cell-001",
   status: "completed",
   diagnosed: true,
@@ -1202,8 +1211,10 @@ const divided = await handler({
   body: { childCellId: "cell-divided" },
 });
 
-assert.equal(divided.status, 200);
-assert.deepEqual(divided.body, {
+assert.equal(divided.status, 202);
+assert.equal(divided.body.type, "cell-division");
+const dividedOperation = await waitForOperationResult(handler, divided.body);
+assert.deepEqual(dividedOperation.result, {
   parentCellId: "cell-001",
   childCellId: "cell-divided",
   parentProducts: [{ artifactId: "artifact-parent" }],
@@ -1281,8 +1292,10 @@ const fused = await handler({
   },
 });
 
-assert.equal(fused.status, 200);
-assert.deepEqual(fused.body, {
+assert.equal(fused.status, 202);
+assert.equal(fused.body.type, "cell-fusion");
+const fusedOperation = await waitForOperationResult(handler, fused.body);
+assert.deepEqual(fusedOperation.result, {
   parentCellIds: ["cell-001", "cell-002"],
   childCellId: "cell-fused",
   status: "completed",
@@ -1326,10 +1339,36 @@ assert.equal(notFound.status, 404);
 assert.equal(notFound.body.error.code, "ROUTE_NOT_FOUND");
 assert.equal(notFound.body.error.message, "Route not found: GET /missing");
 
+const events = await handler({
+  method: "GET",
+  url: "/api/v1/events",
+  headers: {},
+});
+assert.equal(events.status, 200);
+assert.equal(events.streamResponse, true);
+assert.equal(events.headers["content-type"], "text/event-stream; charset=utf-8");
+assert.ok(applicationEvents.some((event) => event.type === "log.appended"));
+assert.ok(applicationEvents.some((event) => event.type === "operation.updated"));
+assert.ok(applicationEvents.some((event) => event.type === "cell.created"));
+assert.ok(applicationEvents.some((event) => event.type === "cell.updated"));
+assert.ok(applicationEvents.some((event) => event.type === "artifacts.updated"));
+
 console.log("API handler tests passed");
 
 function waitForMicrotasks() {
   return new Promise((resolve) => setImmediate(resolve));
+}
+
+async function waitForOperationResult(apiHandler, accepted) {
+  await waitForMicrotasks();
+  const response = await apiHandler({
+    method: "GET",
+    url: `/api/v1/operations/${accepted.operationId}`,
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.operation.status, "completed");
+  return response.body.operation;
 }
 
 function createCell({

@@ -54,7 +54,8 @@ export class CellDivisionService {
    * @param {string} options.childId - Child Cell ID
    * @returns {Promise<Object>} Division result
    */
-  async divide({ engine, parentCell, childId }) {
+  async divide({ engine, parentCell, childId, onStage = () => {} }) {
+    onStage({ progress: 10, currentStage: "validating" });
     this._validateParameters({ engine, parentCell, childId });
 
     await parentCell.assertCanDivide();
@@ -70,6 +71,7 @@ export class CellDivisionService {
       engine,
       parentCell,
       childId,
+      onStage,
     });
 
     const rollback = this.rollbackFactory({ engine, parentCell, childId });
@@ -79,12 +81,15 @@ export class CellDivisionService {
 
     try {
       console.log(`  Creating child cell...`);
+      onStage({ progress: 40, currentStage: "creating-child" });
       child = await engine.createCell(childId, { staged: true });
 
       console.log(`  Applying DNA division...`);
+      onStage({ progress: 50, currentStage: "applying-dna" });
       await parentCell.applyDivisionPlanBySVD(child, dnaDivisionPlan);
 
       console.log(`  Applying Living Context transformation...`);
+      onStage({ progress: 60, currentStage: "applying-living-context" });
       await this._applyLivingContextPlan({
         parentCell,
         childCell: child,
@@ -92,6 +97,7 @@ export class CellDivisionService {
         dnaDivisionPlan,
       });
 
+      onStage({ progress: 70, currentStage: "creating-products" });
       const productionResult =
         await this._regenerateProductions({
           parentCell,
@@ -99,6 +105,7 @@ export class CellDivisionService {
           livingContextPlan,
         });
 
+      onStage({ progress: 85, currentStage: "validating-products" });
       this._assertCompleteProductionResult(productionResult);
       await this._recordProductionHistory(parentCell, child, productionResult);
 
@@ -111,9 +118,11 @@ export class CellDivisionService {
       });
 
       if (typeof engine.markCellReady === "function") {
+        onStage({ progress: 92, currentStage: "ready-to-handoff" });
         await engine.markCellReady(child.id);
       }
 
+      onStage({ progress: 96, currentStage: "handoff-control" });
       this._handoffControl(engine, child);
       await rollback.complete();
 
@@ -130,12 +139,14 @@ export class CellDivisionService {
     }
   }
 
-  async _createDivisionPlans({ engine, parentCell, childId }) {
+  async _createDivisionPlans({ engine, parentCell, childId, onStage }) {
     try {
       console.log(`  Planning DNA division...`);
+      onStage({ progress: 15, currentStage: "planning-dna" });
       const dnaDivisionPlan = await parentCell.createDivisionPlanBySVD(childId);
 
       console.log(`  Planning Living Context transformation...`);
+      onStage({ progress: 25, currentStage: "planning-living-context" });
       const livingContextService = this.livingContextServiceFactory(parentCell);
       const parentArtifacts = await this._listArtifacts(parentCell);
 
@@ -192,7 +203,7 @@ export class CellDivisionService {
   async _regenerateProductions({ parentCell, child, livingContextPlan }) {
     console.log(`  Regenerating productions...`);
 
-    const productionResult =
+      const productionResult =
       await this.artifactRegenerationService.regenerateForDivision({
         parentCell,
         childCell: child,

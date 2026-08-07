@@ -1,8 +1,9 @@
 import { ApiError } from "../api/api-error.js";
 
 export class FeedCellUseCase {
-  constructor({ engine }) {
+  constructor({ engine, eventStream = null }) {
     this.engine = engine;
+    this.eventStream = eventStream;
   }
 
   async execute({ cellId, content }) {
@@ -37,6 +38,11 @@ export class FeedCellUseCase {
     console.log(
       `[feed] cell=${normalizedCellId} message=${message?.id ?? "unknown"} length=${normalizedContent.length}`
     );
+
+    this.eventStream?.publish("cell.updated", {
+      cellId: normalizedCellId,
+      changed: ["inbox"],
+    });
 
     return {
       cellId: normalizedCellId,

@@ -3,9 +3,14 @@ import util from "util";
 const DEFAULT_LIMIT = 500;
 
 export class LogBuffer {
-  constructor({ limit = DEFAULT_LIMIT, now = () => new Date() } = {}) {
+  constructor({
+    limit = DEFAULT_LIMIT,
+    now = () => new Date(),
+    eventStream = null,
+  } = {}) {
     this.limit = limit;
     this.now = now;
+    this.eventStream = eventStream;
     this.entries = [];
     this.nextId = 1;
   }
@@ -26,6 +31,8 @@ export class LogBuffer {
       this.entries.splice(0, this.entries.length - this.limit);
     }
 
+    this.eventStream?.publish("log.appended", { entry });
+
     return entry;
   }
 
@@ -35,6 +42,7 @@ export class LogBuffer {
 
   clear() {
     this.entries = [];
+    this.eventStream?.publish("logs.cleared", {});
   }
 }
 

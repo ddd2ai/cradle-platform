@@ -10,6 +10,7 @@ import {
 import { createApiHandler } from "./api/api-handler.js";
 import { createHttpServer } from "./api/http-server.js";
 import { installConsoleLogBuffer, LogBuffer } from "./application/log-buffer.js";
+import { ApplicationEventStream } from "./application/application-event-stream.js";
 
 const DEFAULT_PORT = 8787;
 const BUILT_IN_DEFAULT_PROVIDER = "ollama";
@@ -42,7 +43,8 @@ const engine = new CradleEngine({
   heartbeatMode: getHeartbeatMode() ?? "manual",
 });
 
-const logBuffer = new LogBuffer();
+const eventStream = new ApplicationEventStream();
+const logBuffer = new LogBuffer({ eventStream });
 installConsoleLogBuffer({ logBuffer });
 
 await engine.loadCells();
@@ -50,7 +52,7 @@ await engine.loadCells();
 const port = Number(process.env.PORT || DEFAULT_PORT);
 const host = process.env.HOST || "127.0.0.1";
 const server = createHttpServer({
-  handler: createApiHandler({ engine, logBuffer }),
+  handler: createApiHandler({ engine, eventStream, logBuffer }),
 });
 
 server.listen(port, host, () => {

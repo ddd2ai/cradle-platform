@@ -5,10 +5,23 @@ export function createHttpServer({ handler }) {
     const result = await handler({
       method: request.method,
       url: request.url,
+      headers: request.headers,
       body: await readRequestBody(request),
     });
 
     response.writeHead(result.status, result.headers);
+
+    if (result.streamResponse === true) {
+      response.flushHeaders?.();
+      const unsubscribe = result.subscribe((chunk) => response.write(chunk));
+      const keepAlive = setInterval(() => response.write(": keep-alive\n\n"), 15_000);
+      request.on("close", () => {
+        clearInterval(keepAlive);
+        unsubscribe?.();
+      });
+      return;
+    }
+
     response.end(
       Buffer.isBuffer(result.body) || typeof result.body === "string"
         ? result.body
