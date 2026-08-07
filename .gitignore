@@ -106,6 +106,7 @@ context/
 # Generated Skills
 # ==========================================================
 
+.agents/**
 .agents/generated/
 .agents/cache/
 .agents/runtime/
