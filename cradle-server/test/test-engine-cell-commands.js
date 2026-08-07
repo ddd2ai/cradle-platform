@@ -46,7 +46,6 @@ assert.deepEqual(
   commands.map((command) => command.name),
   [
     "/cradle",
-    "/cells",
     "/new",
     "/use",
     "/activate",
@@ -63,11 +62,6 @@ await captureConsoleAsync(() =>
   byName.get("/cradle").execute({ engine })
 );
 assert.equal(engine.activeCellId, "Cradle");
-
-const cellsOutput = await captureConsoleAsync(() =>
-  byName.get("/cells").execute({ engine })
-);
-assert.equal(cellsOutput, "cell-001");
 
 const newOutput = await captureConsoleAsync(() =>
   byName.get("/new").execute({ engine, input: "/new cell-002" })

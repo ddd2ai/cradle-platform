@@ -121,7 +121,7 @@ assert.ok(cellIdentity.includes("Inbox     : 1"));
 const commands = createEngineStatusCommands();
 assert.deepEqual(
   commands.map((command) => command.name),
-  ["/cells-status", "/status", "/whoami"]
+  ["/cells", "/status", "/whoami"]
 );
 
 const byName = new Map(commands.map((command) => [command.name, command]));
@@ -129,11 +129,11 @@ const cradleEngine = createEngine({ multipleCells: true });
 const cellEngine = createEngine({ cradleMode: false, multipleCells: true });
 
 assert.equal(
-  byName.get("/cells-status").match("/cells-status", { engine: cradleEngine }),
+  byName.get("/cells").match("/cells", { engine: cradleEngine }),
   true
 );
 assert.equal(
-  byName.get("/cells-status").match("/cells-status", { engine: cellEngine }),
+  byName.get("/cells").match("/cells", { engine: cellEngine }),
   false
 );
 assert.equal(
@@ -147,7 +147,7 @@ assert.equal(
 assert.equal(byName.get("/whoami").match("/whoami"), true);
 
 const cellsStatusOutput = await captureConsoleAsync(() =>
-  byName.get("/cells-status").execute({ engine: cradleEngine })
+  byName.get("/cells").execute({ engine: cradleEngine })
 );
 assert.ok(cellsStatusOutput.includes("cell-001"));
 assert.ok(cellsStatusOutput.includes("cell-002"));

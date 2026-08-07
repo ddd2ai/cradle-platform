@@ -521,8 +521,7 @@ export class CradleEngine {
       /help                    Show commands
       /whoami                  Show current mode or cell
 
-      /cells                   List cells
-      /cells-status            Show all cell statuses
+      /cells                   Show all cell statuses
 
       /activate <cell-id>      Activate a cell
       /deactivate <cell-id>    Deactivate a cell

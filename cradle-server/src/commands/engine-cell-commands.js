@@ -12,14 +12,6 @@ export function createEngineCellCommands() {
     },
 
     {
-      name: "/cells",
-      match: (input) => input === "/cells",
-      execute: async ({ engine }) => {
-        console.log([...engine.cells.keys()].join("\n"));
-      },
-    },
-
-    {
       name: "/new",
       match: (input) => input.startsWith("/new "),
       execute: async ({ engine, input }) => {

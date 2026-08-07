@@ -3,9 +3,9 @@ import { renderTable } from "../ui/render-table.js";
 export function createEngineStatusCommands() {
   return [
     {
-      name: "/cells-status",
+      name: "/cells",
       match: (input, { engine }) =>
-        input === "/cells-status" && engine.isCradleMode(),
+        input === "/cells" && engine.isCradleMode(),
 
       execute: async ({ engine }) => {
         renderCellsStatusTable(await buildCellsStatusRows(engine));
