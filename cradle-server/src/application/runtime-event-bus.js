@@ -28,8 +28,8 @@ export class RuntimeEventBus {
   /**
    * 發佈事件
    * @param {string} type   - 事件類型,例如 "operation.updated"
-   * @param {Object} data   - 事件資料
-   * @returns {Object} 已發佈的事件物件 (含 id, occurredAt)
+   * @param {Object} data   - 事件 payload
+   * @returns {Object} canonical runtime event (id, type, timestamp, payload)
    */
   publish(type, data) {
     if (!type) {
@@ -39,8 +39,8 @@ export class RuntimeEventBus {
     const event = {
       id: String(this.nextId),
       type,
-      data,
-      occurredAt: this.now().toISOString(),
+      timestamp: this.now().toISOString(),
+      payload: data,
     };
 
     this.nextId += 1;

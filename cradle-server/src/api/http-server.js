@@ -13,11 +13,9 @@ export function createHttpServer({ handler }) {
 
     if (result.streamResponse === true) {
       response.flushHeaders?.();
-      const unsubscribe = result.subscribe((chunk) => response.write(chunk));
-      const keepAlive = setInterval(() => response.write(": keep-alive\n\n"), 15_000);
+      const disconnect = result.openResponse(response);
       request.on("close", () => {
-        clearInterval(keepAlive);
-        unsubscribe?.();
+        disconnect?.();
       });
       return;
     }

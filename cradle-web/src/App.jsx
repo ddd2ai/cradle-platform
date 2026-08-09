@@ -117,32 +117,69 @@ function App() {
   // 註冊 resource loaders
   // startTransition: 告訴 React「這些是 REST snapshot 更新,優先級低於使用者互動與 progress 動畫」
   useEffect(() => {
-    registerResourceLoader("cells", async () => {
+    const unregisterCells = registerResourceLoader("cells", async () => {
       const loadedCells = await fetchCells();
       startTransition(() => setCells(loadedCells));
     });
 
-    registerResourceLoader("selectedCell", async () => {
+    const unregisterSelectedCell = registerResourceLoader("selectedCell", async () => {
       const selectedId = selectedCellIdRef.current;
       if (selectedId) {
         await loadSelectedCell(selectedId);
       }
     });
 
-    registerResourceLoader("cultivation", async () => {
+    const unregisterCultivation = registerResourceLoader("cultivation", async () => {
       const status = await fetchCultivationStatus();
       startTransition(() => setCultivationStatus(status));
     });
+
+    return () => {
+      unregisterCells();
+      unregisterSelectedCell();
+      unregisterCultivation();
+    };
   }, []);
 
   useEffect(() => subscribeToCradleEvents((event) => {
     if (["cell.created", "cell.updated"].includes(event.type)) {
-      // 使用 invalidation queue 而非立即 refetch
+      const { payload } = event;
+
+      // Direct command events carry the changed Cell and can update presentation
+      // state locally. Terminal operations reconcile once from operation.updated.
+      if (payload.cell) {
+        const changedCell = {
+          ...payload.cell,
+          id: payload.cell.id ?? payload.cell.cellId,
+        };
+        startTransition(() => {
+          setCells((currentCells) => {
+            const existingIndex = currentCells.findIndex(
+              (cell) => cell.id === changedCell.id,
+            );
+            if (existingIndex === -1) return [...currentCells, changedCell];
+            return currentCells.map((cell) =>
+              cell.id === changedCell.id ? { ...cell, ...changedCell } : cell,
+            );
+          });
+          setSelectedCell((current) =>
+            current?.cellId === changedCell.cellId
+              ? { ...current, ...changedCell }
+              : current,
+          );
+        });
+        return;
+      }
+
+      if (payload.operationId) {
+        return;
+      }
+
       invalidateResource("cells");
 
       const selectedId = selectedCellIdRef.current;
-      const affectedCellIds = event.data.cellIds ?? [
-        event.data.cellId ?? event.data.cell?.cellId,
+      const affectedCellIds = payload.cellIds ?? [
+        payload.cellId,
       ];
       if (selectedId && affectedCellIds.includes(selectedId)) {
         invalidateResource("selectedCell");
@@ -151,10 +188,9 @@ function App() {
     }
 
     if (event.type === "cultivation.updated") {
-      if (event.data.cultivation) {
-        setCultivationStatus(event.data.cultivation);
-      } else {
-        // 使用 invalidation queue
+      if (event.payload.cultivation) {
+        setCultivationStatus(event.payload.cultivation);
+      } else if (!event.payload.operationId) {
         invalidateResource("cultivation");
       }
       return;
@@ -164,7 +200,7 @@ function App() {
       return;
     }
 
-    const operation = event.data.operation;
+    const operation = event.payload.operation;
     if (!operation) {
       return;
     }

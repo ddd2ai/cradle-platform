@@ -6,7 +6,7 @@
  * 新架構請使用:
  *   import { RuntimeEventBus }       from './runtime-event-bus.js'
  *   import { RuntimeEventAggregator } from './runtime-event-aggregator.js'
- *   import { createSseResponse }     from '../api/sse-transport.js'
+ *   import { SseRuntimeEventTransport } from './runtime/sse-runtime-event-transport.js'
  *
  * 此 facade 確保現有測試與舊 import 路徑不需修改。
  */

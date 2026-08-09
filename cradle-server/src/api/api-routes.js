@@ -42,12 +42,12 @@ import { SetCellActiveUseCase } from "../application/set-cell-active-use-case.js
 import { SetHeartbeatModeUseCase } from "../application/set-heartbeat-mode-use-case.js";
 import { StabilizeCellUseCase } from "../application/stabilize-cell-use-case.js";
 import { UpdateCradleConfigUseCase } from "../application/update-cradle-config-use-case.js";
-import { createSseResponse } from "./sse-transport.js";
 import { StartOperationUseCase } from "../application/start-operation-use-case.js";
 
 export function createApiRoutes({
   engine,
   eventStream,
+  sseRuntimeEventTransport,
   heartbeatModeStoreFactory = () => new HeartbeatModeStore(),
   aiSettingsStoreFactory,
   heartbeatServiceFactory,
@@ -61,12 +61,21 @@ export function createApiRoutes({
   cradleConfigFile,
 }) {
   return [
-    exact("GET", "/api/v1/events", async ({ request }) =>
-      createSseResponse({
-        eventBus: eventStream,
-        lastEventId: request.headers?.["last-event-id"],
-      })
-    ),
+    exact("GET", "/api/v1/events", async ({ request }) => ({
+      streamResponse: true,
+      status: 200,
+      headers: {
+        "content-type": "text/event-stream; charset=utf-8",
+        "cache-control": "no-cache, no-transform",
+        connection: "keep-alive",
+        "x-accel-buffering": "no",
+      },
+      openResponse(response) {
+        return sseRuntimeEventTransport.addClient(response, {
+          afterEventId: request.headers?.["last-event-id"],
+        });
+      },
+    })),
     exact("GET", "/health", async () =>
       new GetHealthUseCase({ engine }).execute()
     ),

@@ -376,7 +376,7 @@ async function waitForOperation(
     }
   );
 
-  // 保留原有的 SSE subscription (for other events)
+  // Keep the shared runtime connection alive while the operation is pending.
   const unsubscribe = subscribeToCradleEvents((event) => {
     // operation.updated 已由 operation-progress 處理
     if (event.type === "operation.updated") {
@@ -396,7 +396,9 @@ async function waitForOperation(
       }
 
       await new Promise((resolve) => {
-        const timerId = window.setTimeout(resolve, 2_000);
+        // Runtime events are the normal wake-up path. REST is a low-frequency
+        // fallback and remains the authoritative source if delivery is lost.
+        const timerId = window.setTimeout(resolve, 30_000);
         wake = () => {
           window.clearTimeout(timerId);
           resolve();

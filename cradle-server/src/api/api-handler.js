@@ -5,7 +5,7 @@ import { createApiRoutes } from "./api-routes.js";
 import { LogBuffer } from "../application/log-buffer.js";
 import { InMemoryOperationStore } from "../application/operation-store.js";
 import { RuntimeEventBus } from "../application/runtime-event-bus.js";
-import { RuntimeEventAggregator } from "../application/runtime-event-aggregator.js";
+import { SseRuntimeEventTransport } from "../application/runtime/sse-runtime-event-transport.js";
 
 // ApplicationEventStream re-export 保留 backward compat (測試與舊 callsite 用)
 export { RuntimeEventBus as ApplicationEventStream } from "../application/runtime-event-bus.js";
@@ -18,6 +18,7 @@ export function createApiHandler({
   // 接受舊的 eventStream 參數名稱 (backward compat),也接受新的 eventBus
   eventStream = new RuntimeEventBus(),
   eventBus,
+  sseRuntimeEventTransport,
   logBuffer,
   operationStore,
   operationRunner,
@@ -27,20 +28,19 @@ export function createApiHandler({
   fusionServiceFactory,
   cradleConfigFile,
 }) {
-  // 新架構:將 eventBus (或舊的 eventStream) 包裝進 RuntimeEventAggregator
-  // Domain/Application 程式碼透過 aggregator 發佈事件,不知道 transport 細節
-  const bus = eventBus ?? eventStream;
-  const aggregator = new RuntimeEventAggregator({ eventBus: bus });
+  const runtimeEvents = eventBus ?? eventStream;
+  const sseTransport = sseRuntimeEventTransport ?? new SseRuntimeEventTransport({
+    eventHistory: () => runtimeEvents.history ?? [],
+  });
 
-  // 預設值使用 aggregator 作為 eventStream,確保所有事件經過分類層
-  const resolvedLogBuffer = logBuffer ?? new LogBuffer({ eventBus: aggregator });
+  const resolvedLogBuffer = logBuffer ?? new LogBuffer({ eventBus: runtimeEvents });
   const resolvedOperationStore = operationStore
-    ?? new InMemoryOperationStore({ eventBus: aggregator });
+    ?? new InMemoryOperationStore({ eventBus: runtimeEvents });
 
   const routes = createApiRoutes({
     engine,
-    // SSE endpoint 訂閱的是 aggregator (Phase 4: 可在此換成 WebSocketTransport)
-    eventStream: aggregator,
+    eventStream: runtimeEvents,
+    sseRuntimeEventTransport: sseTransport,
     aiSettingsStoreFactory,
     heartbeatModeStoreFactory,
     heartbeatServiceFactory,

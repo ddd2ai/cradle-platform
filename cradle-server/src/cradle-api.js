@@ -12,6 +12,9 @@ import { createHttpServer } from "./api/http-server.js";
 import { installConsoleLogBuffer, LogBuffer } from "./application/log-buffer.js";
 import { RuntimeEventBus } from "./application/runtime-event-bus.js";
 import { RuntimeEventAggregator } from "./application/runtime-event-aggregator.js";
+import { SseRuntimeEventTransport } from "./application/runtime/sse-runtime-event-transport.js";
+import { WebSocketRuntimeEventTransport } from "./application/runtime/websocket-runtime-event-transport.js";
+import { attachRuntimeWebSocketEndpoint } from "./api/runtime-websocket-endpoint.js";
 
 const DEFAULT_PORT = 8787;
 const BUILT_IN_DEFAULT_PROVIDER = "ollama";
@@ -45,7 +48,15 @@ const engine = new CradleEngine({
 });
 
 const eventBus = new RuntimeEventBus();
-const aggregator = new RuntimeEventAggregator({ eventBus });
+const sseRuntimeEventTransport = new SseRuntimeEventTransport({
+  eventHistory: () => eventBus.history,
+});
+const websocketRuntimeEventTransport = new WebSocketRuntimeEventTransport();
+const aggregator = new RuntimeEventAggregator({
+  eventBus,
+  transports: [sseRuntimeEventTransport, websocketRuntimeEventTransport],
+});
+aggregator.start();
 const logBuffer = new LogBuffer({ eventBus: aggregator });
 installConsoleLogBuffer({ logBuffer });
 
@@ -54,7 +65,21 @@ await engine.loadCells();
 const port = Number(process.env.PORT || DEFAULT_PORT);
 const host = process.env.HOST || "127.0.0.1";
 const server = createHttpServer({
-  handler: createApiHandler({ engine, eventBus: aggregator, logBuffer }),
+  handler: createApiHandler({
+    engine,
+    eventBus: aggregator,
+    logBuffer,
+    sseRuntimeEventTransport,
+  }),
+});
+const websocketEndpoint = attachRuntimeWebSocketEndpoint({
+  server,
+  transport: websocketRuntimeEventTransport,
+});
+
+server.on("close", () => {
+  aggregator.stop();
+  websocketEndpoint.stop();
 });
 
 server.listen(port, host, () => {

@@ -26,6 +26,15 @@ const resourceLoaders = new Map()
  */
 export function registerResourceLoader(resource, loader) {
   resourceLoaders.set(resource, loader);
+  return () => {
+    if (resourceLoaders.get(resource) === loader) {
+      resourceLoaders.delete(resource);
+    }
+  };
+}
+
+export function reconcileRegisteredResources() {
+  return flushInvalidations(Array.from(resourceLoaders.keys()));
 }
 
 /**

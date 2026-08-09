@@ -52,21 +52,21 @@ export function CreationsPage({
     loadCreations();
 
     // 註冊 artifacts resource loader
-    registerResourceLoader("artifacts", async () => {
+    const unregisterArtifacts = registerResourceLoader("artifacts", async () => {
       if (!cancelled) {
         await loadCreations();
       }
     });
 
     const unsubscribe = subscribeToCradleEvents((event) => {
-      if (event.type === "artifacts.updated") {
-        // 使用 invalidation queue 而非立即 reload
+      if (event.type === "artifacts.updated" && !event.payload.operationId) {
         invalidateResource("artifacts");
       }
     });
 
     return () => {
       cancelled = true;
+      unregisterArtifacts();
       unsubscribe();
     };
   }, [skipInitialLoad]);
