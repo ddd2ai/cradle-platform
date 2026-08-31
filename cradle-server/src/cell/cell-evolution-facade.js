@@ -7,6 +7,7 @@ import {
   getAiTimeoutMs,
   getTimeoutMs,
 } from "../cradle-config.js";
+import { evaluateEvolutionSignificance } from "../evolution/evolution-significance-gate.js";
 
 export class CellEvolutionFacade {
   constructor({ cell } = {}) {
@@ -144,20 +145,20 @@ export class CellEvolutionFacade {
 
     try {
       const thoughts = await this.cell.loadUnevolvedThoughts(5);
+      const evidence = await this.cell.readPendingEvolutionEvidence?.() ?? [];
+      const gate = evaluateEvolutionSignificance({ thoughts, evidence, force });
+      this.cell.runtimeMetrics?.increment("evolution_gate_attempts", 1, {
+        cellId: this.cell.id,
+        eligible: gate.eligible,
+      });
 
-      if (!force && thoughts.length < 5) {
+      if (!gate.eligible) {
         return {
           evolved: false,
-          reason: "not enough thoughts",
+          reason: gate.reason,
           thoughtCount: thoughts.length,
-        };
-      }
-
-      if (thoughts.length === 0) {
-        return {
-          evolved: false,
-          reason: "no thoughts",
-          thoughtCount: 0,
+          evidenceCount: evidence.length,
+          gate,
         };
       }
 
@@ -249,8 +250,12 @@ export class CellEvolutionFacade {
       state.evolutionCount = Number(state.evolutionCount ?? 0) + 1;
       state.lastEvolvedAt = new Date().toISOString();
       state.lastEvolutionFile = filename;
+      state.pendingEvolutionEvidence = (state.pendingEvolutionEvidence ?? []).filter(
+        (item) => !gate.evidenceIds.includes(item.evidenceId)
+      );
 
       await this.cell.writeEvolutionState(state);
+      this.cell.runtimeMetrics?.increment("evolution_applied", 1, { cellId: this.cell.id });
 
       return {
         evolved: true,
@@ -258,6 +263,7 @@ export class CellEvolutionFacade {
         thoughtCount: thoughts.length,
         dnaDrift: evolution.dnaDrift ?? [],
         affinities: evolution.affinities ?? [],
+        gate,
       };
     } finally {
       this.cell.isEvolving = false;
@@ -267,17 +273,24 @@ export class CellEvolutionFacade {
   async getEvolutionStatus() {
     const thoughts = await this.cell.listThoughtFiles();
     const state = await this.cell.readEvolutionState();
-
     const evolvedThoughts = state.evolvedThoughts ?? [];
     const unevolvedThoughts = thoughts.filter(
       (file) => !evolvedThoughts.includes(file)
     );
+    const evidence = state.pendingEvolutionEvidence ?? [];
+    const previewThoughts = unevolvedThoughts.slice(0, 5).map((file) => ({ file }));
+    const gate = evaluateEvolutionSignificance({
+      thoughts: previewThoughts,
+      evidence,
+    });
 
     return {
       totalThoughts: thoughts.length,
       evolvedThoughts: evolvedThoughts.length,
       unevolvedThoughts: unevolvedThoughts.length,
-      nextEvolutionIn: Math.max(0, 5 - unevolvedThoughts.length),
+      nextEvolutionIn: gate.eligible ? 0 : null,
+      evolutionGate: gate,
+      pendingEvidence: evidence.length,
       evolutionCount: Number(state.evolutionCount ?? 0),
       lastEvolvedAt: state.lastEvolvedAt ?? "-",
       lastEvolutionFile: state.lastEvolutionFile ?? "-",

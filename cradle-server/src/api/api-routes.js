@@ -32,6 +32,7 @@ import { ListCellsUseCase } from "../application/list-cells-use-case.js";
 import { ListCreationsUseCase } from "../application/list-creations-use-case.js";
 import { ListLogsUseCase } from "../application/list-logs-use-case.js";
 import { ListOperationsUseCase } from "../application/list-operations-use-case.js";
+import { ListRuntimeMetricsUseCase } from "../application/list-runtime-metrics-use-case.js";
 import { OperationRunner } from "../application/operation-runner.js";
 import { ReadCellWorkspaceFileUseCase } from "../application/read-cell-workspace-file-use-case.js";
 import { ReadCellWorkspacePreviewUseCase } from "../application/read-cell-workspace-preview-use-case.js";
@@ -101,6 +102,9 @@ export function createApiRoutes({
     ),
     exact("GET", "/api/v1/logs", async () =>
       new ListLogsUseCase({ logBuffer }).execute()
+    ),
+    exact("GET", "/api/v1/metrics", async () =>
+      new ListRuntimeMetricsUseCase({ metrics: engine.runtimeMetrics }).execute()
     ),
     exact("GET", "/api/v1/config", async () =>
       new GetCradleConfigUseCase({ file: cradleConfigFile }).execute()

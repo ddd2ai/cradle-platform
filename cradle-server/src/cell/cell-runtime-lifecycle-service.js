@@ -16,14 +16,8 @@ export class CellRuntimeLifecycleService {
     this.cell.active = true;
     await this.cell.updateStatus("active");
 
-    this.cell.tickTimer = setInterval(() => {
-      this.tick().catch(async (error) => {
-        console.log(`[${this.cell.id}] tick failed: ${error.message}`);
-        await this.cell.updateStatus("error");
-      });
-    }, this.cell.tickIntervalMs);
-
     console.log(`🟢 Cell activated: ${this.cell.id}`);
+    this.requestActivation("activated");
   }
 
   async deactivate() {
@@ -35,9 +29,13 @@ export class CellRuntimeLifecycleService {
     this.cell.active = false;
 
     if (this.cell.tickTimer) {
-      clearInterval(this.cell.tickTimer);
+      clearTimeout(this.cell.tickTimer);
       this.cell.tickTimer = null;
     }
+
+    this.cell.activationScheduler?.cancel(this.cell.id);
+    this.cell.activationQueued = false;
+    this.cell.activationRequested = false;
 
     await this.cell.updateStatus("idle");
 
@@ -46,6 +44,66 @@ export class CellRuntimeLifecycleService {
 
   isActive() {
     return this.cell.active;
+  }
+
+  requestActivation(_reason = "stimulus") {
+    if (!this.cell.active) return false;
+
+    this.cell.runtimeMetrics?.increment("activation_requested", 1, {
+      cellId: this.cell.id,
+      reason: _reason,
+    });
+    this.cell.activationRequested = true;
+    if (this.cell.isTicking || this.cell.activationQueued || this.cell.tickTimer) {
+      this.cell.runtimeMetrics?.increment("activation_coalesced", 1, { cellId: this.cell.id });
+      return true;
+    }
+
+    if (this.cell.activationScheduler) {
+      this.cell.activationQueued = true;
+      this.cell.activationScheduler.enqueue(this.cell.id, async () => {
+        this.cell.activationQueued = false;
+        await this.runScheduledTick();
+      });
+      return true;
+    }
+
+    this.cell.tickTimer = setTimeout(() => {
+      this.cell.tickTimer = null;
+      this.runScheduledTick().catch(() => {});
+    }, 0);
+    this.cell.tickTimer.unref?.();
+    return true;
+  }
+
+  async runScheduledTick() {
+    if (!this.cell.active || this.cell.isTicking) return;
+    this.cell.activationRequested = false;
+
+    try {
+      this.cell.runtimeMetrics?.increment("activation_started", 1, { cellId: this.cell.id });
+      const result = await this.tick();
+      this.cell.runtimeMetrics?.increment(
+        (result?.processed ?? 0) > 0 ? "activation_productive" : "activation_empty",
+        1,
+        { cellId: this.cell.id, type: result?.type ?? "idle" }
+      );
+      if (result?.workRemains || this.cell.activationRequested) {
+        this.requestActivation("work-remains");
+      }
+    } catch (error) {
+      this.cell.runtimeMetrics?.increment("activation_failed", 1, { cellId: this.cell.id });
+      console.log(`[${this.cell.id}] activation failed: ${error.message}`);
+      await this.cell.updateStatus("error");
+      if (this.cell.active && !this.cell.tickTimer) {
+        this.cell.activationRequested = true;
+        this.cell.tickTimer = setTimeout(() => {
+          this.cell.tickTimer = null;
+          this.requestActivation("retry");
+        }, this.cell.tickIntervalMs);
+        this.cell.tickTimer.unref?.();
+      }
+    }
   }
 
   getActiveTick() {
@@ -66,11 +124,7 @@ export class CellRuntimeLifecycleService {
   }
 
   async tick() {
-    console.log(`⏱️ ${this.cell.id} tick`);
-
     if (this.cell.isTicking) {
-      console.log(`  ${this.cell.id} skipped: already ticking`);
-
       return {
         skipped: true,
         reason: "already ticking",
@@ -92,16 +146,26 @@ export class CellRuntimeLifecycleService {
   }
 
   async performTick() {
-    const inbox = await this.cell.readInbox();
+    const inboxClaim = this.cell.claimInbox
+      ? await this.cell.claimInbox()
+      : { claimId: null, messages: await this.cell.readInbox() };
+    const inbox = inboxClaim.messages;
 
     if (inbox.length > 0) {
-      console.log(`  ${this.cell.id} processing inbox=${inbox.length}`);
-
       await this.cell.updateStatus("running");
 
-      const result = await this.cell.processInbox(inbox);
-
-      await this.cell.clearInbox();
+      let result;
+      try {
+        result = await this.cell.processInbox(inbox);
+        if (this.cell.acknowledgeInboxClaim) {
+          await this.cell.acknowledgeInboxClaim(inboxClaim.claimId);
+        } else {
+          await this.cell.clearInbox();
+        }
+      } catch (error) {
+        await this.cell.releaseInboxClaim?.(inboxClaim.claimId);
+        throw error;
+      }
 
       await this.cell.updateStatus(this.cell.active ? "active" : "idle");
 
@@ -114,13 +178,13 @@ export class CellRuntimeLifecycleService {
     const task = await this.cell.nextPendingTask();
 
     if (task) {
-      console.log(`  ${this.cell.id} processing task=${task.id}`);
-
       await this.cell.updateStatus("running");
 
       const result = await this.cell.processTask(task);
 
       await this.cell.completeTask(task.id);
+
+      const workRemains = Boolean(await this.cell.nextPendingTask());
 
       await this.cell.updateStatus(this.cell.active ? "active" : "idle");
 
@@ -129,34 +193,30 @@ export class CellRuntimeLifecycleService {
         processed: 1,
         taskId: task.id,
         result,
+        workRemains,
       };
     }
 
     const metabolism = await this.cell.metabolize();
 
-    if (metabolism.created > 0) {
-      console.log(`  ${this.cell.id} metabolized stimuli, tasks=${metabolism.created}`);
-
+    if ((metabolism.consumed ?? metabolism.created) > 0) {
       return {
         type: "metabolism",
-        processed: metabolism.created,
+        processed: metabolism.consumed ?? metabolism.created,
         observationFile: metabolism.observationFile,
+        workRemains: metabolism.processing === "reasoning",
       };
     }
 
     const evolution = await this.cell.evolve();
 
     if (evolution.evolved) {
-      console.log(`  ${this.cell.id} evolved from thoughts=${evolution.thoughtCount}`);
-
       return {
         type: "evolution",
         processed: evolution.thoughtCount,
         file: evolution.file,
       };
     }
-
-    console.log(`  ${this.cell.id} idle: no inbox, task, or stimuli`);
 
     return {
       processed: 0,
@@ -166,11 +226,14 @@ export class CellRuntimeLifecycleService {
 
   async shutdown() {
     if (this.cell.tickTimer) {
-      clearInterval(this.cell.tickTimer);
+      clearTimeout(this.cell.tickTimer);
       this.cell.tickTimer = null;
     }
 
     this.cell.active = false;
+    this.cell.activationRequested = false;
+    this.cell.activationScheduler?.cancel(this.cell.id);
+    this.cell.activationQueued = false;
     await this.cell.updateStatus("stopped");
     await this.cell.assistant?.cleanup();
   }

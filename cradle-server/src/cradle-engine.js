@@ -22,6 +22,8 @@ import { createExecutionCommands } from "./commands/execution-commands.js";
 import { createLifecycleCommands } from "./commands/lifecycle-commands.js";
 import dnaPlot2DCommand from "./commands/plot2d-command.js";
 import { PROJECT_ROOT } from "./project-root.js";
+import { CellActivationScheduler } from "./cell/cell-activation-scheduler.js";
+import { RuntimeMetrics } from "./application/runtime-metrics.js";
 
 export class CradleEngine {
   constructor({ 
@@ -30,12 +32,18 @@ export class CradleEngine {
       timeoutSeconds = 3600,
       heartbeatMode = "manual",
       projectRoot = PROJECT_ROOT,
+      activationConcurrency = 4,
   } = {}) {
     this.model = model;
     this.provider = provider;
     this.timeoutSeconds = timeoutSeconds;
     this.heartbeatMode = heartbeatMode;
     this.projectRoot = projectRoot;
+    this.runtimeMetrics = new RuntimeMetrics();
+    this.activationScheduler = new CellActivationScheduler({
+      concurrency: activationConcurrency,
+      metrics: this.runtimeMetrics,
+    });
 
     this.cells = new Map();
     this.inboxes = new Map();
@@ -137,6 +145,9 @@ export class CradleEngine {
       model: this.model,
       provider: this.provider,
       projectRoot: this.projectRoot,
+      activationScheduler: this.activationScheduler,
+      runtimeMetrics: this.runtimeMetrics,
+      activationNotifier: (cellIds, reason) => this.notifyCellActors(cellIds, reason),
     });
 
     if (staged) {
@@ -215,6 +226,9 @@ export class CradleEngine {
       model: this.model,
       provider: this.provider,
       projectRoot: this.projectRoot,
+      activationScheduler: this.activationScheduler,
+      runtimeMetrics: this.runtimeMetrics,
+      activationNotifier: (cellIds, reason) => this.notifyCellActors(cellIds, reason),
     });
 
     await cell.prepare();
@@ -303,15 +317,20 @@ export class CradleEngine {
       createdAt: new Date().toISOString(),
     };
 
-    this.inboxes.get(to).push(message);
-
     const cell = this.cells.get(to);
 
     if (cell) {
       await cell.appendInboxMessage(message);
     }
+    this.inboxes.get(to).push(message);
 
     return message;
+  }
+
+  notifyCellActors(cellIds = [], reason = "stimulus-received") {
+    for (const cellId of new Set(cellIds)) {
+      this.cells.get(cellId)?.runtimeLifecycleService?.requestActivation(reason);
+    }
   }
 
   async activateCell(cellId) {

@@ -15,6 +15,9 @@ const engine = {
   model: "devstral-small-2:24b",
   createdCells: [],
   fedMessages: [],
+  runtimeMetrics: {
+    snapshot: () => ({ counters: { activation_started: 3 } }),
+  },
   listCellIds: () => ["cell-001", "cell-002"],
   listCells: () => [
     ...cellStore.values(),
@@ -395,6 +398,13 @@ assert.deepEqual(health.body, {
   cellCount: 2,
   activeCellId: "Cradle",
 });
+
+const metrics = await handler({
+  method: "GET",
+  url: "/api/v1/metrics",
+});
+assert.equal(metrics.status, 200);
+assert.equal(metrics.body.metrics.counters.activation_started, 3);
 
 const cells = await handler({
   method: "GET",

@@ -31,9 +31,8 @@ export class CellArtifactExecutionService {
     });
 
     const stimulusFile = await this.cell.writeStimulus({
-      category: stimulus.category,
-      name: `execution-${artifactId}-${this.cell.formatTimestamp(new Date())}.md`,
-      content: stimulus.content,
+      ...stimulus,
+      name: `execution-${artifactId}-${this.cell.formatTimestamp(new Date())}.json`,
     });
 
     await this.cell.appendHistory(

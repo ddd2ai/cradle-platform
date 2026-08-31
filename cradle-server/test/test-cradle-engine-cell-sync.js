@@ -44,6 +44,22 @@ engine.stagedCellIds.add("new-cell");
 assert.equal(engine.getCell("new-cell"), null);
 assert.equal(engine.listCellIds().includes("new-cell"), false);
 
+const actorWakeups = [];
+engine.cells.set("actor-a", {
+  id: "actor-a",
+  runtimeLifecycleService: {
+    requestActivation: (reason) => actorWakeups.push(["actor-a", reason]),
+  },
+});
+engine.cells.set("actor-b", {
+  id: "actor-b",
+  runtimeLifecycleService: {
+    requestActivation: (reason) => actorWakeups.push(["actor-b", reason]),
+  },
+});
+engine.notifyCellActors(["actor-b", "actor-b", "missing"], "targeted-stimulus");
+assert.deepEqual(actorWakeups, [["actor-b", "targeted-stimulus"]]);
+
 await fs.rm(projectRoot, { recursive: true, force: true });
 
 console.log("Cradle engine cell sync tests passed");

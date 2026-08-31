@@ -28,6 +28,8 @@ export function createCellRuntimeServices({ cell, paths }) {
     inboxStore: new CellInboxStore({
       inboxDir: paths.inboxDir,
       inboxFile: paths.inboxFile,
+      consumerId: cell.id,
+      metrics: cell.runtimeMetrics,
     }),
     memoryStore: new CellMemoryStore({
       memoryFiles: paths.memoryFiles,
@@ -67,6 +69,8 @@ export function createCellRuntimeServices({ cell, paths }) {
     stimulusStore: new StimulusStore({
       stimuliDir: paths.stimuliDir,
       timestampFormatter,
+      consumerId: cell.id,
+      metrics: cell.runtimeMetrics,
     }),
     observationStore: new ObservationStore({
       observationsDir: paths.observationsDir,

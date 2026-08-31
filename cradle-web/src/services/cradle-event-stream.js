@@ -1,6 +1,9 @@
 import { updateOperationProgress } from "./operation-progress.js";
 import { bufferLogEntry, flushLogBuffer } from "./log-buffer.js";
-import { reconcileRegisteredResources } from "./resource-invalidation.js";
+import {
+  reconcileRegisteredResources,
+  reconcileResources,
+} from "./resource-invalidation.js";
 import { RuntimePresentationStore } from "./runtime/runtime-presentation-store.js";
 import { WebSocketRuntimeEventClient } from "./runtime/websocket-runtime-event-client.js";
 
@@ -72,7 +75,7 @@ function handleRuntimeEvent(event) {
   if (type === "operation.updated" && payload.operation) {
     updateOperationProgress(payload.operation);
     if (["completed", "failed"].includes(payload.operation.status)) {
-      reconcileRegisteredResources();
+      reconcileResources(resourcesForOperation(payload.operation));
     }
   }
 
@@ -86,6 +89,16 @@ function handleRuntimeEvent(event) {
   }
 
   presentationStore.enqueue(canonicalEvent);
+}
+
+function resourcesForOperation(operation) {
+  if (operation.type === "heartbeat") {
+    return ["cells", "selectedCell", "cultivation"];
+  }
+  if (["cell-division", "cell-fusion", "cell-stabilization"].includes(operation.type)) {
+    return ["cells", "selectedCell", "artifacts"];
+  }
+  return ["cells", "selectedCell"];
 }
 
 function createDefaultRuntimeEventClient() {

@@ -91,6 +91,8 @@ const result = await service.metabolize();
 
 assert.deepEqual(result, {
   created: 1,
+  consumed: 1,
+  processing: "reasoning",
   observationFile: "observations/observation.md",
 });
 
@@ -115,6 +117,35 @@ assert.equal(
   true
 );
 assert.equal(calls.find((call) => call.type === "archiveStimuli").items, stimuli);
+
+{
+  let askCount = 0;
+  const passiveStimulus = {
+    category: "signals",
+    file: "execution-passed.md",
+    content: "## Source\n\ninternal.execution\n\n## Artifact\n\nartifact-1\n\n## Status\n\npassed\n",
+  };
+  const passiveCell = {
+    id: "cell-passive",
+    observationStore: {
+      async writeObservationMarkdown() {
+        return "observations/passive.md";
+      },
+    },
+    async readStimuli() {
+      return [passiveStimulus];
+    },
+    async askWithTimeout() {
+      askCount += 1;
+    },
+    async archiveStimuli() {},
+  };
+
+  const passiveResult = await new CellMetabolismService({ cell: passiveCell }).metabolize();
+  assert.equal(passiveResult.processing, "summary-only");
+  assert.equal(passiveResult.created, 0);
+  assert.equal(askCount, 0);
+}
 
 assert.throws(
   () => new CellMetabolismService(),

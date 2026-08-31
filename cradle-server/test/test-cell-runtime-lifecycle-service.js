@@ -90,6 +90,7 @@ function createCell(overrides = {}) {
 
   assert.equal(result.type, "task");
   assert.equal(result.taskId, "task-001");
+  assert.equal(result.workRemains, true);
   assert.deepEqual(
     calls.filter((call) => call.type === "updateStatus").map((call) => call.status),
     ["running", "active"]
@@ -153,6 +154,7 @@ function createCell(overrides = {}) {
     type: "metabolism",
     processed: 2,
     observationFile: "observations/one.md",
+    workRemains: false,
   });
 }
 
@@ -164,6 +166,45 @@ function createCell(overrides = {}) {
     processed: 0,
     reason: "no inbox, task, or stimuli",
   });
+}
+
+{
+  const { cell, calls } = createCell();
+  const service = new CellRuntimeLifecycleService({ cell });
+
+  await service.activate();
+  service.requestActivation("duplicate-wakeup");
+  await new Promise((resolve) => setTimeout(resolve, 10));
+
+  assert.equal(cell.active, true);
+  assert.equal(cell.tickTimer, null);
+  assert.equal(
+    calls.filter((call) => call.type === "readInbox").length,
+    1,
+    "coalesced wakeups should run one idle tick without a polling timer"
+  );
+  await service.deactivate();
+}
+
+{
+  let inboxReads = 0;
+  const { cell } = createCell({
+    async readInbox() {
+      inboxReads += 1;
+      return inboxReads === 1 ? [{ id: "message-once" }] : [];
+    },
+  });
+  const service = new CellRuntimeLifecycleService({ cell });
+
+  await service.activate();
+  await new Promise((resolve) => setTimeout(resolve, 10));
+
+  assert.equal(
+    inboxReads,
+    1,
+    "productive work should not cause a speculative empty activation"
+  );
+  await service.deactivate();
 }
 
 {

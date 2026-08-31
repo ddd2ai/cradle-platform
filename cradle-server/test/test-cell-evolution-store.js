@@ -26,6 +26,7 @@ assert.deepEqual(await store.readEvolutionState(), {
   evolvedThoughts: [],
   evolutionCount: 0,
   lastEvolvedAt: null,
+  pendingEvolutionEvidence: [],
 });
 assert.deepEqual(await store.listThoughtFiles(), []);
 assert.equal(await store.readRecentThoughts(), "");
@@ -59,6 +60,14 @@ assert.deepEqual(await store.loadUnevolvedThoughts(1), [
     file: "002.md",
     content: "second",
   },
+]);
+
+await store.recordEvolutionEvidence([
+  { evidenceId: "evidence-1", stateImpact: 0.8 },
+  { evidenceId: "evidence-1", stateImpact: 0.9 },
+]);
+assert.deepEqual(await store.readPendingEvolutionEvidence(), [
+  { evidenceId: "evidence-1", stateImpact: 0.9 },
 ]);
 
 const journalFile = await store.writeEvolutionJournal({

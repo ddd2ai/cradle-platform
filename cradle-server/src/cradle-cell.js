@@ -49,11 +49,17 @@ export class CradleCell {
     provider = "copilot",
     projectRoot = PROJECT_ROOT,
     cellsDir = path.join(projectRoot, "cells"),
+    activationScheduler = null,
+    runtimeMetrics = null,
+    activationNotifier = null,
   } = {}) {
     this.id = id;
     this.name = name;
     this.model = model;
     this.provider = provider;
+    this.activationScheduler = activationScheduler;
+    this.runtimeMetrics = runtimeMetrics;
+    this.activationNotifier = activationNotifier;
 
     this.paths = createCellPaths({
       cellId: this.id,
@@ -108,6 +114,8 @@ export class CradleCell {
     this.active = false;
     this.tickTimer = null;
     this.tickIntervalMs = 10_000;
+    this.activationRequested = false;
+    this.activationQueued = false;
     this.isTicking = false;
     this.currentTickPromise = null;
     this.isEvolving = false;
@@ -272,18 +280,36 @@ ${input}
     input,
     timeoutMs = getAiTimeoutMs()
   ) {
-    return await Promise.race([
-      this.assistant.ask(input),
-      new Promise((_, reject) =>
-        setTimeout(
-          () =>
-            reject(
-              new Error(`Timeout after ${timeoutMs}ms waiting for AI response`)
-            ),
-          timeoutMs
-        )
-      ),
-    ]);
+    const startedAt = Date.now();
+    let timeoutId;
+    const metricLabels = {
+      cellId: this.id,
+      provider: this.provider,
+      model: this.model,
+    };
+    this.runtimeMetrics?.increment("llm_calls", 1, metricLabels);
+    try {
+      return await Promise.race([
+        this.assistant.ask(input),
+        new Promise((_, reject) => {
+          timeoutId = setTimeout(
+            () => reject(new Error(`Timeout after ${timeoutMs}ms waiting for AI response`)),
+            timeoutMs
+          );
+          timeoutId.unref?.();
+        }),
+      ]);
+    } catch (error) {
+      this.runtimeMetrics?.increment("llm_errors", 1, metricLabels);
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+      this.runtimeMetrics?.observe(
+        "llm_duration_ms",
+        Date.now() - startedAt,
+        metricLabels
+      );
+    }
   }
 
   async prepareCellDirectory() {
@@ -313,7 +339,9 @@ ${input}
   }
 
   async addTask({ title, source = "manual", content = "" }) {
-    return await this.taskStore.addTask({ title, source, content });
+    const task = await this.taskStore.addTask({ title, source, content });
+    this.runtimeLifecycleService.requestActivation("task-added");
+    return task;
   }
 
   async completeTask(taskId) {
@@ -752,7 +780,21 @@ ${input}
   }
 
   async appendInboxMessage(message) {
-    return await this.inboxStore.appendInboxMessage(message);
+    const appended = await this.inboxStore.appendInboxMessage(message);
+    this.runtimeLifecycleService.requestActivation("message-received");
+    return appended;
+  }
+
+  async claimInbox() {
+    return await this.inboxStore.claimInbox();
+  }
+
+  async acknowledgeInboxClaim(claimId) {
+    await this.inboxStore.acknowledgeClaim(claimId);
+  }
+
+  async releaseInboxClaim(claimId) {
+    await this.inboxStore.releaseClaim(claimId);
   }
 
   async clearInbox() {
@@ -841,15 +883,54 @@ ${memoryContext}
   }
 
   async readStimuli() {
-    return await this.stimulusStore.readStimuli();
+    return await this.stimulusStore.readStimuli({ consumerId: this.id });
   }
 
-  async writeStimulus({ category = "signals", name, content } = {}) {
-    return await this.stimulusStore.writeStimulus({
+  async writeStimulus({
+    category = "signals",
+    name,
+    content,
+    type,
+    source,
+    targetCellIds = [this.id],
+    causationId,
+    correlationId,
+    dedupKey,
+    salience,
+    summary,
+    facts,
+  } = {}) {
+    const stimulus = await this.stimulusStore.writeStimulus({
       category,
       name,
       content,
+      type,
+      source,
+      targetCellIds,
+      causationId,
+      correlationId,
+      dedupKey,
+      salience,
+      summary,
+      facts,
     });
+    const routedTargets = stimulus.routes?.map((route) => route.targetCellId) ?? [this.id];
+    this.activationNotifier?.(
+      routedTargets.includes("_global") ? [this.id] : routedTargets,
+      "stimulus-received"
+    );
+    if (!this.activationNotifier && routedTargets.includes(this.id)) {
+      this.runtimeLifecycleService.requestActivation("stimulus-received");
+    }
+    return stimulus;
+  }
+
+  async claimStimuli() {
+    return await this.stimulusStore.claimStimuli({ consumerId: this.id });
+  }
+
+  async releaseStimuli(stimuli = []) {
+    await this.stimulusStore.releaseStimuli(stimuli);
   }
 
   async archiveStimuli(stimuli = []) {
@@ -931,6 +1012,14 @@ ${memoryContext}
 
   async appendThought(content) {
     await this.memoryStore.appendThought(content);
+  }
+
+  async recordEvolutionEvidence(items = []) {
+    await this.evolutionStore.recordEvolutionEvidence(items);
+  }
+
+  async readPendingEvolutionEvidence() {
+    return await this.evolutionStore.readPendingEvolutionEvidence();
   }
 
   resolveMemoryFile(name) {

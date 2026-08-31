@@ -142,6 +142,30 @@ createdAt: ${new Date().toISOString()}
 
   return {
     category,
+    type: `artifact.execution.${executionResult.status}`,
+    source: "internal.execution",
+    targetCellIds: [cellId],
+    causationId: executionResult.executionId ?? null,
+    correlationId: artifactId,
+    dedupKey: `artifact:${artifactId}:execution:${executionResult.executionId ?? executionResult.status}`,
+    salience: executionSalience(executionResult.status),
+    summary,
+    facts: {
+      cellId,
+      artifactId,
+      executionId: executionResult.executionId ?? null,
+      status: executionResult.status,
+      command: executionResult.command ?? null,
+      exitCode: executionResult.exitCode ?? null,
+      error: executionResult.error ?? null,
+    },
     content,
   };
+}
+
+function executionSalience(status) {
+  if (status === "passed" || status === "skipped") {
+    return { risk: 0.05, novelty: 0.2, stateImpact: 0.15, urgency: 0.05 };
+  }
+  return { risk: 0.9, novelty: 0.7, stateImpact: 0.85, urgency: 0.85 };
 }

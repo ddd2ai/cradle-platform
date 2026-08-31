@@ -64,6 +64,22 @@ export class CellEvolutionStore {
     await writeJsonFile(this.evolutionStateFile, state);
   }
 
+  async recordEvolutionEvidence(items = []) {
+    if (items.length === 0) return;
+    const state = await this.readEvolutionState();
+    const byId = new Map(
+      (state.pendingEvolutionEvidence ?? []).map((item) => [item.evidenceId, item])
+    );
+    for (const item of items) byId.set(item.evidenceId, item);
+    state.pendingEvolutionEvidence = [...byId.values()].slice(-100);
+    await this.writeEvolutionState(state);
+  }
+
+  async readPendingEvolutionEvidence() {
+    const state = await this.readEvolutionState();
+    return state.pendingEvolutionEvidence ?? [];
+  }
+
   async listThoughtFiles() {
     try {
       const files = await fs.readdir(this.thoughtsDir);
@@ -139,6 +155,7 @@ export class CellEvolutionStore {
       evolvedThoughts: [],
       evolutionCount: 0,
       lastEvolvedAt: null,
+      pendingEvolutionEvidence: [],
     };
   }
 }

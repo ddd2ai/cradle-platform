@@ -360,7 +360,6 @@ async function waitForOperation(
   { onProgress, returnResult = false } = {},
 ) {
   const deadline = Date.now() + 3_600_000;
-  let terminalOperation = null;
   let wake = null;
 
   // 使用 throttled progress subscription
@@ -370,7 +369,6 @@ async function waitForOperation(
       onProgress?.(operation);
 
       if (["completed", "failed"].includes(operation.status)) {
-        terminalOperation = operation;
         wake?.();
       }
     }
@@ -386,7 +384,9 @@ async function waitForOperation(
 
   try {
     while (Date.now() < deadline) {
-      const operation = terminalOperation ?? await fetchOperation(operationId);
+      // Runtime events only signal progress/invalidation. REST remains the
+      // authoritative source and carries the potentially large final result.
+      const operation = await fetchOperation(operationId);
       onProgress?.(operation);
       if (operation.status === "completed") {
         return returnResult ? operation.result ?? operation : operation;

@@ -2,6 +2,7 @@ import { describe, it, beforeEach, mock } from "node:test";
 import assert from "node:assert/strict";
 import {
   registerResourceLoader,
+  reconcileResources,
   invalidateResource,
   flushImmediately,
   getPendingResources,
@@ -118,6 +119,18 @@ describe("Resource Invalidation Queue", () => {
   });
 
   describe("Immediate Flush", () => {
+    it("只刷新 operation 影響的已註冊資源", async () => {
+      const cellsLoader = mock.fn(() => Promise.resolve());
+      const artifactsLoader = mock.fn(() => Promise.resolve());
+      registerResourceLoader("cells", cellsLoader);
+      registerResourceLoader("artifacts", artifactsLoader);
+
+      await reconcileResources(["cells", "unknown"]);
+
+      assert.equal(cellsLoader.mock.calls.length, 1);
+      assert.equal(artifactsLoader.mock.calls.length, 0);
+    });
+
     it("應該立即刷新 trailing window 中的 pending invalidations", async () => {
       const loaderA = mock.fn(() => Promise.resolve());
       const loaderB = mock.fn(() => Promise.resolve());

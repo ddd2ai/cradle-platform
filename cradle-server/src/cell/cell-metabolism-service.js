@@ -1,5 +1,7 @@
 import { getAiTimeoutMs } from "../cradle-config.js";
 import { parseLooseJsonObject } from "../utils/json.js";
+import { evaluateStimulusBatch } from "../situation/stimulus-salience-policy.js";
+import { stimuliToEvolutionEvidence } from "../evolution/evolution-significance-gate.js";
 
 export class CellMetabolismService {
   constructor({ cell } = {}) {
@@ -65,7 +67,9 @@ export class CellMetabolismService {
   }
 
   async metabolize() {
-    const stimuli = await this.cell.readStimuli();
+    const stimuli = this.cell.claimStimuli
+      ? await this.cell.claimStimuli()
+      : await this.cell.readStimuli();
 
     if (stimuli.length === 0) {
       return {
@@ -74,8 +78,28 @@ export class CellMetabolismService {
       };
     }
 
-    const result = await this.cell.askWithTimeout(
-      `
+    try {
+      const salience = evaluateStimulusBatch(stimuli);
+      this.cell.runtimeMetrics?.increment("stimuli_salience_decisions", stimuli.length, {
+        cellId: this.cell.id,
+        processing: salience.processing,
+      });
+      if (salience.processing === "summary-only") {
+        const observationFile = await this.cell.observationStore.writeObservationMarkdown(
+          this.formatObservationMarkdown(salience.observation)
+        );
+        await this.cell.recordEvolutionEvidence?.(stimuliToEvolutionEvidence(stimuli));
+        await this.cell.archiveStimuli(stimuli);
+        return {
+          created: 0,
+          consumed: stimuli.length,
+          processing: salience.processing,
+          observationFile,
+        };
+      }
+
+      const result = await this.cell.askWithTimeout(
+        `
 你是 ${this.cell.id}。
 
 請根據目前的 DNA、Memory、Vision、Environment,觀察 situation stimuli。
@@ -143,36 +167,43 @@ ${s.content}
   ]
 }
 `,
-      getAiTimeoutMs()
-    );
+        getAiTimeoutMs()
+      );
 
-    const raw =
-      result?.text ??
-      result?.answer ??
-      result ??
-      "{}";
+      const raw =
+        result?.text ??
+        result?.answer ??
+        result ??
+        "{}";
 
-    const parsed = parseLooseJsonObject(raw);
+      const parsed = parseLooseJsonObject(raw);
 
-    const observationFile = await this.cell.observationStore.writeObservationMarkdown(
-      this.formatObservationMarkdown(parsed.observation)
-    );
+      const observationFile = await this.cell.observationStore.writeObservationMarkdown(
+        this.formatObservationMarkdown(parsed.observation)
+      );
 
-    const tasks = (parsed.tasks ?? []).slice(0, 1);
+      const tasks = (parsed.tasks ?? []).slice(0, 1);
 
-    for (const task of tasks) {
-      await this.cell.addTask({
-        title: task.title,
-        source: "metabolism",
-        content: task.content ?? task.title,
-      });
+      for (const task of tasks) {
+        await this.cell.addTask({
+          title: task.title,
+          source: "metabolism",
+          content: task.content ?? task.title,
+        });
+      }
+
+      await this.cell.recordEvolutionEvidence?.(stimuliToEvolutionEvidence(stimuli));
+      await this.cell.archiveStimuli(stimuli);
+
+      return {
+        created: tasks.length,
+        consumed: stimuli.length,
+        processing: salience.processing,
+        observationFile,
+      };
+    } catch (error) {
+      await this.cell.releaseStimuli?.(stimuli);
+      throw error;
     }
-
-    await this.cell.archiveStimuli(stimuli);
-
-    return {
-      created: tasks.length,
-      observationFile,
-    };
   }
 }

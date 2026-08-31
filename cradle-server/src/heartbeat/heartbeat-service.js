@@ -72,7 +72,7 @@ export class HeartbeatService {
     const saved = [];
 
     for (const record of records) {
-      if (record !== selected) {
+      if (record !== selected && record.proposal.action !== "stay") {
         saved.push(await this.proposalStore.save(record));
       }
     }
@@ -90,7 +90,9 @@ export class HeartbeatService {
     }
 
     const handled = await this.handleProposal(selected, mode);
-    saved.push(await this.proposalStore.save(handled.record));
+    if (handled.record.proposal.action !== "stay") {
+      saved.push(await this.proposalStore.save(handled.record));
+    }
 
     return {
       status: handled.record.proposal.status,

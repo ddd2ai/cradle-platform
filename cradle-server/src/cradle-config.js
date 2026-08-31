@@ -28,6 +28,9 @@ const DEFAULT_CRADLE_CONFIG = Object.freeze({
     reflectionSeconds: 30,
     mavenExecutionSeconds: 3600,
   }),
+  runtime: Object.freeze({
+    activationConcurrency: 4,
+  }),
 });
 
 const CRADLE_CONFIG_FILE = path.join(
@@ -63,6 +66,10 @@ export function readCradleConfig({
     timeouts: {
       ...DEFAULT_CRADLE_CONFIG.timeouts,
       ...(parsed.timeouts || {}),
+    },
+    runtime: {
+      ...DEFAULT_CRADLE_CONFIG.runtime,
+      ...(parsed.runtime || {}),
     },
   };
 }
@@ -154,6 +161,14 @@ export function getProviderTimeoutMs(providerName, options = {}) {
 export function getHeartbeatMode(options = {}) {
   const config = readCradleConfig(options);
   return config.heartbeat?.mode;
+}
+
+export function getActivationConcurrency(options = {}) {
+  const config = readCradleConfig(options);
+  return validatePositiveInteger(
+    config.runtime?.activationConcurrency,
+    "runtime.activationConcurrency"
+  );
 }
 
 function validateTimeoutSeconds(value, pathName) {

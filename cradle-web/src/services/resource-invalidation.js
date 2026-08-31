@@ -37,6 +37,11 @@ export function reconcileRegisteredResources() {
   return flushInvalidations(Array.from(resourceLoaders.keys()));
 }
 
+export function reconcileResources(resources = []) {
+  const registered = resources.filter((resource) => resourceLoaders.has(resource));
+  return flushInvalidations([...new Set(registered)]);
+}
+
 /**
  * 標記資源為「需要刷新」
  * 

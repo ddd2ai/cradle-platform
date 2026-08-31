@@ -58,7 +58,8 @@ export function createInboxCommands() {
 
       execute: async ({ engine }) => {
         const cell = engine.getActiveCell();
-        const inbox = engine.inboxes.get(cell.id) ?? [];
+        const inbox = await cell.readInbox();
+        engine.inboxes.set(cell.id, inbox);
 
         if (inbox.length === 0) {
           console.log("(empty inbox)");
@@ -90,7 +91,10 @@ export function createInboxCommands() {
 
       execute: async ({ engine }) => {
         const cell = engine.getActiveCell();
-        const inbox = engine.inboxes.get(cell.id) ?? [];
+        const claim = cell.claimInbox
+          ? await cell.claimInbox()
+          : { claimId: null, messages: await cell.readInbox() };
+        const inbox = claim.messages;
 
         if (inbox.length === 0) {
           console.log("(empty inbox)");
@@ -99,10 +103,20 @@ export function createInboxCommands() {
 
         renderAnswerStart();
 
-        const result = await cell.processInbox(inbox);
-
-        engine.inboxes.set(cell.id, []);
-        await cell.clearInbox();
+        let result;
+        try {
+          result = await cell.processInbox(inbox);
+          if (cell.acknowledgeInboxClaim) {
+            await cell.acknowledgeInboxClaim(claim.claimId);
+            engine.inboxes.set(cell.id, await cell.readInbox());
+          } else {
+            await cell.clearInbox();
+            engine.inboxes.set(cell.id, []);
+          }
+        } catch (error) {
+          await cell.releaseInboxClaim?.(claim.claimId);
+          throw error;
+        }
 
         renderInboxProcessResult(result);
       },

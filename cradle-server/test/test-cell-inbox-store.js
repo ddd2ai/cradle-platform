@@ -35,11 +35,8 @@ const secondMessage = {
   createdAt: "2026-07-23T10:05:00.000Z",
 };
 
-assert.deepEqual(await store.appendInboxMessage(firstMessage), [firstMessage]);
-assert.deepEqual(await store.appendInboxMessage(secondMessage), [
-  firstMessage,
-  secondMessage,
-]);
+assert.deepEqual(await store.appendInboxMessage(firstMessage), firstMessage);
+assert.deepEqual(await store.appendInboxMessage(secondMessage), secondMessage);
 assert.deepEqual(await store.readInbox(), [
   firstMessage,
   secondMessage,
@@ -50,6 +47,18 @@ assert.deepEqual(await store.readInbox(), []);
 
 await store.writeInbox([secondMessage]);
 assert.deepEqual(await store.readInbox(), [secondMessage]);
+
+const claim = await store.claimInbox();
+assert.deepEqual(claim.messages, [secondMessage]);
+assert.deepEqual(await store.readInbox(), []);
+
+await store.appendInboxMessage(firstMessage);
+await store.acknowledgeClaim(claim.claimId);
+assert.deepEqual(await store.readInbox(), [firstMessage]);
+
+const retryClaim = await store.claimInbox();
+await store.releaseClaim(retryClaim.claimId);
+assert.deepEqual(await store.readInbox(), [firstMessage]);
 
 assert.throws(
   () => new CellInboxStore({ inboxFile }),

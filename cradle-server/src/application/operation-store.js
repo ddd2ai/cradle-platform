@@ -1,11 +1,12 @@
 import { randomUUID } from "crypto";
 
 export class InMemoryOperationStore {
-  constructor({ now = () => new Date(), eventStream = null, eventBus = null } = {}) {
+  constructor({ now = () => new Date(), eventStream = null, eventBus = null, limit = 500 } = {}) {
     this.now = now;
     // 接受 eventBus (新) 或 eventStream (舊) — 兩者 API 相同
     this.eventBus = eventBus ?? eventStream;
     this.operations = new Map();
+    this.limit = limit;
   }
 
   create({ type, context = {} }) {
@@ -26,7 +27,8 @@ export class InMemoryOperationStore {
     };
 
     this.operations.set(operation.operationId, operation);
-    this.eventBus?.publish("operation.updated", { operation });
+    this.#trim();
+    this.eventBus?.publish("operation.updated", { operation: toEventOperation(operation) });
 
     return operation;
   }
@@ -55,7 +57,8 @@ export class InMemoryOperationStore {
     };
 
     this.operations.set(operationId, updated);
-    this.eventBus?.publish("operation.updated", { operation: updated });
+    this.#trim();
+    this.eventBus?.publish("operation.updated", { operation: toEventOperation(updated) });
 
     if (["completed", "failed"].includes(updated.status)) {
       this.eventBus?.publish("cell.updated", {
@@ -79,4 +82,19 @@ export class InMemoryOperationStore {
 
     return updated;
   }
+
+  #trim() {
+    if (this.operations.size <= this.limit) return;
+    for (const [operationId, operation] of this.operations) {
+      if (["completed", "failed"].includes(operation.status)) {
+        this.operations.delete(operationId);
+        if (this.operations.size <= this.limit) return;
+      }
+    }
+  }
+}
+
+function toEventOperation(operation) {
+  const { result: _result, ...summary } = operation;
+  return summary;
 }
