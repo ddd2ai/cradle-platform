@@ -4,14 +4,48 @@ import { randomUUID } from "node:crypto";
 import { writeJsonFile } from "../utils/json-file.js";
 import { writeTextFile } from "../utils/text-file.js";
 import { hashArtifactContent } from "./artifact-change-plan.js";
+import {
+  buildArtifactOutputIndex,
+  buildContentTermIndexKey,
+} from "./artifact-content-index.js";
+import { extractArtifactGoalRequirements } from "./artifact-goal-requirements.js";
+import { ArtifactImpactIndexStore } from "./artifact-impact-index-store.js";
+import {
+  defaultArtifactMutationCoordinator,
+} from "./artifact-mutation-coordinator.js";
+import {
+  defaultArtifactMutationFileLease,
+} from "./artifact-mutation-file-lease.js";
+import {
+  evaluateArtifactRevisionCompaction,
+} from "./artifact-revision-compaction-policy.js";
+
+const MAX_REVISION_CHAIN_DEPTH = 256;
 
 export class ArtifactStore {
-  constructor({ productionsDir }) {
+  constructor({
+    productionsDir,
+    impactIndexStore,
+    mutationCoordinator,
+    mutationLease,
+    revisionCompactionPolicy,
+    artifactSnapshotWriter,
+  } = {}) {
     if (!productionsDir) {
       throw new Error("ArtifactStore requires productionsDir");
     }
 
     this.productionsDir = productionsDir;
+    this.impactIndexStore = impactIndexStore ?? new ArtifactImpactIndexStore({
+      productionsDir,
+    });
+    this.mutationCoordinator = mutationCoordinator ??
+      defaultArtifactMutationCoordinator;
+    this.mutationLease = mutationLease ?? defaultArtifactMutationFileLease;
+    this.revisionCompactionPolicy = revisionCompactionPolicy ??
+      evaluateArtifactRevisionCompaction;
+    this.artifactSnapshotWriter = artifactSnapshotWriter ??
+      writeArtifactSnapshotAtomic;
   }
 
   async ensureReady() {
@@ -23,6 +57,16 @@ export class ArtifactStore {
   }
 
   async saveArtifact(artifact) {
+    if (!artifact?.id) {
+      throw new Error("saveArtifact requires artifact.id");
+    }
+    return await this.#runArtifactMutation(
+      artifact.id,
+      async () => await this.#saveArtifact(artifact)
+    );
+  }
+
+  async #saveArtifact(artifact) {
     await this.ensureReady();
 
     const dir = this.resolveProductionDir(artifact.id);
@@ -44,12 +88,32 @@ export class ArtifactStore {
         .map((output) => output.path),
       createdAt: artifact.createdAt ?? new Date().toISOString(),
     };
+    if (
+      currentManifest?.revision?.revisionId &&
+      revision.revisionId !== currentManifest.revision.revisionId &&
+      revision.baseRevisionId !== currentManifest.revision.revisionId
+    ) {
+      throw new Error(
+        `Artifact revision is stale: expected base ${currentManifest.revision.revisionId}, received ${revision.baseRevisionId}`
+      );
+    }
     const persistedArtifact = { ...artifact, revision };
     const revisionId = sanitizeRevisionId(revision.revisionId);
-    await this.#assertExistingRevisionContent(
-      path.join(revisionsDir, `${revisionId}.json`),
-      persistedArtifact
-    );
+    const savesCurrentRevisionMetadata =
+      currentManifest?.revision?.revisionId === revision.revisionId;
+    if (
+      savesCurrentRevisionMetadata &&
+      revisionContentFingerprint(currentManifest) !==
+        revisionContentFingerprint(persistedArtifact)
+    ) {
+      throw new Error(`Artifact revision content is immutable: ${revision.revisionId}`);
+    }
+    if (!savesCurrentRevisionMetadata) {
+      await this.#assertExistingRevisionContent(
+        path.join(revisionsDir, `${revisionId}.json`),
+        persistedArtifact
+      );
+    }
     const incrementallyChangedPaths = revision.mode === "incremental"
       ? new Set(revision.changedPaths ?? [])
       : null;
@@ -62,6 +126,11 @@ export class ArtifactStore {
       ])
     );
     const manifestOutputs = [];
+    const impactIndexOutputs = [];
+    const indexedGoalTerms = extractArtifactGoalRequirements(artifact.goal)
+      .filter((requirement) => requirement.required)
+      .map((requirement) => requirement.term);
+    const contentTermIndexKey = buildContentTermIndexKey(indexedGoalTerms);
 
     if (persistedArtifact.plan) {
       await writeTextFile(
@@ -85,18 +154,51 @@ export class ArtifactStore {
       const contentHash = canReuseContentHash
         ? output.contentHash
         : hashArtifactContent(content);
+      const hasReusableContentIndex =
+        canReuseContentHash &&
+        Array.isArray(output.contentTermHashes) &&
+        output.contentTermIndexKey === contentTermIndexKey &&
+        typeof output.contentTermIndexComplete === "boolean";
+      const contentIndex = hasReusableContentIndex
+        ? {
+            contentBytes: output.contentBytes,
+            contentTermHashes: output.contentTermHashes,
+            contentTermIndexKey: output.contentTermIndexKey,
+            contentTermIndexComplete: output.contentTermIndexComplete,
+          }
+        : typeof output.content === "string"
+          ? buildArtifactOutputIndex({ content, indexedTerms: indexedGoalTerms })
+          : {
+              contentBytes: output.contentBytes,
+              contentTermHashes: [],
+              contentTermIndexKey,
+              contentTermIndexComplete: false,
+            };
       const blobPath = path.join(blobsDir, `${contentHash}.blob`);
       if (!canReuseContentHash) {
         await this.#writeBlobOnce(blobPath, content);
       }
 
       const { content: _content, ...outputMetadata } = output;
-      manifestOutputs.push({
-        ...outputMetadata,
+      const {
+        declaredSymbols: _declaredSymbols,
+        declaredSymbolsComplete: _declaredSymbolsComplete,
+        ...persistedOutputMetadata
+      } = outputMetadata;
+      const {
+        declaredSymbols,
+        ...persistedContentIndex
+      } = contentIndex;
+      const manifestOutput = {
+        ...persistedOutputMetadata,
         contentHash,
-        contentBytes: canReuseContentHash
-          ? output.contentBytes
-          : Buffer.byteLength(content, "utf8"),
+        ...persistedContentIndex,
+      };
+      manifestOutputs.push(manifestOutput);
+      impactIndexOutputs.push({
+        ...manifestOutput,
+        declaredSymbols,
+        declaredSymbolsComplete: Array.isArray(declaredSymbols),
       });
 
       if (previousHashes.get(output.path) === contentHash) continue;
@@ -108,19 +210,42 @@ export class ArtifactStore {
       ...persistedArtifact,
       outputs: manifestOutputs,
     };
-    await this.#writeRevisionManifest(
-      path.join(revisionsDir, `${revisionId}.json`),
-      manifest
-    );
+    if (!savesCurrentRevisionMetadata) {
+      await this.#writeRevisionManifest(
+        path.join(revisionsDir, `${revisionId}.json`),
+        manifest
+      );
+    }
 
     const stagingManifest = path.join(dir, `.artifact-${randomUUID()}.json`);
     await writeJsonFile(stagingManifest, manifest, { dir });
     await fs.rename(stagingManifest, path.join(dir, "artifact.json"));
+    await this.#writeCurrentRevision(dir, revision.revisionId, {
+      deltaDepth: 0,
+      deltaMetadataBytes: 0,
+    });
+    let impactIndex;
+    try {
+      impactIndex = await this.impactIndexStore.synchronize({
+        artifactId: persistedArtifact.id,
+        previousManifest: currentManifest,
+        manifest,
+        indexOutputs: impactIndexOutputs,
+      });
+    } catch (error) {
+      impactIndex = {
+        updated: false,
+        mode: "unavailable",
+        error: error.message,
+      };
+    }
 
     return {
       artifactId: persistedArtifact.id,
       dir,
       revisionId: revision.revisionId,
+      storageMode: "full",
+      impactIndex,
     };
   }
 
@@ -131,6 +256,172 @@ export class ArtifactStore {
     return await this.saveArtifact(artifact);
   }
 
+  async saveArtifactDelta({ artifact, baseHead, nextHead } = {}) {
+    if (!artifact?.id) {
+      throw new Error("saveArtifactDelta requires artifact.id");
+    }
+    return await this.#runArtifactMutation(
+      artifact.id,
+      async () => await this.#saveArtifactDelta({ artifact, baseHead, nextHead })
+    );
+  }
+
+  async #saveArtifactDelta({ artifact, baseHead, nextHead } = {}) {
+    await this.ensureReady();
+    if (!artifact?.id || !artifact?.revision?.revisionId) {
+      throw new Error("saveArtifactDelta requires an artifact revision");
+    }
+    if (artifact.revision.mode !== "incremental") {
+      throw new Error("saveArtifactDelta requires an incremental revision");
+    }
+    if (
+      baseHead?.revision?.revisionId !== artifact.revision.baseRevisionId ||
+      nextHead?.revision?.revisionId !== artifact.revision.revisionId
+    ) {
+      throw new Error("saveArtifactDelta requires matching repair heads");
+    }
+
+    const dir = this.resolveProductionDir(artifact.id);
+    const outputsDir = path.join(dir, "outputs");
+    const blobsDir = path.join(dir, "blobs");
+    const revisionsDir = path.join(dir, "revisions");
+    await fs.mkdir(outputsDir, { recursive: true });
+    await fs.mkdir(blobsDir, { recursive: true });
+    await fs.mkdir(revisionsDir, { recursive: true });
+
+    const currentRevision = await this.#readCurrentRevisionState(artifact.id);
+    if (currentRevision.revisionId !== artifact.revision.baseRevisionId) {
+      throw new Error(
+        `Artifact revision is stale: expected base ${currentRevision.revisionId}, received ${artifact.revision.baseRevisionId}`
+      );
+    }
+
+    const changedPaths = new Set(artifact.revision.changedPaths ?? []);
+    const outputPaths = new Set(
+      (artifact.outputs ?? [])
+        .filter((output) => output?.kind === "file" && output.path)
+        .map((output) => output.path)
+    );
+    if (
+      changedPaths.size === 0 ||
+      changedPaths.size !== outputPaths.size ||
+      [...changedPaths].some((outputPath) => !outputPaths.has(outputPath))
+    ) {
+      throw new Error("Artifact delta outputs must exactly match changedPaths");
+    }
+
+    const indexedGoalTerms = extractArtifactGoalRequirements(artifact.goal)
+      .filter((requirement) => requirement.required)
+      .map((requirement) => requirement.term);
+    const contentTermIndexKey = buildContentTermIndexKey(indexedGoalTerms);
+    const manifestOutputs = [];
+    const impactIndexOutputs = [];
+    for (const output of artifact.outputs) {
+      const content = String(output.content ?? "");
+      const contentHash = hashArtifactContent(content);
+      const contentIndex = buildArtifactOutputIndex({
+        content,
+        indexedTerms: indexedGoalTerms,
+      });
+      const { content: _content, ...outputMetadata } = output;
+      const {
+        declaredSymbols: _declaredSymbols,
+        declaredSymbolsComplete: _declaredSymbolsComplete,
+        ...persistedOutputMetadata
+      } = outputMetadata;
+      const { declaredSymbols, ...persistedContentIndex } = contentIndex;
+      const manifestOutput = {
+        ...persistedOutputMetadata,
+        contentHash,
+        ...persistedContentIndex,
+        contentTermIndexKey,
+      };
+      manifestOutputs.push(manifestOutput);
+      impactIndexOutputs.push({
+        ...manifestOutput,
+        declaredSymbols,
+        declaredSymbolsComplete: Array.isArray(declaredSymbols),
+      });
+      await this.#writeBlobOnce(path.join(blobsDir, `${contentHash}.blob`), content);
+      await writeTextFile(safeOutputPath(outputsDir, output.path), content);
+    }
+
+    const deltaRecord = {
+      storageMode: "delta",
+      artifact: stripRepairHeadMetadata(artifact),
+      outputs: manifestOutputs,
+      removedPaths: [],
+      revision: artifact.revision,
+    };
+    const revisionId = sanitizeRevisionId(artifact.revision.revisionId);
+    const revisionFile = path.join(revisionsDir, `${revisionId}.json`);
+    await this.#assertExistingRevisionContent(revisionFile, deltaRecord);
+    await this.#writeRevisionManifest(revisionFile, deltaRecord);
+    const deltaRecordBytes = Buffer.byteLength(JSON.stringify(deltaRecord), "utf8");
+    const deltaDepth = Number.isSafeInteger(currentRevision.deltaDepth)
+      ? currentRevision.deltaDepth + 1
+      : null;
+    const deltaMetadataBytes = Number.isSafeInteger(
+      currentRevision.deltaMetadataBytes
+    )
+      ? currentRevision.deltaMetadataBytes + deltaRecordBytes
+      : null;
+    const compactionDecision = this.revisionCompactionPolicy({
+      deltaDepth,
+      deltaMetadataBytes,
+    });
+    await this.#writeCurrentRevision(dir, artifact.revision.revisionId, {
+      deltaDepth,
+      deltaMetadataBytes,
+    });
+
+    let impactIndex;
+    try {
+      impactIndex = await this.impactIndexStore.synchronize({
+        artifactId: artifact.id,
+        previousManifest: baseHead,
+        manifest: { ...stripRepairHeadMetadata(artifact), outputs: manifestOutputs },
+        indexOutputs: impactIndexOutputs,
+        artifactHead: nextHead,
+        completeOutputSet: false,
+      });
+    } catch (error) {
+      impactIndex = {
+        updated: false,
+        mode: "unavailable",
+        error: error.message,
+      };
+    }
+
+    let compaction = {
+      performed: false,
+      recommended: compactionDecision.shouldCompact,
+      reason: compactionDecision.reason,
+      deltaDepth,
+      deltaMetadataBytes,
+    };
+    if (compactionDecision.shouldCompact) {
+      try {
+        await this.#compactCurrentRevision({
+          artifactId: artifact.id,
+          revisionId: artifact.revision.revisionId,
+        });
+        compaction = { ...compaction, performed: true };
+      } catch (error) {
+        compaction = { ...compaction, error: error.message };
+      }
+    }
+
+    return {
+      artifactId: artifact.id,
+      dir,
+      revisionId: artifact.revision.revisionId,
+      storageMode: "delta",
+      impactIndex,
+      compaction,
+    };
+  }
+
   async readArtifact(artifactId) {
     const manifest = await this.#readManifest(artifactId);
     if (!manifest) {
@@ -139,14 +430,72 @@ export class ArtifactStore {
     return await this.#hydrateArtifact(artifactId, manifest);
   }
 
-  async readArtifactRevision(artifactId, revisionId) {
-    const file = path.join(
-      this.resolveProductionDir(artifactId),
-      "revisions",
-      `${sanitizeRevisionId(revisionId)}.json`
+  async readArtifactManifest(artifactId) {
+    const manifest = await this.#readManifest(artifactId);
+    if (!manifest) {
+      throw new Error(`Artifact not found: ${artifactId}`);
+    }
+    return manifest;
+  }
+
+  async readArtifactRepairContext(artifactId) {
+    try {
+      const indexed = await this.impactIndexStore.readArtifactHead({ artifactId });
+      if (indexed?.available && indexed.artifact) {
+        return { artifact: indexed.artifact, mode: "head" };
+      }
+    } catch {
+      // The repair head is derived state; fall back to the authoritative manifest.
+    }
+    return {
+      artifact: await this.readArtifactManifest(artifactId),
+      mode: "manifest-fallback",
+    };
+  }
+
+  async readArtifactOutputs(artifactId, outputPaths, { manifest } = {}) {
+    const sourceManifest = manifest ?? await this.readArtifactManifest(artifactId);
+    const requestedPaths = [...new Set(outputPaths ?? [])];
+    const outputByPath = new Map(
+      (sourceManifest.outputs ?? [])
+        .filter((output) => output?.kind === "file" && output.path)
+        .map((output) => [output.path, output])
     );
-    const raw = await fs.readFile(file, "utf8");
-    return await this.#hydrateArtifact(artifactId, JSON.parse(raw));
+
+    for (const outputPath of requestedPaths) {
+      if (!outputByPath.has(outputPath)) {
+        throw new Error(`Artifact output not found: ${artifactId}/${outputPath}`);
+      }
+    }
+
+    const outputs = [];
+    for (const outputPath of requestedPaths) {
+      outputs.push(
+        await this.#hydrateOutput(artifactId, outputByPath.get(outputPath))
+      );
+    }
+    return outputs;
+  }
+
+  async findArtifactImpactCandidates(
+    artifactId,
+    lookupKeys,
+    { revisionId } = {}
+  ) {
+    try {
+      return await this.impactIndexStore.findCandidatePaths({
+        artifactId,
+        revisionId,
+        lookupKeys,
+      });
+    } catch {
+      return { available: false, paths: [], outputs: [], lookupCount: 0 };
+    }
+  }
+
+  async readArtifactRevision(artifactId, revisionId) {
+    const manifest = await this.#resolveRevisionManifest(artifactId, revisionId);
+    return await this.#hydrateArtifact(artifactId, manifest);
   }
 
   async restoreArtifactRevision(artifactId, revisionId) {
@@ -195,10 +544,7 @@ export class ArtifactStore {
 
     for (const artifactId of artifactIds) {
       try {
-        const artifact = await this.#readManifest(artifactId);
-        if (!artifact) {
-          throw new Error(`Artifact not found: ${artifactId}`);
-        }
+        const artifact = await this.readArtifactManifest(artifactId);
 
         // 只保留 metadata，不包含 outputs 的 content
         const summary = {
@@ -251,41 +597,175 @@ export class ArtifactStore {
 
   async #readManifest(artifactId) {
     try {
-      const file = path.join(
-        this.resolveProductionDir(artifactId),
-        "artifact.json"
+      const dir = this.resolveProductionDir(artifactId);
+      const baseManifest = JSON.parse(await fs.readFile(
+        path.join(dir, "artifact.json"),
+        "utf8"
+      ));
+      const pointer = await readJsonIfExists(path.join(dir, "current.json"));
+      if (
+        !pointer?.revisionId ||
+        pointer.revisionId === baseManifest.revision?.revisionId
+      ) {
+        return baseManifest;
+      }
+      return await this.#resolveRevisionManifest(
+        artifactId,
+        pointer.revisionId,
+        { baseManifest }
       );
-      return JSON.parse(await fs.readFile(file, "utf8"));
     } catch (error) {
       if (error?.code === "ENOENT") return null;
       throw error;
     }
   }
 
-  async #hydrateArtifact(artifactId, manifest) {
+  async #resolveRevisionManifest(artifactId, revisionId, { baseManifest } = {}) {
+    const base = baseManifest ?? await readJsonIfExists(path.join(
+      this.resolveProductionDir(artifactId),
+      "artifact.json"
+    ));
+    const deltas = [];
+    const visited = new Set();
+    let currentRevisionId = revisionId;
+    let resolvedBase = null;
+
+    for (let depth = 0; depth < MAX_REVISION_CHAIN_DEPTH; depth += 1) {
+      if (!currentRevisionId || visited.has(currentRevisionId)) {
+        throw new Error(`Artifact revision chain is invalid: ${revisionId}`);
+      }
+      visited.add(currentRevisionId);
+      if (base?.revision?.revisionId === currentRevisionId) {
+        resolvedBase = base;
+        break;
+      }
+      const record = await this.#readRevisionRecord(artifactId, currentRevisionId);
+      if (record.storageMode !== "delta") {
+        resolvedBase = record;
+        break;
+      }
+      deltas.push(record);
+      currentRevisionId = record.revision?.baseRevisionId;
+    }
+    if (!resolvedBase) {
+      throw new Error(`Artifact revision chain exceeds ${MAX_REVISION_CHAIN_DEPTH}`);
+    }
+
+    const outputsByPath = new Map(
+      (resolvedBase.outputs ?? []).map((output) => [output.path, output])
+    );
+    let manifest = { ...resolvedBase };
+    for (const delta of deltas.reverse()) {
+      for (const removedPath of delta.removedPaths ?? []) {
+        outputsByPath.delete(removedPath);
+      }
+      for (const output of delta.outputs ?? []) {
+        outputsByPath.set(output.path, output);
+      }
+      manifest = {
+        ...manifest,
+        ...(delta.artifact ?? {}),
+        revision: delta.revision,
+      };
+    }
+    return { ...manifest, outputs: [...outputsByPath.values()] };
+  }
+
+  async #readRevisionRecord(artifactId, revisionId) {
+    const file = path.join(
+      this.resolveProductionDir(artifactId),
+      "revisions",
+      `${sanitizeRevisionId(revisionId)}.json`
+    );
+    return JSON.parse(await fs.readFile(file, "utf8"));
+  }
+
+  async #readCurrentRevisionState(artifactId) {
     const dir = this.resolveProductionDir(artifactId);
+    const pointer = await readJsonIfExists(path.join(dir, "current.json"));
+    if (pointer?.revisionId) {
+      return {
+        revisionId: pointer.revisionId,
+        deltaDepth: Number.isSafeInteger(pointer.deltaDepth)
+          ? pointer.deltaDepth
+          : null,
+        deltaMetadataBytes: Number.isSafeInteger(pointer.deltaMetadataBytes)
+          ? pointer.deltaMetadataBytes
+          : null,
+      };
+    }
+    const base = await readJsonIfExists(path.join(dir, "artifact.json"));
+    return {
+      revisionId: base?.revision?.revisionId ?? null,
+      deltaDepth: 0,
+      deltaMetadataBytes: 0,
+    };
+  }
+
+  async #runArtifactMutation(artifactId, operation) {
+    const artifactDir = this.resolveProductionDir(artifactId);
+    return await this.mutationCoordinator.runExclusive(
+      artifactDir,
+      async () => await this.mutationLease.runExclusive(
+        artifactDir,
+        async (mutationLease) => ({
+          ...await operation(),
+          mutationLease,
+        })
+      )
+    );
+  }
+
+  async #writeCurrentRevision(
+    dir,
+    revisionId,
+    { deltaDepth = 0, deltaMetadataBytes = 0 } = {}
+  ) {
+    const target = path.join(dir, "current.json");
+    const staging = path.join(dir, `.current-${randomUUID()}.json`);
+    await writeJsonFile(staging, {
+      schemaVersion: 2,
+      revisionId,
+      deltaDepth,
+      deltaMetadataBytes,
+    }, { dir });
+    await fs.rename(staging, target);
+  }
+
+  async #compactCurrentRevision({ artifactId, revisionId }) {
+    const dir = this.resolveProductionDir(artifactId);
+    const manifest = await this.#resolveRevisionManifest(artifactId, revisionId);
+    await this.artifactSnapshotWriter({ dir, manifest });
+    await this.#writeCurrentRevision(dir, revisionId, {
+      deltaDepth: 0,
+      deltaMetadataBytes: 0,
+    });
+  }
+
+  async #hydrateArtifact(artifactId, manifest) {
     const outputs = [];
     for (const output of manifest.outputs ?? []) {
-      if (output?.kind !== "file" || typeof output.content === "string") {
-        outputs.push(output);
-        continue;
-      }
+      outputs.push(await this.#hydrateOutput(artifactId, output));
+    }
+    return { ...manifest, outputs };
+  }
 
-      let content;
-      if (output.contentHash) {
-        content = await fs.readFile(
+  async #hydrateOutput(artifactId, output) {
+    if (output?.kind !== "file" || typeof output.content === "string") {
+      return output;
+    }
+
+    const dir = this.resolveProductionDir(artifactId);
+    const content = output.contentHash
+      ? await fs.readFile(
           path.join(dir, "blobs", `${output.contentHash}.blob`),
           "utf8"
-        );
-      } else {
-        content = await fs.readFile(
+        )
+      : await fs.readFile(
           safeOutputPath(path.join(dir, "outputs"), output.path),
           "utf8"
         );
-      }
-      outputs.push({ ...output, content });
-    }
-    return { ...manifest, outputs };
+    return { ...output, content };
   }
 
   async #writeBlobOnce(file, content) {
@@ -325,15 +805,53 @@ export class ArtifactStore {
 }
 
 function revisionContentFingerprint(manifest) {
-  return JSON.stringify(
-    (manifest.outputs ?? []).map((output) => ({
+  return JSON.stringify({
+    storageMode: manifest.storageMode ?? "full",
+    baseRevisionId: manifest.revision?.baseRevisionId ?? null,
+    removedPaths: manifest.removedPaths ?? [],
+    outputs: (manifest.outputs ?? []).map((output) => ({
       kind: output?.kind,
       path: output?.path,
       contentHash: typeof output?.content === "string"
         ? hashArtifactContent(output.content)
         : output?.contentHash ?? null,
-    }))
-  );
+    })),
+  });
+}
+
+function stripRepairHeadMetadata(artifact) {
+  const {
+    outputs: _outputs,
+    outputCount: _outputCount,
+    singleOutputPath: _singleOutputPath,
+    contentBytes: _contentBytes,
+    goalTermCoverage: _goalTermCoverage,
+    ...metadata
+  } = artifact ?? {};
+  return metadata;
+}
+
+async function readJsonIfExists(file) {
+  try {
+    return JSON.parse(await fs.readFile(file, "utf8"));
+  } catch (error) {
+    if (error?.code === "ENOENT") return null;
+    throw error;
+  }
+}
+
+async function writeArtifactSnapshotAtomic({ dir, manifest }) {
+  const staging = path.join(dir, `.artifact-compact-${randomUUID()}.json`);
+  try {
+    await writeJsonFile(staging, manifest, { dir });
+    await fs.rename(staging, path.join(dir, "artifact.json"));
+  } finally {
+    try {
+      await fs.unlink(staging);
+    } catch (error) {
+      if (error?.code !== "ENOENT") throw error;
+    }
+  }
 }
 
 function safeOutputPath(outputsDir, outputPath) {

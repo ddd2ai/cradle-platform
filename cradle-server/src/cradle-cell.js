@@ -40,6 +40,7 @@ import { ArtifactProductionService } from "./production/artifact-production-serv
 import { StabilityStore } from "./stability/stability-store.js";
 import { PROJECT_ROOT } from "./project-root.js";
 import { normalizeCellAiBinding } from "./ai/cell-ai-binding.js";
+import { evaluateStimulusAdmission } from "./situation/stimulus-salience-policy.js";
 
 export class CradleCell {
 
@@ -54,6 +55,7 @@ export class CradleCell {
     runtimeMetrics = null,
     activationNotifier = null,
     assistantFactory = null,
+    summaryFlushDelayMs = 100,
   } = {}) {
     this.id = id;
     this.name = name;
@@ -68,6 +70,7 @@ export class CradleCell {
     this.runtimeMetrics = runtimeMetrics;
     this.activationNotifier = activationNotifier;
     this.assistantFactory = assistantFactory;
+    this.summaryFlushDelayMs = summaryFlushDelayMs;
 
     this.paths = createCellPaths({
       cellId: this.id,
@@ -124,6 +127,9 @@ export class CradleCell {
 
     this.active = false;
     this.tickTimer = null;
+    this.summaryFlushTimer = null;
+    this.isSummaryFlushing = false;
+    this.summaryFlushRequested = false;
     this.tickIntervalMs = 10_000;
     this.activationRequested = false;
     this.activationQueued = false;
@@ -1059,13 +1065,28 @@ ${memoryContext}
       summary,
       facts,
     });
+    if (stimulus.duplicate) {
+      return stimulus;
+    }
+
+    const admission = evaluateStimulusAdmission(stimulus.envelope);
+    this.runtimeMetrics?.increment("stimulus_activation_decision", 1, {
+      cellId: this.id,
+      decision: admission.decision,
+      type: stimulus.envelope.type,
+    });
     const routedTargets = stimulus.routes?.map((route) => route.targetCellId) ?? [this.id];
     this.activationNotifier?.(
       routedTargets.includes("_global") ? [this.id] : routedTargets,
-      "stimulus-received"
+      "stimulus-received",
+      { admission, stimulusId: stimulus.envelope.stimulusId }
     );
     if (!this.activationNotifier && routedTargets.includes(this.id)) {
-      this.runtimeLifecycleService.requestActivation("stimulus-received");
+      if (admission.activate) {
+        this.runtimeLifecycleService.requestActivation("stimulus-received");
+      } else {
+        this.runtimeLifecycleService.requestSummaryFlush("stimulus-received");
+      }
     }
     return stimulus;
   }

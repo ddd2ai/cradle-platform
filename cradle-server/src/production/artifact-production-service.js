@@ -15,6 +15,7 @@ import { ArtifactValidator } from "./artifact-validator.js";
 import { produceFromTransformation as _produceFromTransformation } from "./artifact-production-transformation.js";
 import { produceDivisionProductPair as _produceDivisionProductPair } from "./division-product-pair-production.js";
 import { ArtifactIncrementalRepairService } from "./artifact-incremental-repair-service.js";
+import { ArtifactIncrementalValidator } from "./artifact-incremental-validator.js";
 import { getAiTimeoutMs } from "../cradle-config.js";
 
 export class ArtifactProductionService {
@@ -41,11 +42,15 @@ export class ArtifactProductionService {
     this.parser = new ArtifactParser();
     this.normalizer = new ArtifactNormalizer();
     this.validator = new ArtifactValidator();
+    this.incrementalValidator = new ArtifactIncrementalValidator({
+      validator: this.validator,
+    });
     this.incrementalRepairService = new ArtifactIncrementalRepairService({
       cell: this.cell,
       store: this.store,
       parser: this.parser,
       validator: this.validator,
+      incrementalValidator: this.incrementalValidator,
     });
   }
 
@@ -171,7 +176,8 @@ The actual artifact MUST follow the Original Goal, not any past Vision or Histor
     task,
     executionResult,
   } = {}) {
-    const artifact = await this.store.readArtifact(artifactId);
+    const repairContext = await this.store.readArtifactRepairContext(artifactId);
+    const artifact = repairContext.artifact;
 
     if (!artifact) {
       throw new Error(`Artifact not found: ${artifactId}`);
@@ -181,6 +187,7 @@ The actual artifact MUST follow the Original Goal, not any past Vision or Histor
       artifact,
       task,
       executionResult,
+      repairContextMode: repairContext.mode,
     });
 
     if (incremental.applied) {
@@ -220,8 +227,12 @@ ${incremental.changePlan.changes.map((change) => `- ${change.path}`).join("\n")}
         repairMode: "incremental",
         changePlan: incremental.changePlan,
         impact: incremental.impact,
+        changedOutputs: incremental.changedOutputs,
+        artifactHydration: incremental.artifactHydration,
       };
     }
+
+    const fullyHydratedArtifact = await this.store.readArtifact(artifactId);
 
     const environment = await this.cell.readEnvironment();
 
@@ -237,9 +248,9 @@ The repair task only describes what needs to be fixed.
 `;
 
     const prompt = buildArtifactExecutionRepairPrompt({
-      type: artifact.type,
-      goal: artifact.goal,
-      artifact,
+      type: fullyHydratedArtifact.type,
+      goal: fullyHydratedArtifact.goal,
+      artifact: fullyHydratedArtifact,
       task,
       executionResult,
       context,
@@ -255,31 +266,31 @@ The repair task only describes what needs to be fixed.
 
     let repaired = this.createArtifactFromParsed({
       parsed,
-      type: artifact.type,
-      title: artifact.title,
-      goal: artifact.goal,
+      type: fullyHydratedArtifact.type,
+      title: fullyHydratedArtifact.title,
+      goal: fullyHydratedArtifact.goal,
     });
 
     const revisionCreatedAt = new Date().toISOString();
     repaired = {
-      ...artifact,
+      ...fullyHydratedArtifact,
       ...repaired,
-      id: artifact.id,
-      type: artifact.type,
-      title: artifact.title,
-      goal: artifact.goal,
-      createdAt: artifact.createdAt,
-      origin: artifact.origin,
-      relations: artifact.relations,
+      id: fullyHydratedArtifact.id,
+      type: fullyHydratedArtifact.type,
+      title: fullyHydratedArtifact.title,
+      goal: fullyHydratedArtifact.goal,
+      createdAt: fullyHydratedArtifact.createdAt,
+      origin: fullyHydratedArtifact.origin,
+      relations: fullyHydratedArtifact.relations,
       notes: [
-      ...(artifact.notes ?? []),
+      ...(fullyHydratedArtifact.notes ?? []),
       ...(repaired.notes ?? []),
       `Repaired from execution feedback: ${task?.title ?? "(unknown task)"}`,
       `Incremental repair fallback: ${incremental.reason}`,
       ],
       revision: {
         revisionId: `rev-${randomUUID()}`,
-        baseRevisionId: artifact.revision?.revisionId ?? null,
+        baseRevisionId: fullyHydratedArtifact.revision?.revisionId ?? null,
         mode: "full-repair",
         changedPaths: repaired.outputs
           .filter((output) => output?.kind === "file")

@@ -1,14 +1,26 @@
 import path from "node:path";
+import { extractDeclaredSymbols } from "./artifact-content-index.js";
 
 const MAX_TARGETS = 3;
 
-export function locateArtifactChangeTargets({ artifact, task, executionResult } = {}) {
-  const outputs = (artifact?.outputs ?? []).filter(
+export function locateArtifactChangeTargets({
+  artifact,
+  task,
+  executionResult,
+  candidatePaths,
+} = {}) {
+  const allOutputs = (artifact?.outputs ?? []).filter(
     (output) => output?.kind === "file" && output.path
   );
-  if (outputs.length === 0) {
+  if (allOutputs.length === 0) {
     return { paths: [], confidence: 0, reason: "artifact has no file outputs" };
   }
+  const candidateSet = Array.isArray(candidatePaths)
+    ? new Set(candidatePaths)
+    : null;
+  const outputs = candidateSet
+    ? allOutputs.filter((output) => candidateSet.has(output.path))
+    : allOutputs;
 
   const evidence = buildEvidenceText(task, executionResult);
   const diagnosticPaths = extractDiagnosticPaths(evidence);
@@ -16,15 +28,18 @@ export function locateArtifactChangeTargets({ artifact, task, executionResult } 
     const outputPath = normalize(output.path);
     const basename = path.posix.basename(outputPath);
     const stem = basename.replace(/\.[^.]+$/, "");
-    let score = 0;
+    let score = candidateSet ? 4 : 0;
 
     if (diagnosticPaths.some((candidate) => pathsMatch(outputPath, candidate))) score += 20;
     if (evidence.includes(outputPath.toLowerCase())) score += 12;
     if (evidence.includes(basename.toLowerCase())) score += 8;
     if (stem.length >= 4 && evidence.includes(stem.toLowerCase())) score += 4;
 
-    for (const symbol of extractDeclaredSymbols(output.content)) {
-      if (symbol.length >= 4 && evidence.includes(symbol.toLowerCase())) score += 3;
+    const declaredSymbols = Array.isArray(output.declaredSymbols)
+      ? output.declaredSymbols
+      : extractDeclaredSymbols(output.content);
+    for (const symbol of declaredSymbols) {
+      if (symbol.length >= 4 && evidence.includes(symbol.toLowerCase())) score += 4;
     }
     return { path: output.path, score };
   });
@@ -47,9 +62,9 @@ export function locateArtifactChangeTargets({ artifact, task, executionResult } 
     };
   }
 
-  if (outputs.length === 1) {
+  if (allOutputs.length === 1) {
     return {
-      paths: [outputs[0].path],
+      paths: [allOutputs[0].path],
       confidence: 0.5,
       reason: "single-output artifact has an unambiguous repair boundary",
     };
@@ -81,13 +96,6 @@ function extractDiagnosticPaths(text) {
     paths.push(normalize(match[1]));
   }
   return paths;
-}
-
-function extractDeclaredSymbols(content = "") {
-  const symbols = [];
-  const pattern = /\b(?:class|interface|record|function|const|let|var)\s+([A-Za-z_$][\w$]*)/g;
-  for (const match of String(content).matchAll(pattern)) symbols.push(match[1]);
-  return symbols;
 }
 
 function pathsMatch(outputPath, diagnosticPath) {

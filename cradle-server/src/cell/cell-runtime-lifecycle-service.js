@@ -32,6 +32,11 @@ export class CellRuntimeLifecycleService {
       clearTimeout(this.cell.tickTimer);
       this.cell.tickTimer = null;
     }
+    if (this.cell.summaryFlushTimer) {
+      clearTimeout(this.cell.summaryFlushTimer);
+      this.cell.summaryFlushTimer = null;
+    }
+    this.cell.summaryFlushRequested = false;
 
     this.cell.activationScheduler?.cancel(this.cell.id);
     this.cell.activationQueued = false;
@@ -53,8 +58,21 @@ export class CellRuntimeLifecycleService {
       cellId: this.cell.id,
       reason: _reason,
     });
+    if (this.cell.summaryFlushTimer) {
+      clearTimeout(this.cell.summaryFlushTimer);
+      this.cell.summaryFlushTimer = null;
+      this.cell.runtimeMetrics?.increment("summary_flush_absorbed_by_activation", 1, {
+        cellId: this.cell.id,
+      });
+    }
+    this.cell.summaryFlushRequested = false;
     this.cell.activationRequested = true;
-    if (this.cell.isTicking || this.cell.activationQueued || this.cell.tickTimer) {
+    if (
+      this.cell.isTicking ||
+      this.cell.isSummaryFlushing ||
+      this.cell.activationQueued ||
+      this.cell.tickTimer
+    ) {
       this.cell.runtimeMetrics?.increment("activation_coalesced", 1, { cellId: this.cell.id });
       return true;
     }
@@ -74,6 +92,70 @@ export class CellRuntimeLifecycleService {
     }, 0);
     this.cell.tickTimer.unref?.();
     return true;
+  }
+
+  requestSummaryFlush(reason = "summary-only-stimulus") {
+    if (!this.cell.active) return false;
+    this.cell.summaryFlushRequested = true;
+    this.cell.runtimeMetrics?.increment("summary_flush_requested", 1, {
+      cellId: this.cell.id,
+      reason,
+    });
+    if (this.cell.summaryFlushTimer || this.cell.isSummaryFlushing) {
+      this.cell.runtimeMetrics?.increment("summary_flush_coalesced", 1, {
+        cellId: this.cell.id,
+      });
+      return true;
+    }
+
+    this.cell.summaryFlushTimer = setTimeout(() => {
+      this.cell.summaryFlushTimer = null;
+      this.runSummaryFlush().catch(() => {});
+    }, this.cell.summaryFlushDelayMs ?? 100);
+    this.cell.summaryFlushTimer.unref?.();
+    return true;
+  }
+
+  async runSummaryFlush() {
+    if (!this.cell.active || this.cell.isSummaryFlushing) return;
+    if (this.cell.isTicking || this.cell.activationQueued) {
+      this.requestSummaryFlush("cell-busy");
+      return;
+    }
+
+    this.cell.isSummaryFlushing = true;
+    this.cell.summaryFlushRequested = false;
+    this.cell.runtimeMetrics?.increment("summary_flush_started", 1, {
+      cellId: this.cell.id,
+    });
+    try {
+      const result = await this.cell.metabolismService.metabolize({ summaryOnly: true });
+      if (result?.needsActivation) {
+        this.cell.runtimeMetrics?.increment("summary_flush_escalated", 1, {
+          cellId: this.cell.id,
+        });
+        this.requestActivation("summary-flush-escalated");
+        return;
+      }
+      this.cell.runtimeMetrics?.increment(
+        "summary_flush_processed",
+        result?.consumed ?? 0,
+        { cellId: this.cell.id }
+      );
+    } catch (error) {
+      this.cell.runtimeMetrics?.increment("summary_flush_failed", 1, {
+        cellId: this.cell.id,
+      });
+      console.log(`[${this.cell.id}] summary flush failed: ${error.message}`);
+      this.requestActivation("summary-flush-failed");
+    } finally {
+      this.cell.isSummaryFlushing = false;
+      if (this.cell.activationRequested && this.cell.active) {
+        this.requestActivation("summary-flush-complete");
+      } else if (this.cell.summaryFlushRequested && this.cell.active) {
+        this.requestSummaryFlush("summary-work-remains");
+      }
+    }
   }
 
   async runScheduledTick() {
@@ -230,6 +312,11 @@ export class CellRuntimeLifecycleService {
       clearTimeout(this.cell.tickTimer);
       this.cell.tickTimer = null;
     }
+    if (this.cell.summaryFlushTimer) {
+      clearTimeout(this.cell.summaryFlushTimer);
+      this.cell.summaryFlushTimer = null;
+    }
+    this.cell.summaryFlushRequested = false;
 
     this.cell.active = false;
     this.cell.activationRequested = false;

@@ -43,4 +43,40 @@ assert.deepEqual(
   []
 );
 
+const indexedOnly = locateArtifactChangeTargets({
+  artifact: {
+    outputs: [{
+      kind: "file",
+      path: "src/IndexedService.java",
+      language: "java",
+      contentHash: "hash-only",
+      declaredSymbols: ["IndexedService", "calculateTotal"],
+    }],
+  },
+  executionResult: { error: "calculateTotal returned an invalid value" },
+});
+assert.deepEqual(indexedOnly.paths, ["src/IndexedService.java"]);
+
+const indexedCandidatesOnly = locateArtifactChangeTargets({
+  artifact: {
+    outputs: [
+      {
+        kind: "file",
+        path: "src/SelectedService.js",
+        declaredSymbols: ["SelectedService"],
+      },
+      {
+        kind: "file",
+        path: "src/UnselectedService.js",
+        get declaredSymbols() {
+          throw new Error("locator scanned an output outside indexed candidates");
+        },
+      },
+    ],
+  },
+  task: { title: "修正 SelectedService" },
+  candidatePaths: ["src/SelectedService.js"],
+});
+assert.deepEqual(indexedCandidatesOnly.paths, ["src/SelectedService.js"]);
+
 console.log("Artifact impact locator tests passed");

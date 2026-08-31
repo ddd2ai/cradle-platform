@@ -155,7 +155,8 @@ export class CradleEngine {
       projectRoot: this.projectRoot,
       activationScheduler: this.activationScheduler,
       runtimeMetrics: this.runtimeMetrics,
-      activationNotifier: (cellIds, reason) => this.notifyCellActors(cellIds, reason),
+      activationNotifier: (cellIds, reason, context) =>
+        this.notifyCellActors(cellIds, reason, context),
     });
 
     if (staged) {
@@ -236,7 +237,8 @@ export class CradleEngine {
       projectRoot: this.projectRoot,
       activationScheduler: this.activationScheduler,
       runtimeMetrics: this.runtimeMetrics,
-      activationNotifier: (cellIds, reason) => this.notifyCellActors(cellIds, reason),
+      activationNotifier: (cellIds, reason, context) =>
+        this.notifyCellActors(cellIds, reason, context),
     });
 
     await cell.prepare();
@@ -335,9 +337,15 @@ export class CradleEngine {
     return message;
   }
 
-  notifyCellActors(cellIds = [], reason = "stimulus-received") {
+  notifyCellActors(cellIds = [], reason = "stimulus-received", { admission } = {}) {
     for (const cellId of new Set(cellIds)) {
-      this.cells.get(cellId)?.runtimeLifecycleService?.requestActivation(reason);
+      const lifecycle = this.cells.get(cellId)?.runtimeLifecycleService;
+      if (!lifecycle) continue;
+      if (admission && !admission.activate) {
+        lifecycle.requestSummaryFlush(reason);
+      } else {
+        lifecycle.requestActivation(reason);
+      }
     }
   }
 

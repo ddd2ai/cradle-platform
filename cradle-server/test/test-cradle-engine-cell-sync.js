@@ -49,16 +49,24 @@ engine.cells.set("actor-a", {
   id: "actor-a",
   runtimeLifecycleService: {
     requestActivation: (reason) => actorWakeups.push(["actor-a", reason]),
+    requestSummaryFlush: (reason) => actorWakeups.push(["actor-a-summary", reason]),
   },
 });
 engine.cells.set("actor-b", {
   id: "actor-b",
   runtimeLifecycleService: {
     requestActivation: (reason) => actorWakeups.push(["actor-b", reason]),
+    requestSummaryFlush: (reason) => actorWakeups.push(["actor-b-summary", reason]),
   },
 });
 engine.notifyCellActors(["actor-b", "actor-b", "missing"], "targeted-stimulus");
 assert.deepEqual(actorWakeups, [["actor-b", "targeted-stimulus"]]);
+engine.notifyCellActors(
+  ["actor-a"],
+  "passive-stimulus",
+  { admission: { activate: false } }
+);
+assert.deepEqual(actorWakeups.at(-1), ["actor-a-summary", "passive-stimulus"]);
 
 await fs.rm(projectRoot, { recursive: true, force: true });
 

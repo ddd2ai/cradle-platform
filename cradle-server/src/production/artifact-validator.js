@@ -1,5 +1,6 @@
 import path from "path";
 import { getArtifactTypePolicy } from "./artifact-type-policy.js";
+import { extractArtifactGoalRequirements } from "./artifact-goal-requirements.js";
 
 export class ArtifactValidator {
   validate(artifact) {
@@ -66,61 +67,7 @@ export class ArtifactValidator {
   }
 
   extractRequirements(goal) {
-    const requirements = [];
-
-    // Java class/record/interface 名稱
-    const nameMatch = goal.match(/名稱為\s*(\w+)/);
-    if (nameMatch) {
-      requirements.push({
-        term: nameMatch[1].toLowerCase(),
-        required: true,
-        type: "name",
-      });
-    }
-
-    // 方法名稱
-    const methodMatches = [
-      ...goal.matchAll(/包含\s*(\w+)\s*方法/g),
-      ...goal.matchAll(/(\w+)\s*\(\s*[^)]*\s*\)\s*方法/g),
-    ];
-
-    for (const match of methodMatches) {
-      if (match[1]) {
-        requirements.push({
-          term: match[1].toLowerCase(),
-          required: true,
-          type: "method",
-        });
-      }
-    }
-
-    // 欄位名稱
-    const fieldMatch = goal.match(/欄位包含\s*([\w,\s]+)/);
-    if (fieldMatch) {
-      const fields = fieldMatch[1].split(/[,\s]+/).filter(Boolean);
-      for (const field of fields) {
-        requirements.push({
-          term: field.toLowerCase(),
-          required: true,
-          type: "field",
-        });
-      }
-    }
-
-    // 回傳值
-    const returnMatch = goal.match(/回傳\s*([\w\s]+)/);
-    if (returnMatch) {
-      const returnValue = returnMatch[1].trim();
-      if (returnValue) {
-        requirements.push({
-          term: returnValue.toLowerCase(),
-          required: false, // 回傳值可能在字串中,不強制要求
-          type: "return",
-        });
-      }
-    }
-
-    return requirements;
+    return extractArtifactGoalRequirements(goal);
   }
 
   validateTextQuality(artifact) {

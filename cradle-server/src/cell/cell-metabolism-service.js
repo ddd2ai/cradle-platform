@@ -66,7 +66,7 @@ export class CellMetabolismService {
     return lines.join("\n");
   }
 
-  async metabolize() {
+  async metabolize({ summaryOnly = false } = {}) {
     const stimuli = this.cell.claimStimuli
       ? await this.cell.claimStimuli()
       : await this.cell.readStimuli();
@@ -80,23 +80,58 @@ export class CellMetabolismService {
 
     try {
       const salience = evaluateStimulusBatch(stimuli);
-      this.cell.runtimeMetrics?.increment("stimuli_salience_decisions", stimuli.length, {
-        cellId: this.cell.id,
-        processing: salience.processing,
-      });
-      if (salience.processing === "summary-only") {
-        const observationFile = await this.cell.observationStore.writeObservationMarkdown(
-          this.formatObservationMarkdown(salience.observation)
+      this.cell.runtimeMetrics?.increment(
+        "stimuli_salience_decisions",
+        salience.summaryStimuli.length,
+        {
+          cellId: this.cell.id,
+          processing: "summary-only",
+        }
+      );
+      this.cell.runtimeMetrics?.increment(
+        "stimuli_salience_decisions",
+        salience.reasoningStimuli.length,
+        {
+          cellId: this.cell.id,
+          processing: "reasoning",
+        }
+      );
+      if (summaryOnly && salience.reasoningStimuli.length > 0) {
+        await this.cell.releaseStimuli?.(stimuli);
+        return {
+          created: 0,
+          consumed: 0,
+          needsActivation: true,
+          reason: "summary queue contains actionable stimuli",
+        };
+      }
+
+      let summaryObservationFile = null;
+      if (salience.summaryStimuli.length > 0) {
+        summaryObservationFile = await this.cell.observationStore.writeObservationMarkdown(
+          this.formatObservationMarkdown(
+            salience.observation ?? salience.summaryObservation
+          )
         );
-        await this.cell.recordEvolutionEvidence?.(stimuliToEvolutionEvidence(stimuli));
+        await this.cell.recordEvolutionEvidence?.(
+          stimuliToEvolutionEvidence(salience.summaryStimuli)
+        );
+      }
+
+      if (salience.processing === "summary-only") {
         await this.cell.archiveStimuli(stimuli);
         return {
           created: 0,
           consumed: stimuli.length,
           processing: salience.processing,
-          observationFile,
+          observationFile: summaryObservationFile,
         };
       }
+
+      this.cell.runtimeMetrics?.increment("stimuli_reasoning_batches", 1, {
+        cellId: this.cell.id,
+        stimulusCount: salience.reasoningStimuli.length,
+      });
 
       const result = await this.cell.askWithTimeout(
         `
@@ -131,7 +166,7 @@ ${await this.cell.buildMemoryContext()}
 
 # Stimuli
 
-${stimuli.map((s) => `
+${salience.reasoningStimuli.map((s) => `
 ## ${s.category}/${s.file}
 
 ${s.content}
@@ -192,7 +227,9 @@ ${s.content}
         });
       }
 
-      await this.cell.recordEvolutionEvidence?.(stimuliToEvolutionEvidence(stimuli));
+      await this.cell.recordEvolutionEvidence?.(
+        stimuliToEvolutionEvidence(salience.reasoningStimuli)
+      );
       await this.cell.archiveStimuli(stimuli);
 
       return {
@@ -200,6 +237,7 @@ ${s.content}
         consumed: stimuli.length,
         processing: salience.processing,
         observationFile,
+        ...(summaryObservationFile ? { summaryObservationFile } : {}),
       };
     } catch (error) {
       await this.cell.releaseStimuli?.(stimuli);

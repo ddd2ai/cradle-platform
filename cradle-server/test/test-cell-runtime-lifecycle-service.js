@@ -7,6 +7,10 @@ function createCell(overrides = {}) {
     id: "cell-runtime",
     active: false,
     tickTimer: null,
+    summaryFlushTimer: null,
+    summaryFlushRequested: false,
+    isSummaryFlushing: false,
+    summaryFlushDelayMs: 1,
     tickIntervalMs: 60_000,
     isTicking: false,
     assistant: {
@@ -51,6 +55,65 @@ function createCell(overrides = {}) {
   };
 
   return { cell, calls };
+}
+
+{
+  let summaryFlushes = 0;
+  const { cell, calls } = createCell({
+    active: true,
+    metabolismService: {
+      async metabolize(options) {
+        summaryFlushes += 1;
+        calls.push({ type: "summaryMetabolize", options });
+        return { consumed: 3, processing: "summary-only" };
+      },
+    },
+  });
+  const service = new CellRuntimeLifecycleService({ cell });
+
+  service.requestSummaryFlush("passive-1");
+  service.requestSummaryFlush("passive-2");
+  await new Promise((resolve) => setTimeout(resolve, 10));
+
+  assert.equal(summaryFlushes, 1);
+  assert.deepEqual(
+    calls.find((call) => call.type === "summaryMetabolize").options,
+    { summaryOnly: true }
+  );
+  assert.equal(
+    calls.some((call) => call.type === "readInbox"),
+    false,
+    "summary flush must not enter the full Cell activation flow"
+  );
+}
+
+{
+  let releaseSummary;
+  const releaseSummaryPromise = new Promise((resolve) => { releaseSummary = resolve; });
+  const { cell, calls } = createCell({
+    active: true,
+    metabolismService: {
+      async metabolize() {
+        await releaseSummaryPromise;
+        return { consumed: 1, processing: "summary-only" };
+      },
+    },
+  });
+  const service = new CellRuntimeLifecycleService({ cell });
+
+  service.requestSummaryFlush("passive");
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  assert.equal(cell.isSummaryFlushing, true);
+  service.requestActivation("actionable-during-summary");
+  await Promise.resolve();
+  assert.equal(
+    calls.some((call) => call.type === "readInbox"),
+    false,
+    "activation must wait for the deterministic summary critical section"
+  );
+  releaseSummary();
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  assert.equal(calls.filter((call) => call.type === "readInbox").length, 1);
 }
 
 {

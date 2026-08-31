@@ -147,6 +147,76 @@ assert.equal(calls.find((call) => call.type === "archiveStimuli").items, stimuli
   assert.equal(askCount, 0);
 }
 
+{
+  const prompts = [];
+  const observations = [];
+  const archived = [];
+  const evidence = [];
+  const mixedStimuli = [
+    {
+      category: "signals",
+      file: "passive.json",
+      content: "PASSIVE_SECRET_MUST_NOT_ENTER_REASONING",
+      envelope: {
+        schemaVersion: 1,
+        stimulusId: "stim-passive",
+        type: "artifact.execution.passed",
+        source: "internal.execution",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        dedupKey: "passive",
+        salience: { risk: 0.05, stateImpact: 0.15, novelty: 0.2 },
+        facts: { artifactId: "artifact-passive", status: "passed" },
+      },
+    },
+    {
+      category: "threats",
+      file: "failure.json",
+      content: "ACTIONABLE_FAILURE",
+      envelope: {
+        schemaVersion: 1,
+        stimulusId: "stim-failure",
+        type: "artifact.execution.runtime_failed",
+        source: "internal.execution",
+        createdAt: "2026-01-01T00:00:01.000Z",
+        dedupKey: "failure",
+        salience: { risk: 0.9, stateImpact: 0.85, novelty: 0.7 },
+        facts: { artifactId: "artifact-failure", status: "runtime_failed" },
+      },
+    },
+  ];
+  const mixedCell = {
+    id: "cell-mixed",
+    async readStimuli() { return mixedStimuli; },
+    observationStore: {
+      async writeObservationMarkdown(content) {
+        observations.push(content);
+        return `observations/${observations.length}.md`;
+      },
+    },
+    async buildMemoryContext() { return "memory"; },
+    async askWithTimeout(prompt) {
+      prompts.push(prompt);
+      return { text: JSON.stringify({ observation: { summary: "failure" }, tasks: [] }) };
+    },
+    async addTask() {},
+    async archiveStimuli(items) { archived.push(...items); },
+    async recordEvolutionEvidence(items) { evidence.push(...items); },
+  };
+
+  const mixedResult = await new CellMetabolismService({ cell: mixedCell }).metabolize();
+  assert.equal(mixedResult.processing, "reasoning");
+  assert.equal(mixedResult.summaryObservationFile, "observations/1.md");
+  assert.equal(prompts.length, 1);
+  assert.equal(prompts[0].includes("ACTIONABLE_FAILURE"), true);
+  assert.equal(prompts[0].includes("PASSIVE_SECRET_MUST_NOT_ENTER_REASONING"), false);
+  assert.equal(observations.length, 2);
+  assert.equal(archived.length, 2);
+  assert.deepEqual(evidence.map((item) => item.evidenceId).sort(), [
+    "stim-failure",
+    "stim-passive",
+  ]);
+}
+
 assert.throws(
   () => new CellMetabolismService(),
   /requires cell/
