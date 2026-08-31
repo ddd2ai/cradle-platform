@@ -239,3 +239,10 @@ Cradle AI 適合審核 structural change plan 與跨 Cell impact；一般局部�
 避免中央模型接觸每個檔案修改。
 
 效能驗證必須同時觀測吞吐、延遲與品質；不能藉由丟棄重要刺激換取較漂亮的效能數字。
+
+## 效能基準與歷史紀錄
+
+正式效能測試的方法、環境、數值、複雜度判斷與回歸結果統一記錄在
+[PERFORMANCE_BENCHMARK_HISTORY.md](./PERFORMANCE_BENCHMARK_HISTORY.md)。每次修改 activation、
+event propagation、Artifact I/O、revision、queue、LLM admission 或多 Cell concurrency 時，都必須在同一個
+變更中追加測試紀錄；沒有相同條件的前測資料時，只能標示 current-state，不能宣稱改善百分比。

@@ -188,6 +188,26 @@ git diff --check
 
 Run focused tests first, then the broader relevant suite. For lifecycle or persistence changes, inspect resulting Cell files, Artifact relations, operation status, and rollback behavior. For live UI changes, verify render and network behavior under event load rather than relying only on unit tests.
 
+### Performance optimization evidence
+
+Every performance optimization must update
+`cradle-server/docs/PERFORMANCE_BENCHMARK_HISTORY.md` in the same change slice.
+Treat the benchmark record as part of the implementation, not an optional report.
+
+- Record the optimization target, affected active path, expected complexity change, and correctness invariant.
+- Run comparable before/after measurements with the same machine, benchmark configuration, workload, cache mode, and durability mode whenever a speedup is claimed.
+- Record sample counts, p50/p95 latency, throughput, amplification or contention indicators, and relevant CPU, memory, network, render, queue, or LLM metrics.
+- Link or name the benchmark command and preserve enough environment and revision information to reproduce the result.
+- Label a measurement as `current-state only` when no comparable pre-change baseline exists; do not report it as an improvement percentage.
+- Keep quality and regression evidence beside performance evidence. Dropping significant stimuli, validation, persistence guarantees, or required work is not a valid optimization.
+- Append a new dated entry; do not rewrite older measurements when hardware, methodology, or implementation changes.
+
+For Artifact output scaling and mutation contention, run:
+
+```bash
+npm run benchmark:artifact
+```
+
 ## Definition of Done
 
 A Cradle feature is complete only when:
