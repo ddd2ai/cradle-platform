@@ -1,5 +1,7 @@
 # Living Context 驅動的細胞分裂與融合產物再生
 
+> Current-state document. Last reviewed against source code: 2026-08-31.
+
 ## 實作摘要
 
 本次實作完成了「Living Context 驅動的細胞分裂與融合產物再生」的核心功能，遵循以下原則：
@@ -86,22 +88,30 @@
   - 顯示完整的 Division 資訊
   - 包含 Living Context、Productions、DNA Plan
 
-## 未完成階段
+## 後續完成階段
 
-### ⏳ 第十一階段：實作 Fusion (待後續完成)
+### ✅ 第十一階段：實作 Fusion
 
-需要實作：
-- `buildLivingContextFusionPrompt()` in `living-context-prompts.js`
-- `CellFusionService` in `src/lifecycle/cell-fusion-service.js`
-- 修改 `colony-commands.js` 中的 `/fuse` 命令
+- `src/living-context/living-context-fusion-prompts.js` - Fusion Prompt
+- `src/living-context/living-context-fusion-service.js` - Fusion Plan 建立與驗證
+- `src/living-context/fusion-plan-schema.js` - Fusion Plan schema、normalize 與 validate
+- `src/lifecycle/cell-fusion-service.js` - 多 Parent Cell 融合流程
+- `src/commands/fusion-commands.js` - `/fuse` CLI；`/merge` 僅保留為 deprecated alias
+- `src/application/fuse-cells-use-case.js` - HTTP API application boundary
 
-### ⏳ 第十二階段：新增測試檔案 (待後續完成)
+### ✅ 第十二階段：新增 Living Context、Division 與 Fusion 測試
 
-需要建立：
+目前包含：
+
 - `test/test-living-context-schema.js`
-- `test/test-living-context-division.js`
-- `test/test-artifact-regeneration.js`
-- `test/test-living-context-fusion.js`
+- `test/test-living-context-service.js`
+- `test/test-living-context-fusion-service.js`
+- `test/test-cell-division-service.js`
+- `test/test-cell-division-rollback.js`
+- `test/test-cell-fusion-service.js`
+- `test/test-division-product-pair-production.js`
+- `test/test-fusion-plan-schema.js`
+- `test/test-fusion-engine-contract.js`
 
 ## 核心設計原則
 
@@ -126,46 +136,16 @@
 - ❌ 不可移除 Parent Artifact
 - ❌ 不可在 Living Context 規劃失敗時建立 Child
 
-## Commit 計劃
+## Current Implementation Boundary
 
-### 第一個 commit (本次實作)
+目前已完成 Division 與 Fusion 的主要編排、Living Context plan、Artifact regeneration、來源追蹤、產品關係驗證，以及針對 partial failure 的補償流程。
 
-```
-feat: add living context model and source material service
+這不等於已完成全自主演化：
 
-- Add Living Context schema, validation, and normalization
-- Add Living Context service with AI-driven division plan
-- Add Source Material service for collecting cell context
-- Extend ArtifactStore with summary and batch read methods
-- Modify CradleCell to support Living Context
-- Add artifact origin tracking (created/division/fusion)
-- Add ArtifactProductionService.produceFromTransformation()
-- Add ArtifactRegenerationService for division/fusion
-- Add CellDivisionService for orchestrating division process
-- Refactor divideTo() and divideBySVD() to use Living Context
-- Update /divide-svd command to use CellDivisionService
-```
-
-### 第二個 commit (待後續)
-
-```
-feat: regenerate child productions during cell division
-
-- Complete end-to-end division with artifact regeneration
-- Add comprehensive division tests
-- Validate division workflow with real AI calls
-```
-
-### 第三個 commit (待未來)
-
-```
-feat: synthesize living context and productions during cell fusion
-
-- Add Living Context fusion prompt and service
-- Add CellFusionService
-- Update /fuse command to use CellFusionService
-- Add fusion tests
-```
+- Lifecycle proposal、policy decision、user approval、operation completion 與 postcondition verification 仍是不同狀態。
+- 真實 Provider 的端到端結果仍需要依執行環境驗證，不能只以 fake provider 測試代表模型品質。
+- Division 與 Fusion 是結構性操作；自動執行政策不可因功能已存在就默認開啟。
+- Living Context 的品質仍需以實際責任邊界、產物關係與後續可執行性判定。
 
 ## 使用範例
 
@@ -189,6 +169,14 @@ console.log(result.livingContextPlan);
 console.log(result.productionResult);
 ```
 
+### Cell Fusion
+
+```text
+/fuse cell-001 cell-002 cell-fused
+```
+
+Fusion 會綜合 Parent Cells 的 Living Context 與選定素材，產生新的責任邊界、distilled memory、DNA 與 products；它不是把 Parent 的目錄或 Memory 直接串接。
+
 ### 檢視 Living Context
 
 ```javascript
@@ -200,12 +188,11 @@ console.log(livingContext.excludes);
 
 ## 下一步
 
-1. ✅ 測試 `/divide-svd` 命令是否正常運作
-2. ✅ 驗證 Living Context 是否正確建立
-3. ✅ 驗證 Artifact 是否正確重新生成
-4. ⏳ 實作 Fusion 功能
-5. ⏳ 新增完整測試覆蓋
-6. ⏳ 更新文件與範例
+1. 以真實 Provider 驗證 Division/Fusion plan 的語意品質。
+2. 驗證生成 products 的實際編譯、執行與 shared contract 相容性。
+3. 持續補強 staged Child、Parent revision 與 filesystem compensation 的失敗矩陣。
+4. 將 post-apply validation 納入 lifecycle operation 的完成條件。
+5. 在明確 opt-in 前維持結構性操作的人工批准與安全政策。
 
 ## 檔案結構
 
@@ -215,17 +202,28 @@ src/
 │   ├── living-context-schema.js
 │   ├── living-context-prompts.js
 │   ├── living-context-service.js
+│   ├── living-context-fusion-prompts.js
+│   ├── living-context-fusion-service.js
+│   ├── division-plan-schema.js
+│   ├── fusion-plan-schema.js
 │   └── source-material-service.js
 ├── lifecycle/
-│   └── cell-division-service.js
+│   ├── cell-division-service.js
+│   ├── cell-division-rollback.js
+│   └── cell-fusion-service.js
 ├── production/
-│   ├── artifact-schema.js (modified)
-│   ├── artifact-store.js (modified)
-│   ├── artifact-production-service.js (modified)
-│   ├── artifact-transformation-prompt.js (new)
-│   ├── artifact-production-transformation.js (new)
-│   └── artifact-regeneration-service.js (new)
+│   ├── artifact-schema.js
+│   ├── artifact-store.js
+│   ├── artifact-production-service.js
+│   ├── artifact-transformation-prompt.js
+│   ├── artifact-production-transformation.js
+│   ├── artifact-regeneration-service.js
+│   └── division-product-pair-production.js
 ├── commands/
-│   └── cell-commands.js (modified)
+│   ├── division-commands.js
+│   └── fusion-commands.js
+├── application/
+│   ├── divide-cell-use-case.js
+│   └── fuse-cells-use-case.js
 └── cradle-cell.js (modified)
 ```

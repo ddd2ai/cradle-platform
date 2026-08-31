@@ -18,6 +18,71 @@ Cradle Platform 是一個探索「軟體生命工程（Software Life Engineering
 
 ---
 
+# 平台定位
+
+Cradle 不是單純的 AI 程式碼產生器，也不把任何一個 LLM 視為系統本身。
+
+Cradle 是一個以生命週期為核心的軟體生產環境：Cell 接收意圖與外部刺激，依據自己的 DNA、責任邊界與技術環境產生 Artifact，再透過驗證、執行、觀察、修復與記憶逐步成長。
+
+## North Star：用有限觀測取代逐份人工校對
+
+Cradle 的最終目標，是讓人不需要逐份閱讀、執行與校對 AI 產物。人負責定義意圖、風險政策與可接受的品質門檻；Cradle 則透過軟體生命工程的方法，持續觀測一組有限、明確、可重現的指標，判斷 Artifact 是否已達到其用途所需的足夠品質。
+
+```text
+Human defines
+Goal + Constraints + Quality Contract + Risk Policy
+                         │
+                         ▼
+                  Cell produces Artifact
+                         │
+                         ▼
+             Observe finite quality indicators
+                         │
+              ┌──────────┴──────────┐
+              ▼                     ▼
+       Evidence sufficient     Insufficient evidence
+       all required gates      or required gate failed
+              │                     │
+              ▼                     ▼
+      Stable / Publishable      Repair / Escalate
+```
+
+「足夠品質」不是由 LLM 自評，也不是抽象的總分。它表示：對這個 Artifact 的既定用途而言，所有必要品質閘門都已由可重現證據通過，並在指定觀測窗口內保持穩定，且沒有未解決的阻斷問題。
+
+如果缺乏可觀測的 acceptance oracle、測試、規格或環境，Cradle 必須回報 **`insufficient_evidence`**，不能把「看起來合理」當成品質通過。人工介入應成為例外處理，而不是每個 Artifact 的預設生產步驟。
+
+```text
+User Intent / Stimulus
+          │
+          ▼
+        Cell
+  DNA + Living Context
+  Memory + Environment
+          │
+          ▼
+       Artifact
+          │
+          ▼
+Validate → Execute → Observe
+    ▲                   │
+    └──── Repair ───────┘
+          │
+          ▼
+ Memory / Maturity / Evolution
+```
+
+核心原則：
+
+* **生命週期高於單次生成**：一次模型輸出不是最終成果，持續可驗證的成長才是。
+* **Cell 擁有生命週期**：LLM 提供推理與生成能力，但不擁有 Cell 的身份、狀態或決策歷史。
+* **Artifact 不等於 Code**：文件、規格、決策、測試、圖表與程式碼都可以是 Cell 的產物。
+* **模型可以不完美，生產管線必須穩定**：模型輸出必須經過解析、正規化、驗證、修復與儲存。
+* **自治必須受政策控制**：修復、分裂與融合具有不同風險，結構性改變必須經過規劃、驗證與安全邊界。
+* **演化必須可追溯**：DNA history、Memory、Thoughts、Lifecycle Events、Artifact Origin 與 Stability Records 共同保留演化證據。
+* **品質必須由證據判定**：品質結論來自有限指標與明確閘門，不來自模型信心或人類逐份校對。
+
+---
+
 # 願景（Vision）
 
 傳統軟體工程的流程：
@@ -259,28 +324,28 @@ Cell 並不是直接產生程式碼，而是將外部需求逐步轉化為可執
             ⑩ Execution Result
                      │
                      ▼
-           (Future) Reflection
+          (Partial) Reflection
                      │
                      ▼
-           (Future) Evolution
+          (Partial) Evolution
 ```
 
 ## Lifecycle Stages
 
-| Stage | Description |
-|--------|-------------|
-| **① Goal Interpretation** | 理解使用者意圖、需求與限制條件。 |
-| **② Production Planning** | 根據目標制定生產計畫。 |
-| **③ Artifact Generation** | 使用 LLM 產生結構化的 Artifact。 |
-| **④ Artifact Parsing** | 將模型輸出轉換為標準 Artifact 格式。 |
-| **⑤ Artifact Normalization** | 統一路徑、格式、語言與輸出內容。 |
-| **⑥ Artifact Validation** | 驗證 Artifact 是否符合平台規範與需求。 |
-| **⑦ Artifact Repair** | 若驗證失敗，重新修正 Artifact。 |
-| **⑧ Artifact Store** | 將 Artifact 保存至 Cell Workspace。 |
-| **⑨ Execution** | 編譯、執行或部署產出的軟體。 |
-| **⑩ Execution Result** | 收集執行結果、日誌與狀態。 |
-| **Reflection (Future)** | 分析執行成果，累積經驗。 |
-| **Evolution (Future)** | 根據經驗持續調整 DNA，提升未來能力。 |
+| Stage | Description | Current Status |
+|--------|-------------|----------------|
+| **① Goal Interpretation** | 理解使用者意圖、需求與限制條件。 | Implemented |
+| **② Production Planning** | 根據目標制定生產計畫。 | Implemented |
+| **③ Artifact Generation** | 使用 LLM 產生結構化的 Artifact。 | Implemented |
+| **④ Artifact Parsing** | 將模型輸出轉換為標準 Artifact 格式。 | Implemented |
+| **⑤ Artifact Normalization** | 統一路徑、格式、語言與輸出內容。 | Implemented |
+| **⑥ Artifact Validation** | 驗證 Artifact 是否符合平台規範與需求。 | Implemented |
+| **⑦ Artifact Repair** | 若驗證失敗，重新修正 Artifact。 | Implemented |
+| **⑧ Artifact Store** | 將 Artifact 保存至 Cell Workspace。 | Implemented |
+| **⑨ Execution** | 編譯或執行產出的軟體。 | Implemented for supported executors |
+| **⑩ Execution Result** | 收集執行結果、日誌與狀態。 | Implemented |
+| **Reflection** | 將互動、執行與修復結果保存為歷史、Thoughts 與 Stability Records。 | Partially implemented |
+| **Evolution** | 根據歷史調整 DNA、責任與 Cell 結構。 | Partially implemented; closed-loop evolution remains in progress |
 
 ## Design Philosophy
 
@@ -311,6 +376,21 @@ LLM 只是協助 Cell 進行生產的一種能力來源。
 每一個 Cell 都能夠透過相同的生命週期，不斷地生產、驗證、修正、學習與演化。
 
 > Code is only one possible artifact. The true product of a Cell is continuous evolution.
+
+## Context Priority
+
+DNA、Vision、Environment 與當前 Goal 扮演不同角色，不能互相取代：
+
+```text
+Current Goal        定義這次要完成什麼
+Living Context      定義 Cell 的責任與邊界
+Constraints         定義這次工作不可違反的條件
+DNA                 描述 Cell 的能力、傾向與演化狀態
+Environment         定義產物必須適應的技術環境
+Memory / History    提供經驗，不得覆蓋當前 Goal
+```
+
+產生 Artifact 時，**使用者的當前 Goal 是工作真相**；DNA、Vision 與 Memory 提供長期方向與經驗，但不能擅自改寫 Goal。這個區分避免過去狀態干擾目前任務，同時保留跨任務的身份與學習能力。
 
 ---
 
@@ -445,39 +525,36 @@ DNA Driven Design 的目標，
 
 ```text
 cradle-platform/
-
-├── src/
-│   ├── cradle-engine.js
-│   ├── cradle-cell.js
-│   ├── cradle-ai.js
-│   ├── llm-provider.js
-│   └── providers/
-│       ├── copilot-provider.js
-│       └── ollama-provider.js
-│
-├── cells/
-│   ├── cell-001/
-│   ├── cell-002/
-│   └── ...
-│
-├── config/
-│   ├── DNA_DEFINITION.md
-│   ├── DNA_FACTORS.md
-│   ├── VISION.md
-│   └── ENVIRONMENT.md
-│
-├── docs/
-│   ├── llm-provider.md
-│   └── PROVIDER_REFACTOR.md
-│
-├── examples/
-│   └── provider-example.js
-│
-├── test/
-│   └── test-provider.js
-│
-└── README.md
+├── package.json                 # npm workspace 入口
+├── cradle-server/               # Node.js / ESM runtime 與 API
+│   ├── src/
+│   │   ├── application/         # Use cases、operations、runtime events
+│   │   ├── cell/                # Cell 狀態、記憶、任務與 runtime services
+│   │   ├── dna/                 # DNA 計量、成熟度、分裂與融合模型
+│   │   ├── heartbeat/           # 觀察、proposal、policy 與 lifecycle execution
+│   │   ├── lifecycle/           # Repair、division、fusion 與 rollback
+│   │   ├── living-context/      # Cell 責任邊界與關係
+│   │   ├── production/          # Artifact 生產、驗證、修復與儲存
+│   │   ├── providers/           # Copilot、Ollama、Gemini、Codex adapters
+│   │   ├── cradle-engine.js
+│   │   └── cradle-cell.js
+│   ├── cells/                   # 各 Cell 的持久化生命狀態
+│   ├── config/                  # DNA、Vision 與 Environment 定義
+│   ├── situation/               # Stimuli、observations 與 metrics
+│   ├── docs/
+│   └── test/
+└── cradle-web/                  # React / Vite observatory 與操作介面
+    ├── src/
+    │   ├── api/
+    │   ├── components/
+    │   ├── domain/
+    │   ├── features/
+    │   ├── pages/
+    │   └── services/runtime/    # WebSocket / SSE runtime event clients
+    └── test/
 ```
+
+`cradle-server` 是生命週期與狀態的權威來源；`cradle-web` 負責觀察與發出操作請求。Runtime events 用來通知狀態變化，不取代 API 所提供的權威狀態。
 
 ---
 
@@ -508,8 +585,10 @@ llm-provider.js
   └─ Provider 抽象規格
   
 providers/
-  ├─ copilot-provider.js  (Copilot SDK)
-  └─ ollama-provider.js   (Ollama HTTP API)
+  ├─ copilot-provider.js  (GitHub Copilot SDK)
+  ├─ ollama-provider.js   (Ollama HTTP API)
+  ├─ gemini-provider.js   (Google GenAI SDK)
+  └─ codex-provider.js    (Codex CLI)
 ```
 
 ## 使用範例
@@ -557,20 +636,24 @@ await assistant.ask("幫我思考下一步");
 ## 測試範例
 
 ```bash
-# 測試 Copilot Provider
-node test/test-provider.js
+# 從 workspace root 執行 server tests
+npm test
 
-# 測試 Ollama Provider
-node test/test-provider.js --ollama
+# 或指定 workspace
+npm test --workspace=cradle-server
+npm test --workspace=cradle-web
 
-# 執行使用範例
-node examples/provider-example.js --copilot
-node examples/provider-example.js --ollama
+# 驗證 web
+npm run lint --workspace=cradle-web
+npm run build --workspace=cradle-web
 ```
+
+需要連線到外部模型的 Provider 測試與範例，必須另外準備對應的 CLI、服務或憑證；一般測試不應把特定 Provider 視為平台核心。
 
 詳細文件請參考:
 - [LLM Provider 架構文件](docs/llm-provider.md)
 - [Provider 重構說明](docs/PROVIDER_REFACTOR.md)
+- [Software Life Quality Model](docs/SOFTWARE_LIFE_QUALITY_MODEL.md)
 
 ---
 
