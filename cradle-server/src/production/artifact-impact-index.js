@@ -141,10 +141,12 @@ function adjustGoalTermCoverage(coverage, output, terms, delta) {
   const indexedHashes = new Set(output?.contentTermHashes ?? []);
   for (const term of terms) {
     const hash = hashContentTerm(term);
+    const contentContainsTerm = content !== null
+      ? content.includes(term)
+      : indexedHashes.has(hash);
     if (
       outputPath.includes(term) ||
-      content?.includes(term) ||
-      indexedHashes.has(hash)
+      contentContainsTerm
     ) {
       coverage[hash] = Math.max(0, Number(coverage[hash] ?? 0) + delta);
     }

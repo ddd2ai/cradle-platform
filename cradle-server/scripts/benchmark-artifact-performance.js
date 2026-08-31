@@ -9,9 +9,19 @@ import {
   applyArtifactChangePlan,
   createArtifactChangePlan,
 } from "../src/production/artifact-change-plan.js";
+import {
+  ArtifactChangePlanMutationService,
+} from "../src/production/artifact-change-plan-mutation-service.js";
 import { evolveArtifactRepairHead } from "../src/production/artifact-impact-index.js";
+import { ArtifactIncrementalValidator } from "../src/production/artifact-incremental-validator.js";
 import { ArtifactMutationCoordinator } from "../src/production/artifact-mutation-coordinator.js";
 import { ArtifactMutationFileLease } from "../src/production/artifact-mutation-file-lease.js";
+import { ArtifactValidator } from "../src/production/artifact-validator.js";
+
+const benchmarkValidator = new ArtifactValidator();
+const benchmarkIncrementalValidator = new ArtifactIncrementalValidator({
+  validator: benchmarkValidator,
+});
 
 const config = {
   outputCounts: parseIntegerList(
@@ -33,11 +43,13 @@ const config = {
     "CRADLE_BENCH_CONTENTION_SAMPLES",
     5
   ),
+  ownershipWarmups: readPositiveInteger("CRADLE_BENCH_OWNERSHIP_WARMUPS", 100),
+  ownershipSamples: readPositiveInteger("CRADLE_BENCH_OWNERSHIP_SAMPLES", 1000),
 };
 
 const startedAt = new Date();
 const result = {
-  schemaVersion: 2,
+  schemaVersion: 4,
   startedAt: startedAt.toISOString(),
   environment: {
     node: process.version,
@@ -55,13 +67,16 @@ const result = {
     cacheMode: "application-level warm cache after explicit warm-up",
     durability: "Node filesystem completion; no explicit fsync",
     llmIncluded: false,
+    contentionMutationMode: "change-plan transaction against latest revision",
+    ownershipModel: "one owner Cell per Artifact; non-owner mutation rejected before coordinator/lease/LLM",
   },
   outputScaling: [],
   multiCell: {
     independentArtifacts: [],
-    sharedArtifactSingleCoordinator: [],
-    sharedArtifactCrossCoordinator: [],
+    sameOwnerConcurrentSingleCoordinator: [],
+    sameOwnerConcurrentCrossCoordinator: [],
   },
+  ownershipGuard: null,
 };
 
 console.log("Cradle Artifact Performance Benchmark");
@@ -74,28 +89,32 @@ for (const outputCount of config.outputCounts) {
   console.log(formatScalingLine(measurement));
 }
 
+console.log("\n[artifact ownership guard]");
+result.ownershipGuard = await benchmarkOwnershipGuard(config);
+console.log(formatOwnershipGuardLine(result.ownershipGuard));
+
 for (const cellCount of config.cellCounts) {
   console.log(`\n[multi-cell independent] ${cellCount} cells`);
   const independent = await benchmarkIndependentCells(cellCount, config);
   result.multiCell.independentArtifacts.push(independent);
   console.log(formatIndependentLine(independent));
 
-  console.log(`[multi-cell shared artifact, current runtime] ${cellCount} cells`);
+  console.log(`[same-owner concurrent mutation stress, current runtime] ${cellCount} workers`);
   const singleCoordinator = await benchmarkSharedArtifactContention(
     cellCount,
     config,
     { coordinatorMode: "single" }
   );
-  result.multiCell.sharedArtifactSingleCoordinator.push(singleCoordinator);
+  result.multiCell.sameOwnerConcurrentSingleCoordinator.push(singleCoordinator);
   console.log(formatSharedLine(singleCoordinator));
 
-  console.log(`[multi-cell shared artifact, cross coordinator] ${cellCount} cells`);
+  console.log(`[same-owner concurrent mutation stress, cross coordinator] ${cellCount} workers`);
   const crossCoordinator = await benchmarkSharedArtifactContention(
     cellCount,
     config,
     { coordinatorMode: "cross" }
   );
-  result.multiCell.sharedArtifactCrossCoordinator.push(crossCoordinator);
+  result.multiCell.sameOwnerConcurrentCrossCoordinator.push(crossCoordinator);
   console.log(formatSharedLine(crossCoordinator));
 }
 
@@ -124,23 +143,25 @@ console.table(config.cellCounts.map((cellCount) => {
   const independent = result.multiCell.independentArtifacts.find(
     (entry) => entry.cellCount === cellCount
   );
-  const singleCoordinator = result.multiCell.sharedArtifactSingleCoordinator.find(
+  const singleCoordinator = result.multiCell.sameOwnerConcurrentSingleCoordinator.find(
     (entry) => entry.cellCount === cellCount
   );
-  const crossCoordinator = result.multiCell.sharedArtifactCrossCoordinator.find(
+  const crossCoordinator = result.multiCell.sameOwnerConcurrentCrossCoordinator.find(
     (entry) => entry.cellCount === cellCount
   );
   return {
     cells: cellCount,
     independentWallP50: independent.wallMs.p50,
     independentOpsPerSec: independent.throughputOpsPerSec.p50,
-    runtimeSharedWallP50: singleCoordinator.wallMs.p50,
-    runtimeSharedOpsPerSec: singleCoordinator.throughputOpsPerSec.p50,
-    runtimeAttemptsPerSuccess: singleCoordinator.attemptsPerSuccess.mean,
-    crossSharedWallP50: crossCoordinator.wallMs.p50,
-    crossSharedOpsPerSec: crossCoordinator.throughputOpsPerSec.p50,
-    crossAttemptsPerSuccess: crossCoordinator.attemptsPerSuccess.mean,
-    crossLeaseWaitP95: crossCoordinator.leaseWaitMs.p95,
+    ownerConcurrentWallP50: singleCoordinator.wallMs.p50,
+    ownerConcurrentOpsPerSec: singleCoordinator.throughputOpsPerSec.p50,
+    ownerConcurrentAttempts: singleCoordinator.attemptsPerSuccess.mean,
+    ownerConcurrentRebasedP50: singleCoordinator.rebased.p50,
+    crossProcessStressWallP50: crossCoordinator.wallMs.p50,
+    crossProcessStressOpsPerSec: crossCoordinator.throughputOpsPerSec.p50,
+    crossProcessStressAttempts: crossCoordinator.attemptsPerSuccess.mean,
+    crossProcessStressRebasedP50: crossCoordinator.rebased.p50,
+    crossProcessLeaseWaitP95: crossCoordinator.leaseWaitMs.p95,
   };
 }));
 
@@ -150,7 +171,8 @@ async function benchmarkOutputScaling(outputCount, benchmarkConfig) {
   const root = await fs.mkdtemp(
     path.join(os.tmpdir(), `cradle-output-${outputCount}-`)
   );
-  const store = new ArtifactStore({ productionsDir: root });
+  const ownerCellId = "cell-output-benchmark";
+  const store = new ArtifactStore({ productionsDir: root, ownerCellId });
   const fullSaveSamples = [];
   try {
     for (
@@ -162,6 +184,7 @@ async function benchmarkOutputScaling(outputCount, benchmarkConfig) {
       const artifactId = `artifact-full-${outputCount}-${iteration}`;
       const artifact = createArtifact({
         artifactId,
+        ownerCellId,
         outputCount,
         contentBytes: benchmarkConfig.contentBytes,
         marker: 0,
@@ -179,6 +202,7 @@ async function benchmarkOutputScaling(outputCount, benchmarkConfig) {
     const artifactId = `artifact-read-${outputCount}`;
     await store.saveArtifact(createArtifact({
       artifactId,
+      ownerCellId,
       outputCount,
       contentBytes: benchmarkConfig.contentBytes,
       marker: 0,
@@ -255,13 +279,17 @@ async function benchmarkIndependentCells(cellCount, benchmarkConfig) {
   const leaseStats = [];
   try {
     const cells = Array.from({ length: cellCount }, (_, index) => {
+      const ownerCellId = `cell-${index}`;
       const store = createObservedStore({
         productionsDir: path.join(root, `cell-${index}`, "productions"),
         leaseStats,
+        ownerCellId,
       });
       return {
         index,
         store,
+        ownerCellId,
+        mutator: createMutationService(store),
         artifactId: `artifact-cell-${index}`,
         marker: 0,
       };
@@ -269,6 +297,7 @@ async function benchmarkIndependentCells(cellCount, benchmarkConfig) {
     await Promise.all(cells.map((cell) =>
       cell.store.saveArtifact(createArtifact({
         artifactId: cell.artifactId,
+        ownerCellId: cell.ownerCellId,
         outputCount: 1,
         contentBytes: benchmarkConfig.contentBytes,
         marker: 0,
@@ -297,7 +326,10 @@ async function benchmarkIndependentCells(cellCount, benchmarkConfig) {
       const wall = await measure(async () => await Promise.all(
         requests.map(async ({ cell, request }) => {
           const operation = await measure(
-            async () => await cell.store.saveArtifactDelta(request)
+            async () => await cell.mutator.apply(
+              request.changePlan,
+              { prepared: request.prepared }
+            )
           );
           operationDurations.push(operation.ms);
           cell.marker += 1;
@@ -349,26 +381,33 @@ async function benchmarkSharedArtifactContention(
   );
   const productionsDir = path.join(root, "productions");
   const artifactId = `artifact-shared-${cellCount}`;
+  const ownerCellId = "cell-artifact-owner";
   const leaseStats = [];
   try {
-    const setupStore = new ArtifactStore({ productionsDir });
+    const setupStore = new ArtifactStore({ productionsDir, ownerCellId });
     await setupStore.saveArtifact(createArtifact({
       artifactId,
+      ownerCellId,
       outputCount: cellCount,
       contentBytes: benchmarkConfig.contentBytes,
       marker: 0,
     }));
     const sharedCoordinator = new ArtifactMutationCoordinator();
-    const cells = Array.from({ length: cellCount }, (_, index) => ({
-      index,
-      store: createObservedStore({
+    const cells = Array.from({ length: cellCount }, (_, index) => {
+      const store = createObservedStore({
         productionsDir,
         leaseStats,
+        ownerCellId,
         mutationCoordinator: coordinatorMode === "single"
           ? sharedCoordinator
           : new ArtifactMutationCoordinator(),
-      }),
-    }));
+      });
+      return {
+        index,
+        store,
+        mutator: createMutationService(store),
+      };
+    });
     const samples = [];
     let marker = 0;
     for (
@@ -379,35 +418,30 @@ async function benchmarkSharedArtifactContention(
     ) {
       const leaseOffset = leaseStats.length;
       const nextMarker = marker + 1;
+      const changePlans = await Promise.all(cells.map(async (cell) => ({
+        cell,
+        request: await createDeltaRequest({
+          store: cell.store,
+          artifactId,
+          outputPath: outputPath(cell.index),
+          before: `revision:${marker}`,
+          after: `revision:${nextMarker}`,
+        }),
+      })));
       const wall = await measure(async () => await Promise.all(
-        cells.map(async (cell) => {
-          let attempts = 0;
-          let staleRejects = 0;
+        changePlans.map(async ({ cell, request }) => {
           const operationStarted = performance.now();
-          while (true) {
-            attempts += 1;
-            const request = await createDeltaRequest({
-              store: cell.store,
-              artifactId,
-              outputPath: outputPath(cell.index),
-              before: `revision:${marker}`,
-              after: `revision:${nextMarker}`,
-            });
-            try {
-              const saved = await cell.store.saveArtifactDelta(request);
-              return {
-                attempts,
-                staleRejects,
-                durationMs: performance.now() - operationStarted,
-                compacted: saved.compaction?.performed === true,
-              };
-            } catch (error) {
-              if (!String(error?.message).includes("Artifact revision is stale")) {
-                throw error;
-              }
-              staleRejects += 1;
-            }
-          }
+          const mutation = await cell.mutator.apply(
+            request.changePlan,
+            { prepared: request.prepared }
+          );
+          return {
+            attempts: 1,
+            staleRejects: 0,
+            durationMs: performance.now() - operationStarted,
+            compacted: mutation.saved.compaction?.performed === true,
+            rebased: mutation.rebased,
+          };
         })
       ));
       marker = nextMarker;
@@ -430,6 +464,7 @@ async function benchmarkSharedArtifactContention(
             roundLeases.map((entry) => entry.contentionCount)
           ),
           compactions: workerResults.filter((entry) => entry.compacted).length,
+          rebased: workerResults.filter((entry) => entry.rebased).length,
         });
       }
     }
@@ -465,6 +500,7 @@ async function benchmarkSharedArtifactContention(
         (sample) => sample.leaseContentionCount
       )),
       compactions: sum(samples.map((sample) => sample.compactions)),
+      rebased: summarize(samples.map((sample) => sample.rebased)),
       raw: samples.map(roundObject),
     };
   } finally {
@@ -475,11 +511,13 @@ async function benchmarkSharedArtifactContention(
 function createObservedStore({
   productionsDir,
   leaseStats,
+  ownerCellId = null,
   mutationCoordinator = new ArtifactMutationCoordinator(),
 }) {
   const fileLease = new ArtifactMutationFileLease();
   return new ArtifactStore({
     productionsDir,
+    ownerCellId,
     mutationCoordinator,
     mutationLease: {
       async runExclusive(artifactDir, operation) {
@@ -489,6 +527,15 @@ function createObservedStore({
         });
       },
     },
+  });
+}
+
+function createMutationService(store) {
+  const validator = new ArtifactValidator();
+  return new ArtifactChangePlanMutationService({
+    store,
+    validator,
+    incrementalValidator: new ArtifactIncrementalValidator({ validator }),
   });
 }
 
@@ -535,7 +582,25 @@ async function createDeltaRequest({
     previousOutputs,
     nextOutputs: artifact.outputs,
   });
-  return { artifact, baseHead: repairContext.artifact, nextHead };
+  const validation = benchmarkIncrementalValidator.validate({
+    artifact,
+    changePlan,
+    baseHead: repairContext.artifact,
+    baseOutputs: previousOutputs,
+  });
+  return {
+    artifact,
+    baseHead: repairContext.artifact,
+    nextHead,
+    changePlan,
+    prepared: {
+      artifact,
+      baseHead: repairContext.artifact,
+      nextHead,
+      validation,
+      baseMode: "head",
+    },
+  };
 }
 
 async function readSelectiveContext({ store, artifactId, outputPath: targetPath }) {
@@ -556,9 +621,19 @@ async function readSelectiveContext({ store, artifactId, outputPath: targetPath 
   };
 }
 
-function createArtifact({ artifactId, outputCount, contentBytes, marker }) {
+function createArtifact({
+  artifactId,
+  ownerCellId = null,
+  outputCount,
+  contentBytes,
+  marker,
+}) {
   return {
     id: artifactId,
+    ...(ownerCellId ? {
+      ownerCellId,
+      context: { cellId: ownerCellId },
+    } : {}),
     type: "generic",
     title: `Benchmark Artifact ${outputCount}`,
     goal: "Measure deterministic artifact persistence performance",
@@ -571,6 +646,69 @@ function createArtifact({ artifactId, outputCount, contentBytes, marker }) {
     notes: [],
     createdAt: "2026-08-31T00:00:00.000Z",
   };
+}
+
+async function benchmarkOwnershipGuard(benchmarkConfig) {
+  const root = await fs.mkdtemp(
+    path.join(os.tmpdir(), "cradle-artifact-ownership-")
+  );
+  const artifactId = "artifact-owned";
+  const ownerCellId = "cell-owner";
+  let coordinatorCalls = 0;
+  let leaseCalls = 0;
+  try {
+    const ownerStore = new ArtifactStore({ productionsDir: root, ownerCellId });
+    await ownerStore.saveArtifact(createArtifact({
+      artifactId,
+      ownerCellId,
+      outputCount: 1,
+      contentBytes: benchmarkConfig.contentBytes,
+      marker: 0,
+    }));
+    const artifact = await ownerStore.readArtifact(artifactId);
+    const foreignStore = new ArtifactStore({
+      productionsDir: root,
+      ownerCellId: "cell-foreign",
+      mutationCoordinator: {
+        async runExclusive(_key, operation) {
+          coordinatorCalls += 1;
+          return await operation();
+        },
+      },
+      mutationLease: {
+        async runExclusive(_dir, operation) {
+          leaseCalls += 1;
+          return await operation({ waitMs: 0, contentionCount: 0 });
+        },
+      },
+    });
+    const rejectionSamples = [];
+    const total = benchmarkConfig.ownershipWarmups +
+      benchmarkConfig.ownershipSamples;
+    for (let iteration = 0; iteration < total; iteration += 1) {
+      const elapsed = await measure(async () => {
+        try {
+          await foreignStore.saveArtifact(artifact);
+          throw new Error("Ownership benchmark expected rejection");
+        } catch (error) {
+          if (error?.code !== "ARTIFACT_OWNER_VIOLATION") throw error;
+        }
+      });
+      if (iteration >= benchmarkConfig.ownershipWarmups) {
+        rejectionSamples.push(elapsed.ms);
+      }
+    }
+    return {
+      attempts: benchmarkConfig.ownershipSamples,
+      rejectionMs: summarize(rejectionSamples),
+      coordinatorCalls,
+      leaseCalls,
+      llmCalls: 0,
+      raw: { rejectionMs: roundSamples(rejectionSamples) },
+    };
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
 }
 
 function createContent({ index, contentBytes, marker }) {
@@ -691,6 +829,16 @@ function formatSharedLine(entry) {
     `wall p50/p95=${entry.wallMs.p50}/${entry.wallMs.p95}ms`,
     `throughput p50=${entry.throughputOpsPerSec.p50} ops/s`,
     `attempts/success=${entry.attemptsPerSuccess.mean}`,
+    `rebased p50=${entry.rebased.p50}`,
     `lease-wait p95=${entry.leaseWaitMs.p95}ms`,
+  ].join(" | ");
+}
+
+function formatOwnershipGuardLine(entry) {
+  return [
+    `reject p50/p95=${entry.rejectionMs.p50}/${entry.rejectionMs.p95}ms`,
+    `coordinator=${entry.coordinatorCalls}`,
+    `lease=${entry.leaseCalls}`,
+    `LLM=${entry.llmCalls}`,
   ].join(" | ");
 }

@@ -28,6 +28,7 @@ Stimulus / Message / Task
 - Inbox 與 Stimulus 在處理前 claim，成功才 acknowledge/archive，失敗則 release。
 - 全域 activation scheduler 提供 attention budget；預設最多同時處理 4 個 Cell。
 - 每個 Cell 是獨立 actor：擁有自己的 mailbox、執行狀態與 activation coalescing；沒有新工作時不排程。
+- 每份 Artifact 只有一個權威 owner Cell；非 owner 的刺激可以進 mailbox，但不能直接進入 Artifact mutation。
 - actor 獨立不等於無限制平行。scheduler 只限制昂貴工作的總並行數，不參與 Cell 的業務判斷。
 - REST 是權威狀態；runtime event 只傳 progress 與 invalidation summary。
 
@@ -64,9 +65,10 @@ router 直接把 envelope 寫入 `stimuli/queues/<cellId>/`。因此 Cell 只讀
 | pre-LLM repair context | `O(F)` flat manifest parse | `O(H + K + C + Δ)` repair head + candidates |
 | incremental Artifact promote | `O(F + B)` 重寫完整產物 | typical `O(Δ + I)`；threshold compaction `O(F + ΣΔᵣ)` metadata-only |
 | current Artifact full read | `O(F + B)` | metadata `O(F + min(ΣΔᵣ, Cₘ))`、content `O(B)` |
-| concurrent Artifact writers | last-writer-wins / lost update | `O(1)` keyed lease；相同 base 只允許一個 promote |
+| non-owner Artifact mutation | 可能進入 locator、LLM、lease 與 revision work | 已載入 metadata 後 `O(1)` owner compare，直接拒絕 |
+| same-owner concurrent operations | precomputed revision retry，最壞 `O(W²)` attempts | `O(W × (Δ + G + I))` transaction；不重疊 change plan 單次 rebase，同 output 衝突拒絕 |
 
-`N` 是 Cell 數、`M` 是 Inbox 歷史、`T` 是 Task 歷史、`P` 是 pending Task 數、`K` 是有工作的 Cell 數、`A` 是 actionable proposal 數、`F` 是 Artifact 檔案數、`B` 是全部 output bytes、`Δ` 是命中修復範圍的 bytes、`G` 是 Goal 中明確需求詞數。Artifact lookup 中 `L` 是 evidence 長度、`K` 是 bounded lookup key 數、`C` 是索引命中的 candidate 數、`S ≤ 256` 是單檔宣告 symbol 上限；`I` 是 changed outputs 影響的索引詞數，`ΣΔᵣ` 是自最近 full snapshot 起的累積 revision delta metadata，`Cₘ` 是 compaction policy 設定的固定上限。
+`N` 是 Cell 數、`M` 是 Inbox 歷史、`T` 是 Task 歷史、`P` 是 pending Task 數、`K` 是有工作的 Cell 數、`A` 是 actionable proposal 數、`W` 是同一 owner 內對同一 Artifact 的並行操作數、`F` 是 Artifact 檔案數、`B` 是全部 output bytes、`Δ` 是命中修復範圍的 bytes、`G` 是 Goal 中明確需求詞數。Artifact lookup 中 `L` 是 evidence 長度、`K` 是 bounded lookup key 數、`C` 是索引命中的 candidate 數、`S ≤ 256` 是單檔宣告 symbol 上限；`I` 是 changed outputs 影響的索引詞數，`ΣΔᵣ` 是自最近 full snapshot 起的累積 revision delta metadata，`Cₘ` 是 compaction policy 設定的固定上限。
 
 `R` 是刺激的 target 數、`Qᵢ` 是單一 Cell 自己的 pending stimulus 數。legacy Markdown
 目錄在遷移期間仍會相容讀取，不屬於新路徑的複雜度保證。
@@ -130,6 +132,10 @@ durable queues，但 dedup 與 processed archive 仍需後續 retention/compacti
 - `artifact_mutation_lease_wait_ms`
 - `artifact_mutation_lease_contention`
 - `artifact_mutation_stale_lease_recovered`
+- `artifact_change_plan_rebased`
+- `artifact_change_plan_conflict`
+- `artifact_change_plan_prepared_fast_path`
+- `artifact_mutation_owner_violation`
 
 目前可由 `GET /api/v1/metrics` 取得 process-local counters、gauges 與 latency distributions
 （含 p50/p95），用來比較 activation、LLM、queue 與 evolution gate 的放大比率。
@@ -197,12 +203,19 @@ metadata/blob 的 immutable delta revision，再以原子 rename 發布 `current
 delta revision、blob 與 output 檔案完成後才發布 current pointer；impact index 仍是可失效、可重建的
 衍生狀態，不能取代 pointer/revision chain 的權威性。
 
+每份 Artifact 的 root metadata 與 `current.json` pointer 都記錄 `ownerCellId`。owner policy 是不依賴 filesystem、
+LLM 或 transport 的純規則；Cell repair 在建立 prompt 前檢查 actor，ArtifactStore 在進入 coordinator／lease 前
+再次檢查寫入資料。legacy Artifact 若已有 `context.cellId` 或 `origin.targetCellId`，會以該值建立 canonical owner；
+互相矛盾的 owner metadata 直接拒絕。非 owner 目前只會被拒絕，正式 `ArtifactChangeProposal` mailbox 尚待實作。
+
 同一 runtime 內的 mutation coordinator 先序列化相同 Artifact path；filesystem adapter 再以原子建立的
-`.mutation.lock` lease 保護共享檔案系統上的不同 Node runtime。不同 Artifact 仍可平行。因此多個 Cell 同時
-從同一 base revision 提交 patch 時，只會有一個 promote；另一個取得 lease 後會由 authoritative current
-pointer 判定 stale，不會 lost update。lease 只在實際 mutation contention 時採 bounded exponential backoff，
-不是 idle Cell polling；持有期間定期更新 mtime，process crash 留下的 stale lease 可由 token-aware recovery
-安全接管，舊 owner 不會刪除新 owner 的 lock。
+`.mutation.lock` lease 保護共享檔案系統上的不同 Node runtime。不同 Artifact 仍可平行。change plan 進入
+transaction 後才讀 authoritative current head 與 target outputs；若同一 owner 的其他操作已修改不重疊 output，系統會以
+原本的 content-hash precondition 對最新 revision 單次 rebase，再重新執行 incremental／Goal fidelity validation。
+若同一 output 已改變，hash precondition 仍會拒絕，不會 last-writer-wins；若兩個不重疊 patch 合併後會破壞
+Goal fidelity，後取得 transaction 的修改也會拒絕。lease 只在實際 mutation contention 時採 bounded
+exponential backoff，不是 idle Cell polling；持有期間定期更新 mtime，process crash 留下的 stale lease 可由
+token-aware recovery 安全接管，舊 owner 不會刪除新 owner 的 lock。
 
 這個 lease 的一致性範圍是所有看到同一 productions filesystem 的 process。未共享檔案系統的多主機部署仍需
 使用具 compare-and-swap 語意的外部 revision repository 或 distributed lease adapter。

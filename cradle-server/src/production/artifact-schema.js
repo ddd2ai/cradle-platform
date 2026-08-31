@@ -38,6 +38,7 @@ export function createArtifact({
 
   const artifact = {
     id,
+    ownerCellId: cellId,
     type,
     title: title || goal || "Untitled Artifact",
     status: "draft",

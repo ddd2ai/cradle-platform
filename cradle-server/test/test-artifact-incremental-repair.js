@@ -138,6 +138,12 @@ assert.equal(
   true
 );
 assert.equal(
+  cell.metricIncrements.some(
+    (metric) => metric.name === "artifact_change_plan_prepared_fast_path"
+  ),
+  true
+);
+assert.equal(
   cell.metricObservations.some(
     (metric) => metric.name === "artifact_revision_delta_depth" &&
       metric.value === 1

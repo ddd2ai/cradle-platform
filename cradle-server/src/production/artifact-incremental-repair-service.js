@@ -4,6 +4,9 @@ import {
   createArtifactChangePlan,
   hashArtifactContent,
 } from "./artifact-change-plan.js";
+import {
+  ArtifactChangePlanMutationService,
+} from "./artifact-change-plan-mutation-service.js";
 import { locateArtifactChangeTargets } from "./artifact-impact-locator.js";
 import { buildArtifactIncrementalRepairPrompt } from "./production-prompts.js";
 import {
@@ -24,6 +27,11 @@ export class ArtifactIncrementalRepairService {
     this.parser = parser;
     this.validator = validator;
     this.incrementalValidator = incrementalValidator;
+    this.mutationService = new ArtifactChangePlanMutationService({
+      store,
+      validator,
+      incrementalValidator,
+    });
   }
 
   async repairFromExecution({
@@ -173,17 +181,55 @@ export class ArtifactIncrementalRepairService {
         proposal,
         allowedPaths: impact.paths,
       });
-      let repaired = applyArtifactChangePlan({
-        artifact: repairBase,
-        changePlan,
-      });
-      const incrementalValidation = this.incrementalValidator.validate({
-        artifact: repaired,
-        changePlan,
-        baseHead: usesRepairHead ? artifact : undefined,
-        baseOutputs: usesRepairHead ? hydratedOutputs : undefined,
-      });
-      let saved;
+      let prepared;
+      if (usesRepairHead) {
+        const preparedArtifact = applyArtifactChangePlan({
+          artifact: repairBase,
+          changePlan,
+        });
+        const preparedValidation = this.incrementalValidator.validate({
+          artifact: preparedArtifact,
+          changePlan,
+          baseHead: artifact,
+          baseOutputs: hydratedOutputs,
+        });
+        if (!preparedValidation.requiresFullValidation) {
+          prepared = {
+            artifact: preparedArtifact,
+            baseHead: artifact,
+            nextHead: evolveArtifactRepairHead({
+              baseHead: artifact,
+              artifact: preparedArtifact,
+              previousOutputs: hydratedOutputs,
+              nextOutputs: preparedArtifact.outputs,
+            }),
+            validation: preparedValidation,
+            baseMode: "head",
+          };
+        }
+      }
+      const mutation = await this.mutationService.apply(changePlan, { prepared });
+      const repaired = mutation.artifact;
+      const appliedChangePlan = mutation.changePlan;
+      const incrementalValidation = mutation.validation;
+      const saved = {
+        ...mutation.saved,
+        mutationLease: mutation.mutationLease,
+      };
+      if (mutation.rebased) {
+        this.cell.runtimeMetrics?.increment(
+          "artifact_change_plan_rebased",
+          1,
+          { cellId: this.cell.id }
+        );
+      }
+      if (mutation.prepared) {
+        this.cell.runtimeMetrics?.increment(
+          "artifact_change_plan_prepared_fast_path",
+          1,
+          { cellId: this.cell.id }
+        );
+      }
       if (incrementalValidation.requiresFullValidation) {
         this.cell.runtimeMetrics?.increment(
           "artifact_incremental_full_validation_fallback",
@@ -193,32 +239,12 @@ export class ArtifactIncrementalRepairService {
             reason: incrementalValidation.reason,
           }
         );
-        const fullyHydratedArtifact = await this.store.readArtifact(artifact.id);
-        repaired = applyArtifactChangePlan({
-          artifact: fullyHydratedArtifact,
-          changePlan,
-        });
-        this.validator.validate(repaired);
-        saved = await this.store.saveArtifactRevision(repaired);
-      } else if (usesRepairHead) {
-        const nextHead = evolveArtifactRepairHead({
-          baseHead: artifact,
-          artifact: repaired,
-          previousOutputs: hydratedOutputs,
-          nextOutputs: repaired.outputs,
-        });
-        saved = await this.store.saveArtifactDelta({
-          artifact: repaired,
-          baseHead: artifact,
-          nextHead,
-        });
+      } else if (saved.storageMode === "delta") {
         this.cell.runtimeMetrics?.increment(
           "artifact_flat_manifest_reads_avoided",
           1,
           { cellId: this.cell.id }
         );
-      } else {
-        saved = await this.store.saveArtifactRevision(repaired);
       }
       this.cell.runtimeMetrics?.increment(
         "artifact_revision_storage",
@@ -281,7 +307,9 @@ export class ArtifactIncrementalRepairService {
         artifact.id
       );
       const changedOutputs = repaired.outputs.filter(
-        (output) => changePlan.changes.some((change) => change.path === output.path)
+        (output) => appliedChangePlan.changes.some(
+          (change) => change.path === output.path
+        )
       );
 
       this.cell.runtimeMetrics?.increment("artifact_incremental_repair_applied", 1, {
@@ -289,12 +317,12 @@ export class ArtifactIncrementalRepairService {
       });
       this.cell.runtimeMetrics?.increment(
         "artifact_incremental_files_changed",
-        changePlan.changes.length,
+        appliedChangePlan.changes.length,
         { cellId: this.cell.id }
       );
       this.cell.runtimeMetrics?.increment(
         "artifact_incremental_replacements_applied",
-        changePlan.changes.reduce(
+        appliedChangePlan.changes.reduce(
           (total, change) => total + change.replacements.length,
           0
         ),
@@ -306,10 +334,21 @@ export class ArtifactIncrementalRepairService {
         artifactHydration: persistedContext.mode,
         changedOutputs,
         saved,
-        changePlan,
+        changePlan: appliedChangePlan,
         impact,
       };
     } catch (error) {
+      if (
+        /content hash is stale|replacement is no longer unique/.test(
+          String(error?.message)
+        )
+      ) {
+        this.cell.runtimeMetrics?.increment(
+          "artifact_change_plan_conflict",
+          1,
+          { cellId: this.cell.id }
+        );
+      }
       this.#recordFallback("invalid-or-failed-patch");
       return {
         applied: false,

@@ -75,6 +75,7 @@ Validate → Execute → Observe
 
 * **生命週期高於單次生成**：一次模型輸出不是最終成果，持續可驗證的成長才是。
 * **Cell 擁有生命週期**：LLM 提供推理與生成能力，但不擁有 Cell 的身份、狀態或決策歷史。
+* **Artifact 採單一 owner**：每份 Artifact 只有一個權威 `ownerCellId`；其他 Cell 可以提供刺激、證據與修改提案，但不能直接覆寫。
 * **Artifact 不等於 Code**：文件、規格、決策、測試、圖表與程式碼都可以是 Cell 的產物。
 * **模型可以不完美，生產管線必須穩定**：模型輸出必須經過解析、正規化、驗證、修復與儲存。
 * **自治必須受政策控制**：修復、分裂與融合具有不同風險，結構性改變必須經過規劃、驗證與安全邊界。
@@ -341,7 +342,7 @@ Cell 並不是直接產生程式碼，而是將外部需求逐步轉化為可執
 | **⑤ Artifact Normalization** | 統一路徑、格式、語言與輸出內容。 | Implemented |
 | **⑥ Artifact Validation** | 驗證 Artifact 是否符合平台規範與需求。 | Implemented |
 | **⑦ Artifact Repair** | 若驗證失敗，重新修正 Artifact。 | Implemented |
-| **⑧ Artifact Store** | 將 Artifact 保存至 Cell Workspace。 | Implemented |
+| **⑧ Artifact Store** | 將 Artifact 保存至 owner Cell Workspace，並拒絕跨 owner mutation。 | Implemented |
 | **⑨ Execution** | 編譯或執行產出的軟體。 | Implemented for supported executors |
 | **⑩ Execution Result** | 收集執行結果、日誌與狀態。 | Implemented |
 | **Reflection** | 將互動、執行與修復結果保存為歷史、Thoughts 與 Stability Records。 | Partially implemented |

@@ -34,7 +34,8 @@ npm run benchmark:artifact
 - Cells：2、4、8、16。
 - scaling：2 次 warm-up、7 次正式 samples。
 - contention：1 次 warm-up、5 次正式 samples。
-- 同時測量獨立 Artifact、單一 runtime 共用 coordinator 的共享 Artifact，以及跨 coordinator 的共享 Artifact。
+- 同時測量獨立 Artifact、同 owner 的並行 mutation stress，以及跨 coordinator 的 crash-safety stress；這些 stress 不代表允許多 Cell 共寫。
+- ownership guard 另以 100 次 warm-up、1000 次 samples 量測 non-owner rejection，並確認 coordinator、lease、LLM 都沒有啟動。
 - 使用隔離暫存目錄、application-level warm cache、`performance.now()`；等待 Node filesystem operation 完成，但不額外 `fsync`。
 - 不包含 LLM、provider network latency、HTTP/SSE/WebSocket 或 React render。
 
@@ -47,9 +48,145 @@ npm run benchmark:artifact
 - `CRADLE_BENCH_SAMPLES`
 - `CRADLE_BENCH_CONTENTION_WARMUPS`
 - `CRADLE_BENCH_CONTENTION_SAMPLES`
+- `CRADLE_BENCH_OWNERSHIP_WARMUPS`
+- `CRADLE_BENCH_OWNERSHIP_SAMPLES`
 - `CRADLE_BENCH_OUTPUT`
 
 ## 測試紀錄
+
+### 2026-08-31 — Artifact single-owner gate 消除跨 Cell 無效 mutation
+
+狀態：ownership rejection 為 `current-state only`；Artifact I/O 與 contention 使用同機、同矩陣的 before／after
+regression comparison。before 結果：
+`/var/folders/xg/8d1b0g653xld375mpb6rc5k80000gn/T/cradle-artifact-benchmark-2026-08-31T14-32-44.712Z.json`；
+after 結果：
+`/var/folders/xg/8d1b0g653xld375mpb6rc5k80000gn/T/cradle-artifact-benchmark-2026-08-31T14-38-05.947Z.json`。
+
+優化目標與 invariant：
+
+- Artifact root metadata 與 authoritative `current.json` pointer 明確保存 `ownerCellId`。
+- 非 owner repair 在呼叫 LLM 前拒絕；非 owner store mutation 在 coordinator 與 filesystem lease 前拒絕。
+- division 的 parent／child products 仍是不同 Artifact，各自綁定 target Cell；fusion 仍只讀 parents 並由 child 建立新 Artifact。
+- legacy Artifact 以既有 `context.cellId`／`origin.targetCellId` 推導 owner；矛盾 metadata 不可靜默覆蓋。
+- owner 的正常 incremental path、revision CAS、validation 與 recovery 語意不變。
+
+複雜度變化：已載入 Artifact metadata 的跨 owner mutation 從可能繼續支付 locator、prompt、LLM、queue、
+`O(Δ + G + I)` mutation 與 contention wait，降為一次固定欄位集合的 `O(1)` owner compare。Cell repair 仍需先讀
+bounded repair head，但在 target hydration 與 LLM 前終止。正常 owner mutation 只增加 `O(1)` policy check。
+
+環境沿用本文件同日正式矩陣：Apple M4 Pro、48 GiB RAM、Node v20.19.2、本機 SSD、4096 bytes/output、
+scaling 2+7 samples、contention 1+5 samples，無額外 `fsync`、不含 LLM。after schema v4 正式執行 21.5 秒。
+
+#### Ownership rejection
+
+| Samples | Reject p50 | Reject p95 | Coordinator calls | Lease calls | LLM calls |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 1000 | 0.003 ms | 0.004 ms | 0 | 0 | 0 |
+
+這是已載入 Artifact 傳入 foreign owner store 的 deterministic guard microbenchmark。另有 production-service
+focused test 驗證 foreign Cell repair 的 AI 呼叫為 0，並產生 `artifact_mutation_owner_violation` metric。
+
+#### 正常 owner path regression
+
+| Outputs | Full save before → after | Delta before → after |
+| ---: | ---: | ---: |
+| 10 | 9.281 → 9.644 ms | 2.210 → 2.273 ms |
+| 100 | 72.257 → 65.631 ms | 2.011 → 2.127 ms |
+| 1000 | 650.055 → 648.744 ms | 1.999 → 2.038 ms |
+
+delta p50 差異為 +2.0% 到 +5.8%；絕對差異不超過 0.116 ms。full save 在 -9.2% 到 +3.9% 間波動，
+沒有顯示複雜度或 I/O amplification 改變。independent throughput 在 -12.7% 到 +20.8% 間雙向波動；16 Cell
+由 894.727 增至 924.206 ops/s。有限 contention samples 下不宣稱 throughput 改善，只判定沒有隨 Cell 數放大的
+一致性 regression。
+
+same-owner 16-worker runtime stress 為 43.632 ms／366.704 ops/s；cross-coordinator stress 仍為
+1186.735 ms，lease wait p95 1174 ms。後者保留為錯誤部署／crash-safety 壓力測試，不再描述成正常多 Cell
+shared-Artifact 架構。
+
+#### Correctness 與下一步
+
+- 新增 owner canonicalization、metadata conflict、foreign store fast rejection、repair pre-LLM rejection 測試。
+- 完整 server suite：124 個 test files 通過。
+- 正式 non-owner proposal routing 尚未實作；下一步應把 foreign intent 寫入 owner Cell mailbox，形成
+  `ArtifactChangeProposal → salience → owner activation`，而不是開放共寫。
+- 跨 process 的同 owner worker 若真的需要並行，應走 single-writer IPC queue；不應以縮短 lease polling
+  取代 ownership boundary。
+
+### 2026-08-31 — Transactional ChangePlan rebase 消除 stale retry amplification
+
+狀態：具相同硬體、矩陣、sample count、cache 與 durability 設定的 before／after 正式比較。
+
+實作基準：`39f37bd`（benchmark 與 current-state baseline）；優化結果在其後續 working tree 量測。
+
+優化目標與 invariant：
+
+- 將「讀最新 head → 驗證 content hash → 套用 change plan → 驗證 Goal fidelity → promote」放進同一個 Artifact transaction。
+- 不重疊 output 的 concurrent change plan 應各自只提交一次，並在最新 revision 上安全 rebase。
+- 同一 output 的並行修改仍必須由 content-hash precondition 拒絕。
+- 多個各自安全的 patch 合併後若會破壞 Goal fidelity，後取得 transaction 的修改必須拒絕。
+- 不以 last-writer-wins、跳過 validator 或移除 filesystem lease 換取效能。
+
+正式 after benchmark：schema v3，執行時間 21.602 秒；其餘環境與前一筆 baseline 相同。
+
+```bash
+npm run benchmark:artifact
+```
+
+#### 同 runtime 共享 Artifact before／after
+
+| Cells | Before p50 | After p50 | Latency 變化 | Before throughput | After throughput | Throughput 變化 | Attempts / success |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 2 | 5.568 ms | 4.623 ms | -17.0% | 359.206 ops/s | 432.631 ops/s | +20.4% | 1.5 → 1.0 |
+| 4 | 12.243 ms | 10.827 ms | -11.6% | 326.721 ops/s | 369.440 ops/s | +13.1% | 2.5 → 1.0 |
+| 8 | 33.060 ms | 20.887 ms | -36.8% | 241.982 ops/s | 383.014 ops/s | +58.3% | 4.5 → 1.0 |
+| 16 | 101.718 ms | 43.603 ms | -57.1% | 157.297 ops/s | 366.951 ops/s | +133.3%（2.33×） | 8.5 → 1.0 |
+
+每輪 `N` 個 change plans 中會有 `N - 1` 個安全 rebase，但每個 plan 都只進 transaction 一次。Cell 數上升
+後，消除 retry amplification 的收益持續增加。
+
+複雜度由同 base revision 的總 attempts `N(N + 1) / 2 = O(N²)`，降為 `N = O(N)` 次 transaction。
+單一 authoritative Artifact 仍必須序列發布 revision，因此整輪主要成本為
+`O(N × (Δ + G + I))`；不同 Artifact 仍可獨立平行。
+
+#### Independent Artifact prepared fast path
+
+新的 contention workload 使用正式 ChangePlan transaction 路徑。若進 lock 後確認 `baseRevisionId` 仍等於
+authoritative current pointer，會使用鎖外已完成的 deterministic validation 與 prepared delta；revision 已改變
+時才讀最新 target output、rebase 並重新驗證。相較 baseline，獨立 Artifact throughput 如下：
+
+| Cells | Before | After | 變化 |
+| ---: | ---: | ---: | ---: |
+| 2 | 788.695 ops/s | 775.332 ops/s | -1.7% |
+| 4 | 965.902 ops/s | 998.253 ops/s | +3.3% |
+| 8 | 940.817 ops/s | 934.148 ops/s | -0.7% |
+| 16 | 937.342 ops/s | 951.380 ops/s | +1.5% |
+
+差異在 -1.7% 到 +3.3% 之間，視為沒有可辨識的 throughput regression。prepared fast path 仍在 Artifact
+transaction 內確認 authoritative pointer，沒有跳過 CAS；只有 pointer 相同才重用原本 validation evidence。
+
+#### Cross-coordinator 結果
+
+跨 coordinator 的 attempts 也固定為 1，但 wall latency 幾乎不變：16 Cells p50 仍為 1202.833 ms，
+lease wait p95 為 1185 ms。這證明剩餘瓶頸是 filesystem lease 的 bounded exponential backoff，而不是 stale
+revision retry。若 Cell AI 未來使用獨立 process，應由中央 Artifact writer／IPC durable mutation queue 接收
+intent；不應讓每個 worker 直接競爭同一 Artifact filesystem lease。
+
+#### Correctness 與 regression
+
+- 新增並行測試：不同 output 從同一 base 提交時兩者皆保存，且其中一個明確標示 rebase。
+- 新增衝突測試：同一 output 只允許一個成功，另一個由 stale content hash 拒絕。
+- 新增聚合 Goal fidelity 測試：兩個 patch 合併後若移除最後 required term，只允許第一個成功。
+- 修正 repair head 演進：output 已 hydrate 新內容時，以新內容判斷 Goal term，不再誤用舊 `contentTermHashes`。
+- `artifact_change_plan_rebased` 與 `artifact_change_plan_conflict` 已加入正式 runtime metrics。
+- `artifact_change_plan_prepared_fast_path` 記錄 CAS 命中並重用 validation evidence 的次數。
+- focused Artifact tests 通過；完整 server suite 為 123 個 test files（包含新測試）。
+- `git diff --check`：通過。
+
+#### 下一個瓶頸
+
+1. 以 process-local／IPC single writer 保證每個 Artifact 只有一個 mutation ingress，讓 filesystem lease 回到 crash-safety boundary，而不是高頻 queue。
+2. 將 metadata compaction 移出 transaction critical path，降低長 revision chain 間歇性 tail latency。
+3. 若確實需要多 process 直接寫共享 Artifact，再設計具公平喚醒語意的 distributed mutation adapter，而不是調低 polling 間隔掩蓋 contention。
 
 ### 2026-08-31 — Incremental Artifact 與多 Cell contention 正式基準
 

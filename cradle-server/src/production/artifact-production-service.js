@@ -17,6 +17,10 @@ import { produceDivisionProductPair as _produceDivisionProductPair } from "./div
 import { ArtifactIncrementalRepairService } from "./artifact-incremental-repair-service.js";
 import { ArtifactIncrementalValidator } from "./artifact-incremental-validator.js";
 import { getAiTimeoutMs } from "../cradle-config.js";
+import {
+  ARTIFACT_OWNER_VIOLATION,
+  assertArtifactMutationActor,
+} from "./artifact-ownership-policy.js";
 
 export class ArtifactProductionService {
   constructor({
@@ -37,6 +41,7 @@ export class ArtifactProductionService {
 
     this.store = new ArtifactStore({
       productionsDir,
+      ownerCellId: this.cell.id,
     });
 
     this.parser = new ArtifactParser();
@@ -181,6 +186,23 @@ The actual artifact MUST follow the Original Goal, not any past Vision or Histor
 
     if (!artifact) {
       throw new Error(`Artifact not found: ${artifactId}`);
+    }
+
+    try {
+      assertArtifactMutationActor({
+        artifact,
+        actorCellId: this.cell.id,
+        expectedOwnerCellId: this.cell.id,
+      });
+    } catch (error) {
+      if (error?.code === ARTIFACT_OWNER_VIOLATION) {
+        this.cell.runtimeMetrics?.increment(
+          "artifact_mutation_owner_violation",
+          1,
+          { cellId: this.cell.id, artifactId }
+        );
+      }
+      throw error;
     }
 
     const incremental = await this.incrementalRepairService.repairFromExecution({

@@ -19,12 +19,17 @@ import {
 import {
   evaluateArtifactRevisionCompaction,
 } from "./artifact-revision-compaction-policy.js";
+import {
+  assertArtifactMutationActor,
+  bindArtifactOwner,
+} from "./artifact-ownership-policy.js";
 
 const MAX_REVISION_CHAIN_DEPTH = 256;
 
 export class ArtifactStore {
   constructor({
     productionsDir,
+    ownerCellId = null,
     impactIndexStore,
     mutationCoordinator,
     mutationLease,
@@ -36,6 +41,7 @@ export class ArtifactStore {
     }
 
     this.productionsDir = productionsDir;
+    this.ownerCellId = ownerCellId;
     this.impactIndexStore = impactIndexStore ?? new ArtifactImpactIndexStore({
       productionsDir,
     });
@@ -60,9 +66,10 @@ export class ArtifactStore {
     if (!artifact?.id) {
       throw new Error("saveArtifact requires artifact.id");
     }
+    const ownedArtifact = this.#bindOwner(artifact);
     return await this.#runArtifactMutation(
-      artifact.id,
-      async () => await this.#saveArtifact(artifact)
+      ownedArtifact.id,
+      async () => await this.#saveArtifact(ownedArtifact)
     );
   }
 
@@ -79,6 +86,7 @@ export class ArtifactStore {
     await fs.mkdir(revisionsDir, { recursive: true });
 
     const currentManifest = await this.#readManifest(artifact.id);
+    if (currentManifest) this.#assertOwner(currentManifest);
     const revision = artifact.revision ?? {
       revisionId: `rev-${randomUUID()}`,
       baseRevisionId: currentManifest?.revision?.revisionId ?? null,
@@ -260,10 +268,50 @@ export class ArtifactStore {
     if (!artifact?.id) {
       throw new Error("saveArtifactDelta requires artifact.id");
     }
+    const ownedArtifact = this.#bindOwner(artifact);
+    const ownedBaseHead = baseHead ? this.#bindOwner(baseHead) : baseHead;
+    const ownedNextHead = nextHead ? this.#bindOwner(nextHead) : nextHead;
     return await this.#runArtifactMutation(
-      artifact.id,
-      async () => await this.#saveArtifactDelta({ artifact, baseHead, nextHead })
+      ownedArtifact.id,
+      async () => await this.#saveArtifactDelta({
+        artifact: ownedArtifact,
+        baseHead: ownedBaseHead,
+        nextHead: ownedNextHead,
+      })
     );
+  }
+
+  async transactArtifactMutation(artifactId, operation) {
+    if (!artifactId || typeof operation !== "function") {
+      throw new Error(
+        "transactArtifactMutation requires artifactId and operation"
+      );
+    }
+    return await this.#runArtifactMutation(artifactId, async () => {
+      const assertArtifact = (artifact) => {
+        if (artifact?.id !== artifactId) {
+          throw new Error(
+            `Artifact mutation transaction cannot write another artifact: ${artifact?.id}`
+          );
+        }
+      };
+      return await operation({
+        readCurrentRevisionState: async () =>
+          await this.#readCurrentRevisionState(artifactId),
+        saveArtifact: async (artifact) => {
+          assertArtifact(artifact);
+          return await this.#saveArtifact(this.#bindOwner(artifact));
+        },
+        saveArtifactDelta: async ({ artifact, baseHead, nextHead }) => {
+          assertArtifact(artifact);
+          return await this.#saveArtifactDelta({
+            artifact: this.#bindOwner(artifact),
+            baseHead: baseHead ? this.#bindOwner(baseHead) : baseHead,
+            nextHead: nextHead ? this.#bindOwner(nextHead) : nextHead,
+          });
+        },
+      });
+    });
   }
 
   async #saveArtifactDelta({ artifact, baseHead, nextHead } = {}) {
@@ -290,6 +338,15 @@ export class ArtifactStore {
     await fs.mkdir(revisionsDir, { recursive: true });
 
     const currentRevision = await this.#readCurrentRevisionState(artifact.id);
+    if (
+      currentRevision.ownerCellId &&
+      currentRevision.ownerCellId !== artifact.ownerCellId
+    ) {
+      assertArtifactMutationActor({
+        artifact: { id: artifact.id, ownerCellId: currentRevision.ownerCellId },
+        expectedOwnerCellId: artifact.ownerCellId,
+      });
+    }
     if (currentRevision.revisionId !== artifact.revision.baseRevisionId) {
       throw new Error(
         `Artifact revision is stale: expected base ${currentRevision.revisionId}, received ${artifact.revision.baseRevisionId}`
@@ -549,6 +606,7 @@ export class ArtifactStore {
         // 只保留 metadata，不包含 outputs 的 content
         const summary = {
           artifactId: artifact.id,
+          ownerCellId: artifact.ownerCellId ?? artifact.context?.cellId ?? null,
           type: artifact.type,
           title: artifact.title,
           goal: artifact.goal,
@@ -686,6 +744,7 @@ export class ArtifactStore {
     if (pointer?.revisionId) {
       return {
         revisionId: pointer.revisionId,
+        ownerCellId: pointer.ownerCellId ?? this.ownerCellId,
         deltaDepth: Number.isSafeInteger(pointer.deltaDepth)
           ? pointer.deltaDepth
           : null,
@@ -697,6 +756,7 @@ export class ArtifactStore {
     const base = await readJsonIfExists(path.join(dir, "artifact.json"));
     return {
       revisionId: base?.revision?.revisionId ?? null,
+      ownerCellId: base?.ownerCellId ?? base?.context?.cellId ?? this.ownerCellId,
       deltaDepth: 0,
       deltaMetadataBytes: 0,
     };
@@ -724,8 +784,9 @@ export class ArtifactStore {
     const target = path.join(dir, "current.json");
     const staging = path.join(dir, `.current-${randomUUID()}.json`);
     await writeJsonFile(staging, {
-      schemaVersion: 2,
+      schemaVersion: 3,
       revisionId,
+      ...(this.ownerCellId ? { ownerCellId: this.ownerCellId } : {}),
       deltaDepth,
       deltaMetadataBytes,
     }, { dir });
@@ -774,6 +835,18 @@ export class ArtifactStore {
     } catch (error) {
       if (error?.code !== "EEXIST") throw error;
     }
+  }
+
+  #bindOwner(artifact) {
+    return bindArtifactOwner(artifact, this.ownerCellId);
+  }
+
+  #assertOwner(artifact) {
+    assertArtifactMutationActor({
+      artifact,
+      expectedOwnerCellId: this.ownerCellId,
+      actorCellId: this.ownerCellId,
+    });
   }
 
   async #writeRevisionManifest(file, value) {

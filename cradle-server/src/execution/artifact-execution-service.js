@@ -44,6 +44,7 @@ export class ArtifactExecutionService {
 
     this.artifactStore = new ArtifactStore({
       productionsDir: this.productionsDir,
+      ownerCellId: this.cellId,
     });
 
     this.javaExecutor = new JavaExecutor({
