@@ -1,4 +1,5 @@
 import path from "path";
+import { randomUUID } from "node:crypto";
 import { createArtifact } from "./artifact-schema.js";
 import { ArtifactStore } from "./artifact-store.js";
 import { PROJECT_ROOT } from "../project-root.js";
@@ -13,6 +14,7 @@ import { ArtifactNormalizer } from "./artifact-normalizer.js";
 import { ArtifactValidator } from "./artifact-validator.js";
 import { produceFromTransformation as _produceFromTransformation } from "./artifact-production-transformation.js";
 import { produceDivisionProductPair as _produceDivisionProductPair } from "./division-product-pair-production.js";
+import { ArtifactIncrementalRepairService } from "./artifact-incremental-repair-service.js";
 import { getAiTimeoutMs } from "../cradle-config.js";
 
 export class ArtifactProductionService {
@@ -25,8 +27,8 @@ export class ArtifactProductionService {
       throw new Error("ArtifactProductionService requires cell");
     }
 
-    if (!assistant) {
-      throw new Error("ArtifactProductionService requires assistant");
+    if (!assistant && typeof cell.askWithTimeout !== "function") {
+      throw new Error("ArtifactProductionService requires assistant or cell.askWithTimeout");
     }
 
     this.cell = cell;
@@ -39,6 +41,12 @@ export class ArtifactProductionService {
     this.parser = new ArtifactParser();
     this.normalizer = new ArtifactNormalizer();
     this.validator = new ArtifactValidator();
+    this.incrementalRepairService = new ArtifactIncrementalRepairService({
+      cell: this.cell,
+      store: this.store,
+      parser: this.parser,
+      validator: this.validator,
+    });
   }
 
   async generateArtifactDraft({
@@ -169,6 +177,52 @@ The actual artifact MUST follow the Original Goal, not any past Vision or Histor
       throw new Error(`Artifact not found: ${artifactId}`);
     }
 
+    const incremental = await this.incrementalRepairService.repairFromExecution({
+      artifact,
+      task,
+      executionResult,
+    });
+
+    if (incremental.applied) {
+      await this.cell.appendHistory(`
+## ${new Date().toISOString()}
+
+### Incrementally Repaired Artifact From Execution
+
+- id: ${incremental.artifact.id}
+- revision: ${incremental.artifact.revision.revisionId}
+- task: ${task?.id ?? "-"} ${task?.title ?? ""}
+- executionStatus: ${executionResult?.status ?? "-"}
+- changedPaths: ${incremental.changePlan.changes.map((change) => change.path).join(", ")}
+`);
+
+      await this.cell.appendThought(`
+## ${new Date().toISOString()}
+
+## Incremental Artifact Repair Experience
+
+### Artifact
+
+${incremental.artifact.id}
+
+### Evidence
+
+${executionResult?.status ?? "-"}: ${task?.title ?? "(unknown task)"}
+
+### Change Scope
+
+${incremental.changePlan.changes.map((change) => `- ${change.path}`).join("\n")}
+`);
+
+      return {
+        artifact: incremental.artifact,
+        saved: incremental.saved,
+        repairMode: "incremental",
+        changePlan: incremental.changePlan,
+        impact: incremental.impact,
+      };
+    }
+
     const environment = await this.cell.readEnvironment();
 
     const context = `
@@ -206,19 +260,40 @@ The repair task only describes what needs to be fixed.
       goal: artifact.goal,
     });
 
-    // 保留原 artifact id,讓 /execute <artifact-id> 可以繼續使用同一個 id
-    repaired.id = artifact.id;
-
-    repaired.notes = [
+    const revisionCreatedAt = new Date().toISOString();
+    repaired = {
+      ...artifact,
+      ...repaired,
+      id: artifact.id,
+      type: artifact.type,
+      title: artifact.title,
+      goal: artifact.goal,
+      createdAt: artifact.createdAt,
+      origin: artifact.origin,
+      relations: artifact.relations,
+      notes: [
+      ...(artifact.notes ?? []),
       ...(repaired.notes ?? []),
       `Repaired from execution feedback: ${task?.title ?? "(unknown task)"}`,
-    ];
+      `Incremental repair fallback: ${incremental.reason}`,
+      ],
+      revision: {
+        revisionId: `rev-${randomUUID()}`,
+        baseRevisionId: artifact.revision?.revisionId ?? null,
+        mode: "full-repair",
+        changedPaths: repaired.outputs
+          .filter((output) => output?.kind === "file")
+          .map((output) => output.path),
+        createdAt: revisionCreatedAt,
+      },
+      updatedAt: revisionCreatedAt,
+    };
 
     repaired = this.normalizer.normalize(repaired);
 
     this.validator.validate(repaired);
 
-    const saved = await this.store.saveArtifact(repaired);
+    const saved = await this.store.saveArtifactRevision(repaired);
 
     await this.cell.appendHistory(`
 ## ${new Date().toISOString()}
@@ -226,9 +301,12 @@ The repair task only describes what needs to be fixed.
 ### Repaired Artifact From Execution
 
 - id: ${repaired.id}
+- revision: ${repaired.revision.revisionId}
 - type: ${repaired.type}
 - task: ${task?.id ?? "-"} ${task?.title ?? ""}
 - executionStatus: ${executionResult?.status ?? "-"}
+- repairMode: full
+- incrementalFallback: ${incremental.reason}
 `);
 
     await this.cell.appendThought(`
@@ -256,6 +334,8 @@ This repair changed how the cell improves an artifact after real execution feedb
     return {
       artifact: repaired,
       saved,
+      repairMode: "full",
+      incrementalFallback: incremental,
     };
   }
 

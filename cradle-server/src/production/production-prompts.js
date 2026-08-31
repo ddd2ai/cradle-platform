@@ -343,3 +343,80 @@ ${context}
 不要說「已修正」。
 `;
 }
+
+export function buildArtifactIncrementalRepairPrompt({
+  type,
+  goal,
+  task,
+  executionResult,
+  impactedOutputs = [],
+  context = "",
+} = {}) {
+  return `
+你是 Cradle Cell 的 Incremental Artifact Repair 模組。
+
+你只能針對系統已定位的檔案輸出最小字串替換，不可重新生成完整 Artifact，不可新增、刪除、重新命名檔案。
+
+# Original Goal
+
+${goal}
+
+# Artifact Type
+
+${type}
+
+# Repair Task
+
+${JSON.stringify(task, null, 2)}
+
+# Execution Result
+
+${JSON.stringify(executionResult, null, 2)}
+
+# Allowed Outputs
+
+${impactedOutputs.map((output) => `
+## ${output.path}
+
+- language: ${output.language ?? "text"}
+- baseContentHash: ${output.contentHash}
+
+<content>
+${output.content}
+</content>
+`).join("\n")}
+
+# Cell Context
+
+${context}
+
+# Patch Rules
+
+- changes[].path 只能使用 Allowed Outputs 中的完整 path。
+- replacements[].before 必須逐字複製目前 content 中一段足以唯一定位的內容。
+- 每個 before 在該檔案中必須只出現一次。
+- after 只包含替換後內容，不可包含 markdown code fence。
+- 只修正 Task 與 Execution Result 明確指出的問題。
+- 不可改變 Original Goal、公共介面或無關行為。
+- 最多修改 3 個檔案，每個檔案最多 8 個 replacements。
+
+# Output JSON Format
+
+{
+  "summary": "局部修正摘要",
+  "changes": [
+    {
+      "path": "allowed/path.ext",
+      "replacements": [
+        {
+          "before": "目前檔案中唯一存在的原文",
+          "after": "修正後內容"
+        }
+      ]
+    }
+  ]
+}
+
+你的完整回覆只能包含一個 JSON object，不可輸出完整 Artifact、完整 outputs[]、markdown 或額外說明。
+`;
+}

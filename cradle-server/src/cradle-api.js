@@ -18,7 +18,7 @@ import { WebSocketRuntimeEventTransport } from "./application/runtime/websocket-
 import { attachRuntimeWebSocketEndpoint } from "./api/runtime-websocket-endpoint.js";
 
 const DEFAULT_PORT = 8787;
-const BUILT_IN_DEFAULT_PROVIDER = "ollama";
+const BUILT_IN_DEFAULT_PROVIDER = "codex";
 
 const DEFAULT_MODELS = Object.freeze({
   ollama: "devstral-small-2:24b",

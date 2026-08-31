@@ -19,6 +19,7 @@ export function createProfileDirectories(paths) {
 export function createDefaultCellProfile({
   id,
   name,
+  provider = "codex",
   model,
   paths,
   now = new Date().toISOString(),
@@ -31,6 +32,13 @@ export function createDefaultCellProfile({
     id,
     name,
     model,
+    provider,
+    ai: {
+      schemaVersion: 1,
+      provider,
+      model,
+      mode: "default",
+    },
 
     status: "idle",
     maturity: 0,
@@ -52,6 +60,7 @@ export function mergeCellProfileForStart({
   existingProfile,
   id,
   name,
+  provider = "codex",
   model,
   paths,
   now = new Date().toISOString(),
@@ -59,6 +68,7 @@ export function mergeCellProfileForStart({
   const defaultProfile = createDefaultCellProfile({
     id,
     name,
+    provider,
     model,
     paths,
     now,
@@ -68,10 +78,22 @@ export function mergeCellProfileForStart({
     return defaultProfile;
   }
 
+  const existingBinding = existingProfile.ai;
+  const ai = existingBinding?.mode === "pinned"
+    ? existingBinding
+    : {
+        schemaVersion: 1,
+        provider,
+        model,
+        mode: "default",
+      };
+
   return {
     ...existingProfile,
     name: existingProfile.name || name,
-    model,
+    provider: ai.provider,
+    model: ai.model,
+    ai,
     status: "idle",
     generation: existingProfile.generation ?? 1,
     parent: existingProfile.parent ?? null,

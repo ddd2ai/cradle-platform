@@ -9,7 +9,7 @@ import {
   getHeartbeatMode,
 } from "./cradle-config.js";
 
-const BUILT_IN_DEFAULT_PROVIDER = "ollama";
+const BUILT_IN_DEFAULT_PROVIDER = "codex";
 
 const DEFAULT_MODELS = Object.freeze({
   ollama: "devstral-small-2:24b",

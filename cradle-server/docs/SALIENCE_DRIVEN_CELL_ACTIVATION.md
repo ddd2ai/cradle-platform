@@ -110,9 +110,14 @@ Cradle AI 不應直接監聽每筆低價值事件，也不應任意寫入所有 
 或 structural proposal，輸出可驗證的 plan，再由 application service 執行。如此可避免中央 AI 成為新的
 LLM fan-out、單點瓶頸與無邊界權限來源。
 
-目前每個 Cell 已建立獨立 assistant/provider instance，但 provider/model 的設定仍是 colony-wide default。
-要完成真正的 heterogeneous model colony，下一階段需加入 per-Cell AI binding、provider-specific concurrency
-budget、模型健康狀態、fallback policy，以及結構操作專用的 Cradle supervisor port。
+目前每個 Cell 已有持久化的 per-Cell AI binding，可用 `GET/PUT /api/v1/cells/:cellId/ai`
+讀取或釘選 provider/model。未釘選的 Cell 跟隨 colony default；已釘選的 Cell 不受全域設定覆寫。
+assistant/provider 改為首次推理才 lazy load，沒有重要刺激的 Cell 不再只因啟動而配置 AI client。
+產品預設為 `codex / auto`，Copilot、Ollama 與 Gemini 仍是可替換 adapter。
+
+真正完整的 heterogeneous model colony 還需要 provider-specific weighted concurrency budget、模型健康狀態、
+fallback policy，以及結構操作專用的 Cradle supervisor port。現有 activation scheduler 管的是 Cell 工作數，
+還不能反映本機 24B 模型和遠端 API 呼叫的資源成本差異。
 
 「遇強則強」應由 resource governor 實現，而不是用 RAM 數量直接放大所有 Cell：啟動時建立 CPU、RAM、
 GPU/統一記憶體、磁碟與 provider quota 的 capability profile；執行時根據每個 model 的實測 memory、latency
@@ -121,10 +126,11 @@ GPU/統一記憶體、磁碟與 provider quota 的 capability profile；執行�
 
 ## 下一階段：Incremental Artifact Evolution
 
-目前 production、execution repair、division 與 fusion 都要求模型回傳完整 `outputs[]`，而 `artifact.json` 也內嵌
-所有 output content；所以即使只修一個方法，LLM token、validation 與 metadata write 仍接近整個 Artifact 大小。
+初始 production、division 與 fusion 仍要求模型回傳完整 `outputs[]`。execution repair 已先採 incremental-first：
+由 deterministic locator 根據 diagnostic path/symbol 選出最多三個 output，再要求 Cell AI 回傳有 hash
+precondition 的 bounded replacements；無法安全定位或 patch 驗證失敗才退回完整 regeneration。
 
-建議的新路徑：
+演進中的路徑（dependency/impact index 與 targeted tests 尚待下一階段）：
 
 ```text
 Failure / Change Request
@@ -138,13 +144,14 @@ Failure / Change Request
   -> promote revision or rollback
 ```
 
-`ArtifactChangePlan` 應包含 base revision、允許修改的 path/symbol、content hash precondition、問題 evidence、
-不可改變的不變量與驗證命令。模型只能輸出指定範圍的 patch；application service 檢查越界修改、套用 patch，
-失敗時保留舊 revision。跨 bounded context、分裂、融合或 dependency graph 大幅改變時才退回完整 regeneration。
+`ArtifactChangePlan` 現在包含 base revision、允許修改的 path、content hash precondition、問題 evidence 與
+結果 hash。模型只能修改 locator 選定範圍；application service 檢查越界修改、舊文字唯一性與結果 hash，
+失敗時保留舊 revision。跨 bounded context、分裂、融合或 dependency graph 大幅改變時仍退回完整 regeneration。
 
-儲存層需將 Artifact manifest 與 output blobs/revisions 分離，否則改一個檔案仍會重寫含全部 content 的
-`artifact.json`。完成索引後，一般修改的目標成本可從 `O(B)` 降為 `O(Δ + D)`：`B` 是 Artifact 總大小、
-`Δ` 是 patch neighborhood、`D` 是受影響 dependency closure；索引首次建立仍為 `O(B)`，之後依 revision 增量更新。
+儲存層已將 Artifact manifest 與 content-addressed output blobs/revision manifests 分離，並相容讀取舊版
+內嵌 content 的 `artifact.json`。未改變的 output 沿用既有 blob；promote 新 revision 時只重寫小型 manifest。
+目前 locator 單次仍需掃描 output metadata/content，因此 CPU 定位上界仍是 `O(B)`；但 LLM context、blob write
+與修補內容已縮至 `O(Δ)`。要讓定位也接近 `O(log F + Δ + D)`，下一步要建立 path/symbol/dependency index。
 
 Cradle AI 適合審核 structural change plan 與跨 Cell impact；一般局部修復由該 Artifact 所屬的 Cell AI 完成，
 避免中央模型接觸每個檔案修改。

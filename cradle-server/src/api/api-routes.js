@@ -5,6 +5,7 @@ import { ExportCellArtifactUseCase } from "../application/export-cell-artifact-u
 import { ExportCellWorkspaceUseCase } from "../application/export-cell-workspace-use-case.js";
 import { FeedCellUseCase } from "../application/feed-cell-use-case.js";
 import { GetCellArtifactUseCase } from "../application/get-cell-artifact-use-case.js";
+import { GetCellAiBindingUseCase } from "../application/get-cell-ai-binding-use-case.js";
 import { GetAiSettingsUseCase } from "../application/get-ai-settings-use-case.js";
 import { GetCellDnaUseCase } from "../application/get-cell-dna-use-case.js";
 import { GetCellDnaHistoryUseCase } from "../application/get-cell-dna-history-use-case.js";
@@ -40,6 +41,7 @@ import { RunHeartbeatUseCase } from "../application/run-heartbeat-use-case.js";
 import { SetAllCellsActiveUseCase } from "../application/set-all-cells-active-use-case.js";
 import { SetAiSettingsUseCase } from "../application/set-ai-settings-use-case.js";
 import { SetCellActiveUseCase } from "../application/set-cell-active-use-case.js";
+import { SetCellAiBindingUseCase } from "../application/set-cell-ai-binding-use-case.js";
 import { SetHeartbeatModeUseCase } from "../application/set-heartbeat-mode-use-case.js";
 import { StabilizeCellUseCase } from "../application/stabilize-cell-use-case.js";
 import { UpdateCradleConfigUseCase } from "../application/update-cradle-config-use-case.js";
@@ -215,6 +217,23 @@ export function createApiRoutes({
         new FeedCellUseCase({ engine, eventStream }).execute({
           cellId: params[0],
           content: request.body?.content,
+        })
+    ),
+    pattern(
+      "GET",
+      /^\/api\/v1\/cells\/([^/]+)\/ai$/,
+      async ({ params }) =>
+        new GetCellAiBindingUseCase({ engine }).execute({ cellId: params[0] })
+    ),
+    pattern(
+      "PUT",
+      /^\/api\/v1\/cells\/([^/]+)\/ai$/,
+      async ({ params, request }) =>
+        new SetCellAiBindingUseCase({ engine, eventStream }).execute({
+          cellId: params[0],
+          provider: request.body?.provider,
+          model: request.body?.model,
+          mode: request.body?.mode ?? "pinned",
         })
     ),
     pattern("GET", /^\/api\/v1\/cells\/([^/]+)$/, async ({ params }) =>

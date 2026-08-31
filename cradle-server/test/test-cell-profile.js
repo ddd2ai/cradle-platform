@@ -32,6 +32,13 @@ const defaultProfile = createDefaultCellProfile({
 assert.equal(defaultProfile.id, "cell-001");
 assert.equal(defaultProfile.name, "Cell One");
 assert.equal(defaultProfile.model, "gpt-5-mini");
+assert.equal(defaultProfile.provider, "codex");
+assert.deepEqual(defaultProfile.ai, {
+  schemaVersion: 1,
+  provider: "codex",
+  model: "gpt-5-mini",
+  mode: "default",
+});
 assert.equal(defaultProfile.status, "idle");
 assert.equal(defaultProfile.maturity, 0);
 assert.equal(defaultProfile.generation, 1);
@@ -80,6 +87,28 @@ assert.equal(merged.createdAt, "2026-07-01T00:00:00.000Z");
 assert.equal(merged.updatedAt, now);
 assert.equal(merged.lastStartedAt, now);
 assert.deepEqual(merged.directories, directories);
+
+const pinned = mergeCellProfileForStart({
+  existingProfile: {
+    ...existingProfile,
+    ai: {
+      schemaVersion: 1,
+      provider: "ollama",
+      model: "gemma3:latest",
+      mode: "pinned",
+    },
+  },
+  id: "cell-001",
+  name: "Cell One",
+  provider: "codex",
+  model: "auto",
+  paths,
+  now,
+});
+
+assert.equal(pinned.provider, "ollama");
+assert.equal(pinned.model, "gemma3:latest");
+assert.equal(pinned.ai.mode, "pinned");
 
 const mergedWithDefaults = mergeCellProfileForStart({
   existingProfile: {

@@ -39,27 +39,35 @@ import {
 import { ArtifactProductionService } from "./production/artifact-production-service.js";
 import { StabilityStore } from "./stability/stability-store.js";
 import { PROJECT_ROOT } from "./project-root.js";
+import { normalizeCellAiBinding } from "./ai/cell-ai-binding.js";
 
 export class CradleCell {
 
   constructor({
     id = "cell-001",
     name = "Cradle Cell",
-    model = "gpt-5-mini",
-    provider = "copilot",
+    model = "auto",
+    provider = "codex",
     projectRoot = PROJECT_ROOT,
     cellsDir = path.join(projectRoot, "cells"),
     activationScheduler = null,
     runtimeMetrics = null,
     activationNotifier = null,
+    assistantFactory = null,
   } = {}) {
     this.id = id;
     this.name = name;
     this.model = model;
     this.provider = provider;
+    this.aiBinding = normalizeCellAiBinding({
+      provider,
+      model,
+      mode: "default",
+    });
     this.activationScheduler = activationScheduler;
     this.runtimeMetrics = runtimeMetrics;
     this.activationNotifier = activationNotifier;
+    this.assistantFactory = assistantFactory;
 
     this.paths = createCellPaths({
       cellId: this.id,
@@ -110,6 +118,9 @@ export class CradleCell {
     });
 
     this.assistant = null;
+    this.assistantPromise = null;
+    this.activeAiCalls = 0;
+    this.pendingAiBinding = null;
 
     this.active = false;
     this.tickTimer = null;
@@ -129,22 +140,6 @@ export class CradleCell {
     await this.prepareMemoryFiles();
     await this.prepareLivingContext();
 
-    const provider = await createLLMProvider({
-      provider: this.provider,
-      model: this.model,
-      cwd: this.paths.projectRoot,
-    });
-
-    this.assistant = await createCradleAssistant({
-      provider,
-      onDelta: writeAssistantChunk,
-      onError: renderError,
-      logDir: this.logsDir,
-      cellId: this.id,
-      cellName: this.name,
-      systemPromptBuilder: async () => await this.buildCellSystemPrompt(),
-    });
-
     this.productionService = new ArtifactProductionService({
       cell: this,
       assistant: this.assistant,
@@ -159,6 +154,147 @@ export class CradleCell {
     });
 
     await this.updateStatus("idle");
+  }
+
+  async ensureAssistant() {
+    if (this.assistant) return this.assistant;
+    if (!this.assistantPromise) {
+      this.assistantPromise = this.#createAssistant(this.aiBinding)
+        .then((assistant) => {
+          this.assistant = assistant;
+          if (this.productionService) this.productionService.assistant = assistant;
+          this.runtimeMetrics?.increment("cell_assistant_loaded", 1, {
+            cellId: this.id,
+            provider: this.provider,
+            model: this.model,
+          });
+          return assistant;
+        })
+        .finally(() => {
+          this.assistantPromise = null;
+        });
+    }
+    return await this.assistantPromise;
+  }
+
+  async setAiBinding({
+    provider,
+    model,
+    mode = "pinned",
+    deferIfBusy = false,
+  } = {}) {
+    const binding = normalizeCellAiBinding({ provider, model, mode });
+    if (this.isTicking || this.assistantPromise || this.activeAiCalls > 0) {
+      if (deferIfBusy) {
+        this.pendingAiBinding = binding;
+        this.runtimeMetrics?.increment("cell_ai_binding_deferred", 1, {
+          cellId: this.id,
+          provider: binding.provider,
+          model: binding.model,
+        });
+        return { ...binding, pending: true };
+      }
+      throw new Error(`Cell ${this.id} AI binding cannot change while work is running`);
+    }
+    return await this.#applyAiBinding(binding);
+  }
+
+  async applyPendingAiBinding() {
+    if (
+      !this.pendingAiBinding ||
+      this.isTicking ||
+      this.assistantPromise ||
+      this.activeAiCalls > 0
+    ) {
+      return false;
+    }
+
+    const binding = this.pendingAiBinding;
+    this.pendingAiBinding = null;
+    try {
+      await this.#applyAiBinding(binding);
+      return true;
+    } catch (error) {
+      this.pendingAiBinding = binding;
+      this.runtimeMetrics?.increment("cell_ai_binding_apply_failed", 1, {
+        cellId: this.id,
+        provider: binding.provider,
+        model: binding.model,
+      });
+      console.log(`[${this.id}] deferred AI binding failed: ${error.message}`);
+      return false;
+    }
+  }
+
+  async #applyAiBinding(binding) {
+    if (
+      binding.provider === this.aiBinding.provider &&
+      binding.model === this.aiBinding.model &&
+      binding.mode === this.aiBinding.mode
+    ) {
+      return this.getAiBinding();
+    }
+
+    const replacement = this.assistant
+      ? await this.#createAssistant(binding)
+      : null;
+    const profile = await this.getProfile();
+    try {
+      await this.writeCellProfile({
+        ...profile,
+        provider: binding.provider,
+        model: binding.model,
+        ai: binding,
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      await replacement?.cleanup?.();
+      throw error;
+    }
+
+    const previous = this.assistant;
+    this.provider = binding.provider;
+    this.model = binding.model;
+    this.aiBinding = binding;
+    if (replacement) {
+      this.assistant = replacement;
+      if (this.productionService) this.productionService.assistant = replacement;
+      await previous?.cleanup?.();
+    }
+    this.runtimeMetrics?.increment("cell_ai_binding_changed", 1, {
+      cellId: this.id,
+      provider: binding.provider,
+      model: binding.model,
+      mode: binding.mode,
+    });
+    return this.getAiBinding();
+  }
+
+  getAiBinding() {
+    return { ...this.aiBinding };
+  }
+
+  async #createAssistant(binding) {
+    if (this.assistantFactory) {
+      return await this.assistantFactory({
+        binding: { ...binding },
+        cell: this,
+      });
+    }
+    const provider = await createLLMProvider({
+      provider: binding.provider,
+      model: binding.model,
+      cwd: this.paths.projectRoot,
+    });
+    return await createCradleAssistant({
+      provider,
+      onDelta: writeAssistantChunk,
+      onError: renderError,
+      logDir: this.logsDir,
+      cellId: this.id,
+      cellName: this.name,
+      systemPromptBuilder: async () => await this.buildCellSystemPrompt(),
+    });
   }
   
 
@@ -201,9 +337,7 @@ export class CradleCell {
 
 
   async ask(input) {
-    if (!this.assistant) {
-      throw new Error(`Cell ${this.id} has not been prepared.`);
-    }
+    await this.ensureAssistant();
 
     await this.updateStatus("running");
 
@@ -280,6 +414,7 @@ ${input}
     input,
     timeoutMs = getAiTimeoutMs()
   ) {
+    const assistant = await this.ensureAssistant();
     const startedAt = Date.now();
     let timeoutId;
     const metricLabels = {
@@ -288,9 +423,10 @@ ${input}
       model: this.model,
     };
     this.runtimeMetrics?.increment("llm_calls", 1, metricLabels);
+    this.activeAiCalls += 1;
     try {
       return await Promise.race([
-        this.assistant.ask(input),
+        assistant.ask(input),
         new Promise((_, reject) => {
           timeoutId = setTimeout(
             () => reject(new Error(`Timeout after ${timeoutMs}ms waiting for AI response`)),
@@ -304,11 +440,15 @@ ${input}
       throw error;
     } finally {
       clearTimeout(timeoutId);
+      this.activeAiCalls = Math.max(0, this.activeAiCalls - 1);
       this.runtimeMetrics?.observe(
         "llm_duration_ms",
         Date.now() - startedAt,
         metricLabels
       );
+      if (this.activeAiCalls === 0) {
+        await this.applyPendingAiBinding();
+      }
     }
   }
 
@@ -321,12 +461,17 @@ ${input}
       existingProfile,
       id: this.id,
       name: this.name,
+      provider: this.provider,
       model: this.model,
       paths: this.paths,
       now,
     });
 
     await this.writeCellProfile(nextProfile);
+    this.provider = nextProfile.ai.provider;
+    this.model = nextProfile.ai.model;
+    this.aiBinding = { ...nextProfile.ai };
+    return nextProfile;
   }
 
 

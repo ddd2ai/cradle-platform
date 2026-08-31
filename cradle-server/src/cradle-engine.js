@@ -27,8 +27,8 @@ import { RuntimeMetrics } from "./application/runtime-metrics.js";
 
 export class CradleEngine {
   constructor({ 
-      model = "gpt-5-mini",
-      provider = "copilot",
+      model = "auto",
+      provider = "codex",
       timeoutSeconds = 3600,
       heartbeatMode = "manual",
       projectRoot = PROJECT_ROOT,
@@ -76,7 +76,7 @@ export class CradleEngine {
     ]);
   }
 
-  setAiSettings({ provider, model } = {}) {
+  async setAiSettings({ provider, model } = {}) {
     if (provider) {
       this.provider = provider;
     }
@@ -86,12 +86,20 @@ export class CradleEngine {
     }
 
     for (const cell of this.cells.values()) {
-      if (provider) {
-        cell.provider = provider;
+      const binding = cell.getAiBinding?.();
+      if (binding?.mode === "pinned") {
+        continue;
       }
-
-      if (model) {
-        cell.model = model;
+      if (cell.setAiBinding) {
+        await cell.setAiBinding({
+          provider: provider ?? this.provider,
+          model: model ?? this.model,
+          mode: "default",
+          deferIfBusy: true,
+        });
+      } else {
+        if (provider) cell.provider = provider;
+        if (model) cell.model = model;
       }
     }
   }

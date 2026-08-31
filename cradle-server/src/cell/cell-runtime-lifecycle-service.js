@@ -142,6 +142,7 @@ export class CellRuntimeLifecycleService {
     } finally {
       this.cell.isTicking = false;
       this.cell.currentTickPromise = null;
+      await this.cell.applyPendingAiBinding?.();
     }
   }
 
@@ -235,6 +236,7 @@ export class CellRuntimeLifecycleService {
     this.cell.activationScheduler?.cancel(this.cell.id);
     this.cell.activationQueued = false;
     await this.cell.updateStatus("stopped");
-    await this.cell.assistant?.cleanup();
+    const assistant = this.cell.assistant ?? await this.cell.assistantPromise?.catch(() => null);
+    await assistant?.cleanup?.();
   }
 }

@@ -4,8 +4,8 @@ import { PROJECT_ROOT } from "./project-root.js";
 
 const DEFAULT_CRADLE_CONFIG = Object.freeze({
   ai: Object.freeze({
-    defaultProvider: "ollama",
-    defaultModel: "devstral-small-2:24b",
+    defaultProvider: "codex",
+    defaultModel: "auto",
     timeoutSeconds: 3600,
     maxSourceArtifactOutputLength: 8000,
     maxSourceArtifactContentLength: 30000,
@@ -96,7 +96,7 @@ export function getAiTimeoutSeconds(options = {}) {
 
 export function getAiDefaultProvider(options = {}) {
   const config = readCradleConfig(options);
-  return config.ai?.defaultProvider || "ollama";
+  return config.ai?.defaultProvider || "codex";
 }
 
 export function getAiDefaultModel(options = {}) {
@@ -108,7 +108,7 @@ export function getAiDefaults(options = {}) {
   const config = readCradleConfig(options);
 
   return {
-    provider: config.ai?.defaultProvider || "ollama",
+    provider: config.ai?.defaultProvider || "codex",
     model: config.ai?.defaultModel || null,
   };
 }

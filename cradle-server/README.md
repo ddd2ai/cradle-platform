@@ -564,6 +564,10 @@ Cradle Platform 的 LLM Provider 是 **Cradle Cell 的感知器官**。
 
 LLM 不是 Cradle 的核心，而是**可替換的能源**。
 
+系統預設使用 `codex / auto`。每個 Cell 可透過
+`GET/PUT /api/v1/cells/:cellId/ai` 持久化自己的 provider/model；沒有釘選的 Cell
+跟隨全域預設。AI client 只在 Cell 首次需要推理時建立，因此 idle Cell 不會僅因存在或啟動就載入 provider。
+
 ## Cell Fusion CLI
 
 使用 `/fuse` 將兩個或以上的 Cell 融合為新 Cell：

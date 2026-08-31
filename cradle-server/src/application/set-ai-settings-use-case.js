@@ -10,7 +10,7 @@ export class SetAiSettingsUseCase {
     try {
       const settings = await this.settingsStore.setSettings({ provider, model });
 
-      this.engine?.setAiSettings?.(settings.current);
+      await this.engine?.setAiSettings?.(settings.current);
 
       return settings;
     } catch (error) {

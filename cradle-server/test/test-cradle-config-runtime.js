@@ -16,7 +16,8 @@ await fs.writeFile(configFile, JSON.stringify({
   runtime: { activationConcurrency: 7 },
 }));
 assert.equal(getActivationConcurrency({ file: configFile }), 7);
-assert.equal(readCradleConfig({ file: configFile }).ai.defaultProvider, "ollama");
+assert.equal(readCradleConfig({ file: configFile }).ai.defaultProvider, "codex");
+assert.equal(readCradleConfig({ file: configFile }).ai.defaultModel, "auto");
 
 await fs.writeFile(configFile, JSON.stringify({
   runtime: { activationConcurrency: 0 },

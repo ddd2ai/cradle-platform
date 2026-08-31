@@ -530,6 +530,28 @@ const invalidAiSettings = await handler({
 assert.equal(invalidAiSettings.status, 400);
 assert.equal(invalidAiSettings.body.error.code, "INVALID_AI_SETTINGS");
 
+const cellAiBinding = await handler({
+  method: "GET",
+  url: "/api/v1/cells/cell-001/ai",
+});
+assert.equal(cellAiBinding.status, 200);
+assert.equal(cellAiBinding.body.binding.provider, "codex");
+assert.equal(cellAiBinding.body.binding.mode, "default");
+assert.equal(cellAiBinding.body.assistantLoaded, false);
+
+const updatedCellAiBinding = await handler({
+  method: "PUT",
+  url: "/api/v1/cells/cell-001/ai",
+  body: {
+    provider: "ollama",
+    model: "gemma3:latest",
+    mode: "pinned",
+  },
+});
+assert.equal(updatedCellAiBinding.status, 200);
+assert.equal(updatedCellAiBinding.body.binding.provider, "ollama");
+assert.equal(updatedCellAiBinding.body.binding.mode, "pinned");
+
 const clearedLogs = await handler({
   method: "DELETE",
   url: "/api/v1/logs",
@@ -1400,11 +1422,27 @@ function createCell({
   stabilityState = null,
   snapshots = [],
 }) {
+  let aiBinding = {
+    schemaVersion: 1,
+    provider: "codex",
+    model: "auto",
+    mode: "default",
+  };
   const cell = {
     id,
     name: id,
     profile,
     active,
+    provider: aiBinding.provider,
+    model: aiBinding.model,
+    assistant: null,
+    getAiBinding: () => ({ ...aiBinding }),
+    setAiBinding: async ({ provider, model, mode }) => {
+      aiBinding = { schemaVersion: 1, provider, model, mode };
+      cell.provider = provider;
+      cell.model = model;
+      return { ...aiBinding };
+    },
     getProfile: async () => profile,
     isActive: () => cell.active,
     getWorkspaceMetadata: async () => ({
