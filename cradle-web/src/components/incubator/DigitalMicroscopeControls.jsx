@@ -40,16 +40,6 @@ export function DigitalMicroscopeControls({
           </button>
           <button
             type="button"
-            className="microscope-controls__dpad-button microscope-controls__dpad-button--focus"
-            onClick={onFocusSelected}
-            disabled={!hasSelectedCell}
-            aria-label={t("incubator.focusCell")}
-            title={t("incubator.focusCell")}
-          >
-            ◎
-          </button>
-          <button
-            type="button"
             className="microscope-controls__dpad-button microscope-controls__dpad-button--right"
             onClick={onOrbitRight}
             aria-label={t("incubator.orbitRight")}
@@ -67,6 +57,17 @@ export function DigitalMicroscopeControls({
             ↓
           </button>
         </div>
+
+        <button
+          type="button"
+          className="microscope-controls__focus"
+          onClick={onFocusSelected}
+          disabled={!hasSelectedCell}
+          aria-label={t("incubator.focusCell")}
+          title={t("incubator.focusCell")}
+        >
+          ◎
+        </button>
 
         <div className="microscope-controls__divider" aria-hidden="true" />
 

@@ -2067,8 +2067,8 @@ button.comparison-row:hover, button.comparison-row.selected { background: #111f2
 
 .microscope-controls__dpad {
   display: grid;
-  grid-template-columns: repeat(3, 24px);
-  grid-template-rows: repeat(3, 20px);
+  grid-template-columns: 26px 22px 26px;
+  grid-template-rows: repeat(2, 26px);
   align-items: center;
   justify-items: center;
   gap: 2px;
@@ -2081,22 +2081,17 @@ button.comparison-row:hover, button.comparison-row.selected { background: #111f2
 
 .microscope-controls__dpad-button--left {
   grid-column: 1;
-  grid-row: 2;
-}
-
-.microscope-controls__dpad-button--focus {
-  grid-column: 2;
-  grid-row: 2;
+  grid-row: 1 / span 2;
 }
 
 .microscope-controls__dpad-button--right {
   grid-column: 3;
-  grid-row: 2;
+  grid-row: 1 / span 2;
 }
 
 .microscope-controls__dpad-button--backward {
   grid-column: 2;
-  grid-row: 3;
+  grid-row: 2;
 }
 
 .microscope-controls__divider {
@@ -2112,6 +2107,7 @@ button.comparison-row:hover, button.comparison-row.selected { background: #111f2
 }
 
 .microscope-controls__dpad button,
+.microscope-controls__focus,
 .microscope-controls__zoom button {
   display: grid;
   width: 36px;
@@ -2141,14 +2137,31 @@ button.comparison-row:hover, button.comparison-row.selected { background: #111f2
 }
 
 .microscope-controls__dpad button {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 26px;
   border-radius: 7px;
   font-size: 11px;
 }
 
-.microscope-controls__dpad-button--focus {
+.microscope-controls__dpad-button--forward {
+  border-radius: 7px 7px 2px 2px;
+}
+
+.microscope-controls__dpad-button--backward {
+  border-radius: 2px 2px 7px 7px;
+}
+
+.microscope-controls__dpad-button--left,
+.microscope-controls__dpad-button--right {
+  width: 26px;
+  height: 54px;
+  border-radius: 8px;
+}
+
+.microscope-controls__focus {
+  flex: 0 0 auto;
   border-color: rgba(165, 143, 255, .8);
+  border-radius: 50%;
   background:
     radial-gradient(circle at 50% 30%, rgba(138, 112, 255, .42), rgba(31, 27, 69, .92) 64%),
     rgba(116, 82, 222, .22);
@@ -2177,6 +2190,8 @@ button.comparison-row:hover, button.comparison-row.selected { background: #111f2
 
 .microscope-controls__dpad button:hover:not(:disabled),
 .microscope-controls__dpad button:focus-visible,
+.microscope-controls__focus:hover:not(:disabled),
+.microscope-controls__focus:focus-visible,
 .microscope-controls__zoom button:hover:not(:disabled),
 .microscope-controls__zoom button:focus-visible {
   border-color: rgba(185, 162, 255, .82);
@@ -2192,20 +2207,24 @@ button.comparison-row:hover, button.comparison-row.selected { background: #111f2
   transform: translateY(-1px);
 }
 
-.microscope-controls__dpad-button--focus:hover:not(:disabled),
-.microscope-controls__dpad-button--focus:focus-visible {
-  border-color: rgba(178, 151, 255, .56);
-  background: rgba(116, 82, 222, .22);
-  color: #f1edff;
+.microscope-controls__focus:hover:not(:disabled),
+.microscope-controls__focus:focus-visible {
+  border-color: rgba(178, 151, 255, .92);
+  background:
+    radial-gradient(circle at 50% 30%, rgba(150, 126, 255, .5), rgba(31, 27, 69, .96) 64%),
+    rgba(116, 82, 222, .28);
+  color: #fff;
 }
 
 .microscope-controls__dpad button:focus-visible,
+.microscope-controls__focus:focus-visible,
 .microscope-controls__zoom button:focus-visible {
   outline: 2px solid rgba(169, 140, 255, .58);
   outline-offset: 2px;
 }
 
 .microscope-controls__dpad button:disabled,
+.microscope-controls__focus:disabled,
 .microscope-controls__zoom button:disabled {
   cursor: not-allowed;
   opacity: .38;
@@ -4198,6 +4217,7 @@ button.comparison-row:hover, button.comparison-row.selected { background: #111f2
 }
 
 .app-shell.is-incubator .microscope-controls__dpad button,
+.app-shell.is-incubator .microscope-controls__focus,
 .app-shell.is-incubator .microscope-controls__zoom button {
   border-color: rgba(145, 128, 255, .72);
   background:
@@ -4210,7 +4230,7 @@ button.comparison-row:hover, button.comparison-row.selected { background: #111f2
   color: #eef2ff;
 }
 
-.app-shell.is-incubator .microscope-controls__dpad-button--focus {
+.app-shell.is-incubator .microscope-controls__focus {
   border-color: rgba(178, 151, 255, .9);
   background:
     radial-gradient(circle at 50% 30%, rgba(134, 104, 255, .44), rgba(24, 22, 66, .98) 64%, #050917 100%);
@@ -4224,6 +4244,8 @@ button.comparison-row:hover, button.comparison-row.selected { background: #111f2
 
 .app-shell.is-incubator .microscope-controls__dpad button:hover:not(:disabled),
 .app-shell.is-incubator .microscope-controls__dpad button:focus-visible,
+.app-shell.is-incubator .microscope-controls__focus:hover:not(:disabled),
+.app-shell.is-incubator .microscope-controls__focus:focus-visible,
 .app-shell.is-incubator .microscope-controls__zoom button:hover:not(:disabled),
 .app-shell.is-incubator .microscope-controls__zoom button:focus-visible {
   border-color: rgba(185, 162, 255, .86);

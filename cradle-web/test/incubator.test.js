@@ -481,11 +481,13 @@ test("DigitalMicroscopeControls renders d-pad, magnification, and reset controls
   }
 
   assert.doesNotMatch(markup, /Colony overview/);
+  assert.match(markup, /<\/div><button[^>]+class="microscope-controls__focus"/);
 });
 
-test("Microscope focus is disabled without a selected Cell", () => {
+test("Microscope focus is outside the d-pad and disabled without a selected Cell", () => {
   const markup = renderWorkspace(createCells(1), { selectedCellId: null });
-  assert.match(markup, /disabled="" aria-label="Focus selected cell" title="Focus selected cell">◎<\/button>/);
+  assert.doesNotMatch(markup, /microscope-controls__dpad-button--focus/);
+  assert.match(markup, /class="microscope-controls__focus" disabled="" aria-label="Focus selected cell" title="Focus selected cell">◎<\/button>/);
 });
 
 test("Incubator feed stays auto-routed with or without a selected Cell", () => {
