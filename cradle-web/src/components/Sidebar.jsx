@@ -1,9 +1,11 @@
+import { useUiPreferences } from "../i18n/UiPreferencesProvider";
+
 const cradleItems = [
-  { id: "overview", label: "Foundation" },
-  { id: "incubator", label: "Incubator" },
-  { id: "opendna", label: "Observatory" },
-  { id: "artifacts", label: "Creations" },
-  { id: "logs", label: "Logs" },
+  { id: "overview", labelKey: "nav.foundation" },
+  { id: "incubator", labelKey: "nav.incubator" },
+  { id: "opendna", labelKey: "nav.observatory" },
+  { id: "artifacts", labelKey: "nav.creations" },
+  { id: "logs", labelKey: "nav.logs" },
 ];
 
 export function Sidebar({
@@ -16,18 +18,19 @@ export function Sidebar({
   isLoading,
   error,
 }) {
+  const { t } = useUiPreferences();
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
         <button type="button" className="new-cell-button" onClick={onCreateCell}>
           <span className="new-cell-icon">＋</span>
-          <span>New Cell</span>
+          <span>{t("nav.newCell")}</span>
         </button>
       </div>
 
       <div className="sidebar-content">
-        <div className="sidebar-section-title">Cradle</div>
-        <nav className="cradle-nav" aria-label="Cradle functions">
+        <div className="sidebar-section-title">{t("nav.cradle")}</div>
+        <nav className="cradle-nav" aria-label={t("nav.cradleFunctions")}>
           {cradleItems.map((item) => {
             const isSelected = selectedSection === item.id;
 
@@ -39,21 +42,21 @@ export function Sidebar({
                 onClick={() => onSelectSection(item.id)}
               >
                 <NavIcon id={item.id} />
-                <span>{item.label}</span>
+                <span>{t(item.labelKey)}</span>
               </button>
             );
           })}
         </nav>
-        <div className="sidebar-section-title">Cells</div>
+        <div className="sidebar-section-title">{t("nav.cells")}</div>
         <div className="cell-list">
-          {isLoading && <div className="sidebar-message">Loading cells...</div>}
+          {isLoading && <div className="sidebar-message">{t("nav.loadingCells")}</div>}
           {!isLoading && error && (
             <div className="sidebar-message error">
-              Unable to connect to Cradle Server
+              {t("nav.serverUnavailable")}
             </div>
           )}
           {!isLoading && !error && cells.length === 0 && (
-            <div className="sidebar-message">No cells found</div>
+            <div className="sidebar-message">{t("nav.noCells")}</div>
           )}
           {!isLoading && !error && cells.map((cell) => {
             const isSelected = cell.id === selectedCellId;
@@ -72,7 +75,7 @@ export function Sidebar({
                   <span className="cell-name">{cell.name}</span>
                   <span className="cell-meta">
                     <span className={`status-dot status-${cell.status}`} />
-                    <span>{cellActivity(cell)}</span>
+                    <span>{cellActivity(cell, t)}</span>
                   </span>
                 </span>
               </button>
@@ -90,7 +93,7 @@ export function Sidebar({
           onClick={() => onSelectSection("settings")}
         >
           <span>⚙️</span>
-          <span>Settings</span>
+          <span>{t("nav.settings")}</span>
         </button>
         <div className="platform-version">
           Cradle Platform
@@ -138,25 +141,27 @@ function NavIcon({ id }) {
   );
 }
 
-function cellActivity(cell) {
+function cellActivity(cell, t) {
   const cultivationState = String(cell.cultivation?.state ?? "").toLowerCase();
   if (["stimulated", "growing"].includes(cultivationState)) {
-    return `Growing ${Math.round(Number(cell.cultivation?.progress) || 0)}%`;
+    return t("status.growingPercent", { percent: Math.round(Number(cell.cultivation?.progress) || 0) });
   }
-  if (cultivationState === "stable") return "Stable";
-  if (cultivationState === "needs_attention") return "Needs Attention";
+  if (cultivationState === "stable") return t("status.stable");
+  if (cultivationState === "needs_attention") return t("status.needsAttention");
 
   const status = String(cell.status ?? "").toLowerCase();
 
   if (cell.active === true || ["active", "running"].includes(status)) {
-    return "Healthy";
+    return t("status.healthy");
   }
 
   if (["repairing", "processing"].includes(status)) {
-    return "Evolving";
+    return t("status.evolving");
   }
 
-  return status ? status[0].toUpperCase() + status.slice(1) : "Idle";
+  if (!status) return t("status.idle");
+  const knownStatus = ["active", "idle"].includes(status) ? `status.${status}` : null;
+  return knownStatus ? t(knownStatus) : status[0].toUpperCase() + status.slice(1);
 }
 
 function cellTone(cell) {

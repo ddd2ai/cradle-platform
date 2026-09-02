@@ -7,6 +7,7 @@ import {
 } from "../../services/workspace-api";
 import { WorkspacePreview } from "./WorkspacePreview";
 import { WorkspaceTree } from "./WorkspaceTree";
+import { useUiPreferences } from "../../i18n/UiPreferencesProvider";
 
 /** @import { WorkspaceFilePreview, WorkspaceNode } from "./workspace.types" */
 
@@ -20,6 +21,7 @@ export function CellWorkspacePanel({
   cellId,
   workspacePath,
 }) {
+  const { t } = useUiPreferences();
   const [displayPath, setDisplayPath] = useState(workspacePath);
   const [nodes, setNodes] = useState([]);
   const [selectedNode, setSelectedNode] = useState(null);
@@ -36,7 +38,7 @@ export function CellWorkspacePanel({
   const fileAbortRef = useRef(null);
   const rootAbortRef = useRef(null);
   const activeCellIdRef = useRef(cellId);
-  const pathLabel = displayPath ?? workspacePath ?? "Workspace path unavailable.";
+  const pathLabel = displayPath ?? workspacePath ?? t("workspace.pathUnavailable");
 
   useEffect(() => {
     setDisplayPath(workspacePath);
@@ -235,7 +237,7 @@ export function CellWorkspacePanel({
     <section className="workspace-card">
       <div className="workspace-card-header">
         <div className="workspace-heading">
-          <h3>Cell Workspace</h3>
+          <h3>{t("workspace.cellWorkspace")}</h3>
           <p title={pathLabel}>{pathLabel}</p>
         </div>
         <button
@@ -244,7 +246,7 @@ export function CellWorkspacePanel({
           disabled={!cellId || isExporting}
           onClick={handleExportWorkspace}
         >
-          {isExporting ? "Exporting..." : "Export Workspace"}
+          {t(isExporting ? "workspace.exporting" : "workspace.export")}
         </button>
       </div>
       {exportError && (
@@ -255,7 +257,7 @@ export function CellWorkspacePanel({
 
       <div className="workspace-browser">
         <aside className="workspace-tree-panel">
-          <div className="workspace-panel-title">WORKSPACE</div>
+          <div className="workspace-panel-title">{t("workspace.workspace")}</div>
           <WorkspaceTree
             nodes={nodes}
             selectedPath={selectedNode?.path}

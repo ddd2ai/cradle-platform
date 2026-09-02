@@ -1,8 +1,9 @@
 /** @import { WorkspaceFilePreview, WorkspaceNode } from "./workspace.types" */
+import { useUiPreferences } from "../../i18n/UiPreferencesProvider";
 
-function formatFileSize(size) {
+function formatFileSize(size, t) {
   if (typeof size !== "number") {
-    return "Unknown size";
+    return t("workspace.unknownSize");
   }
 
   if (size < 1024) {
@@ -40,11 +41,12 @@ export function WorkspacePreview({
   fileError = null,
   onRetryFile,
 }) {
+  const { locale, t } = useUiPreferences();
   if (!node) {
     return (
       <div className="workspace-preview-empty">
-        <h4>Select an item</h4>
-        <p>Choose a folder or file from the workspace.</p>
+        <h4>{t("workspace.selectItem")}</h4>
+        <p>{t("workspace.selectDescription")}</p>
       </div>
     );
   }
@@ -59,15 +61,15 @@ export function WorkspacePreview({
             <h4 title={node.name}>{node.name}</h4>
             <p title={node.path}>{node.path}</p>
           </div>
-          <span className="workspace-preview-kind">Directory</span>
+          <span className="workspace-preview-kind">{t("workspace.directory")}</span>
         </div>
 
         <div className="workspace-preview-section-title">
-          {node.childrenLoaded ? `${childNodes.length} item${childNodes.length === 1 ? "" : "s"}` : "Contents"}
+          {node.childrenLoaded ? t("workspace.itemCount", { count: childNodes.length }) : t("workspace.contents")}
         </div>
         {!node.childrenLoaded ? (
           <div className="workspace-preview-note">
-            Open this directory to load its contents.
+            {t("workspace.openDirectory")}
           </div>
         ) : childNodes.length > 0 ? (
           <ul className="workspace-preview-list">
@@ -81,7 +83,7 @@ export function WorkspacePreview({
             ))}
           </ul>
         ) : (
-          <div className="workspace-preview-note">This directory is empty.</div>
+          <div className="workspace-preview-note">{t("workspace.directoryEmpty")}</div>
         )}
       </div>
     );
@@ -95,9 +97,9 @@ export function WorkspacePreview({
             <h4 title={node.name}>{node.name}</h4>
             <p title={node.path}>{node.path}</p>
           </div>
-          <span className="workspace-preview-kind">{formatFileSize(node.size)}</span>
+          <span className="workspace-preview-kind">{formatFileSize(node.size, t)}</span>
         </div>
-        <div className="workspace-file-placeholder">Loading preview...</div>
+        <div className="workspace-file-placeholder">{t("workspace.previewLoading")}</div>
       </div>
     );
   }
@@ -110,14 +112,14 @@ export function WorkspacePreview({
             <h4 title={node.name}>{node.name}</h4>
             <p title={node.path}>{node.path}</p>
           </div>
-          <span className="workspace-preview-kind">{formatFileSize(node.size)}</span>
+          <span className="workspace-preview-kind">{formatFileSize(node.size, t)}</span>
         </div>
         <div className="workspace-file-placeholder error">
-          <strong>Unable to preview file</strong>
+          <strong>{t("workspace.previewError")}</strong>
           <span>{fileError}</span>
           {onRetryFile && (
             <button type="button" onClick={onRetryFile}>
-              Retry
+              {t("common.retry")}
             </button>
           )}
         </div>
@@ -128,10 +130,10 @@ export function WorkspacePreview({
   if (file && !file.previewable) {
     return (
       <div className="workspace-preview-content">
-        <FileHeader node={node} file={file} />
+        <FileHeader node={node} file={file} locale={locale} t={t} />
         <div className="workspace-file-placeholder">
-          <strong>Preview unavailable</strong>
-          <span>{file.mimeType} files cannot be displayed.</span>
+          <strong>{t("workspace.previewUnavailable")}</strong>
+          <span>{t("workspace.mimeUnavailable", { type: file.mimeType })}</span>
         </div>
       </div>
     );
@@ -139,11 +141,11 @@ export function WorkspacePreview({
 
   return (
     <div className="workspace-preview-content">
-      <FileHeader node={node} file={file} />
+      <FileHeader node={node} file={file} locale={locale} t={t} />
 
       {file?.truncated && (
         <div className="workspace-preview-note warning">
-          Preview truncated because this file is too large.
+          {t("workspace.previewTruncated")}
         </div>
       )}
       <pre className="workspace-code"><code>{file?.content ?? ""}</code></pre>
@@ -151,12 +153,12 @@ export function WorkspacePreview({
   );
 }
 
-function FileHeader({ node, file }) {
-  const size = formatFileSize(file?.size ?? node.size);
+function FileHeader({ node, file, locale, t }) {
+  const size = formatFileSize(file?.size ?? node.size, t);
   const mimeType = file?.mimeType ?? node.mimeType ?? "unknown";
   const modifiedAt = file?.modifiedAt ?? node.modifiedAt;
   const meta = modifiedAt
-    ? `${size} · ${mimeType} · ${formatModifiedAt(modifiedAt)}`
+    ? `${size} · ${mimeType} · ${formatModifiedAt(modifiedAt, locale)}`
     : `${size} · ${mimeType}`;
 
   return (
@@ -171,12 +173,12 @@ function FileHeader({ node, file }) {
   );
 }
 
-function formatModifiedAt(value) {
+function formatModifiedAt(value, locale) {
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
     return value;
   }
 
-  return date.toLocaleString();
+  return date.toLocaleString(locale);
 }

@@ -26,6 +26,7 @@ import { IncubatorPage } from "./pages/IncubatorPage";
 import { LogsPage } from "./pages/LogsPage";
 import { ObservatoryPage } from "./pages/ObservatoryPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { useUiPreferences } from "./i18n/UiPreferencesProvider";
 import { subscribeToCradleEvents } from "./services/cradle-event-stream";
 import {
   registerResourceLoader,
@@ -33,6 +34,7 @@ import {
 } from "./services/resource-invalidation";
 
 function App() {
+  const { t } = useUiPreferences();
   const [selectedSection, setSelectedSection] = useState("incubator");
   const [selectedCellId, setSelectedCellId] = useState(null);
   const [cells, setCells] = useState([]);
@@ -367,16 +369,16 @@ function App() {
       if (selectedCellIdRef.current === cellId) {
         const refreshed = await loadSelectedCell(cellId);
         if (!refreshed) {
-          throw new Error("Action completed, but Cell refresh failed.");
+          throw new Error(t("cell.refreshFailed"));
         }
       }
 
       setActionMessage(
         actionName === "activate"
-          ? "Cell activated successfully."
+          ? t("cell.activated")
           : actionName === "deactivate"
-            ? "Cell deactivated successfully."
-            : "Heartbeat completed successfully.",
+            ? t("cell.deactivated")
+            : t("cell.heartbeatComplete"),
       );
     } catch (error) {
       setActionError(error.message);
@@ -418,7 +420,7 @@ function App() {
       await loadCells();
       const status = await fetchCultivationStatus();
       setCultivationStatus(status);
-      setHeartbeatMessage("Cultivation started successfully.");
+      setHeartbeatMessage(t("cultivation.started"));
     } catch (error) {
       setHeartbeatStatus("failed");
       setHeartbeatError(error.message);
@@ -448,7 +450,7 @@ function App() {
         const status = await fetchCultivationStatus();
         setCultivationStatus(status);
       }
-      setHeartbeatMessage("Cultivation stopped successfully.");
+      setHeartbeatMessage(t("cultivation.stopped"));
     } catch (error) {
       setHeartbeatError(error.message);
     }
@@ -498,7 +500,7 @@ function App() {
 
       setIsCreateCellOpen(false);
       setNewCellId("");
-      setActionMessage(`Cell ${createdCellId} created successfully.`);
+      setActionMessage(t("cell.created", { cell: createdCellId }));
 
       const existsInList = loadedCells.some((cell) => cell.id === createdCellId);
       await handleSelectCell(existsInList ? createdCellId : cellId);
@@ -572,11 +574,11 @@ function App() {
           )}
 
           {selectedSection === "cell" && selectedCellId && isLoadingCell && (
-            <div className="content-message">Loading cell...</div>
+            <div className="content-message">{t("cell.loading")}</div>
           )}
           {selectedSection === "cell" && selectedCellId && !isLoadingCell && cellError && (
             <div className="content-message error">
-              Unable to load cell details
+              {t("cell.loadError")}
             </div>
           )}
           {selectedSection === "cell" && selectedCell && !isLoadingCell && !cellError && (
@@ -602,22 +604,22 @@ function App() {
             <form onSubmit={handleSubmitCreateCell}>
               <div className="dialog-header">
                 <div>
-                  <h2 id="create-cell-title">New Cell</h2>
-                  <p>Create a Cell workspace and register it in the colony.</p>
+                  <h2 id="create-cell-title">{t("nav.newCell")}</h2>
+                  <p>{t("cell.createDescription")}</p>
                 </div>
                 <button
                   type="button"
                   className="dialog-close-button"
                   onClick={handleCloseCreateCell}
                   disabled={isCreatingCell}
-                  aria-label="Close"
+                  aria-label={t("common.close")}
                 >
                   ×
                 </button>
               </div>
 
               <label className="field-label" htmlFor="new-cell-id">
-                Cell ID
+                {t("cell.id")}
               </label>
               <input
                 id="new-cell-id"
@@ -640,14 +642,14 @@ function App() {
                   onClick={handleCloseCreateCell}
                   disabled={isCreatingCell}
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </button>
                 <button
                   type="submit"
                   className="primary-button"
                   disabled={!newCellId.trim() || isCreatingCell}
                 >
-                  {isCreatingCell ? "Creating..." : "Create Cell"}
+                  {t(isCreatingCell ? "cell.creating" : "cell.create")}
                 </button>
               </div>
             </form>

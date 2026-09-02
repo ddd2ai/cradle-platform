@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { fetchObservatory } from "../api/cradleClient";
 import { buildObservatoryModel } from "../domain/observatoryModel";
+import { useUiPreferences } from "../i18n/UiPreferencesProvider";
 
 export function ObservatoryPage() {
+  const { locale, t } = useUiPreferences();
   const [snapshot, setSnapshot] = useState({ cells: [], observedAt: null });
   const [selectedCellId, setSelectedCellId] = useState(null);
   const [isCapabilityGuideOpen, setIsCapabilityGuideOpen] = useState(false);
@@ -38,43 +40,43 @@ export function ObservatoryPage() {
     <section className="platform-page observatory-page">
       <div className="page-heading observatory-heading">
         <div>
-          <h1>Observatory</h1>
-          <p>Read cultivation evidence, compare Cells, and find exceptions that need attention.</p>
+          <h1>{t("nav.observatory")}</h1>
+          <p>{t("observatory.description")}</p>
         </div>
-        <span className="observed-at">Observed {formatDate(snapshot.observedAt)}</span>
+        <span className="observed-at">{t("observatory.observed", { date: formatDate(snapshot.observedAt, locale, t) })}</span>
       </div>
 
-      {loading && <div className="observatory-state">Collecting observations…</div>}
+      {loading && <div className="observatory-state">{t("observatory.loading")}</div>}
       {!loading && error && <div className="observatory-state is-error">{error}</div>}
-      {!loading && !error && model.cells.length === 0 && <div className="observatory-state">No Cells are available to observe.</div>}
+      {!loading && !error && model.cells.length === 0 && <div className="observatory-state">{t("observatory.empty")}</div>}
       {!loading && !error && model.cells.length > 0 && (
         <>
           <div className="observation-strip">
-            <Metric label="Observed Cells" value={model.cells.length} tone="neutral" />
-            <Metric label="Stable" value={model.stableCount} tone="good" />
-            <Metric label="Growing" value={model.growingCount} tone="growth" />
-            <Metric label="Needs Attention" value={model.attentionCount} tone={model.attentionCount ? "warn" : "neutral"} />
-            <Metric label="Insufficient Evidence" value={model.insufficientCount} tone={model.insufficientCount ? "muted" : "neutral"} />
+            <Metric label={t("observatory.observedCells")} value={model.cells.length} tone="neutral" />
+            <Metric label={t("observatory.stable")} value={model.stableCount} tone="good" />
+            <Metric label={t("observatory.growing")} value={model.growingCount} tone="growth" />
+            <Metric label={t("observatory.needsAttention")} value={model.attentionCount} tone={model.attentionCount ? "warn" : "neutral"} />
+            <Metric label={t("observatory.insufficientEvidence")} value={model.insufficientCount} tone={model.insufficientCount ? "muted" : "neutral"} />
           </div>
 
           <div className="observatory-grid">
             <article className="observation-card trend-card">
-              <CardHeading title="Maturity trajectory" detail={selected?.name ?? "Cell"} />
-              <MaturityChart points={selected?.maturityTrend ?? []} />
+              <CardHeading title={t("observatory.maturityTrajectory")} detail={selected?.name ?? t("observatory.cell")} />
+              <MaturityChart points={selected?.maturityTrend ?? []} locale={locale} t={t} />
               <CellSelector cells={model.cells} selectedCellId={selected?.cellId} onSelect={setSelectedCellId} />
             </article>
 
             <article className="observation-card attention-card">
-              <CardHeading title="Attention queue" detail={`${model.attention.length} evidence exceptions`} />
+              <CardHeading title={t("observatory.attentionQueue")} detail={t("observatory.evidenceExceptions", { count: model.attention.length })} />
               {model.attention.length === 0 ? (
-                <div className="empty-observation">No current exceptions in the recorded cultivation state.</div>
+                <div className="empty-observation">{t("observatory.noExceptions")}</div>
               ) : (
                 <div className="attention-list">
                   {model.attention.map((item) => (
                     <button type="button" key={item.cellId} onClick={() => setSelectedCellId(item.cellId)}>
                       <span className={`attention-marker attention-marker--${item.tone}`} />
-                      <span><strong>{item.name}</strong><small>{item.reason}</small></span>
-                      <span className="attention-state">{item.label}</span>
+                      <span><strong>{item.name}</strong><small>{translateAttentionReason(item, t)}</small></span>
+                      <span className="attention-state">{translateStatus(item.label, t)}</span>
                     </button>
                   ))}
                 </div>
@@ -82,25 +84,26 @@ export function ObservatoryPage() {
             </article>
 
             <article className="observation-card fitness-card">
-              <CardHeading title="Capability × stability" detail="All observed Cells" />
+              <CardHeading title={t("observatory.capabilityStability")} detail={t("observatory.allCells")} />
               <CapabilityStabilityPlot
                 cells={model.cells}
                 selectedCellId={selected?.cellId}
                 onSelect={setSelectedCellId}
                 onOpenGuide={() => setIsCapabilityGuideOpen(true)}
+                t={t}
               />
             </article>
 
             <article className="observation-card comparison-card">
-              <CardHeading title="Cell comparison" detail="Recorded state" />
-              <div className="comparison-table" role="table" aria-label="Cell cultivation comparison">
-                <div className="comparison-row comparison-header" role="row"><span>Cell</span><span>State</span><span>Maturity</span><span>Quality</span><span>Samples</span></div>
+              <CardHeading title={t("observatory.cellComparison")} detail={t("observatory.recordedState")} />
+              <div className="comparison-table" role="table" aria-label={t("observatory.comparisonLabel")}>
+                <div className="comparison-row comparison-header" role="row"><span>{t("observatory.cell")}</span><span>{t("observatory.state")}</span><span>{t("observatory.maturity")}</span><span>{t("observatory.quality")}</span><span>{t("observatory.samples")}</span></div>
                 {model.cells.map((cell) => (
                   <button type="button" className={`comparison-row ${selected?.cellId === cell.cellId ? "selected" : ""}`} key={cell.cellId} onClick={() => setSelectedCellId(cell.cellId)}>
-                    <span><strong>{cell.name}</strong><small>Gen {cell.generation}</small></span>
-                    <span><i className={`state-dot state-dot--${cell.tone}`} />{cell.stateLabel}</span>
+                    <span><strong>{cell.name}</strong><small>{t("observatory.generation", { generation: cell.generation })}</small></span>
+                    <span><i className={`state-dot state-dot--${cell.tone}`} />{translateStatus(cell.stateLabel, t)}</span>
                     <span>{cell.maturityPercent === null ? "—" : `${cell.maturityPercent}%`}</span>
-                    <span>{cell.qualityOutcome ? prettyTrait(cell.qualityOutcome) : "No decision"}</span>
+                    <span>{cell.qualityOutcome ? prettyTrait(cell.qualityOutcome) : t("observatory.noDecision")}</span>
                     <span>{cell.sampleSize}</span>
                   </button>
                 ))}
@@ -108,7 +111,7 @@ export function ObservatoryPage() {
             </article>
           </div>
           {isCapabilityGuideOpen && (
-            <CapabilityGuideDialog onClose={() => setIsCapabilityGuideOpen(false)} />
+            <CapabilityGuideDialog onClose={() => setIsCapabilityGuideOpen(false)} t={t} />
           )}
         </>
       )}
@@ -128,10 +131,10 @@ function CellSelector({ cells, selectedCellId, onSelect }) {
   return <div className="chart-cell-selector">{cells.map((cell) => <button type="button" className={cell.cellId === selectedCellId ? "selected" : ""} key={cell.cellId} onClick={() => onSelect(cell.cellId)}>{cell.name}</button>)}</div>;
 }
 
-function MaturityChart({ points }) {
+function MaturityChart({ points, locale, t }) {
   const observed = points.filter((point) => point.percent !== null);
   if (observed.length < 2) {
-    return <div className="chart-insufficient"><strong>Insufficient evidence</strong><span>At least two recorded maturity points are required for a trend.</span></div>;
+    return <div className="chart-insufficient"><strong>{t("observatory.insufficientTitle")}</strong><span>{t("observatory.insufficientTrend")}</span></div>;
   }
   const coordinates = observed.map((point, index) => ({
     x: 6 + (index / (observed.length - 1)) * 88,
@@ -142,27 +145,27 @@ function MaturityChart({ points }) {
   return (
     <div className="maturity-chart">
       <div className="chart-scale"><span>100</span><span>50</span><span>0</span></div>
-      <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="Maturity percentage over recorded DNA observations">
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-label={t("observatory.maturityChartLabel")}>
         <path className="chart-grid" d="M0 16 H100 M0 52 H100 M0 88 H100" />
         <path className="chart-area" d={`${line} L${coordinates.at(-1).x},88 L${coordinates[0].x},88 Z`} />
         <path className="chart-line" d={line} />
         {coordinates.map((point, index) => <circle key={`${point.at}-${index}`} cx={point.x} cy={point.y} r="1.7" />)}
       </svg>
-      <div className="chart-caption"><span>{formatDate(observed[0].at)}</span><strong>{observed.at(-1).percent}% current maturity</strong><span>{formatDate(observed.at(-1).at)}</span></div>
+      <div className="chart-caption"><span>{formatDate(observed[0].at, locale, t)}</span><strong>{t("observatory.currentMaturity", { percent: observed.at(-1).percent })}</strong><span>{formatDate(observed.at(-1).at, locale, t)}</span></div>
     </div>
   );
 }
 
-function CapabilityStabilityPlot({ cells, selectedCellId, onSelect, onOpenGuide }) {
+function CapabilityStabilityPlot({ cells, selectedCellId, onSelect, onOpenGuide, t }) {
   const selected = cells.find((cell) => cell.cellId === selectedCellId) ?? cells[0];
   return (
     <div className="fitness-plot-shell">
-      <div className="fitness-y-label">Stability</div>
-      <div className="fitness-plot" role="img" aria-label="Cell capability and stability distribution">
-        <span className="fitness-quadrant fitness-quadrant--stable">Stable foundation</span>
-        <span className="fitness-quadrant fitness-quadrant--ready">Strong &amp; stable</span>
-        <span className="fitness-quadrant fitness-quadrant--early">Early signal</span>
-        <span className="fitness-quadrant fitness-quadrant--volatile">Capable, variable</span>
+      <div className="fitness-y-label">{t("observatory.stability")}</div>
+      <div className="fitness-plot" role="img" aria-label={t("observatory.capabilityChartLabel")}>
+        <span className="fitness-quadrant fitness-quadrant--stable">{t("observatory.stableFoundation")}</span>
+        <span className="fitness-quadrant fitness-quadrant--ready">{t("observatory.strongStable")}</span>
+        <span className="fitness-quadrant fitness-quadrant--early">{t("observatory.earlySignal")}</span>
+        <span className="fitness-quadrant fitness-quadrant--volatile">{t("observatory.capableVariable")}</span>
         {cells.map((cell) => (
           <button
             type="button"
@@ -173,106 +176,128 @@ function CapabilityStabilityPlot({ cells, selectedCellId, onSelect, onOpenGuide 
               bottom: `${10 + (cell.stability ?? 0) * 78}%`,
             }}
             onClick={() => onSelect(cell.cellId)}
-            title={`${cell.name}: ${Math.round(cell.capability * 100)}% capability, ${cell.stability === null ? "insufficient stability evidence" : `${Math.round(cell.stability * 100)}% stability`}`}
+            title={`${cell.name}: ${t("observatory.capabilityValue", { percent: Math.round(cell.capability * 100) })}, ${t("observatory.stabilityValue", { value: cell.stability === null ? t("observatory.insufficientEvidence") : `${Math.round(cell.stability * 100)}%` })}`}
           >
             <span>{cell.name}</span>
           </button>
         ))}
       </div>
-      <div className="fitness-x-label">Capability</div>
+      <div className="fitness-x-label">{t("observatory.capability")}</div>
       <div className="fitness-reading">
         <strong>{selected?.name}</strong>
-        <span>Capability {Math.round((selected?.capability ?? 0) * 100)}%</span>
-        <span>Stability {selected?.stability === null ? "Insufficient evidence" : `${Math.round((selected?.stability ?? 0) * 100)}%`}</span>
+        <span>{t("observatory.capabilityValue", { percent: Math.round((selected?.capability ?? 0) * 100) })}</span>
+        <span>{t("observatory.stabilityValue", { value: selected?.stability === null ? t("observatory.insufficientEvidence") : `${Math.round((selected?.stability ?? 0) * 100)}%` })}</span>
         <button type="button" className="fitness-guide-button" onClick={onOpenGuide}>
           <span aria-hidden="true">?</span>
-          How to read
+          {t("observatory.howToRead")}
         </button>
       </div>
     </div>
   );
 }
 
-function CapabilityGuideDialog({ onClose }) {
+function CapabilityGuideDialog({ onClose, t }) {
   return (
     <div className="observation-guide-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <section className="observation-guide" role="dialog" aria-modal="true" aria-labelledby="capability-guide-title">
         <header>
           <div>
-            <span className="observation-guide-kicker">Chart guide</span>
-            <h2 id="capability-guide-title">How to read Capability × Stability</h2>
+            <span className="observation-guide-kicker">{t("guide.kicker")}</span>
+            <h2 id="capability-guide-title">{t("guide.title")}</h2>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close chart guide" autoFocus>×</button>
+          <button type="button" onClick={onClose} aria-label={t("guide.close")} autoFocus>×</button>
         </header>
 
         <div className="observation-guide-formula">
-          <span>Maturity</span>
-          <strong>Capability × Stability</strong>
+          <span>{t("observatory.maturity")}</span>
+          <strong>{t("observatory.capabilityStability")}</strong>
         </div>
         <p className="observation-guide-intro">
-          Each point represents a Cell. Moving right means stronger capability; moving up means its recent DNA is more convergent and stable.
+          {t("guide.intro")}
         </p>
 
         <div className="observation-guide-map-shell">
-          <span className="observation-guide-map-y">Stability</span>
+          <span className="observation-guide-map-y">{t("observatory.stability")}</span>
           <div className="observation-guide-map">
             <div className="guide-map-quadrant guide-map-quadrant--blue">
-              <strong>Stable foundation</strong>
-              <div className="guide-map-callout"><i /><b>↖</b><span>Stable, but capability is still low</span></div>
+              <strong>{t("observatory.stableFoundation")}</strong>
+              <div className="guide-map-callout"><i /><b>↖</b><span>{t("guide.stableLow")}</span></div>
             </div>
             <div className="guide-map-quadrant guide-map-quadrant--green">
-              <strong>Strong &amp; stable</strong>
-              <div className="guide-map-callout"><i /><b>↗</b><span>Strong capability and stable</span></div>
+              <strong>{t("observatory.strongStable")}</strong>
+              <div className="guide-map-callout"><i /><b>↗</b><span>{t("guide.strongStable")}</span></div>
             </div>
             <div className="guide-map-quadrant guide-map-quadrant--violet">
-              <strong>Early signal</strong>
-              <div className="guide-map-callout"><i /><b>↙</b><span>Collect more evidence first</span></div>
+              <strong>{t("observatory.earlySignal")}</strong>
+              <div className="guide-map-callout"><i /><b>↙</b><span>{t("guide.collectEvidence")}</span></div>
             </div>
             <div className="guide-map-quadrant guide-map-quadrant--amber">
-              <strong>Capable, variable</strong>
-              <div className="guide-map-callout"><i /><b>↘</b><span>Capable, but still variable</span></div>
+              <strong>{t("observatory.capableVariable")}</strong>
+              <div className="guide-map-callout"><i /><b>↘</b><span>{t("guide.capableVariable")}</span></div>
             </div>
           </div>
-          <span className="observation-guide-map-x">Capability</span>
+          <span className="observation-guide-map-x">{t("observatory.capability")}</span>
         </div>
 
-        <div className="observation-guide-legend" aria-label="Data point color legend">
-          <span><i className="is-stable" />Stable</span>
-          <span><i className="is-growing" />Growing</span>
-          <span><i className="is-attention" />Needs Attention</span>
-          <span><i className="is-insufficient" />Insufficient Evidence</span>
-          <span><i className="is-neutral" />Dormant / Idle</span>
+        <div className="observation-guide-legend" aria-label={t("guide.legend")}>
+          <span><i className="is-stable" />{t("observatory.stable")}</span>
+          <span><i className="is-growing" />{t("observatory.growing")}</span>
+          <span><i className="is-attention" />{t("observatory.needsAttention")}</span>
+          <span><i className="is-insufficient" />{t("observatory.insufficientEvidence")}</span>
+          <span><i className="is-neutral" />{t("guide.dormantIdle")}</span>
         </div>
 
         <div className="observation-guide-notes-grid">
           <section>
-            <h3>How the chart is calculated</h3>
+            <h3>{t("guide.calculation")}</h3>
             <ul>
-              <li>Capability comes from DNA normalized magnitude and represents current overall capability strength.</li>
-              <li>Stability comes from convergence across recent DNA history; less variation means greater stability.</li>
-              <li>With fewer than two DNA observations, Stability cannot be calculated and the point is marked as insufficient evidence.</li>
-              <li>Point color represents cultivation state, such as Stable, Growing, or Needs Attention.</li>
-              <li>Position does not prove that an Artifact is acceptable; also check Quality and the Attention Queue.</li>
+              <li>{t("guide.capabilityDefinition")}</li>
+              <li>{t("guide.stabilityDefinition")}</li>
+              <li>{t("guide.sampleDefinition")}</li>
+              <li>{t("guide.colorDefinition")}</li>
+              <li>{t("guide.qualityBoundary")}</li>
             </ul>
           </section>
           <section>
-            <h3>What to watch for</h3>
+            <h3>{t("guide.watch")}</h3>
             <ul>
-              <li>A Cell remaining in the lower right has capability, but its stimuli or responsibility boundary may be inconsistent.</li>
-              <li>A Cell remaining in the upper left is stable, but may lack tasks that develop stronger capability.</li>
-              <li>Movement toward the upper right usually indicates increasing capability and convergence—a healthier cultivation trend.</li>
+              <li>{t("guide.lowerRight")}</li>
+              <li>{t("guide.upperLeft")}</li>
+              <li>{t("guide.upperRight")}</li>
             </ul>
           </section>
         </div>
-        <footer><button type="button" className="primary-button" onClick={onClose}>Got it</button></footer>
+        <footer><button type="button" className="primary-button" onClick={onClose}>{t("guide.gotIt")}</button></footer>
       </section>
     </div>
   );
 }
 
 function prettyTrait(value) { return String(value).toLowerCase().replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase()); }
-function formatDate(value) {
-  if (!value) return "not recorded";
+function translateStatus(value, t) {
+  const key = String(value ?? "").trim().toLowerCase().replaceAll(" ", "_");
+  const statusKeys = {
+    attention: "status.attention",
+    growing: "observatory.growing",
+    stable: "observatory.stable",
+    insufficient: "status.insufficient",
+    observed: "status.observed",
+    review: "status.review",
+    evidence: "status.evidence",
+  };
+  return statusKeys[key] ? t(statusKeys[key]) : value;
+}
+
+function translateAttentionReason(item, t) {
+  if (item.label === "Evidence" && /^Only \d+ DNA samples?;/.test(item.reason)) {
+    return t("observatory.sampleReason", { count: item.reason.match(/\d+/)?.[0] ?? 0 });
+  }
+  if (item.reason === "Cultivation reported that intervention is required.") return t("observatory.interventionReason");
+  return item.reason;
+}
+
+function formatDate(value, locale, t) {
+  if (!value) return t("observatory.notRecorded");
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "not recorded" : new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(date);
+  return Number.isNaN(date.getTime()) ? t("observatory.notRecorded") : new Intl.DateTimeFormat(locale, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(date);
 }

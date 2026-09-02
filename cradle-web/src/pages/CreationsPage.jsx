@@ -5,12 +5,14 @@ import {
   registerResourceLoader,
   invalidateResource,
 } from "../services/resource-invalidation";
+import { useUiPreferences } from "../i18n/UiPreferencesProvider";
 
 export function CreationsPage({
   onOpenWorkspace,
   initialCreations = [],
   skipInitialLoad = false,
 } = {}) {
+  const { t } = useUiPreferences();
   const [searchQuery, setSearchQuery] = useState("");
   const [creations, setCreations] = useState(initialCreations);
   const [isLoading, setIsLoading] = useState(!skipInitialLoad);
@@ -39,7 +41,7 @@ export function CreationsPage({
           setError(
             loadError instanceof Error
               ? loadError.message
-              : "Unable to load creations.",
+              : t("creations.loadError"),
           );
         }
       } finally {
@@ -69,7 +71,7 @@ export function CreationsPage({
       unregisterArtifacts();
       unsubscribe();
     };
-  }, [skipInitialLoad]);
+  }, [skipInitialLoad, t]);
 
   const visibleCreations = useMemo(() => {
     if (!normalizedQuery) {
@@ -110,7 +112,7 @@ export function CreationsPage({
         setError(
           loadError instanceof Error
             ? loadError.message
-            : "Unable to load creations.",
+            : t("creations.loadError"),
         );
       })
       .finally(() => {
@@ -120,13 +122,13 @@ export function CreationsPage({
 
   return (
     <section className="platform-page creations-page">
-      <div className="creations-toolbar" aria-label="Creations search">
+      <div className="creations-toolbar" aria-label={t("creations.searchLabel")}>
         <input
           className="creations-search-input"
           type="search"
           value={searchQuery}
-          placeholder="Search..."
-          aria-label="Search creations"
+          placeholder={t("creations.search")}
+          aria-label={t("creations.searchLabel")}
           onChange={(event) => setSearchQuery(event.target.value)}
         />
       </div>
@@ -136,11 +138,11 @@ export function CreationsPage({
       {!isLoading && error && (
         <div className="creations-empty-state creations-empty-state--error">
           <div>
-            <p>Unable to load creations.</p>
+            <p>{t("creations.loadError")}</p>
             <span>{error}</span>
           </div>
           <button type="button" className="secondary-button" onClick={handleRetry}>
-            Retry
+            {t("common.retry")}
           </button>
         </div>
       )}
@@ -152,6 +154,7 @@ export function CreationsPage({
               key={creation.id}
               creation={creation}
               onOpenWorkspace={onOpenWorkspace}
+              t={t}
             />
           ))}
         </div>
@@ -159,20 +162,20 @@ export function CreationsPage({
 
       {!isLoading && !error && creations.length === 0 && (
         <div className="creations-empty-state">
-          No creations found.
+          {t("creations.empty")}
         </div>
       )}
 
       {!isLoading && !error && creations.length > 0 && visibleCreations.length === 0 && (
         <div className="creations-empty-state">
-          No creations match the current search.
+          {t("creations.noMatch")}
         </div>
       )}
     </section>
   );
 }
 
-function CreationCard({ creation, onOpenWorkspace }) {
+function CreationCard({ creation, onOpenWorkspace, t }) {
   const canOpenWorkspace = creation.workspaceAvailable && typeof onOpenWorkspace === "function";
 
   return (
@@ -203,40 +206,40 @@ function CreationCard({ creation, onOpenWorkspace }) {
               <span className="creation-card__cell-dot creation-card__cell-dot--two" />
               <span className="creation-card__cell-dot creation-card__cell-dot--three" />
             </div>
-            <span>Preview unavailable</span>
+            <span>{t("creations.previewUnavailable")}</span>
           </div>
         )}
       </div>
 
       <div className="creation-card__body">
-        <div className="creation-card__eyebrow">{formatStage(creation.stage)}</div>
+        <div className="creation-card__eyebrow">{formatStage(creation.stage, t)}</div>
         <h2>{creation.title}</h2>
         
         <div className="creation-card__summary-block">
           <p className="creation-card__summary">
-            {creation.description || "No artifact plan summary available yet."}
+            {creation.description || t("creations.noSummary")}
           </p>
         </div>
 
         <dl className="creation-card__meta">
           <div>
-            <dt>Created by</dt>
+            <dt>{t("creations.createdBy")}</dt>
             <dd>{creation.originCellId}</dd>
           </div>
           <div>
-            <dt>Artifact</dt>
+            <dt>{t("creations.artifact")}</dt>
             <dd>{creation.artifactId}</dd>
           </div>
           {creation.provider && (
             <div>
-              <dt>Runtime</dt>
+              <dt>{t("creations.runtime")}</dt>
               <dd>{formatRuntime(creation)}</dd>
             </div>
           )}
         </dl>
 
         {creation.tags.length > 0 && (
-          <div className="creation-card__tags" aria-label="Tags">
+          <div className="creation-card__tags" aria-label={t("creations.tags")}>
             {creation.tags.map((tag) => (
               <span key={tag}>{tag}</span>
             ))}
@@ -245,25 +248,25 @@ function CreationCard({ creation, onOpenWorkspace }) {
 
         <div className="creation-card__footer">
           <span className={`creation-status creation-status--${slugify(creation.status)}`}>
-            {formatStatus(creation.status)}
+            {formatStatus(creation.status, t)}
           </span>
           <div className="creation-card__actions">
             <a
               className="secondary-button creation-card__action"
               href={getArtifactDownloadUrl(creation)}
               download={`${creation.artifactId}.zip`}
-              title="Download the artifact directory."
+              title={t("creations.downloadTitle")}
             >
-              Artifact
+              {t("creations.artifact")}
             </a>
             <button
               type="button"
               className="secondary-button creation-card__action"
               disabled={!canOpenWorkspace}
-              title={canOpenWorkspace ? "Open the origin Cell workspace." : "Workspace is not available."}
+              title={t(canOpenWorkspace ? "creations.openWorkspaceTitle" : "creations.workspaceUnavailable")}
               onClick={() => onOpenWorkspace?.(creation)}
             >
-              Show Cell
+              {t("creations.showCell")}
             </button>
           </div>
         </div>
@@ -273,8 +276,9 @@ function CreationCard({ creation, onOpenWorkspace }) {
 }
 
 function CreationsLoadingState() {
+  const { t } = useUiPreferences();
   return (
-    <div className="creations-grid" aria-label="Loading creations">
+    <div className="creations-grid" aria-label={t("creations.loading")}>
       {Array.from({ length: 4 }).map((_, index) => (
         <article className="creation-card creation-card--skeleton" key={index}>
           <div className="creation-card__preview" />
@@ -290,12 +294,17 @@ function CreationsLoadingState() {
   );
 }
 
-function formatStage(value) {
-  return String(value ?? "seed").toUpperCase();
+function formatStage(value, t) {
+  const normalized = String(value ?? "seed").toLowerCase();
+  const key = ({ seed: "creations.stageSeed", growing: "creations.stageGrowing", mature: "creations.stageMature", stable: "creations.stageStable" })[normalized];
+  return (key ? t(key) : normalized).toUpperCase();
 }
 
-function formatStatus(value) {
-  return String(value ?? "idle")
+function formatStatus(value, t) {
+  const normalized = String(value ?? "idle").toLowerCase().replaceAll("_", "-");
+  const key = ({ idle: "status.idle", active: "status.active", growing: "observatory.growing", stable: "status.stable", sufficient: "creations.sufficient", insufficient: "status.insufficient", "insufficient-evidence": "observatory.insufficientEvidence", error: "creations.error" })[normalized];
+  if (key) return t(key);
+  return normalized
     .replace(/-/g, " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }

@@ -1,14 +1,15 @@
+import { useUiPreferences } from "../i18n/UiPreferencesProvider";
+
 export function WelcomePanel({ onCreateCell }) {
+  const { t } = useUiPreferences();
   return (
     <section className="welcome-panel">
       <div className="welcome-content">
         <div className="cradle-symbol">🧬</div>
-        <h2>Grow software as a living system</h2>
-        <p>
-          Create, observe and evolve software cells through the Cradle platform.
-        </p>
+        <h2>{t("welcome.title")}</h2>
+        <p>{t("welcome.description")}</p>
         <button type="button" className="primary-button" onClick={onCreateCell}>
-          Create New Cell
+          {t("cell.create")}
         </button>
       </div>
     </section>

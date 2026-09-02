@@ -1,3 +1,5 @@
+import { useUiPreferences } from "../../i18n/UiPreferencesProvider";
+
 /**
  * @typedef {object} DnaDimension
  * @property {string} name
@@ -16,29 +18,30 @@ export function DnaDimensionsCard({
   isLoading = false,
   error = null,
 }) {
+  const { t } = useUiPreferences();
   return (
     <article className="dashboard-card dna-dimensions-card">
-      <div className="dashboard-card-label">DNA Profile</div>
+      <div className="dashboard-card-label">{t("cell.dnaProfile")}</div>
 
       {isLoading && (
-        <div className="dna-card-state">Loading DNA profile...</div>
+        <div className="dna-card-state">{t("cell.dnaLoading")}</div>
       )}
 
       {!isLoading && error && (
         <div className="dna-card-state is-error">
-          Unable to load DNA profile.
+          {t("cell.dnaError")}
         </div>
       )}
 
       {!isLoading && !error && dimensions.length === 0 && (
-        <div className="dna-card-state">No DNA profile available.</div>
+        <div className="dna-card-state">{t("cell.dnaEmpty")}</div>
       )}
 
       {!isLoading && !error && dimensions.length > 0 && (
         <div className="dna-dimension-list">
           {dimensions.map((dimension) => {
             const percent = normalizePercent(dimension.value);
-            const label = formatDimensionName(dimension.name);
+            const label = formatDimensionName(dimension.name, t);
 
             return (
               <div key={dimension.name} className="dna-dimension-item">
@@ -77,6 +80,8 @@ function normalizePercent(value) {
   return Math.round(Math.max(0, Math.min(100, percent)));
 }
 
-function formatDimensionName(name) {
-  return name.replaceAll("_", " ").toUpperCase();
+function formatDimensionName(name, t) {
+  const key = `dna.${String(name).toLowerCase()}`;
+  const translated = t(key);
+  return translated === key ? name.replaceAll("_", " ").toUpperCase() : translated;
 }

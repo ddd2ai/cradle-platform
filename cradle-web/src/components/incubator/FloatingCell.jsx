@@ -1,3 +1,5 @@
+import { useUiPreferences } from "../../i18n/UiPreferencesProvider";
+
 function createFilaments(count) {
   return Array.from({ length: count }, (_, index) => ({
     rotation: Math.round(index * (360 / count)),
@@ -18,6 +20,8 @@ export function FloatingCell({
   onSelect,
   onFocus,
 }) {
+  const { t } = useUiPreferences();
+  const activityLabel = translateActivity(visual.activity, visual.activityLabel, t);
   const className = [
     "floating-cell",
     primary ? "is-primary" : "",
@@ -53,7 +57,7 @@ export function FloatingCell({
         "--cell-deep": visual.palette.deep,
         "--cell-glow": visual.palette.glow,
       }}
-      aria-label={`Select ${visual.id}, status ${visual.activityLabel}`}
+      aria-label={t("cell.selectWithStatus", { cell: visual.id, status: activityLabel })}
       aria-pressed={selected}
       onClick={(event) => {
         event.stopPropagation();
@@ -90,12 +94,12 @@ export function FloatingCell({
       </span>
       <span className="floating-cell__label">
         <strong>{visual.id}</strong>
-        <small>{visual.activityLabel}</small>
+        <small>{activityLabel}</small>
         {visual.cultivation?.state === "growing" || visual.cultivation?.state === "stimulated" ? (
           <span
             className="floating-cell__progress"
             role="progressbar"
-            aria-label={`${visual.id} cultivation`}
+            aria-label={t("incubator.cellCultivation", { cell: visual.id })}
             aria-valuemin="0"
             aria-valuemax="100"
             aria-valuenow={visual.cultivation.progress}
@@ -106,6 +110,11 @@ export function FloatingCell({
       </span>
     </button>
   );
+}
+
+function translateActivity(activity, fallback, t) {
+  const key = ({ growing: "observatory.growing", stable: "status.stable", "needs-attention": "status.needsAttention", idle: "status.idle", evolving: "status.evolving", exploring: "status.exploring", healthy: "status.healthy" })[activity];
+  return key ? t(key) : fallback;
 }
 
 function getMotionSeed(value) {

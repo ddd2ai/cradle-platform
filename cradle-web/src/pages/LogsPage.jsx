@@ -2,8 +2,10 @@ import { startTransition, useEffect, useRef, useState } from "react";
 import { clearLogs, fetchLogs } from "../api/cradleClient";
 import { subscribeToCradleEvents } from "../services/cradle-event-stream";
 import { flushLogBuffer, subscribeLogBatch } from "../services/log-buffer";
+import { useUiPreferences } from "../i18n/UiPreferencesProvider";
 
 export function LogsPage() {
+  const { t } = useUiPreferences();
   const [logCount, setLogCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isClearing, setIsClearing] = useState(false);
@@ -115,9 +117,9 @@ export function LogsPage() {
   async function handleCopyLogs() {
     try {
       await navigator.clipboard.writeText(formattedTextRef.current);
-      setCopyMessage("Copied");
+      setCopyMessage(t("logs.copied"));
     } catch {
-      setCopyMessage("Copy failed");
+      setCopyMessage(t("logs.copyFailed"));
     }
   }
 
@@ -138,15 +140,15 @@ export function LogsPage() {
   }
 
   const displayText = isLoading
-    ? "Loading logs..."
-    : formattedTextRef.current || "No console output yet.";
+    ? t("logs.loading")
+    : formattedTextRef.current || t("logs.empty");
 
   return (
     <section className="platform-page logs-page">
       <div className="page-heading">
         <div>
-          <h1>Logs</h1>
-          <p>Cradle Terminal</p>
+          <h1>{t("nav.logs")}</h1>
+          <p>{t("logs.terminal")}</p>
         </div>
         <div className="logs-actions">
           <button
@@ -155,7 +157,7 @@ export function LogsPage() {
             onClick={handleCopyLogs}
             disabled={logCount === 0}
           >
-            Copy
+            {t("logs.copy")}
           </button>
           <button
             type="button"
@@ -163,7 +165,7 @@ export function LogsPage() {
             onClick={handleClearLogs}
             disabled={isClearing || logCount === 0}
           >
-            {isClearing ? "Clearing..." : "Clear Log"}
+            {t(isClearing ? "logs.clearing" : "logs.clear")}
           </button>
         </div>
       </div>

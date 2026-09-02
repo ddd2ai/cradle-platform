@@ -1,6 +1,7 @@
 import { mapCellToVisualState } from "../../domain/cellVisualMapper";
 import { FloatingCell } from "./FloatingCell";
 import { LivingMedium } from "./LivingMedium";
+import { useUiPreferences } from "../../i18n/UiPreferencesProvider";
 
 export function IncubatorDish({
   dishRef,
@@ -14,6 +15,7 @@ export function IncubatorDish({
   onRetry,
   onCreateCell,
 }) {
+  const { t } = useUiPreferences();
   const className = [
     "incubator-dish",
     isMotionPaused ? "is-motion-paused" : "",
@@ -50,7 +52,7 @@ export function IncubatorDish({
         )}
 
         {isLoading && (
-          <div className="incubator-dish__loading" aria-label="Loading cells">
+          <div className="incubator-dish__loading" aria-label={t("nav.loadingCells")}>
             <span />
             <span />
             <span />
@@ -60,16 +62,16 @@ export function IncubatorDish({
         {!isLoading && !hasCells && !error && (
           <div className="incubator-empty-state">
             <span className="incubator-empty-state__mark" aria-hidden="true">+</span>
-            <h3>No living cells yet</h3>
-            <p>Create a new Cell to begin cultivation.</p>
-            <button type="button" onClick={onCreateCell}>New Cell</button>
+            <h3>{t("incubator.noLivingCells")}</h3>
+            <p>{t("incubator.createPrompt")}</p>
+            <button type="button" onClick={onCreateCell}>{t("nav.newCell")}</button>
           </div>
         )}
 
         {!isLoading && error && (
           <div className="incubator-error-state">
-            <p>Unable to load cells.</p>
-            <button type="button" onClick={onRetry}>Retry</button>
+            <p>{t("incubator.loadError")}</p>
+            <button type="button" onClick={onRetry}>{t("common.retry")}</button>
           </div>
         )}
 

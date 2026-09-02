@@ -10,3 +10,10 @@
 
 html, body, #root { min-width: 320px; min-height: 100vh; }
 body { margin: 0; background: #212121; }
+
+:root[data-theme="glass"] {
+  color: #f1f7fa;
+  background: #061019;
+}
+
+:root[data-theme="glass"] body { background: #061019; }

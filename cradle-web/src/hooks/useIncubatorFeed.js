@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchOperations, uploadStimulusFile } from "../api/cradleClient";
+import { useUiPreferences } from "../i18n/UiPreferencesProvider";
 
 export function useIncubatorFeed() {
+  const { t } = useUiPreferences();
   const feedingRef = useRef(false);
   const [isFeeding, setIsFeeding] = useState(false);
   const [feedMessage, setFeedMessage] = useState(null);
@@ -43,7 +45,9 @@ export function useIncubatorFeed() {
     setIsFeeding(true);
     setFeedError(null);
     setFeedMessage(
-      `Accepting ${files.length === 1 ? files[0].name : `${files.length} stimuli`}...`,
+      files.length === 1
+        ? t("incubator.acceptingFile", { name: files[0].name })
+        : t("incubator.acceptingStimuli", { count: files.length }),
     );
 
     try {
@@ -53,14 +57,14 @@ export function useIncubatorFeed() {
         const accepted = await uploadStimulusFile(file);
         setAcceptedOperation(accepted);
       }
-      setFeedMessage("Accepted. Cradle is finding the right Cell.");
+      setFeedMessage(t("incubator.acceptedRouting"));
     } catch (error) {
       setFeedError(error.message);
     } finally {
       feedingRef.current = false;
       setIsFeeding(false);
     }
-  }, []);
+  }, [t]);
 
   const dismissOperation = useCallback((operationId) => {
     setAcceptedOperation((current) =>

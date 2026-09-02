@@ -1,17 +1,20 @@
+import { useUiPreferences } from "../../i18n/UiPreferencesProvider";
+
 export function EnvironmentOverlayCard({ environment }) {
+  const { t } = useUiPreferences();
   const status = environment.status ?? "unknown";
 
   return (
     <section
       className={`environment-overlay-card is-${status}`}
-      aria-label="Cell environment"
+      aria-label={t("environment.cellEnvironment")}
     >
       <header className="environment-overlay-card__header">
         <div>
-          <span className="environment-overlay-card__eyebrow">Environment</span>
+          <span className="environment-overlay-card__eyebrow">{t("foundation.environment")}</span>
           <strong>
             <span className="environment-overlay-card__status-dot" aria-hidden="true" />
-            {formatLabel(status)}
+            {formatLabel(status, t)}
           </strong>
         </div>
         <span aria-hidden="true">⌄</span>
@@ -19,16 +22,16 @@ export function EnvironmentOverlayCard({ environment }) {
 
       <dl className="environment-overlay-card__readings">
         <EnvironmentReading
-          label="Requirements"
-          value={environment.requirementsLoaded ? "Loaded" : "--"}
+          label={t("environment.requirements")}
+          value={environment.requirementsLoaded ? t("environment.loaded") : "--"}
           healthy={environment.requirementsLoaded}
         />
-        <EnvironmentReading label="Runtime" value={environment.runtime} />
-        <EnvironmentReading label="Framework" value={environment.framework} />
-        <EnvironmentReading label="Architecture" value={environment.architecture} />
+        <EnvironmentReading label={t("creations.runtime")} value={environment.runtime} />
+        <EnvironmentReading label={t("environment.framework")} value={environment.framework} />
+        <EnvironmentReading label={t("environment.architecture")} value={environment.architecture} />
         <EnvironmentReading
-          label="Workspace"
-          value={environment.workspacePrepared ? "Prepared" : "--"}
+          label={t("workspace.workspace")}
+          value={environment.workspacePrepared ? t("environment.prepared") : "--"}
           healthy={environment.workspacePrepared}
         />
       </dl>
@@ -48,6 +51,8 @@ function EnvironmentReading({ label, value, healthy = false }) {
   );
 }
 
-function formatLabel(value) {
+function formatLabel(value, t) {
+  const key = ({ healthy: "status.healthy", active: "status.active", ready: "environment.ready", unknown: "status.unknown" })[value];
+  if (key) return t(key);
   return value.charAt(0).toUpperCase() + value.slice(1);
 }

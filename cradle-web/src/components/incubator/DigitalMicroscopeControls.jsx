@@ -1,3 +1,5 @@
+import { useUiPreferences } from "../../i18n/UiPreferencesProvider";
+
 export function DigitalMicroscopeControls({
   camera,
   onOrbitLeft,
@@ -8,12 +10,13 @@ export function DigitalMicroscopeControls({
   onReset,
   hasSelectedCell,
 }) {
+  const { t } = useUiPreferences();
   const magnificationPercentage = Math.round((900 / camera.distance) * 100);
 
   return (
     <section
       className="microscope-controls"
-      aria-label="Digital microscope navigation"
+      aria-label={t("incubator.microscopeNavigation")}
     >
       <div className="microscope-controls__panel">
         <div className="microscope-controls__dpad">
@@ -21,8 +24,8 @@ export function DigitalMicroscopeControls({
             type="button"
             className="microscope-controls__dpad-button microscope-controls__dpad-button--forward"
             onClick={onMoveForward}
-            aria-label="Move camera forward"
-            title="Move forward"
+            aria-label={t("incubator.moveForward")}
+            title={t("incubator.moveForward")}
           >
             ↑
           </button>
@@ -30,8 +33,8 @@ export function DigitalMicroscopeControls({
             type="button"
             className="microscope-controls__dpad-button microscope-controls__dpad-button--left"
             onClick={onOrbitLeft}
-            aria-label="Orbit left"
-            title="Orbit left"
+            aria-label={t("incubator.orbitLeft")}
+            title={t("incubator.orbitLeft")}
           >
             ←
           </button>
@@ -40,8 +43,8 @@ export function DigitalMicroscopeControls({
             className="microscope-controls__dpad-button microscope-controls__dpad-button--focus"
             onClick={onFocusSelected}
             disabled={!hasSelectedCell}
-            aria-label="Focus selected cell"
-            title="Focus selected cell"
+            aria-label={t("incubator.focusCell")}
+            title={t("incubator.focusCell")}
           >
             ◎
           </button>
@@ -49,8 +52,8 @@ export function DigitalMicroscopeControls({
             type="button"
             className="microscope-controls__dpad-button microscope-controls__dpad-button--right"
             onClick={onOrbitRight}
-            aria-label="Orbit right"
-            title="Orbit right"
+            aria-label={t("incubator.orbitRight")}
+            title={t("incubator.orbitRight")}
           >
             →
           </button>
@@ -58,8 +61,8 @@ export function DigitalMicroscopeControls({
             type="button"
             className="microscope-controls__dpad-button microscope-controls__dpad-button--backward"
             onClick={onMoveBackward}
-            aria-label="Move camera backward"
-            title="Move backward"
+            aria-label={t("incubator.moveBackward")}
+            title={t("incubator.moveBackward")}
           >
             ↓
           </button>
@@ -71,8 +74,8 @@ export function DigitalMicroscopeControls({
           <button
             type="button"
             onClick={onMoveBackward}
-            aria-label="Move camera backward"
-            title="Decrease magnification"
+            aria-label={t("incubator.decreaseMagnification")}
+            title={t("incubator.decreaseMagnification")}
           >
             −
           </button>
@@ -82,8 +85,8 @@ export function DigitalMicroscopeControls({
           <button
             type="button"
             onClick={onMoveForward}
-            aria-label="Move camera forward"
-            title="Increase magnification"
+            aria-label={t("incubator.increaseMagnification")}
+            title={t("incubator.increaseMagnification")}
           >
             +
           </button>
@@ -91,10 +94,10 @@ export function DigitalMicroscopeControls({
             type="button"
             className="microscope-controls__reset"
             onClick={onReset}
-            aria-label="Reset microscope camera"
-            title="Reset view"
+            aria-label={t("incubator.resetCamera")}
+            title={t("incubator.resetView")}
           >
-            Reset
+            {t("common.reset")}
           </button>
         </div>
       </div>

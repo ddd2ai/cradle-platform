@@ -1,4 +1,5 @@
 /** @import { WorkspaceNode } from "./workspace.types" */
+import { useUiPreferences } from "../../i18n/UiPreferencesProvider";
 
 function getFileIcon(node) {
   if (node.type === "directory") {
@@ -32,6 +33,7 @@ export function WorkspaceTreeNode({
   onToggleDirectory,
   onRetryDirectory,
 }) {
+  const { t } = useUiPreferences();
   const isDirectory = node.type === "directory";
   const isExpanded = expandedPaths.has(node.path);
   const isSelected = selectedPath === node.path;
@@ -95,7 +97,7 @@ export function WorkspaceTreeNode({
           className="workspace-tree-inline-state"
           style={{ "--workspace-tree-depth": depth + 1 }}
         >
-          Loading...
+          {t("common.loading")}
         </div>
       )}
       {isDirectory && isExpanded && error && (
@@ -105,7 +107,7 @@ export function WorkspaceTreeNode({
         >
           <span>{error}</span>
           <button type="button" onClick={() => onRetryDirectory(node)}>
-            Retry
+            {t("common.retry")}
           </button>
         </div>
       )}

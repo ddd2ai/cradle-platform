@@ -1,4 +1,7 @@
+import { useUiPreferences } from "../../i18n/UiPreferencesProvider";
+
 export function CultivateButton({ isRunning, onClick }) {
+  const { t } = useUiPreferences();
   return (
     <button
       type="button"
@@ -7,7 +10,7 @@ export function CultivateButton({ isRunning, onClick }) {
       aria-busy={isRunning}
       onClick={onClick}
     >
-      <strong>{isRunning ? "Cultivating..." : "Cultivate"}</strong>
+      <strong>{t(isRunning ? "incubator.cultivating" : "incubator.cultivate")}</strong>
     </button>
   );
 }

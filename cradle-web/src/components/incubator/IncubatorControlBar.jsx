@@ -3,6 +3,7 @@ import { CellFeedComposer } from "./CellFeedComposer";
 import { CultivationProgressCard } from "./CultivationProgressCard";
 import { CultivateButton } from "./CultivateButton";
 import { DigitalMicroscopeControls } from "./DigitalMicroscopeControls";
+import { useUiPreferences } from "../../i18n/UiPreferencesProvider";
 
 export function IncubatorControlBar({
   cells,
@@ -26,6 +27,7 @@ export function IncubatorControlBar({
   onFeedFiles,
   onDismissFeedOperation,
 }) {
+  const { t } = useUiPreferences();
   const [feedInput, setFeedInput] = useState("");
   const hasSelectedCell = Boolean(selectedCellId);
   const selectedCell = useMemo(
@@ -56,7 +58,7 @@ export function IncubatorControlBar({
       <div className="cradle-control-dock incubator-control-bar">
         <div
           className="incubator-control-bar__actions"
-          aria-label="Cultivation actions"
+          aria-label={t("incubator.actions")}
         >
           <CultivateButton isRunning={isCultivating} onClick={onRunOneCycle} />
         </div>

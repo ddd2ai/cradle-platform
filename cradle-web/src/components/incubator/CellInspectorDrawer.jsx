@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { DnaDimensionsCard } from "../cell/DnaDimensionsCard";
 import { LifecycleCard } from "../cell/LifecycleCard";
 import { MaturityCard } from "../cell/MaturityCard";
+import { useUiPreferences } from "../../i18n/UiPreferencesProvider";
 
 export function CellInspectorDrawer({
   cell,
@@ -26,6 +27,7 @@ export function CellInspectorDrawer({
   onCancelFuse,
   onContinueFuse,
 }) {
+  const { t } = useUiPreferences();
   const [mode, setMode] = useState("details");
 
   useEffect(() => {
@@ -81,7 +83,7 @@ export function CellInspectorDrawer({
     <aside
       className={className}
       aria-hidden={!isOpen}
-      aria-label="Selected cell inspector"
+      aria-label={t("cell.inspector")}
       onClick={(event) => event.stopPropagation()}
       onPointerDown={(event) => event.stopPropagation()}
     >
@@ -98,14 +100,14 @@ export function CellInspectorDrawer({
               </span>
               <div>
                 <h2>{visual.name ?? visual.id}</h2>
-                <span>{formatStatus(cell.status)}</span>
+                <span>{formatStatus(cell.status, t)}</span>
               </div>
             </div>
             <button
               type="button"
               className="cell-inspector-drawer__close"
               onClick={onClose}
-              aria-label="Close cell inspector"
+              aria-label={t("cell.closeInspector")}
             >
               ×
             </button>
@@ -120,6 +122,7 @@ export function CellInspectorDrawer({
                 error={actionError}
                 onActivate={onActivate}
                 onDeactivate={onDeactivate}
+                t={t}
               />
               <CellOperationControls
                 visual={visual}
@@ -129,6 +132,7 @@ export function CellInspectorDrawer({
                 onStabilize={onStabilize}
                 onDivide={onDivide}
                 onOpenFuse={handleOpenFuse}
+                t={t}
               />
             </>
           )}
@@ -137,7 +141,7 @@ export function CellInspectorDrawer({
             {isLoading && <SkeletonCards />}
             {!isLoading && error && (
               <div className="selected-cell-panel__notice">
-                Some Cell details could not be loaded.
+                {t("cell.partialLoadError")}
               </div>
             )}
             {!isLoading && mode === "fuse" ? (
@@ -150,6 +154,7 @@ export function CellInspectorDrawer({
                 onBack={handleBackFromFuse}
                 onCancel={handleBackFromFuse}
                 onContinue={handleContinueFuse}
+                t={t}
               />
             ) : (
               !isLoading && (
@@ -188,6 +193,7 @@ function ActivationControls({
   error,
   onActivate,
   onDeactivate,
+  t,
 }) {
   const status = String(cell.status ?? "").toLowerCase();
   const isActive = cell.active === true || ["active", "running"].includes(status);
@@ -195,7 +201,7 @@ function ActivationControls({
   const isBusy = Boolean(activeAction);
 
   return (
-    <section className="cell-inspector-drawer__activation" aria-label="Cell cultivation state">
+    <section className="cell-inspector-drawer__activation" aria-label={t("cell.cultivationState")}>
       <div className="cell-inspector-drawer__activation-buttons">
         <button
           type="button"
@@ -203,7 +209,7 @@ function ActivationControls({
           disabled={isBusy || isActive}
         >
           {activeAction === "activate" && <span className="button-spinner" />}
-          {activeAction === "activate" ? "Activating" : "Activate"}
+          {t(activeAction === "activate" ? "cell.activating" : "cell.activate")}
         </button>
         <button
           type="button"
@@ -211,7 +217,7 @@ function ActivationControls({
           disabled={isBusy || isIdle}
         >
           {activeAction === "deactivate" && <span className="button-spinner" />}
-          {activeAction === "deactivate" ? "Deactivating" : "Deactivate"}
+          {t(activeAction === "deactivate" ? "cell.deactivating" : "cell.deactivate")}
         </button>
       </div>
       <div className="cell-inspector-drawer__activation-feedback" aria-live="polite">
@@ -230,35 +236,36 @@ function CellOperationControls({
   onStabilize,
   onDivide,
   onOpenFuse,
+  t,
 }) {
   return (
-    <section className="cell-inspector-drawer__actions" aria-label="Cell operations">
+    <section className="cell-inspector-drawer__actions" aria-label={t("cell.operations")}>
       <button
         type="button"
         onClick={onStabilize}
         disabled={isBusy}
-        aria-label={`Stabilize ${visual.id}`}
+        aria-label={t("cell.stabilizeCell", { cell: visual.id })}
       >
         {activeOperation === "stabilize" && <span className="button-spinner" />}
-        {activeOperation === "stabilize" ? "Stabilizing" : "Stabilize"}
+        {t(activeOperation === "stabilize" ? "cell.stabilizing" : "cell.stabilize")}
       </button>
       <button
         type="button"
         onClick={onDivide}
         disabled={isBusy}
-        aria-label={`Divide ${visual.id}`}
+        aria-label={t("cell.divideCell", { cell: visual.id })}
       >
         {activeOperation === "divide" && <span className="button-spinner" />}
-        {activeOperation === "divide" ? "Dividing" : "Divide"}
+        {t(activeOperation === "divide" ? "cell.dividing" : "cell.divide")}
       </button>
       <button
         type="button"
         onClick={onOpenFuse}
         disabled={isBusy || !canFuse}
-        aria-label={`Fuse ${visual.id}`}
+        aria-label={t("cell.fuseCell", { cell: visual.id })}
       >
         {activeOperation === "fuse" && <span className="button-spinner" />}
-        {activeOperation === "fuse" ? "Fusing" : "Fuse"}
+        {t(activeOperation === "fuse" ? "cell.fusing" : "cell.fuse")}
       </button>
     </section>
   );
@@ -273,14 +280,15 @@ function FuseSelectionPanel({
   onBack,
   onCancel,
   onContinue,
+  t,
 }) {
   return (
-    <section className="cell-inspector-fuse" aria-label="Fuse candidate selection">
+    <section className="cell-inspector-fuse" aria-label={t("cell.fuseSelection")}>
       <header className="cell-inspector-fuse__header">
-        <span>Fuse with</span>
-        <strong>{selectedFuseCellIds.length} selected</strong>
+        <span>{t("cell.fuseWith")}</span>
+        <strong>{t("cell.selectedCount", { count: selectedFuseCellIds.length })}</strong>
       </header>
-      <div className="cell-inspector-fuse__list" role="group" aria-label="Fuse candidates">
+      <div className="cell-inspector-fuse__list" role="group" aria-label={t("cell.fuseCandidates")}>
         {candidates.map((candidate) => {
           const checked = selectedFuseCellIds.includes(candidate.id);
 
@@ -297,7 +305,7 @@ function FuseSelectionPanel({
               />
               <span>
                 <strong>{candidate.name ?? candidate.id}</strong>
-                <small>{formatStatus(candidate.status)}</small>
+                <small>{formatStatus(candidate.status, t)}</small>
               </span>
             </label>
           );
@@ -306,10 +314,10 @@ function FuseSelectionPanel({
       {error && <div className="cell-inspector-fuse__error">{error}</div>}
       <footer className="cell-inspector-fuse__footer">
         <button type="button" className="secondary-button" onClick={onBack} disabled={isBusy}>
-          Back
+          {t("common.back")}
         </button>
         <button type="button" className="secondary-button" onClick={onCancel} disabled={isBusy}>
-          Cancel
+          {t("common.cancel")}
         </button>
         <button
           type="button"
@@ -317,14 +325,16 @@ function FuseSelectionPanel({
           onClick={onContinue}
           disabled={isBusy || selectedFuseCellIds.length === 0}
         >
-          Fuse
+          {t("cell.fuse")}
         </button>
       </footer>
     </section>
   );
 }
 
-function formatStatus(status) {
-  const value = String(status ?? "unknown");
+function formatStatus(status, t) {
+  const value = String(status ?? "unknown").toLowerCase();
+  const key = ({ active: "status.active", running: "status.active", idle: "status.idle", inactive: "status.idle", stable: "status.stable", growing: "observatory.growing", unknown: "status.unknown" })[value];
+  if (key) return t(key);
   return `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
 }

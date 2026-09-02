@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useOperationProgress } from "../../hooks/useOperationProgress.js";
+import { useUiPreferences } from "../../i18n/UiPreferencesProvider";
 
 export function CellOperationDialogs({
   dialog,
@@ -16,6 +17,7 @@ export function CellOperationDialogs({
   onConfirmDivide,
   onConfirmFuse,
 }) {
+  const { t } = useUiPreferences();
   // 直接訂閱 operation-progress store:progress 更新只會觸發本元件 re-render,
   // 不影響 IncubatorPage、IncubatorWorkspace、CellInspectorDrawer 等父/兄弟元件。
   const operationProgress = useOperationProgress(operationId);
@@ -41,15 +43,15 @@ export function CellOperationDialogs({
   if (dialog === "stabilize") {
     return (
       <OperationDialog
-        title="Stabilize Cell"
-        description={`Diagnose, repair and verify ${selectedCellId}.`}
+        title={t("cell.stabilizeTitle")}
+        description={t("cell.stabilizeDescription", { cell: selectedCellId })}
         onClose={onClose}
         busy={activeOperation === "stabilize"}
       >
         <p className="cell-operation-dialog__note">
-          This operation may update the Cell workspace and execute validation.
+          {t("cell.stabilizeNote")}
         </p>
-        <OperationProgress operation={operationProgress} />
+        <OperationProgress operation={operationProgress} t={t} />
         <DialogError error={error} />
         <div className="dialog-actions">
           <button
@@ -58,7 +60,7 @@ export function CellOperationDialogs({
             onClick={onClose}
             disabled={Boolean(activeOperation)}
           >
-            Cancel
+            {t("common.cancel")}
           </button>
           <button
             type="button"
@@ -66,7 +68,7 @@ export function CellOperationDialogs({
             onClick={onConfirmStabilize}
             disabled={Boolean(activeOperation)}
           >
-            {activeOperation === "stabilize" ? "Stabilizing..." : "Stabilize"}
+            {t(activeOperation === "stabilize" ? "cell.stabilizing" : "cell.stabilize")}
           </button>
         </div>
       </OperationDialog>
@@ -76,15 +78,15 @@ export function CellOperationDialogs({
   if (dialog === "divide") {
     return (
       <OperationDialog
-        title="Divide Cell"
-        description={`Create a specialized child from ${selectedCellId}.`}
+        title={t("cell.divideTitle")}
+        description={t("cell.divideDescription", { cell: selectedCellId })}
         onClose={onClose}
         busy={activeOperation === "divide"}
       >
         <form onSubmit={onConfirmDivide}>
-          <ReadOnlyCellField label="Parent Cell" value={selectedCellId} />
+          <ReadOnlyCellField label={t("cell.parentCell")} value={selectedCellId} />
           <label className="field-label" htmlFor="divide-child-cell-id">
-            Child Cell ID
+            {t("cell.childCellId")}
           </label>
           <input
             id="divide-child-cell-id"
@@ -95,7 +97,7 @@ export function CellOperationDialogs({
             disabled={Boolean(activeOperation)}
             autoComplete="off"
           />
-          <OperationProgress operation={operationProgress} />
+          <OperationProgress operation={operationProgress} t={t} />
           <DialogError error={error} />
           <div className="dialog-actions">
             <button
@@ -104,14 +106,14 @@ export function CellOperationDialogs({
               onClick={onClose}
               disabled={Boolean(activeOperation)}
             >
-              Cancel
+              {t("common.cancel")}
             </button>
             <button
               type="submit"
               className="primary-button"
               disabled={!childCellId.trim() || Boolean(activeOperation)}
             >
-              {activeOperation === "divide" ? "Dividing..." : "Divide"}
+              {t(activeOperation === "divide" ? "cell.dividing" : "cell.divide")}
             </button>
           </div>
         </form>
@@ -127,14 +129,14 @@ export function CellOperationDialogs({
 
   return (
     <OperationDialog
-      title="Fuse Cells"
-      description="Combine selected Cells into a new child."
+      title={t("cell.fuseTitle")}
+      description={t("cell.fuseDescription")}
       onClose={onClose}
       busy={activeOperation === "fuse"}
     >
       <form onSubmit={onConfirmFuse}>
         <div className="cell-operation-dialog__parents">
-          <span>Parents</span>
+          <span>{t("cell.parents")}</span>
           <div>
             {parentCellIds.map((cellId) => (
               <code key={cellId}>{cellId}</code>
@@ -142,7 +144,7 @@ export function CellOperationDialogs({
           </div>
         </div>
         <label className="field-label" htmlFor="fuse-child-cell-id">
-          Child Cell ID
+          {t("cell.childCellId")}
         </label>
         <input
           id="fuse-child-cell-id"
@@ -153,7 +155,7 @@ export function CellOperationDialogs({
           disabled={Boolean(activeOperation)}
           autoComplete="off"
         />
-        <OperationProgress operation={operationProgress} />
+        <OperationProgress operation={operationProgress} t={t} />
         <DialogError error={error} />
         <div className="dialog-actions">
           <button
@@ -162,14 +164,14 @@ export function CellOperationDialogs({
             onClick={onBackToFuseSelection}
             disabled={Boolean(activeOperation)}
           >
-            Back
+            {t("common.back")}
           </button>
           <button
             type="submit"
             className="primary-button"
             disabled={!childCellId.trim() || Boolean(activeOperation)}
           >
-            {activeOperation === "fuse" ? "Fusing..." : "Fuse"}
+            {t(activeOperation === "fuse" ? "cell.fusing" : "cell.fuse")}
           </button>
         </div>
       </form>
@@ -177,7 +179,7 @@ export function CellOperationDialogs({
   );
 }
 
-function OperationProgress({ operation }) {
+function OperationProgress({ operation, t }) {
   if (!operation || ["completed", "failed"].includes(operation.status)) {
     return null;
   }
@@ -190,7 +192,7 @@ function OperationProgress({ operation }) {
   return (
     <div className="cell-operation-progress" aria-live="polite">
       <div className="cell-operation-progress__label">
-        <span>{stage}</span>
+        <span>{translateOperationStage(stage, t)}</span>
         <strong>{progress}%</strong>
       </div>
       <div
@@ -207,6 +209,7 @@ function OperationProgress({ operation }) {
 }
 
 function OperationDialog({ title, description, onClose, busy, children }) {
+  const { t } = useUiPreferences();
   return (
     <div
       className="modal-backdrop cell-operation-backdrop"
@@ -233,7 +236,7 @@ function OperationDialog({ title, description, onClose, busy, children }) {
             className="dialog-close-button"
             onClick={onClose}
             disabled={busy}
-            aria-label="Close"
+            aria-label={t("common.close")}
           >
             ×
           </button>
@@ -242,6 +245,19 @@ function OperationDialog({ title, description, onClose, busy, children }) {
       </section>
     </div>
   );
+}
+
+function translateOperationStage(stage, t) {
+  const key = {
+    Working: "cell.stageWorking",
+    Pending: "cell.stagePending",
+    Accepted: "incubator.phaseAccepted",
+    Validating: "incubator.phaseValidating",
+    Stabilizing: "incubator.phaseStabilizing",
+    Dividing: "cell.dividing",
+    Fusing: "cell.fusing",
+  }[stage];
+  return key ? t(key) : stage;
 }
 
 function ReadOnlyCellField({ label, value }) {

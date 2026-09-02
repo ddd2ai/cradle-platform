@@ -1,3 +1,5 @@
+import { useUiPreferences } from "../i18n/UiPreferencesProvider";
+
 export function CultivationPage({
   heartbeatRun,
   heartbeatStatus,
@@ -8,6 +10,7 @@ export function CultivationPage({
   onStartCultivation,
   onStopCultivation,
 }) {
+  const { t } = useUiPreferences();
   const status = cultivationStatus?.status ?? "dormant";
   const isStarting = ["starting", "running", "pending", "accepted"].includes(
     heartbeatStatus,
@@ -20,11 +23,8 @@ export function CultivationPage({
     <section className="platform-page">
       <div className="page-heading">
         <div>
-          <h1>Cultivation</h1>
-          <p>
-            Activate the Cradle and allow active cells to tick,
-            observe and evolve.
-          </p>
+          <h1>{t("settings.cultivation")}</h1>
+          <p>{t("cultivation.description")}</p>
         </div>
         {isRunning || isStopping ? (
           <button
@@ -36,10 +36,10 @@ export function CultivationPage({
             {isStopping ? (
               <>
                 <span className="button-spinner" />
-                Stopping Cultivation...
+                {t("cultivation.stopping")}
               </>
             ) : (
-              "Stop Cultivation"
+              t("cultivation.stop")
             )}
           </button>
         ) : (
@@ -52,10 +52,10 @@ export function CultivationPage({
             {isStarting ? (
               <>
                 <span className="button-spinner" />
-                Starting Cultivation...
+                {t("cultivation.starting")}
               </>
             ) : (
-              "Start Cultivation"
+              t("cultivation.start")
             )}
           </button>
         )}
@@ -64,13 +64,13 @@ export function CultivationPage({
       {isStarting && (
         <div className="operation-banner">
           <span className="button-spinner" />
-          <span>Cradle cultivation is starting.</span>
+          <span>{t("cultivation.startingMessage")}</span>
         </div>
       )}
       {isStopping && (
         <div className="operation-banner">
           <span className="button-spinner" />
-          <span>Cradle cultivation is stopping.</span>
+          <span>{t("cultivation.stoppingMessage")}</span>
         </div>
       )}
       {heartbeatMessage && !isBusy && (
@@ -82,74 +82,85 @@ export function CultivationPage({
 
       <div className="heartbeat-grid">
         <article className="dashboard-card">
-          <div className="dashboard-card-label">Cultivation Status</div>
+          <div className="dashboard-card-label">{t("cultivation.status")}</div>
           <div className="dashboard-card-value">
-            {toTitleCase(status)}
+            {translateCultivationStatus(status, t)}
           </div>
           <p>
             {isStopping
-              ? "Waiting for running cell tasks to finish."
-              : "Current state of the Cradle cultivation loop."}
+              ? t("cultivation.waitingTasks")
+              : t("cultivation.currentState")}
           </p>
         </article>
         {(isRunning || isStopping) && (
           <article className="dashboard-card">
-            <div className="dashboard-card-label">Active Cells</div>
+            <div className="dashboard-card-label">{t("incubator.activeCells")}</div>
             <div className="dashboard-card-value">
               {cultivationStatus?.activeCells ?? activeCellCount}
             </div>
-            <p>Cells currently available for cultivation ticks.</p>
+            <p>{t("cultivation.activeDescription")}</p>
           </article>
         )}
         {isStopping && (
           <article className="dashboard-card">
-            <div className="dashboard-card-label">Running Tasks</div>
+            <div className="dashboard-card-label">{t("cultivation.runningTasks")}</div>
             <div className="dashboard-card-value">
               {cultivationStatus?.runningTasks ?? 0}
             </div>
             <p>
-              {formatActiveTicks(cultivationStatus?.activeTickCellIds)}
+              {formatActiveTicks(cultivationStatus?.activeTickCellIds, t)}
             </p>
           </article>
         )}
         <article className="dashboard-card">
-          <div className="dashboard-card-label">Last Start Command</div>
+          <div className="dashboard-card-label">{t("cultivation.lastStart")}</div>
           <div className="dashboard-card-value">
-            {heartbeatRun?.status ?? "Not started"}
+            {heartbeatRun?.status ? translateCultivationStatus(heartbeatRun.status, t) : t("cultivation.notStarted")}
           </div>
-          <p>Status of the latest heartbeat operation.</p>
+          <p>{t("cultivation.latestStatus")}</p>
         </article>
       </div>
 
       <div className="workspace-card">
         <div className="workspace-card-header">
           <div>
-            <h3>Heartbeat Operation Result</h3>
-            <p>Latest heartbeat API response for the cultivation start command.</p>
+            <h3>{t("cultivation.result")}</h3>
+            <p>{t("cultivation.resultDescription")}</p>
           </div>
         </div>
         <pre className="heartbeat-result">
           {heartbeatRun
             ? JSON.stringify(heartbeatRun, null, 2)
-            : "No heartbeat operation result available."}
+            : t("cultivation.noResult")}
         </pre>
       </div>
     </section>
   );
 }
 
-function toTitleCase(value) {
-  return value ? value[0].toUpperCase() + value.slice(1) : "Dormant";
+function translateCultivationStatus(value, t) {
+  const normalized = String(value ?? "dormant").toLowerCase();
+  const key = {
+    dormant: "cultivation.dormant",
+    starting: "cultivation.startingState",
+    running: "cultivation.running",
+    stopping: "cultivation.stoppingState",
+    pending: "cell.stagePending",
+    accepted: "incubator.phaseAccepted",
+    completed: "cultivation.completed",
+    failed: "cultivation.failed",
+  }[normalized];
+  return key ? t(key) : normalized;
 }
 
-function formatActiveTicks(cellIds = []) {
+function formatActiveTicks(cellIds = [], t) {
   if (cellIds.length === 0) {
-    return "No running cell tasks remain.";
+    return t("cultivation.noRunningTasks");
   }
 
   if (cellIds.length === 1) {
-    return `Waiting for ${cellIds[0]} to finish its current task.`;
+    return t("cultivation.waitingCell", { cell: cellIds[0] });
   }
 
-  return `Waiting for ${cellIds.length} cells to finish current tasks.`;
+  return t("cultivation.waitingCells", { count: cellIds.length });
 }

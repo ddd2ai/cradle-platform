@@ -4,6 +4,7 @@ import { LifecycleCard } from "./cell/LifecycleCard";
 import { MaturityCard } from "./cell/MaturityCard";
 import { mapDnaDimensions } from "./cell/dna-dimensions";
 import { CellWorkspacePanel } from "./workspace/CellWorkspacePanel";
+import { useUiPreferences } from "../i18n/UiPreferencesProvider";
 
 export function CellPanel({
   cell,
@@ -13,6 +14,7 @@ export function CellPanel({
   actionMessage,
   actionError,
 }) {
+  const { t } = useUiPreferences();
   const view = toCellViewModel(cell);
   const normalizedStatus = String(
     view.status ?? view.lifecycle ?? "",
@@ -27,7 +29,7 @@ export function CellPanel({
       {activeAction && (
         <div className="operation-banner">
           <span className="button-spinner" />
-          Cradle is processing {activeAction} for {view.id}
+          {t("cell.processing", { action: translateAction(activeAction, t), cell: view.id })}
         </div>
       )}
       <div className="cell-overview-card">
@@ -39,7 +41,7 @@ export function CellPanel({
           </div>
           <div className={`cell-status-badge status-${normalizedStatus}`}>
             <span className="cell-status-dot" />
-            {normalizedStatus || "unknown"}
+            {translateCellStatus(normalizedStatus, t)}
           </div>
         </div>
 
@@ -51,8 +53,8 @@ export function CellPanel({
             disabled={isBusy || isActive}
           >
             {activeAction === "activate" ? (
-              <><span className="button-spinner" />Activating...</>
-            ) : "Activate"}
+              <><span className="button-spinner" />{t("cell.activating")}</>
+            ) : t("cell.activate")}
           </button>
           <button
             type="button"
@@ -61,14 +63,14 @@ export function CellPanel({
             disabled={isBusy || isIdle}
           >
             {activeAction === "deactivate" ? (
-              <><span className="button-spinner" />Deactivating...</>
-            ) : "Deactivate"}
+              <><span className="button-spinner" />{t("cell.deactivating")}</>
+            ) : t("cell.deactivate")}
           </button>
         </div>
         <div className="action-feedback" aria-live="polite">
           {activeAction && (
             <div className="action-feedback-item loading">
-              Processing {activeAction}...
+              {t("cell.processingShort", { action: translateAction(activeAction, t) })}
             </div>
           )}
           {!activeAction && actionMessage && (
@@ -89,4 +91,13 @@ export function CellPanel({
       <CellWorkspacePanel cellId={view.id} workspacePath={view.workspacePath} />
     </section>
   );
+}
+
+function translateAction(action, t) {
+  return ({ activate: t("cell.activate"), deactivate: t("cell.deactivate") })[action] ?? action;
+}
+
+function translateCellStatus(status, t) {
+  const key = ({ active: "status.active", running: "status.active", idle: "status.idle", inactive: "status.idle" })[status];
+  return key ? t(key) : status || t("status.unknown");
 }

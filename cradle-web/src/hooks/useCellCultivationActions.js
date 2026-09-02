@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { activateCell, deactivateCell } from "../api/cradleClient";
+import { useUiPreferences } from "../i18n/UiPreferencesProvider";
 
 export function useCellCultivationActions({ onSuccess } = {}) {
+  const { t } = useUiPreferences();
   const [activeAction, setActiveAction] = useState(null);
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
@@ -28,8 +30,8 @@ export function useCellCultivationActions({ onSuccess } = {}) {
       await onSuccess?.(cellId);
       setMessage(
         actionName === "activate"
-          ? "Cell cultivation activated."
-          : "Cell cultivation deactivated.",
+          ? t("cell.cultivationActivated")
+          : t("cell.cultivationDeactivated"),
       );
     } catch (actionError) {
       setError(actionError.message);
@@ -48,4 +50,3 @@ export function useCellCultivationActions({ onSuccess } = {}) {
     error,
   };
 }
-

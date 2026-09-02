@@ -4,6 +4,7 @@ import { IncubatorDish } from "./IncubatorDish";
 import { IncubatorStats } from "./IncubatorStats";
 import { projectCellToViewport } from "../../features/incubator/utils/projectCellToViewport";
 import { hasFilePayload, useIncubatorFeed } from "../../hooks/useIncubatorFeed";
+import { useUiPreferences } from "../../i18n/UiPreferencesProvider";
 
 const DEFAULT_CAMERA = {
   yaw: 0,
@@ -43,6 +44,7 @@ export function IncubatorWorkspace({
   onRetry,
   onCreateCell,
 }) {
+  const { t } = useUiPreferences();
   const viewportRef = useRef(null);
   const dragStateRef = useRef({
     active: false,
@@ -356,7 +358,7 @@ export function IncubatorWorkspace({
     <section
       className={`incubator-workspace${isFeedDragActive ? " incubator-workspace--feed-ready" : ""}`}
       data-feed-scope="cradle-auto-route"
-      aria-label="Incubator feeding area"
+      aria-label={t("incubator.feedingArea")}
       onDragEnter={handleFeedDragEnter}
       onDragOver={handleFeedDragOver}
       onDragLeave={handleFeedDragLeave}
@@ -365,8 +367,8 @@ export function IncubatorWorkspace({
       <div className="incubator-drop-overlay" aria-hidden={!isFeedDragActive}>
         <div className="incubator-drop-overlay__message">
           <span aria-hidden="true">↓</span>
-          <strong>Feed Cradle</strong>
-          <small>Release and let Cradle determine where this material belongs</small>
+          <strong>{t("incubator.feedCradle")}</strong>
+          <small>{t("incubator.dropDescription")}</small>
         </div>
       </div>
       <div className="incubator-stage">
@@ -381,7 +383,7 @@ export function IncubatorWorkspace({
           onPointerUp={handleViewportPointerUp}
           onPointerCancel={handleViewportPointerUp}
           onClick={handleViewportClick}
-          aria-label="Interactive digital microscope viewport"
+          aria-label={t("incubator.viewport")}
         >
           <div className="incubator-stage__stats">
             <IncubatorStats summary={summary} />
@@ -402,7 +404,7 @@ export function IncubatorWorkspace({
 
         <div className="incubator-hint">
           <span aria-hidden="true">ⓘ</span>
-          <span>Tip: Click a Cell to inspect its details</span>
+          <span>{t("incubator.tip")}</span>
         </div>
 
         <IncubatorControlBar

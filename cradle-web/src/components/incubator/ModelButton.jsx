@@ -1,4 +1,5 @@
 import { DockMenu } from "./DockMenu";
+import { useUiPreferences } from "../../i18n/UiPreferencesProvider";
 
 export function ModelButton({
   models,
@@ -8,14 +9,15 @@ export function ModelButton({
   onClose,
   onSelect,
 }) {
+  const { t } = useUiPreferences();
   return (
     <DockMenu
       id="model"
       icon="⌬"
-      label={selectedModel || "Model"}
+      label={selectedModel || t("settings.defaultModel")}
       items={models.map((model) => ({
         label: model,
-        meta: model === selectedModel ? "Current" : null,
+        meta: model === selectedModel ? t("common.current") : null,
         onSelect: () => onSelect?.(model),
       }))}
       isOpen={isOpen}

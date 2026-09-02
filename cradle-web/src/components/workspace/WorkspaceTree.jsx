@@ -1,4 +1,5 @@
 import { WorkspaceTreeNode } from "./WorkspaceTreeNode";
+import { useUiPreferences } from "../../i18n/UiPreferencesProvider";
 
 /** @import { WorkspaceNode } from "./workspace.types" */
 
@@ -30,8 +31,9 @@ export function WorkspaceTree({
   onRetryDirectory,
   onRetry,
 }) {
+  const { t } = useUiPreferences();
   if (isLoading) {
-    return <div className="workspace-tree-state">Loading workspace...</div>;
+    return <div className="workspace-tree-state">{t("workspace.loading")}</div>;
   }
 
   if (error) {
@@ -40,7 +42,7 @@ export function WorkspaceTree({
         <span>{error}</span>
         {onRetry && (
           <button type="button" className="workspace-retry-button" onClick={onRetry}>
-            Retry
+            {t("common.retry")}
           </button>
         )}
       </div>
@@ -48,7 +50,7 @@ export function WorkspaceTree({
   }
 
   if (nodes.length === 0) {
-    return <div className="workspace-tree-state">Workspace is empty.</div>;
+    return <div className="workspace-tree-state">{t("workspace.empty")}</div>;
   }
 
   return (

@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import { useUiPreferences } from "../../i18n/UiPreferencesProvider";
 
 export function CellFeedComposer({
   value,
@@ -9,8 +10,9 @@ export function CellFeedComposer({
   statusMessage,
   statusTone = "success",
 }) {
+  const { t } = useUiPreferences();
   const inputRef = useRef(null);
-  const placeholder = "Feed Cradle. It will find the right Cell...";
+  const placeholder = t("incubator.feedPlaceholder");
 
   function handleKeyDown(event) {
     if (event.key === "Enter" && !event.shiftKey) {
@@ -25,7 +27,7 @@ export function CellFeedComposer({
   }
 
   return (
-    <section className="cell-feed" aria-label="Feed information to Cradle">
+    <section className="cell-feed" aria-label={t("incubator.feedLabel")}>
       {statusMessage ? (
         <div
           className={[
@@ -61,8 +63,8 @@ export function CellFeedComposer({
           type="button"
           className="cell-feed__attach"
           disabled={disabled}
-          aria-label="Attach feeding material"
-          title="Attach material"
+          aria-label={t("incubator.attachLabel")}
+          title={t("incubator.attach")}
           onClick={() => inputRef.current?.click()}
         >
           +
@@ -81,8 +83,8 @@ export function CellFeedComposer({
           className="cell-feed__send"
           onClick={onSubmit}
           disabled={disabled || !value.trim()}
-          aria-label="Cultivate text stimulus"
-          title="Let it grow"
+          aria-label={t("incubator.cultivateText")}
+          title={t("incubator.letGrow")}
         >
           ↑
         </button>

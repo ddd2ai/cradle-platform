@@ -1,4 +1,5 @@
 import { DockMenu } from "./DockMenu";
+import { useUiPreferences } from "../../i18n/UiPreferencesProvider";
 
 export function ProviderButton({
   providers,
@@ -8,9 +9,10 @@ export function ProviderButton({
   onClose,
   onSelect,
 }) {
+  const { t } = useUiPreferences();
   const providerLabel =
     providers.find((provider) => provider.id === selectedProvider)?.label ??
-    "Provider";
+    t("settings.providers");
 
   return (
     <DockMenu
@@ -19,7 +21,7 @@ export function ProviderButton({
       label={providerLabel}
       items={providers.map((provider) => ({
         label: provider.label,
-        meta: provider.id === selectedProvider ? "Current" : null,
+        meta: provider.id === selectedProvider ? t("common.current") : null,
         onSelect: () => onSelect?.(provider.id),
       }))}
       isOpen={isOpen}

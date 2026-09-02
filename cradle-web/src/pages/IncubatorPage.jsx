@@ -17,8 +17,8 @@ import { CellOperationDialogs } from "../components/incubator/CellOperationDialo
 import { IncubatorWorkspace } from "../components/incubator/IncubatorWorkspace";
 import { mapCellToVisualState } from "../domain/cellVisualMapper";
 import { getIncubatorSummary } from "../domain/incubatorSummary";
-import { formatStabilizeMessage } from "../domain/stabilizationResult";
 import { useCellCultivationActions } from "../hooks/useCellCultivationActions";
+import { useUiPreferences } from "../i18n/UiPreferencesProvider";
 
 export function IncubatorPage({
   cells,
@@ -27,6 +27,7 @@ export function IncubatorPage({
   onReloadCells,
   onCreateCell,
 }) {
+  const { t } = useUiPreferences();
   const [selectedCellId, setSelectedCellId] = useState(undefined);
   const [selectedCell, setSelectedCell] = useState(null);
   const [isLoadingCell, setIsLoadingCell] = useState(false);
@@ -145,7 +146,7 @@ export function IncubatorPage({
           ? workspaceResult.value
           : undefined,
       });
-      setCellError(hasFailure ? "Some Cell details could not be loaded." : null);
+      setCellError(hasFailure ? true : null);
       setIsLoadingCell(false);
     }
 
@@ -259,7 +260,7 @@ export function IncubatorPage({
       });
       await refreshIncubatorData();
       setOperationDialog(null);
-      setDockMessage(formatStabilizeMessage(selectedCellId, result));
+      setDockMessage(translateStabilizeResult(selectedCellId, result, t));
     } catch (operationFailure) {
       setOperationError(operationFailure.message);
       setDockError(operationFailure.message);
@@ -304,7 +305,7 @@ export function IncubatorPage({
       if (!result.complete) {
         const message =
           result.errors?.[0]?.message ??
-          `Cell ${result.childCellId} was created, but division is incomplete.`;
+          t("cell.divideIncomplete", { cell: result.childCellId });
         setOperationError(message);
         setDockError(message);
         return;
@@ -312,7 +313,7 @@ export function IncubatorPage({
 
       setOperationDialog(null);
       setOperationChildCellId("");
-      setDockMessage(`Cell ${result.childCellId} created by division.`);
+      setDockMessage(t("cell.divideComplete", { cell: result.childCellId }));
     } catch (operationFailure) {
       setOperationError(operationFailure.message);
       setDockError(operationFailure.message);
@@ -408,7 +409,7 @@ export function IncubatorPage({
       if (!result.complete) {
         const message =
           result.errors?.[0]?.message ??
-          `Cell ${result.childCellId} was created, but fusion is incomplete.`;
+          t("cell.fuseIncomplete", { cell: result.childCellId });
         setOperationError(message);
         setDockError(message);
         return;
@@ -417,7 +418,7 @@ export function IncubatorPage({
       setOperationDialog(null);
       setSelectedFuseCellIds([]);
       setOperationChildCellId("");
-      setDockMessage(`Cell ${result.childCellId} created by fusion.`);
+      setDockMessage(t("cell.fuseComplete", { cell: result.childCellId }));
     } catch (operationFailure) {
       setOperationError(operationFailure.message);
       setDockError(operationFailure.message);
@@ -440,7 +441,7 @@ export function IncubatorPage({
       await startCultivation();
       await onReloadCells();
       setRefreshVersion((value) => value + 1);
-      setDockMessage("Cultivation cycle completed.");
+      setDockMessage(t("incubator.cycleComplete"));
     } catch (cycleError) {
       setDockError(cycleError.message);
     } finally {
@@ -462,7 +463,7 @@ export function IncubatorPage({
         options: settings.options,
       });
       setDockMessage(
-        `AI settings updated: ${settings.current.provider} / ${settings.current.model}`,
+        t("incubator.aiUpdated", { provider: settings.current.provider, model: settings.current.model }),
       );
     } catch (settingsError) {
       setDockError(settingsError.message);
@@ -531,4 +532,15 @@ export function IncubatorPage({
       />
     </div>
   );
+}
+
+function translateStabilizeResult(cellId, result, t) {
+  const artifactId = result?.diagnosis?.artifactId ?? result?.execution?.result?.artifactId;
+  if (result?.patched) {
+    return artifactId
+      ? t("cell.repairedArtifact", { cell: cellId, artifact: artifactId })
+      : t("cell.repaired", { cell: cellId });
+  }
+  if (result?.diagnosed) return t("cell.noRepair", { cell: cellId });
+  return t("cell.stabilizeComplete", { cell: cellId });
 }

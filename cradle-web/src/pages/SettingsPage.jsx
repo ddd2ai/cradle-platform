@@ -1,26 +1,27 @@
 import { useEffect, useMemo, useState } from "react";
 import { fetchCradleConfig, updateCradleConfig } from "../api/cradleClient";
+import { useUiPreferences } from "../i18n/UiPreferencesProvider";
 
 const SETTINGS_SECTIONS = [
   {
     id: "ai-runtime",
-    label: "Runtime",
-    description: "Default provider, model, execution limits, and operation timeouts.",
+    labelKey: "settings.runtime",
+    descriptionKey: "settings.runtimeDescription",
   },
   {
     id: "providers",
-    label: "Providers",
-    description: "Provider-specific timeout overrides.",
+    labelKey: "settings.providers",
+    descriptionKey: "settings.providersDescription",
   },
   {
     id: "cultivation",
-    label: "Cultivation",
-    description: "Configure how cultivation is triggered.",
+    labelKey: "settings.cultivation",
+    descriptionKey: "settings.cultivationDescription",
   },
   {
     id: "advanced",
-    label: "Advanced",
-    description: "Configuration source and low-level settings.",
+    labelKey: "settings.advanced",
+    descriptionKey: "settings.advancedDescription",
   },
 ];
 
@@ -46,10 +47,10 @@ const DEFAULT_SETTINGS = {
 };
 
 const PROVIDER_ROWS = [
-  { id: "ollama", label: "Ollama Provider" },
-  { id: "copilot", label: "Copilot Provider" },
-  { id: "codex", label: "Codex Provider" },
-  { id: "gemini", label: "Gemini Provider" },
+  { id: "ollama", label: "Ollama" },
+  { id: "copilot", label: "Copilot" },
+  { id: "codex", label: "Codex" },
+  { id: "gemini", label: "Gemini" },
 ];
 
 const PROVIDER_OPTIONS = [
@@ -76,6 +77,7 @@ const PROVIDER_OPTIONS = [
 ];
 
 export function SettingsPage({ initialSectionId = "ai-runtime" } = {}) {
+  const { t } = useUiPreferences();
   const [selectedSectionId, setSelectedSectionId] = useState(initialSectionId);
   const [savedSettings, setSavedSettings] = useState(DEFAULT_SETTINGS);
   const [draftSettings, setDraftSettings] = useState(DEFAULT_SETTINGS);
@@ -92,7 +94,7 @@ export function SettingsPage({ initialSectionId = "ai-runtime" } = {}) {
 
   const hasUnsavedChanges =
     JSON.stringify(draftSettings) !== JSON.stringify(savedSettings);
-  const validationError = validateDraftSettings(draftSettings);
+  const validationError = validateDraftSettings(draftSettings, t);
   const canSave = hasUnsavedChanges && !validationError && !isSaving;
 
   useEffect(() => {
@@ -197,7 +199,7 @@ export function SettingsPage({ initialSectionId = "ai-runtime" } = {}) {
 
       setSavedSettings(saved);
       setDraftSettings(saved);
-      setToastMessage("Configuration saved");
+      setToastMessage(t("settings.saved"));
     } catch (error) {
       setSaveError(error.message);
     } finally {
@@ -206,9 +208,9 @@ export function SettingsPage({ initialSectionId = "ai-runtime" } = {}) {
   }
 
   return (
-    <section className="settings-page" aria-label="Settings">
+    <section className="settings-page" aria-label={t("nav.settings")}>
       <div className="settings-shell">
-        <nav className="settings-nav" aria-label="Settings sections">
+        <nav className="settings-nav" aria-label={t("settings.sections")}>
           {SETTINGS_SECTIONS.map((section) => (
             <button
               type="button"
@@ -218,7 +220,7 @@ export function SettingsPage({ initialSectionId = "ai-runtime" } = {}) {
               }`}
               onClick={() => setSelectedSectionId(section.id)}
             >
-              {section.label}
+              {t(section.labelKey)}
             </button>
           ))}
         </nav>
@@ -226,19 +228,19 @@ export function SettingsPage({ initialSectionId = "ai-runtime" } = {}) {
         <div className="settings-content">
           <section className="settings-panel" aria-labelledby="settings-panel-title">
             <div className="settings-panel-header">
-              <h2 id="settings-panel-title">{selectedSection.label}</h2>
-              <p>{selectedSection.description}</p>
+              <h2 id="settings-panel-title">{t(selectedSection.labelKey)}</h2>
+              <p>{t(selectedSection.descriptionKey)}</p>
             </div>
 
             {loadError && (
               <div className="settings-load-error" role="alert">
-                Unable to load configuration: {loadError}
+                {t("settings.loadError", { error: loadError })}
               </div>
             )}
 
             {(validationError || saveError) && (
               <div className="settings-load-error" role="alert">
-                {validationError || `Unable to save configuration: ${saveError}`}
+                {validationError || t("settings.saveError", { error: saveError })}
               </div>
             )}
 
@@ -248,6 +250,7 @@ export function SettingsPage({ initialSectionId = "ai-runtime" } = {}) {
                 timeouts={draftSettings.timeouts}
                 onChange={updateAiSetting}
                 onChangeTimeout={updateTimeoutSetting}
+                t={t}
               />
             )}
 
@@ -255,6 +258,7 @@ export function SettingsPage({ initialSectionId = "ai-runtime" } = {}) {
               <ProvidersForm
                 providers={draftSettings.providers}
                 onChange={updateProviderTimeout}
+                t={t}
               />
             )}
 
@@ -262,15 +266,16 @@ export function SettingsPage({ initialSectionId = "ai-runtime" } = {}) {
               <CultivationForm
                 heartbeatMode={draftSettings.heartbeatMode}
                 onChange={updateHeartbeatMode}
+                t={t}
               />
             )}
 
-            {selectedSectionId === "advanced" && <AdvancedConfiguration />}
+            {selectedSectionId === "advanced" && <AdvancedConfiguration t={t} />}
           </section>
 
           <div className="settings-save-bar" role="status" aria-live="polite">
             <span className={hasUnsavedChanges ? "settings-dirty" : ""}>
-              {hasUnsavedChanges ? "Unsaved changes" : "No unsaved changes"}
+              {t(hasUnsavedChanges ? "settings.unsaved" : "settings.noUnsaved")}
             </span>
             <div className="settings-save-actions">
               <button
@@ -279,7 +284,7 @@ export function SettingsPage({ initialSectionId = "ai-runtime" } = {}) {
                 onClick={handleReset}
                 disabled={!hasUnsavedChanges}
               >
-                Reset
+                {t("common.reset")}
               </button>
               <button
                 type="button"
@@ -287,7 +292,7 @@ export function SettingsPage({ initialSectionId = "ai-runtime" } = {}) {
                 onClick={handleSave}
                 disabled={!canSave}
               >
-                {isSaving ? "Saving..." : "Save changes"}
+                {t(isSaving ? "settings.saving" : "settings.saveChanges")}
               </button>
             </div>
           </div>
@@ -389,32 +394,32 @@ function mapSettingsToConfig(settings) {
   };
 }
 
-function validateDraftSettings(settings) {
+function validateDraftSettings(settings, t) {
   if (!settings.ai.defaultModel.trim()) {
-    return "Default Model must not be empty.";
+    return t("settings.modelRequired");
   }
 
   const positiveIntegerFields = [
-    ["Default Timeout", settings.ai.timeoutSeconds],
+    [t("settings.defaultTimeout"), settings.ai.timeoutSeconds],
     [
-      "Source Artifact Output Limit",
+      t("settings.outputLimit"),
       settings.ai.maxSourceArtifactOutputLength,
     ],
     [
-      "Source Artifact Content Limit",
+      t("settings.contentLimit"),
       settings.ai.maxSourceArtifactContentLength,
     ],
     ...PROVIDER_ROWS.map((provider) => [
-      `${provider.label} Timeout`,
+      t("settings.providerTimeout", { provider: provider.label }),
       settings.providers[provider.id].timeoutSeconds,
     ]),
-    ["Reflection", settings.timeouts.reflectionSeconds],
-    ["Maven Execution", settings.timeouts.mavenExecutionSeconds],
+    [t("settings.reflection"), settings.timeouts.reflectionSeconds],
+    [t("settings.mavenExecution"), settings.timeouts.mavenExecutionSeconds],
   ];
 
   for (const [label, value] of positiveIntegerFields) {
     if (!isPositiveIntegerString(value)) {
-      return `${label} must be a positive integer.`;
+      return t("settings.positiveInteger", { label });
     }
   }
 
@@ -426,7 +431,7 @@ function validateDraftSettings(settings) {
   );
 
   if (contentLimit > outputLimit) {
-    return "Source Artifact Content Limit must not exceed Source Artifact Output Limit.";
+    return t("settings.limitOrder");
   }
 
   return "";
@@ -440,7 +445,7 @@ function parseIntegerSetting(value) {
   return Number.parseInt(value, 10);
 }
 
-function RuntimeForm({ settings, timeouts, onChange, onChangeTimeout }) {
+function RuntimeForm({ settings, timeouts, onChange, onChangeTimeout, t }) {
   const selectedProvider = PROVIDER_OPTIONS.find(
     (provider) => provider.value === settings.defaultProvider
   ) ?? PROVIDER_OPTIONS[0];
@@ -451,7 +456,7 @@ function RuntimeForm({ settings, timeouts, onChange, onChangeTimeout }) {
   return (
     <div className="settings-form-grid">
       <label className="settings-field">
-        <span>Default Provider</span>
+        <span>{t("settings.defaultProvider")}</span>
         <select
           className="settings-select"
           value={settings.defaultProvider}
@@ -466,7 +471,7 @@ function RuntimeForm({ settings, timeouts, onChange, onChangeTimeout }) {
       </label>
 
       <label className="settings-field">
-        <span>Default Model</span>
+        <span>{t("settings.defaultModel")}</span>
         <select
           className="settings-select"
           value={settings.defaultModel}
@@ -481,7 +486,7 @@ function RuntimeForm({ settings, timeouts, onChange, onChangeTimeout }) {
       </label>
 
       <label className="settings-field">
-        <span>Default Timeout</span>
+        <span>{t("settings.defaultTimeout")}</span>
         <span className="settings-inline-control">
           <input
             className="settings-input"
@@ -489,12 +494,12 @@ function RuntimeForm({ settings, timeouts, onChange, onChangeTimeout }) {
             value={settings.timeoutSeconds}
             onChange={(event) => onChange("timeoutSeconds", event.target.value)}
           />
-          <span>seconds</span>
+          <span>{t("settings.seconds")}</span>
         </span>
       </label>
 
       <label className="settings-field">
-        <span>Source Artifact Output Limit</span>
+        <span>{t("settings.outputLimit")}</span>
         <span className="settings-inline-control">
           <input
             className="settings-input"
@@ -504,12 +509,12 @@ function RuntimeForm({ settings, timeouts, onChange, onChangeTimeout }) {
               onChange("maxSourceArtifactOutputLength", event.target.value)
             }
           />
-          <span>characters</span>
+          <span>{t("settings.characters")}</span>
         </span>
       </label>
 
       <label className="settings-field">
-        <span>Source Artifact Content Limit</span>
+        <span>{t("settings.contentLimit")}</span>
         <span className="settings-inline-control">
           <input
             className="settings-input"
@@ -519,12 +524,12 @@ function RuntimeForm({ settings, timeouts, onChange, onChangeTimeout }) {
               onChange("maxSourceArtifactContentLength", event.target.value)
             }
           />
-          <span>characters</span>
+          <span>{t("settings.characters")}</span>
         </span>
       </label>
 
       <label className="settings-field">
-        <span>Reflection</span>
+        <span>{t("settings.reflection")}</span>
         <span className="settings-inline-control">
           <input
             className="settings-input"
@@ -534,12 +539,12 @@ function RuntimeForm({ settings, timeouts, onChange, onChangeTimeout }) {
               onChangeTimeout("reflectionSeconds", event.target.value)
             }
           />
-          <span>seconds</span>
+          <span>{t("settings.seconds")}</span>
         </span>
       </label>
 
       <label className="settings-field">
-        <span>Maven Execution</span>
+        <span>{t("settings.mavenExecution")}</span>
         <span className="settings-inline-control">
           <input
             className="settings-input"
@@ -549,7 +554,7 @@ function RuntimeForm({ settings, timeouts, onChange, onChangeTimeout }) {
               onChangeTimeout("mavenExecutionSeconds", event.target.value)
             }
           />
-          <span>seconds</span>
+          <span>{t("settings.seconds")}</span>
         </span>
       </label>
     </div>
@@ -561,13 +566,13 @@ function getDefaultModelForProvider(provider) {
     ?? "devstral-small-2:24b";
 }
 
-function ProvidersForm({ providers, onChange }) {
+function ProvidersForm({ providers, onChange, t }) {
   return (
     <div className="settings-section-block">
       <div className="settings-form-grid">
         {PROVIDER_ROWS.map((provider) => (
           <label className="settings-field" key={provider.id}>
-            <span>{provider.label}</span>
+            <span>{t("settings.providerName", { provider: provider.label })}</span>
             <span className="settings-inline-control">
               <input
                 className="settings-input"
@@ -575,7 +580,7 @@ function ProvidersForm({ providers, onChange }) {
                 value={providers[provider.id].timeoutSeconds}
                 onChange={(event) => onChange(provider.id, event.target.value)}
               />
-              <span>seconds</span>
+              <span>{t("settings.seconds")}</span>
             </span>
           </label>
         ))}
@@ -584,48 +589,48 @@ function ProvidersForm({ providers, onChange }) {
   );
 }
 
-function CultivationForm({ heartbeatMode, onChange }) {
+function CultivationForm({ heartbeatMode, onChange, t }) {
   return (
     <div className="settings-section-block">
-      <h3>Cultivation</h3>
+      <h3>{t("settings.cultivation")}</h3>
       <label className="settings-field">
-        <span>Mode</span>
+        <span>{t("settings.mode")}</span>
         <select
           className="settings-select"
           value={heartbeatMode}
           onChange={(event) => onChange(event.target.value)}
         >
-          <option value="manual">Manual</option>
-          <option value="auto">Auto</option>
+          <option value="manual">{t("settings.manual")}</option>
+          <option value="auto">{t("settings.auto")}</option>
         </select>
       </label>
 
       <div className="settings-explainer-list">
         <div>
-          <strong>Manual</strong>
-          <p>Runs only when cultivation is triggered explicitly.</p>
+          <strong>{t("settings.manual")}</strong>
+          <p>{t("settings.manualDescription")}</p>
         </div>
         <div>
-          <strong>Automatic</strong>
-          <p>Runs cultivation on a configured schedule.</p>
+          <strong>{t("settings.automatic")}</strong>
+          <p>{t("settings.automaticDescription")}</p>
         </div>
       </div>
     </div>
   );
 }
 
-function AdvancedConfiguration() {
+function AdvancedConfiguration({ t }) {
   return (
     <div className="settings-section-block">
-      <h3>Configuration</h3>
+      <h3>{t("settings.configuration")}</h3>
       <div className="settings-readonly-list">
         <div className="settings-readonly-row">
-          <span>Source</span>
+          <span>{t("settings.source")}</span>
           <code>cradle-server/config/cradle-config.json</code>
         </div>
       </div>
       <p className="settings-muted-note">
-        Configuration editing through the raw JSON file is not available yet.
+        {t("settings.rawUnavailable")}
       </p>
     </div>
   );

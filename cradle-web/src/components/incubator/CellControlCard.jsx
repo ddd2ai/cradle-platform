@@ -1,3 +1,5 @@
+import { useUiPreferences } from "../../i18n/UiPreferencesProvider";
+
 export function CellControlCard({
   cell,
   visual,
@@ -7,6 +9,7 @@ export function CellControlCard({
   onActivate,
   onDeactivate,
 }) {
+  const { t } = useUiPreferences();
   const status = String(cell.status ?? "").toLowerCase();
   const isActive = cell.active === true || ["active", "running"].includes(status);
   const isIdle = cell.active === false || ["idle", "inactive"].includes(status);
@@ -26,12 +29,12 @@ export function CellControlCard({
           <strong>{visual.id}</strong>
           <span className="cell-control-card__health">
             <i aria-hidden="true" />
-            {visual.activityLabel}
+            {translateActivity(visual.activity, visual.activityLabel, t)}
           </span>
         </div>
         <span className={`incubator-status-badge status-${status || "unknown"}`}>
           <i />
-          {status || "unknown"}
+          {translateStatus(status, t)}
         </span>
       </div>
 
@@ -42,7 +45,7 @@ export function CellControlCard({
           disabled={isBusy || isActive}
         >
           {activeAction === "activate" && <span className="button-spinner" />}
-          {activeAction === "activate" ? "Activating" : "Activate"}
+          {t(activeAction === "activate" ? "cell.activating" : "cell.activate")}
         </button>
         <button
           type="button"
@@ -50,7 +53,7 @@ export function CellControlCard({
           disabled={isBusy || isIdle}
         >
           {activeAction === "deactivate" && <span className="button-spinner" />}
-          {activeAction === "deactivate" ? "Deactivating" : "Deactivate"}
+          {t(activeAction === "deactivate" ? "cell.deactivating" : "cell.deactivate")}
         </button>
       </div>
 
@@ -60,4 +63,14 @@ export function CellControlCard({
       </div>
     </article>
   );
+}
+
+function translateActivity(activity, fallback, t) {
+  const key = ({ growing: "observatory.growing", stable: "status.stable", "needs-attention": "status.needsAttention", idle: "status.idle", evolving: "status.evolving", exploring: "status.exploring", healthy: "status.healthy" })[activity];
+  return key ? t(key) : fallback;
+}
+
+function translateStatus(status, t) {
+  const key = ({ active: "status.active", running: "status.active", idle: "status.idle", inactive: "status.idle" })[status];
+  return key ? t(key) : status || t("status.unknown");
 }

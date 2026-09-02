@@ -1,3 +1,5 @@
+import { useUiPreferences } from "../../i18n/UiPreferencesProvider";
+
 /**
  * @param {{
  *   maturity?: object | null;
@@ -10,23 +12,24 @@ export function MaturityCard({
   isLoading = false,
   error = null,
 }) {
+  const { t } = useUiPreferences();
   return (
     <article className="dashboard-card maturity-card">
-      <div className="dashboard-card-label">Maturity</div>
+      <div className="dashboard-card-label">{t("observatory.maturity")}</div>
 
       {isLoading && (
-        <div className="maturity-state-message">Loading maturity...</div>
+        <div className="maturity-state-message">{t("cell.maturityLoading")}</div>
       )}
 
       {!isLoading && error && (
         <div className="maturity-state-message is-error">
-          Unable to load maturity information.
+          {t("cell.maturityError")}
         </div>
       )}
 
       {!isLoading && !error && !maturity && (
         <div className="maturity-state-message">
-          No maturity information available.
+          {t("cell.maturityEmpty")}
         </div>
       )}
 
@@ -37,33 +40,33 @@ export function MaturityCard({
               {formatPercent(maturity.value ?? maturity.maturity)}
             </strong>
             <span className="maturity-badge">
-              {String(maturity.state ?? "unknown").toUpperCase()}
+              {translateMaturityState(maturity.state, t)}
             </span>
           </div>
 
           <p className="maturity-description">
-            Estimated maturity of the selected cell.
+            {t("cell.maturityDescription")}
           </p>
 
           <div className="maturity-metrics">
             <MaturityMetric
-              label="Normalized Magnitude"
+              label={t("cell.normalizedMagnitude")}
               value={formatDecimal(maturity.normalizedMagnitude, 3)}
             />
             <MaturityMetric
-              label="Temporal Variance"
+              label={t("cell.temporalVariance")}
               value={formatDecimal(maturity.temporalVariance, 4)}
             />
             <MaturityMetric
-              label="Convergence"
+              label={t("cell.convergence")}
               value={formatDecimal(maturity.convergence, 4)}
             />
             <MaturityMetric
-              label="Sample Size"
+              label={t("cell.sampleSize")}
               value={formatInteger(maturity.sampleSize)}
             />
             <MaturityMetric
-              label="Dominant Trait"
+              label={t("cell.dominantTrait")}
               value={maturity.dominantTrait ?? "--"}
             />
           </div>
@@ -71,6 +74,12 @@ export function MaturityCard({
       )}
     </article>
   );
+}
+
+function translateMaturityState(state, t) {
+  const value = String(state ?? "unknown").toLowerCase();
+  const key = ({ stable: "status.stable", growing: "observatory.growing", insufficient: "status.insufficient", unknown: "status.unknown" })[value];
+  return (key ? t(key) : value).toUpperCase();
 }
 
 function MaturityMetric({ label, value }) {
