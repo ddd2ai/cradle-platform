@@ -20,6 +20,37 @@ export async function fetchCells() {
   }));
 }
 
+export async function fetchFoundation() {
+  const response = await fetch("/api/v1/foundation");
+  const data = await readJsonResponse(response);
+  if (!response.ok) {
+    throw new Error(data?.error?.message ?? `Failed to fetch Foundation: ${response.status}`);
+  }
+  return data;
+}
+
+export async function updateFoundationDocument(documentId, document) {
+  const response = await fetch(`/api/v1/foundation/${encodeURIComponent(documentId)}`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(document),
+  });
+  const data = await readJsonResponse(response);
+  if (!response.ok) {
+    throw new Error(data?.error?.message ?? `Failed to update Foundation: ${response.status}`);
+  }
+  return data.document;
+}
+
+export async function fetchObservatory() {
+  const response = await fetch("/api/v1/observatory");
+  const data = await readJsonResponse(response);
+  if (!response.ok) {
+    throw new Error(data?.error?.message ?? `Failed to fetch Observatory: ${response.status}`);
+  }
+  return data;
+}
+
 export async function fetchCreations() {
   const response = await fetch("/api/v1/creations");
 

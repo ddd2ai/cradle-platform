@@ -18,20 +18,20 @@ export function DnaDimensionsCard({
 }) {
   return (
     <article className="dashboard-card dna-dimensions-card">
-      <div className="dashboard-card-label">DNA Dimensions</div>
+      <div className="dashboard-card-label">DNA Profile</div>
 
       {isLoading && (
-        <div className="dna-card-state">Loading DNA dimensions...</div>
+        <div className="dna-card-state">Loading DNA profile...</div>
       )}
 
       {!isLoading && error && (
         <div className="dna-card-state is-error">
-          Unable to load DNA dimensions.
+          Unable to load DNA profile.
         </div>
       )}
 
       {!isLoading && !error && dimensions.length === 0 && (
-        <div className="dna-card-state">No DNA dimensions available.</div>
+        <div className="dna-card-state">No DNA profile available.</div>
       )}
 
       {!isLoading && !error && dimensions.length > 0 && (

@@ -1,5 +1,5 @@
 const cradleItems = [
-  { id: "overview", label: "Overview" },
+  { id: "overview", label: "Foundation" },
   { id: "incubator", label: "Incubator" },
   { id: "opendna", label: "Observatory" },
   { id: "artifacts", label: "Creations" },

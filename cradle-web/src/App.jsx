@@ -24,7 +24,7 @@ import { CultivationPage } from "./pages/CultivationPage";
 import { CreationsPage } from "./pages/CreationsPage";
 import { IncubatorPage } from "./pages/IncubatorPage";
 import { LogsPage } from "./pages/LogsPage";
-import { PlaceholderPage } from "./pages/PlaceholderPage";
+import { ObservatoryPage } from "./pages/ObservatoryPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { subscribeToCradleEvents } from "./services/cradle-event-stream";
 import {
@@ -529,7 +529,7 @@ function App() {
         />
         <main className="main-content">
           {selectedSection === "overview" && (
-            <CradleOverviewPage cells={cells} />
+            <CradleOverviewPage />
           )}
 
           {selectedSection === "incubator" && (
@@ -556,11 +556,7 @@ function App() {
           )}
 
           {selectedSection === "opendna" && (
-            <PlaceholderPage
-              title="Observatory"
-              description="Observe cell traits, relationships, and evolution."
-              icon="◎"
-            />
+            <ObservatoryPage />
           )}
 
           {selectedSection === "artifacts" && (

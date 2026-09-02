@@ -14,6 +14,7 @@ import { DocumentExtractorRegistry } from "../ingestion/document-extractor-regis
 import { StimulusCultivationService } from "../application/stimulus-cultivation-service.js";
 import { IngestFileStimulusUseCase } from "../application/ingest-file-stimulus-use-case.js";
 import { ProviderMediaAnalyzer } from "../ingestion/provider-media-analyzer.js";
+import { FoundationDocumentStore } from "../foundation/foundation-document-store.js";
 import {
   RuntimeActivityLogger,
   formatRuntimeActivity,
@@ -45,6 +46,7 @@ export function createApiHandler({
   divisionServiceFactory,
   fusionServiceFactory,
   cradleConfigFile,
+  foundationDocumentStore,
 }) {
   const runtimeEvents = eventBus ?? eventStream;
   const sseTransport = sseRuntimeEventTransport ?? new SseRuntimeEventTransport({
@@ -84,6 +86,10 @@ export function createApiHandler({
     operationRunner: resolvedOperationRunner,
     activityLogger: resolvedActivityLogger,
   });
+  const resolvedFoundationDocumentStore = foundationDocumentStore
+    ?? new FoundationDocumentStore({
+      configDir: path.join(engine.projectRoot ?? PROJECT_ROOT, "config"),
+    });
 
   const routes = createApiRoutes({
     engine,
@@ -101,6 +107,7 @@ export function createApiHandler({
     divisionServiceFactory,
     fusionServiceFactory,
     cradleConfigFile,
+    foundationDocumentStore: resolvedFoundationDocumentStore,
   });
 
   return async function handleApiRequest(request) {

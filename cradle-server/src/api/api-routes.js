@@ -15,6 +15,8 @@ import { GetCellArtifactStabilityUseCase } from "../application/get-cell-artifac
 import { GetCellUseCase } from "../application/get-cell-use-case.js";
 import { GetColonyUseCase } from "../application/get-colony-use-case.js";
 import { GetCradleConfigUseCase } from "../application/get-cradle-config-use-case.js";
+import { GetFoundationUseCase } from "../application/get-foundation-use-case.js";
+import { GetObservatoryUseCase } from "../application/get-observatory-use-case.js";
 import { GetCultivationStatusUseCase } from "../application/get-cultivation-status-use-case.js";
 import { GetHeartbeatUseCase } from "../application/get-heartbeat-use-case.js";
 import { GetHealthUseCase } from "../application/get-health-use-case.js";
@@ -45,6 +47,7 @@ import { SetCellAiBindingUseCase } from "../application/set-cell-ai-binding-use-
 import { SetHeartbeatModeUseCase } from "../application/set-heartbeat-mode-use-case.js";
 import { StabilizeCellUseCase } from "../application/stabilize-cell-use-case.js";
 import { UpdateCradleConfigUseCase } from "../application/update-cradle-config-use-case.js";
+import { UpdateFoundationDocumentUseCase } from "../application/update-foundation-document-use-case.js";
 import { StartOperationUseCase } from "../application/start-operation-use-case.js";
 
 export function createApiRoutes({
@@ -63,6 +66,7 @@ export function createApiRoutes({
   fusionServiceFactory,
   ingestFileStimulusUseCase,
   cradleConfigFile,
+  foundationDocumentStore,
 }) {
   return [
     exact("GET", "/api/v1/events", async ({ request }) => ({
@@ -111,6 +115,22 @@ export function createApiRoutes({
     ),
     exact("GET", "/api/v1/config", async () =>
       new GetCradleConfigUseCase({ file: cradleConfigFile }).execute()
+    ),
+    exact("GET", "/api/v1/foundation", async () =>
+      new GetFoundationUseCase({ foundationDocumentStore }).execute()
+    ),
+    pattern(
+      "PUT",
+      /^\/api\/v1\/foundation\/([^/]+)$/,
+      async ({ params, request }) =>
+        new UpdateFoundationDocumentUseCase({ foundationDocumentStore }).execute({
+          documentId: params[0],
+          content: request.body?.content,
+          expectedRevision: request.body?.expectedRevision,
+        }),
+    ),
+    exact("GET", "/api/v1/observatory", async () =>
+      new GetObservatoryUseCase({ engine }).execute()
     ),
     exact("PUT", "/api/v1/config", async ({ request }) =>
       new UpdateCradleConfigUseCase({ file: cradleConfigFile }).execute({

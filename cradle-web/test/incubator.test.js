@@ -39,6 +39,7 @@ let formatStabilizeMessage;
 let mapCreationDtoToCreation;
 let getArtifactDownloadUrl;
 let projectCellToViewport;
+let buildObservatoryModel;
 
 // operation-progress.js 必須透過 vite SSR 載入,才能與 CellOperationDialogs 共用同一個 store 實例
 let updateOperationProgress;
@@ -111,6 +112,9 @@ before(async () => {
   ({ projectCellToViewport } = await vite.ssrLoadModule(
     "/src/features/incubator/utils/projectCellToViewport.js",
   ));
+  ({ buildObservatoryModel } = await vite.ssrLoadModule(
+    "/src/domain/observatoryModel.js",
+  ));
 
   // 透過 vite SSR 載入 operation-progress,確保與 CellOperationDialogs 共用同一個模組實例
   ({
@@ -177,7 +181,7 @@ test("Cell detail keeps the shared Sidebar and selected Cell state", () => {
 
   for (const label of [
     "New Cell",
-    "Overview",
+    "Foundation",
     "Incubator",
     "Observatory",
     "Creations",
@@ -212,12 +216,45 @@ test("Sidebar highlights Settings when the Settings page is selected", () => {
   assert.doesNotMatch(markup, /cradle-nav-item selected/);
 });
 
+test("Observatory separates recorded attention from insufficient evidence", () => {
+  const model = buildObservatoryModel([
+    {
+      cellId: "stable-cell",
+      name: "Stable Cell",
+      cultivation: { state: "stable" },
+      maturity: { percent: 72, sampleSize: 4 },
+      dna: { maturityTrend: [] },
+    },
+    {
+      cellId: "unknown-cell",
+      name: "Unknown Cell",
+      cultivation: { state: "idle" },
+      maturity: { percent: 0, sampleSize: 1 },
+      dna: { maturityTrend: [] },
+    },
+    {
+      cellId: "attention-cell",
+      name: "Attention Cell",
+      cultivation: { state: "needs_attention", attention: { message: "Quality gate failed" } },
+      maturity: { percent: 41, sampleSize: 3 },
+      dna: { maturityTrend: [] },
+    },
+  ]);
+
+  assert.equal(model.stableCount, 1);
+  assert.equal(model.attentionCount, 1);
+  assert.equal(model.insufficientCount, 1);
+  assert.equal(model.attention.length, 2);
+  assert.equal(model.cells[1].maturityPercent, null);
+  assert.match(model.attention[1].reason, /Quality gate failed/);
+});
+
 test("SettingsPage renders the mock Runtime settings", () => {
   const markup = renderToStaticMarkup(React.createElement(SettingsPage));
 
   for (const label of [
     "Runtime",
-    "LLM Providers",
+    "Providers",
     "Cultivation",
     "Advanced",
     "Default provider, model, execution limits, and operation timeouts.",
@@ -495,7 +532,7 @@ test("CellInspectorDrawer renders selected Cell details and contextual actions",
     "Deactivate",
     "Lifecycle",
     "Maturity",
-    "DNA Dimensions",
+    "DNA Profile",
     "Stabilize",
     "Divide",
     "Fuse",
@@ -805,6 +842,8 @@ test("DnaDimensionsCard clamps out-of-range values", () => {
       ],
     }),
   );
+
+  assert.match(markup, /DNA Profile/);
   assert.match(markup, /aria-valuenow="4"/);
   assert.match(markup, /aria-valuenow="0"/);
 });

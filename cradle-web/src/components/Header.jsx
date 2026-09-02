@@ -1,8 +1,8 @@
 export function Header({ selectedCell, selectedSection, isServerConnected }) {
   const sectionTitles = {
     overview: {
-      title: "Cradle",
-      subtitle: "Software Life Engineering Platform",
+      title: "Foundation",
+      subtitle: "Define Cradle intent, environment, DNA, and runtime policy.",
     },
     incubator: {
       title: "Incubator",
