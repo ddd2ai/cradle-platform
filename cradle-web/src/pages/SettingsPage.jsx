@@ -9,7 +9,7 @@ const SETTINGS_SECTIONS = [
   },
   {
     id: "providers",
-    label: "LLM Providers",
+    label: "Providers",
     description: "Provider-specific timeout overrides.",
   },
   {
