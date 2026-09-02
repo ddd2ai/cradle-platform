@@ -1,5 +1,8 @@
 export async function toCellSummary(cell) {
-  const profile = await cell.getProfile();
+  const [profile, cultivation] = await Promise.all([
+    cell.getProfile(),
+    cell.getCultivationState?.() ?? null,
+  ]);
 
   return {
     cellId: cell.id,
@@ -9,6 +12,7 @@ export async function toCellSummary(cell) {
     maturity: profile.maturity ?? 0,
     generation: profile.generation ?? 1,
     parent: profile.parent ?? null,
+    ...(cultivation ? { cultivation } : {}),
   };
 }
 

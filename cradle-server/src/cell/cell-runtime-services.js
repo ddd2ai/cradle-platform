@@ -11,6 +11,7 @@ import { CellSnapshotStore } from "./cell-snapshot-store.js";
 import { LivingContextStore } from "../living-context/living-context-store.js";
 import { StimulusStore } from "../situation/stimulus-store.js";
 import { ObservationStore } from "../situation/observation-store.js";
+import { CellCultivationStateStore } from "./cell-cultivation-state-store.js";
 
 export function createCellRuntimeServices({ cell, paths }) {
   const timestampFormatter = (date) => cell.formatTimestamp(date);
@@ -24,6 +25,10 @@ export function createCellRuntimeServices({ cell, paths }) {
     }),
     lifecycleEventStore: new CellLifecycleEventStore({
       lifecycleEventsFile: paths.lifecycleEventsFile,
+    }),
+    cultivationStateStore: new CellCultivationStateStore({
+      file: paths.cultivationStateFile,
+      cellId: cell.id,
     }),
     inboxStore: new CellInboxStore({
       inboxDir: paths.inboxDir,

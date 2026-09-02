@@ -1,4 +1,7 @@
 import { spawn } from "node:child_process";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { getProviderTimeoutMs } from "../cradle-config.js";
 import { PROJECT_ROOT } from "../project-root.js";
 
@@ -11,9 +14,11 @@ export async function createCodexProvider({
   return {
     name: "codex",
     model: model ?? "auto",
+    capabilities: { mediaInput: true },
 
     async ask({
       prompt,
+      media = [],
       onDelta,
       onIdle,
       onError,
@@ -36,6 +41,16 @@ export async function createCodexProvider({
           "--json",
         ];
 
+        const materialized = await materializeMedia(media);
+        if (materialized.paths.length > 0) {
+          args.push(
+            "--ephemeral",
+            "--sandbox",
+            "read-only",
+            "--skip-git-repo-check",
+          );
+        }
+
         /*
          * model 為 null、undefined 或 auto 時，
          * 不傳 --model，交給 Codex CLI 自動選擇。
@@ -51,15 +66,25 @@ export async function createCodexProvider({
           );
         }
 
+        // Codex CLI declares --image as a variadic option. Put the positional
+        // prompt before image options so it cannot be consumed as another path.
         args.push(prompt);
+        for (const mediaPath of materialized.paths) {
+          args.push("--image", mediaPath);
+        }
 
-        const answer = await executeCodex({
-          command,
-          args,
-          cwd,
-          timeoutMs,
-          onDelta,
-        });
+        let answer;
+        try {
+          answer = await executeCodex({
+            command,
+            args,
+            cwd: materialized.directory ?? cwd,
+            timeoutMs,
+            onDelta,
+          });
+        } finally {
+          await materialized.cleanup();
+        }
 
         if (!answer.trim()) {
           throw new Error(
@@ -80,6 +105,40 @@ export async function createCodexProvider({
       // 每次 ask 都是獨立 Codex process，沒有長連線要清理。
     },
   };
+}
+
+async function materializeMedia(media = []) {
+  if (!Array.isArray(media) || media.length === 0) {
+    return { directory: null, paths: [], cleanup: async () => {} };
+  }
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), "cradle-media-"));
+  const paths = [];
+  try {
+    for (let index = 0; index < media.length; index += 1) {
+      const item = media[index];
+      if (!item?.data) throw new Error("Media input requires data");
+      const file = path.join(directory, `${index}${extensionFor(item.mediaType)}`);
+      await fs.writeFile(file, Buffer.from(item.data), { flag: "wx" });
+      paths.push(file);
+    }
+  } catch (error) {
+    await fs.rm(directory, { recursive: true, force: true });
+    throw error;
+  }
+  return {
+    directory,
+    paths,
+    cleanup: () => fs.rm(directory, { recursive: true, force: true }),
+  };
+}
+
+function extensionFor(mediaType) {
+  return ({
+    "image/png": ".png",
+    "image/jpeg": ".jpg",
+    "image/webp": ".webp",
+    "image/gif": ".gif",
+  })[mediaType] ?? ".bin";
 }
 
 function executeCodex({

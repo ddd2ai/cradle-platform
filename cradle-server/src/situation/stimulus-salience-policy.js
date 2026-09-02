@@ -13,6 +13,20 @@ export function evaluateStimulusAdmission(stimulus) {
     };
   }
 
+  const envelope = stimulus?.envelope ?? (
+    stimulus?.schemaVersion && stimulus?.stimulusId ? stimulus : null
+  );
+  if (envelope?.source === "file.ingestion") {
+    const decision = envelope.facts?.processing ?? "cultivate";
+    return {
+      decision,
+      activate: decision === "cultivate",
+      reason: decision === "summary-only"
+        ? "document salience is below the full cultivation threshold"
+        : "document has actionable salience",
+    };
+  }
+
   return {
     decision: "activate",
     activate: true,
@@ -34,7 +48,7 @@ export function evaluateStimulusBatch(stimuli = []) {
       reason: "stimulus may change cell state or decisions",
       summaryStimuli,
       reasoningStimuli,
-      summaryObservation: createPassiveExecutionObservation(summaryStimuli),
+      summaryObservation: createDeterministicSummaryObservation(summaryStimuli),
     };
   }
 
@@ -43,18 +57,30 @@ export function evaluateStimulusBatch(stimuli = []) {
     reason: "successful execution evidence is deterministic",
     summaryStimuli,
     reasoningStimuli,
-    observation: createPassiveExecutionObservation(summaryStimuli),
+    observation: createDeterministicSummaryObservation(summaryStimuli),
   };
 }
 
-function createPassiveExecutionObservation(stimuli) {
+function createDeterministicSummaryObservation(stimuli) {
   if (stimuli.length === 0) return null;
-  const executionResults = stimuli.map(readExecutionResult);
-  return {
-    summary: `${executionResults.length} artifact execution result(s) completed without an actionable failure.`,
-    facts: executionResults.map(
+  const fileStimuli = stimuli.filter((stimulus) => stimulusEnvelope(stimulus)?.source === "file.ingestion");
+  const executionResults = stimuli
+    .filter((stimulus) => stimulusEnvelope(stimulus)?.source !== "file.ingestion")
+    .map(readExecutionResult);
+  const facts = [
+    ...fileStimuli.map((stimulus) => {
+      const envelope = stimulusEnvelope(stimulus);
+      return `${envelope.facts?.sourceName ?? envelope.stimulusId}: ${envelope.facts?.extractionOutcome ?? "recorded"}`;
+    }),
+    ...executionResults.map(
       (result) => `${result.artifactId ?? "artifact"}: ${result.status}`
     ),
+  ];
+  return {
+    summary: fileStimuli.length > 0
+      ? `${fileStimuli.length} low-salience document stimulus/stimuli recorded without full cultivation.`
+      : `${executionResults.length} artifact execution result(s) completed without an actionable failure.`,
+    facts,
     interpretations: [],
     hypotheses: [],
     unknowns: [],
@@ -62,10 +88,14 @@ function createPassiveExecutionObservation(stimuli) {
   };
 }
 
-function readExecutionResult(stimulus) {
-  const envelope = stimulus?.envelope ?? (
+function stimulusEnvelope(stimulus) {
+  return stimulus?.envelope ?? (
     stimulus?.schemaVersion && stimulus?.stimulusId ? stimulus : null
   );
+}
+
+function readExecutionResult(stimulus) {
+  const envelope = stimulusEnvelope(stimulus);
   if (envelope) {
     return {
       source: envelope.source,

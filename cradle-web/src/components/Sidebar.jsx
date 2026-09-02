@@ -139,6 +139,13 @@ function NavIcon({ id }) {
 }
 
 function cellActivity(cell) {
+  const cultivationState = String(cell.cultivation?.state ?? "").toLowerCase();
+  if (["stimulated", "growing"].includes(cultivationState)) {
+    return `Growing ${Math.round(Number(cell.cultivation?.progress) || 0)}%`;
+  }
+  if (cultivationState === "stable") return "Stable";
+  if (cultivationState === "needs_attention") return "Needs Attention";
+
   const status = String(cell.status ?? "").toLowerCase();
 
   if (cell.active === true || ["active", "running"].includes(status)) {

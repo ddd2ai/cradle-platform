@@ -54,7 +54,15 @@ export class StimulusStore {
     } catch (error) {
       if (error?.code !== "EEXIST") throw error;
       this.metrics?.increment("stimuli_deduplicated", 1, { type: envelope.type });
-      return { category: envelope.category, duplicate: true, envelope };
+      const existing = await readJsonFile(dedupPath, null);
+      return {
+        category: envelope.category,
+        duplicate: true,
+        duplicateOf: existing?.stimulusId ?? null,
+        envelope: existing?.stimulusId
+          ? { ...envelope, stimulusId: existing.stimulusId }
+          : envelope,
+      };
     }
 
     const targets = resolveStimulusTargets(envelope);

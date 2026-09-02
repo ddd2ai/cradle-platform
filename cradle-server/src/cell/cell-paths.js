@@ -70,6 +70,7 @@ export function createCellPaths({
     evolutionsDir: path.join(rootDir, "evolutions"),
     evolutionStateFile: path.join(rootDir, "evolution-state.json"),
     lifecycleEventsFile: path.join(rootDir, "lifecycle-events.json"),
+    cultivationStateFile: path.join(rootDir, "cultivation-state.json"),
     livingContextFile: path.join(rootDir, "living-context.json"),
     profileFile: path.join(rootDir, "profile.json"),
     memoryFiles: {

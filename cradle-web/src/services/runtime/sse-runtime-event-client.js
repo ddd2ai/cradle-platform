@@ -6,6 +6,7 @@ export const RUNTIME_EVENT_TYPES = [
   "operation.updated",
   "cell.created",
   "cell.updated",
+  "cell.cultivation.updated",
   "artifacts.updated",
   "cultivation.updated",
 ];

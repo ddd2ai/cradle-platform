@@ -43,6 +43,7 @@ export function toCellViewModel(cell) {
       cell.profile?.directories?.workspace ??
       null,
     workspaceSections,
+    cultivation: cell.cultivation ?? null,
   };
 }
 

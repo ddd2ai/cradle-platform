@@ -142,6 +142,23 @@ function App() {
   }, []);
 
   useEffect(() => subscribeToCradleEvents((event) => {
+    if (event.type === "cell.cultivation.updated") {
+      const { cellId, cultivation } = event.payload;
+      if (!cellId || !cultivation) return;
+
+      startTransition(() => {
+        setCells((currentCells) => currentCells.map((cell) =>
+          cell.id === cellId ? { ...cell, cultivation } : cell,
+        ));
+        setSelectedCell((current) =>
+          (current?.id ?? current?.cellId) === cellId
+            ? { ...current, cultivation }
+            : current,
+        );
+      });
+      return;
+    }
+
     if (["cell.created", "cell.updated"].includes(event.type)) {
       const { payload } = event;
 

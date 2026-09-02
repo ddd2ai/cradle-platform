@@ -20,7 +20,7 @@ Stimulus / Message / Task
 
 核心不變量：
 
-- Message received 不等於 Cell activated；inactive Cell 只保存工作。
+- Message received 不等於所有 Cell activated；targeting 與 salience 必須先通過。manual/heartbeat inactive Cell 只保存一般 queue 工作，明確的 background cultivation operation 則只喚醒被選中的 Cell。
 - 重複 Stimulus 在 durable dedup 命中後不會發出 wake-up。
 - 已知 `passed` / `skipped` execution stimulus 只排入可合併的 summary flush，不進 activation scheduler。
 - Cell activated 不等於 LLM required；可判定的成功結果只更新 observation。
@@ -44,6 +44,11 @@ router 直接把 envelope 寫入 `stimuli/queues/<cellId>/`。因此 Cell 只讀
 新事件會喚醒目標 Cell 的 actor，但 inactive Cell 只累積 durable work。啟動 Cell 後才會 claim，
 處理成功 archive，失敗 release，避免「收到訊息」直接等同「執行 LLM」。
 
+File ingestion 另有明確的 bounded background operation：它不修改 manual `active` flag，而是將選中的 Cell
+從持久化 `dormant` 轉成 `stimulated`／`growing`，依 salience 執行 summary-only 或 cultivation，最後以品質
+閘門收斂為 `stable`／`needs_attention`。這使 dormant Cell 能由真正相關的事件喚醒，又不需要把全部 Cell
+放進 heartbeat loop。詳見 [STIMULUS_CULTIVATION_PIPELINE.md](./STIMULUS_CULTIVATION_PIPELINE.md)。
+
 ## 複雜度目標
 
 | 路徑 | 舊模型 | 新模型 |
@@ -59,6 +64,7 @@ router 直接把 envelope 寫入 `stimuli/queues/<cellId>/`。因此 Cell 只讀
 | heartbeat proposal writes | `O(N)` | `O(A)` actionable proposals |
 | terminal runtime payload | `O(result size)` | `O(1)` summary，結果由 REST 讀取 |
 | terminal reconciliation | 所有 loader | 只刷新受影響資源 |
+| same-Cell cultivation UI burst | 每筆 event 觸發 subscriber／可能 refetch | 每 animation frame 合併為該 Cell 最新狀態；terminal 不做 all-Cell refetch |
 | incremental Artifact blob reads | `O(B)` 全內容 | typical `O(Δ)`；不確定時安全回退 `O(B)` |
 | incremental Artifact validation | `O(B)` 全內容 | typical `O(Δ + G)`；證據不足才回退 `O(B)` |
 | Artifact target location | `O(F × S)` metadata scan | indexed `O(L + K + C × S)`；legacy 安全回退 |

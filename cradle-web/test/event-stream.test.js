@@ -74,6 +74,21 @@ test("Cradle events share one runtime client and fan out canonical events", asyn
   assert.equal(reconciliations, 1);
 
   client.emit({
+    id: "stimulus-terminal",
+    type: "operation.updated",
+    timestamp: "2026-08-09T00:00:00.500Z",
+    payload: {
+      operation: {
+        operationId: "op-stimulus",
+        type: "stimulus-cultivation",
+        status: "completed",
+      },
+    },
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(reconciliations, 1, "stimulus terminal event must not refetch all Cells");
+
+  client.emit({
     id: "2",
     type: "operation.updated",
     timestamp: "2026-08-09T00:00:01.000Z",

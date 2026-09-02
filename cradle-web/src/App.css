@@ -451,10 +451,69 @@ button:focus-visible { outline: 2px solid #9b8cff; outline-offset: 2px; }
 }
 
 .incubator-workspace {
+  position: relative;
   display: grid;
   width: 100%;
   min-width: 0;
   min-height: 0;
+}
+
+.incubator-drop-overlay {
+  position: absolute;
+  inset: 14px;
+  z-index: 75;
+  display: grid;
+  border: 1px dashed rgba(107, 229, 167, .72);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 50% 44%, rgba(61, 202, 139, .16), transparent 34%),
+    rgba(2, 13, 20, .82);
+  box-shadow:
+    inset 0 0 70px rgba(55, 196, 132, .08),
+    0 0 0 7px rgba(70, 210, 147, .035);
+  opacity: 0;
+  pointer-events: none;
+  place-items: center;
+  transform: scale(.992);
+  transition: opacity 140ms ease, transform 180ms ease;
+}
+
+.incubator-workspace--feed-ready .incubator-drop-overlay {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.incubator-drop-overlay__message {
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  color: #ecfff5;
+  text-align: center;
+}
+
+.incubator-drop-overlay__message > span {
+  display: grid;
+  width: 54px;
+  height: 54px;
+  border: 1px solid rgba(122, 238, 180, .42);
+  border-radius: 50%;
+  background: rgba(50, 184, 121, .13);
+  box-shadow: 0 0 32px rgba(65, 219, 146, .18);
+  color: #82e7b4;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 27px;
+  place-items: center;
+}
+
+.incubator-drop-overlay__message strong {
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: .01em;
+}
+
+.incubator-drop-overlay__message small {
+  color: rgba(187, 217, 203, .7);
+  font-size: 12px;
 }
 
 .incubator-intro__index {
@@ -1101,6 +1160,24 @@ button:focus-visible { outline: 2px solid #9b8cff; outline-offset: 2px; }
   font-size: 9px;
 }
 
+.floating-cell__progress {
+  width: 78px;
+  height: 3px;
+  margin-top: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(91, 121, 130, .34);
+}
+
+.floating-cell__progress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--cell-rim);
+  box-shadow: 0 0 7px var(--cell-glow);
+  transition: width 180ms ease-out;
+}
+
 .floating-cell:hover .floating-cell__selection,
 .floating-cell:focus-visible .floating-cell__selection {
   filter:
@@ -1407,15 +1484,20 @@ button:focus-visible { outline: 2px solid #9b8cff; outline-offset: 2px; }
   display: none;
 }
 
-.cell-feed {
+.cell-feed-zone {
   position: relative;
   grid-column: 2;
   min-width: 0;
 }
 
+.cell-feed {
+  position: relative;
+  min-width: 0;
+}
+
 .cell-feed__status {
   position: absolute;
-  bottom: calc(100% + 8px);
+  bottom: calc(100% + 94px);
   left: 8px;
   display: inline-flex;
   max-width: min(100%, 540px);
@@ -1504,6 +1586,105 @@ button:focus-visible { outline: 2px solid #9b8cff; outline-offset: 2px; }
   box-shadow:
     0 0 0 1px rgba(143, 110, 255, .1),
     0 0 22px rgba(111, 78, 222, .1);
+}
+
+.cell-feed__file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.cultivation-progress {
+  position: absolute;
+  right: 6px;
+  bottom: calc(100% + 9px);
+  left: 6px;
+  display: grid;
+  gap: 7px;
+  padding: 11px 13px;
+  border: 1px solid rgba(96, 211, 148, .25);
+  border-radius: 14px;
+  background: rgba(4, 20, 28, .94);
+  box-shadow: 0 15px 34px rgba(0, 0, 0, .28);
+  backdrop-filter: blur(18px);
+}
+
+.cultivation-progress__heading,
+.cultivation-progress__meta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cultivation-progress__heading strong {
+  overflow: hidden;
+  color: #e9f7ef;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cultivation-progress__heading span {
+  color: #73dca2;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.cultivation-progress__track {
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(117, 150, 165, .18);
+}
+
+.cultivation-progress__track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #55bd83, #8ae2ad);
+  box-shadow: 0 0 12px rgba(96, 211, 148, .38);
+  transition: width 180ms ease-out;
+}
+
+.cultivation-progress__meta {
+  color: rgba(159, 182, 193, .72);
+  font-size: 10px;
+}
+
+.cultivation-progress__meta span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cultivation-progress__terminal-message {
+  margin: 0;
+  color: rgba(207, 225, 215, .78);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.cultivation-progress--attention {
+  border-color: rgba(225, 154, 81, .4);
+  background: rgba(35, 24, 18, .95);
+}
+
+.cultivation-progress--attention .cultivation-progress__heading span {
+  color: #edb36f;
+}
+
+.cultivation-progress--attention .cultivation-progress__track > span {
+  background: #d99754;
+}
+
+.cultivation-progress--attention .cultivation-progress__terminal-message {
+  color: rgba(244, 203, 157, .86);
 }
 
 .cell-feed__composer--disabled {

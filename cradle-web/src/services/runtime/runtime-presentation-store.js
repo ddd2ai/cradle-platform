@@ -55,5 +55,10 @@ function transientEventKey(event) {
     return "cultivation.updated";
   }
 
+  if (event.type === "cell.cultivation.updated") {
+    const cellId = event.payload?.cellId ?? event.payload?.cultivation?.cellId;
+    return cellId ? `cell.cultivation.updated:${cellId}` : null;
+  }
+
   return null;
 }

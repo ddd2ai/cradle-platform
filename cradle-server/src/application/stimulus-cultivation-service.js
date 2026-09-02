@@ -1,0 +1,465 @@
+import { evaluateDocumentStimulus } from "../situation/document-stimulus-policy.js";
+import { selectStimulusTargets } from "../situation/stimulus-relevance-policy.js";
+import {
+  decideCultivationQuality,
+  observation,
+} from "../situation/cultivation-quality-policy.js";
+import { StimulusArtifactEvolutionService } from "../production/stimulus-artifact-evolution-service.js";
+import { CellCultivationCoordinator } from "./cell-cultivation-coordinator.js";
+
+const PHASES = Object.freeze({
+  analyzing: 15,
+  selecting: 30,
+  stimulating: 42,
+  cultivating: 58,
+  evolving: 76,
+  validating: 90,
+  stabilizing: 96,
+  stable: 100,
+  needs_attention: 100,
+});
+
+export class StimulusCultivationService {
+  constructor({
+    engine,
+    eventStream = null,
+    artifactEvolutionService,
+    coordinator,
+    activityLogger = null,
+  } = {}) {
+    if (!engine) throw new Error("StimulusCultivationService requires engine");
+    this.engine = engine;
+    this.eventStream = eventStream;
+    this.artifactEvolutionService = artifactEvolutionService ?? new StimulusArtifactEvolutionService();
+    this.coordinator = coordinator ?? new CellCultivationCoordinator();
+    this.activityLogger = activityLogger;
+  }
+
+  async cultivate({ source, extraction, explicitCellId = null, operationId, update = () => {} } = {}) {
+    this.activityLogger?.info("cultivation", "routing.started", {
+      operationId,
+      sourceId: source.sourceId,
+      targetCell: explicitCellId ?? "auto",
+    });
+    updatePhase(update, "analyzing");
+    const descriptors = await Promise.all(
+      this.engine.listCells().map((cell) => this.#describeCell(cell))
+    );
+    updatePhase(update, "selecting");
+    const stimulusDraft = {
+      summary: `${source.originalName} entered Cradle`,
+      content: extraction.text,
+      facts: { sourceName: source.originalName },
+    };
+    const routing = selectStimulusTargets({
+      stimulus: stimulusDraft,
+      cells: descriptors,
+      explicitCellId,
+    });
+    if (routing.needsAttention) {
+      this.activityLogger?.warn("cultivation", "routing.needs_attention", {
+        operationId,
+        sourceId: source.sourceId,
+        reason: routing.reason,
+      });
+      return {
+        lifeState: "needs_attention",
+        currentStage: "needs_attention",
+        routing,
+        qualityDecision: {
+          outcome: "insufficient_evidence",
+          lifeState: "needs_attention",
+          reason: routing.reason,
+        },
+      };
+    }
+
+    const cellIds = routing.targets.map((target) => target.cellId);
+    this.activityLogger?.info("cultivation", "routing.completed", {
+      operationId,
+      sourceId: source.sourceId,
+      cellIds,
+    });
+    update({ context: { sourceId: source.sourceId, sourceName: source.originalName, cellIds } });
+    updatePhase(update, "stimulating");
+    const results = [];
+    for (let index = 0; index < routing.targets.length; index += 1) {
+      const target = routing.targets[index];
+      const cell = this.engine.requireCell(target.cellId);
+      results.push(await this.coordinator.run(cell.id, () => this.#cultivateCell({
+        cell,
+        source,
+        extraction,
+        target,
+        operationId,
+        update,
+      })));
+    }
+    const needsAttention = results.some((result) => result.lifeState === "needs_attention");
+    updatePhase(update, needsAttention ? "needs_attention" : "stable");
+    return {
+      lifeState: needsAttention ? "needs_attention" : "stable",
+      currentStage: needsAttention ? "needs_attention" : "stable",
+      routing,
+      cells: results,
+    };
+  }
+
+  async #cultivateCell({ cell, source, extraction, target, operationId, update }) {
+    const policy = evaluateDocumentStimulus({ source, extraction, relevance: target.relevance });
+    this.activityLogger?.info("cultivation", "cell.selected", {
+      operationId,
+      sourceId: source.sourceId,
+      cellId: cell.id,
+      relevance: Number(target.relevance.toFixed(3)),
+      decision: policy.decision,
+      salience: Number(policy.score.toFixed(3)),
+      evolveArtifact: policy.evolveArtifact,
+    });
+    const baseEvidence = [
+      observation({
+        indicator: "source_integrity",
+        outcome: source.sha256 && source.byteLength > 0 ? "sufficient" : "insufficient",
+        method: "sha256-and-byte-count",
+        expected: "stored source has a cryptographic digest and non-zero bytes",
+        actual: `${source.byteLength} bytes sha256=${source.sha256}`,
+        evidenceRef: `source:${source.sourceId}`,
+      }),
+      observation({
+        indicator: "content_evidence",
+        outcome: extraction.evidence?.outcome ?? "insufficient_evidence",
+        method: extraction.method,
+        expected: "source content is machine-observable",
+        actual: extraction.evidence?.reason ?? extraction.status,
+        evidenceRef: `source:${source.sourceId}:extraction`,
+      }),
+      observation({
+        indicator: "cell_relevance",
+        outcome: target.relevance > 0 || target.reason === "only available Cell" ? "sufficient" : "insufficient_evidence",
+        method: "deterministic-context-term-overlap-v1",
+        expected: "target Cell has reproducible relevance evidence",
+        actual: `${target.relevance}: ${target.reason}`,
+        evidenceRef: `cell:${cell.id}`,
+      }),
+    ];
+
+    const stimulus = await cell.writeStimulus({
+      category: policy.salience.risk >= 0.8 ? "threats" : "signals",
+      type: "document.ingested",
+      source: "file.ingestion",
+      targetCellIds: [cell.id],
+      correlationId: operationId,
+      causationId: source.stimulusId,
+      dedupKey: `file:${source.sha256}:${cell.id}`,
+      salience: policy.salience,
+      summary: stimulusSummary(source, extraction),
+      content: extraction.text,
+      facts: {
+        sourceId: source.sourceId,
+        sourceStimulusId: source.stimulusId,
+        sourceName: source.originalName,
+        mediaType: source.mediaType,
+        byteLength: source.byteLength,
+        sha256: source.sha256,
+        extractionStatus: extraction.status,
+        extractionOutcome: extraction.evidence?.outcome,
+        processing: policy.decision,
+        relevance: target.relevance,
+      },
+      notify: false,
+    });
+    let retryingDuplicate = false;
+    if (stimulus.duplicate) {
+      const currentCultivation = await cell.getCultivationState?.();
+      const retryingAttention = currentCultivation?.state === "needs_attention" &&
+        currentCultivation.stimulusId === stimulus.duplicateOf;
+      if (retryingAttention) {
+        retryingDuplicate = true;
+        this.activityLogger?.info("cultivation", "stimulus.retrying", {
+          operationId,
+          sourceId: source.sourceId,
+          cellId: cell.id,
+          stimulusId: stimulus.duplicateOf,
+        });
+      } else {
+      this.activityLogger?.info("cultivation", "stimulus.duplicate", {
+        operationId,
+        sourceId: source.sourceId,
+        cellId: cell.id,
+        stimulusId: stimulus.duplicateOf,
+      });
+      await cell.lifecycleEventStore.appendLifecycleEvent({
+        type: "stimulus-cultivation",
+        status: "duplicate",
+        stimulusId: stimulus.duplicateOf ?? stimulus.envelope.stimulusId,
+        sourceId: source.sourceId,
+        sourceStimulusId: source.stimulusId,
+        salienceDecision: "deduplicated",
+      });
+      return {
+        cellId: cell.id,
+        stimulusId: stimulus.duplicateOf ?? stimulus.envelope.stimulusId,
+        lifeState: "stable",
+        policy: { ...policy, decision: "deduplicated" },
+        artifactEvolution: { decision: "not-required", reason: "duplicate Stimulus" },
+        qualityDecision: { outcome: "sufficient", lifeState: "stable", duplicate: true },
+      };
+      }
+    }
+    if (!retryingDuplicate) {
+      this.activityLogger?.info("cultivation", "stimulus.persisted", {
+        operationId,
+        sourceId: source.sourceId,
+        cellId: cell.id,
+        stimulusId: stimulus.envelope.stimulusId,
+      });
+    }
+    await this.#publishCellState(cell, {
+      state: "stimulated",
+      progress: PHASES.stimulating,
+      phase: "stimulating",
+      operationId,
+      stimulusId: stimulus.envelope.stimulusId,
+      attention: null,
+      evidence: baseEvidence,
+    });
+    await this.#publishCellState(cell, {
+      state: "growing",
+      progress: PHASES.cultivating,
+      phase: policy.decision === "summary-only" ? "remembering" : "cultivating",
+      operationId,
+      stimulusId: stimulus.envelope.stimulusId,
+    });
+    updatePhase(update, "cultivating");
+
+    if (policy.decision === "needs-attention") {
+      const qualityDecision = decideCultivationQuality(baseEvidence);
+      return await this.#finishCell({ cell, source, stimulus, policy, qualityDecision, artifactEvolution: null });
+    }
+
+    let memoryRecorded = false;
+    try {
+      const beforeTasks = await cell.readTasks();
+      const beforeTaskIds = new Set(beforeTasks.map((task) => task.id));
+      await cell.appendKnowledge(buildKnowledgeRecord({ source, stimulus: stimulus.envelope, extraction }));
+      memoryRecorded = true;
+      this.activityLogger?.info("cultivation", "memory.recorded", {
+        operationId,
+        sourceId: source.sourceId,
+        cellId: cell.id,
+        stimulusId: stimulus.envelope.stimulusId,
+      });
+      this.activityLogger?.info("cultivation", "metabolism.started", {
+        operationId,
+        cellId: cell.id,
+        mode: policy.decision,
+      });
+      const metabolism = await cell.metabolismService.metabolize({
+        summaryOnly: policy.decision === "summary-only",
+      });
+      this.activityLogger?.info("cultivation", "metabolism.completed", {
+        operationId,
+        cellId: cell.id,
+        processing: metabolism.processing ?? policy.decision,
+        consumed: metabolism.consumed ?? 0,
+        tasksCreated: metabolism.created ?? 0,
+      });
+      if (policy.decision === "cultivate") {
+        const newTasks = (await cell.readTasks()).filter(
+          (task) => task.status === "pending" && !beforeTaskIds.has(task.id)
+        ).slice(0, 1);
+        for (const task of newTasks) {
+          await cell.processTask(task);
+          await cell.completeTask(task.id);
+        }
+      }
+    } catch (error) {
+      this.activityLogger?.error("cultivation", "cell.failed", {
+        operationId,
+        sourceId: source.sourceId,
+        cellId: cell.id,
+        stage: memoryRecorded ? "metabolism" : "memory",
+        error: error.message,
+      });
+      const qualityDecision = decideCultivationQuality([
+        ...baseEvidence,
+        gateFailure("memory_recorded", error.message, source.sourceId),
+      ]);
+      return await this.#finishCell({ cell, source, stimulus, policy, qualityDecision, artifactEvolution: null });
+    }
+
+    let artifactEvolution = { decision: "not-required", reason: policy.reason };
+    if (policy.evolveArtifact) {
+      updatePhase(update, "evolving");
+      await this.#publishCellState(cell, { progress: PHASES.evolving, phase: "evolving" });
+      this.activityLogger?.info("cultivation", "artifact.evaluation_started", {
+        operationId,
+        sourceId: source.sourceId,
+        cellId: cell.id,
+      });
+      try {
+        artifactEvolution = await this.artifactEvolutionService.evaluateAndEvolve({
+          cell,
+          stimulus: stimulus.envelope,
+          source,
+        });
+        this.activityLogger?.info("cultivation", "artifact.evaluation_completed", {
+          operationId,
+          sourceId: source.sourceId,
+          cellId: cell.id,
+          decision: artifactEvolution.decision,
+          artifactId: artifactEvolution.artifactId,
+          revisionId: artifactEvolution.revisionId,
+        });
+      } catch (error) {
+        artifactEvolution = { decision: "needs-attention", reason: error.message };
+        this.activityLogger?.warn("cultivation", "artifact.needs_attention", {
+          operationId,
+          sourceId: source.sourceId,
+          cellId: cell.id,
+          reason: error.message,
+        });
+      }
+    }
+    updatePhase(update, "validating");
+    await this.#publishCellState(cell, { progress: PHASES.validating, phase: "validating" });
+
+    const artifactOutcome = artifactEvolution.decision === "needs-attention"
+      ? "insufficient_evidence"
+      : "sufficient";
+    const provenanceOutcome = artifactEvolution.decision === "evolved" && !artifactEvolution.provenance
+      ? "insufficient"
+      : "sufficient";
+    const qualityDecision = decideCultivationQuality([
+      ...baseEvidence,
+      observation({
+        indicator: "memory_recorded",
+        outcome: memoryRecorded ? "sufficient" : "insufficient",
+        method: "cell-memory-append",
+        expected: "Stimulus provenance is written to Cell knowledge",
+        actual: memoryRecorded ? "recorded" : "not recorded",
+        evidenceRef: `cell:${cell.id}:memory`,
+      }),
+      observation({
+        indicator: "artifact_integrity",
+        outcome: artifactOutcome,
+        method: "artifact-impact-and-validation",
+        expected: "Artifact is unchanged or a validated owner revision is stored",
+        actual: artifactEvolution.reason
+          ? `${artifactEvolution.decision}: ${artifactEvolution.reason}`
+          : artifactEvolution.decision,
+        evidenceRef: artifactEvolution.artifactId
+          ? `artifact:${artifactEvolution.artifactId}:${artifactEvolution.revisionId ?? "current"}`
+          : `cell:${cell.id}:artifacts`,
+      }),
+      observation({
+        indicator: "provenance_recorded",
+        outcome: provenanceOutcome,
+        method: "stimulus-artifact-lineage",
+        expected: "Every Artifact mutation identifies its Stimulus and source",
+        actual: artifactEvolution.provenance ?? "no Artifact mutation",
+        evidenceRef: `stimulus:${stimulus.envelope.stimulusId}`,
+      }),
+    ]);
+    updatePhase(update, "stabilizing");
+    await this.#publishCellState(cell, { progress: PHASES.stabilizing, phase: "stabilizing" });
+    return await this.#finishCell({ cell, source, stimulus, policy, qualityDecision, artifactEvolution });
+  }
+
+  async #finishCell({ cell, source, stimulus, policy, qualityDecision, artifactEvolution }) {
+    const stable = qualityDecision.lifeState === "stable";
+    const attentionGate = qualityDecision.gates?.find((gate) => gate.outcome !== "sufficient");
+    const cultivation = await this.#publishCellState(cell, {
+      state: qualityDecision.lifeState,
+      progress: 100,
+      phase: qualityDecision.lifeState,
+      attention: stable ? null : {
+        code: "CULTIVATION_EVIDENCE_REQUIRED",
+        message: attentionGate?.actual ?? "Cultivation requires human attention",
+      },
+      evidence: qualityDecision.gates ?? [],
+    });
+    await cell.lifecycleEventStore.appendLifecycleEvent({
+      type: "stimulus-cultivation",
+      status: qualityDecision.lifeState,
+      stimulusId: stimulus.envelope.stimulusId,
+      sourceId: source.sourceId,
+      sourceStimulusId: source.stimulusId,
+      artifactId: artifactEvolution?.artifactId ?? null,
+      artifactRevisionId: artifactEvolution?.revisionId ?? null,
+      qualityContract: qualityDecision.contract,
+      qualityOutcome: qualityDecision.outcome,
+      salienceDecision: policy.decision,
+    });
+    this.activityLogger?.[stable ? "info" : "warn"](
+      "cultivation",
+      stable ? "cell.stable" : "cell.needs_attention",
+      {
+        operationId: cultivation.operationId,
+        sourceId: source.sourceId,
+        cellId: cell.id,
+        stimulusId: stimulus.envelope.stimulusId,
+        quality: qualityDecision.outcome,
+        artifactDecision: artifactEvolution?.decision,
+        reason: stable ? undefined : attentionGate?.actual,
+      },
+    );
+    return {
+      cellId: cell.id,
+      stimulusId: stimulus.envelope.stimulusId,
+      lifeState: cultivation.state,
+      policy,
+      artifactEvolution,
+      qualityDecision,
+    };
+  }
+
+  async #describeCell(cell) {
+    const [profile, livingContext, catalog] = await Promise.all([
+      cell.getProfile(),
+      cell.readLivingContext(),
+      cell.artifactStore.listArtifactSummaries(),
+    ]);
+    return {
+      cellId: cell.id,
+      name: cell.name,
+      purpose: livingContext?.purpose,
+      responsibilities: livingContext?.responsibilities ?? profile.responsibilities ?? [],
+      owns: livingContext?.owns ?? [],
+      inputs: livingContext?.inputs ?? [],
+      outputs: livingContext?.outputs ?? [],
+      artifacts: catalog.artifacts ?? [],
+    };
+  }
+
+  async #publishCellState(cell, patch) {
+    const cultivation = await cell.updateCultivationState(patch);
+    this.eventStream?.publish("cell.cultivation.updated", { cellId: cell.id, cultivation });
+    return cultivation;
+  }
+}
+
+function updatePhase(update, phase) {
+  update({ progress: PHASES[phase], currentStage: phase, lifeState: "growing" });
+}
+
+function stimulusSummary(source, extraction) {
+  const excerpt = String(extraction.text ?? "").replace(/\s+/g, " ").trim().slice(0, 240);
+  return excerpt || `${source.originalName} (${source.mediaType}, ${source.byteLength} bytes)`;
+}
+
+function buildKnowledgeRecord({ source, stimulus, extraction }) {
+  const content = String(extraction.text ?? "").trim().slice(0, 4_000);
+  return `\n## Stimulus ${stimulus.stimulusId}\n\n- sourceStimulusId: ${source.stimulusId}\n- sourceId: ${source.sourceId}\n- source: ${source.originalName}\n- mediaType: ${source.mediaType}\n- observedAt: ${stimulus.createdAt}\n- sha256: ${source.sha256}\n\n${content || "[Content unavailable: insufficient extraction evidence]"}\n`;
+}
+
+function gateFailure(indicator, actual, sourceId) {
+  return observation({
+    indicator,
+    outcome: "error",
+    method: "cultivation-runtime",
+    expected: "gate completes without error",
+    actual,
+    evidenceRef: `source:${sourceId}`,
+  });
+}

@@ -11,6 +11,7 @@ import {
   fuseCells,
   stabilizeCell,
   startCultivation,
+  uploadStimulusFile,
 } from "../src/api/cradleClient.js";
 import { DNA_DIMENSION_ORDER, mapDnaDimensions } from "../src/components/cell/dna-dimensions.js";
 import { CELL_PALETTES } from "../src/constants/incubatorVisuals.js";
@@ -18,6 +19,8 @@ import { CELL_PALETTES } from "../src/constants/incubatorVisuals.js";
 let vite;
 let IncubatorDish;
 let IncubatorWorkspace;
+let hasFilePayload;
+let CultivationProgressCard;
 let DigitalMicroscopeControls;
 let CellOperationDialogs;
 let CellControlCard;
@@ -54,6 +57,12 @@ before(async () => {
   ));
   ({ IncubatorWorkspace } = await vite.ssrLoadModule(
     "/src/components/incubator/IncubatorWorkspace.jsx",
+  ));
+  ({ hasFilePayload } = await vite.ssrLoadModule(
+    "/src/hooks/useIncubatorFeed.js",
+  ));
+  ({ CultivationProgressCard } = await vite.ssrLoadModule(
+    "/src/components/incubator/CultivationProgressCard.jsx",
   ));
   ({ DigitalMicroscopeControls } = await vite.ssrLoadModule(
     "/src/components/incubator/DigitalMicroscopeControls.jsx",
@@ -367,8 +376,10 @@ test("Incubator workspace renders only incubator controls in the bottom dock", (
     assert.match(markup, new RegExp(`>${label}<`));
   }
 
-  assert.match(markup, /Feed information to B01\.\.\./);
-  assert.match(markup, /aria-label="Feed selected Cell"/);
+  assert.match(markup, /Feed Cradle\. It will find the right Cell\.\.\./);
+  assert.match(markup, /aria-label="Cultivate text stimulus"/);
+  assert.match(markup, /data-feed-scope="cradle-auto-route"/);
+  assert.match(markup, /Release and let Cradle determine where this material belongs/);
   assert.doesNotMatch(markup, />Feed</);
   assert.doesNotMatch(markup, />Microscope</);
   assert.doesNotMatch(markup, />Run One Cycle</);
@@ -440,11 +451,17 @@ test("Microscope focus is disabled without a selected Cell", () => {
   assert.match(markup, /disabled="" aria-label="Focus selected cell" title="Focus selected cell">◎<\/button>/);
 });
 
-test("Cell feed composer is hidden until a Cell is selected", () => {
+test("Incubator feed stays auto-routed with or without a selected Cell", () => {
   const markup = renderWorkspace(createCells(1), { selectedCellId: null });
-  assert.doesNotMatch(markup, /Select a Cell to begin feeding\.\.\./);
-  assert.doesNotMatch(markup, /aria-label="Attach feeding material"/);
-  assert.doesNotMatch(markup, /aria-label="Feed selected Cell"/);
+  assert.match(markup, /Feed Cradle\. It will find the right Cell\.\.\./);
+  assert.match(markup, /aria-label="Attach feeding material"/);
+  assert.match(markup, /aria-label="Cultivate text stimulus"/);
+});
+
+test("Incubator-wide drop scope recognizes any dragged file payload", () => {
+  assert.equal(hasFilePayload({ types: ["Files"] }), true);
+  assert.equal(hasFilePayload({ types: ["text/plain"] }), false);
+  assert.equal(hasFilePayload(null), false);
 });
 
 test("Control dock reserves space when the inspector drawer is open", () => {
@@ -927,6 +944,88 @@ test("Feed posts content to the selected Cell inbox endpoint", async () => {
     path: "/api/v1/cells/B01/feed",
     body: { content: "Study error handling." },
   });
+});
+
+test("File stimulus upload returns the accepted background operation", async () => {
+  const originalFetch = globalThis.fetch;
+  let request = null;
+  globalThis.fetch = async (url, options) => {
+    request = { url, options };
+    return Response.json({
+      operationId: "op-stimulus",
+      type: "stimulus-cultivation",
+      status: "accepted",
+      progress: 0,
+      currentStage: "accepted",
+      lifeState: "growing",
+    }, { status: 202 });
+  };
+
+  try {
+    const file = new Blob(["bounded evidence"], { type: "text/plain" });
+    Object.defineProperty(file, "name", { value: "quality notes.txt" });
+    const accepted = await uploadStimulusFile(file);
+    assert.equal(accepted.operationId, "op-stimulus");
+    assert.equal(request.url, "/api/v1/stimuli/files");
+    assert.equal(request.options.method, "POST");
+    assert.equal(request.options.headers["content-type"], "text/plain");
+    assert.equal(request.options.headers["x-cradle-file-name"], "quality%20notes.txt");
+    assert.equal(request.options.body, file);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("Cultivation progress is shown only while work is growing", () => {
+  const growing = renderToStaticMarkup(React.createElement(CultivationProgressCard, {
+    operationId: null,
+    acceptedOperation: {
+      operationId: "op-growing",
+      status: "running",
+      progress: 58,
+      currentStage: "cultivating",
+      lifeState: "growing",
+      context: { cellIds: ["B01"], sourceName: "notes.md" },
+    },
+    selectedCell: { id: "B01", name: "B01" },
+  }));
+  assert.match(growing, /role="progressbar"/);
+  assert.match(growing, /58% · Cultivating/);
+
+  const attention = renderToStaticMarkup(React.createElement(CultivationProgressCard, {
+    operationId: null,
+    acceptedOperation: {
+      operationId: "op-attention",
+      status: "completed",
+      progress: 100,
+      currentStage: "needs_attention",
+      lifeState: "needs_attention",
+      context: { cellIds: ["B01"], sourceName: "scan.pdf" },
+    },
+    selectedCell: {
+      id: "B01",
+      name: "B01",
+      cultivation: { attention: { message: "OCR unavailable" } },
+    },
+  }));
+  assert.doesNotMatch(attention, /role="progressbar"/);
+  assert.match(attention, /Needs Attention/);
+  assert.match(attention, /needs text extraction or OCR/);
+});
+
+test("Cell cultivation state takes precedence over manual active state", () => {
+  assert.equal(mapCellActivity({
+    id: "B01",
+    active: false,
+    status: "idle",
+    cultivation: { state: "growing", progress: 58 },
+  }), "growing");
+  assert.equal(mapCellActivity({
+    id: "B01",
+    active: true,
+    status: "active",
+    cultivation: { state: "needs_attention", progress: 100 },
+  }), "needs-attention");
 });
 
 test("Cell operations report an unavailable backend with readable text", async () => {

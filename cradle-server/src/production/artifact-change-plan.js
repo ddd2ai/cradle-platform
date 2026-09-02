@@ -14,6 +14,7 @@ export function createArtifactChangePlan({
   idFactory = () => `change-${randomUUID()}`,
   revisionIdFactory = () => `rev-${randomUUID()}`,
   now = () => new Date(),
+  provenance = null,
 } = {}) {
   if (!artifact?.id) {
     throw new Error("ArtifactChangePlan requires artifact");
@@ -100,6 +101,7 @@ export function createArtifactChangePlan({
     summary: String(proposal?.summary ?? "Incremental artifact repair").trim(),
     createdAt: now().toISOString(),
     changes,
+    ...(provenance ? { provenance: structuredClone(provenance) } : {}),
   };
 }
 
@@ -141,6 +143,15 @@ export function applyArtifactChangePlan({ artifact, changePlan } = {}) {
     throw new Error("ArtifactChangePlan did not apply every change");
   }
 
+  const evolutionRecord = changePlan.provenance
+    ? {
+        ...structuredClone(changePlan.provenance),
+        changePlanId: changePlan.changePlanId,
+        revisionId: changePlan.revisionId,
+        changedPaths,
+        recordedAt: changePlan.createdAt,
+      }
+    : null;
   return {
     ...artifact,
     outputs,
@@ -155,7 +166,11 @@ export function applyArtifactChangePlan({ artifact, changePlan } = {}) {
       changePlanId: changePlan.changePlanId,
       changedPaths,
       createdAt: changePlan.createdAt,
+      ...(changePlan.provenance ? { provenance: structuredClone(changePlan.provenance) } : {}),
     },
+    ...(evolutionRecord ? {
+      evolutionHistory: [...(artifact.evolutionHistory ?? []), evolutionRecord],
+    } : {}),
     updatedAt: changePlan.createdAt,
   };
 }

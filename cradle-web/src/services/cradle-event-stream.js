@@ -92,6 +92,11 @@ function handleRuntimeEvent(event) {
 }
 
 function resourcesForOperation(operation) {
+  if (operation.type === "stimulus-cultivation") {
+    // Cell cultivation events patch presentation state directly. REST remains
+    // available for reconnect reconciliation, without a terminal all-Cell fetch.
+    return [];
+  }
   if (operation.type === "heartbeat") {
     return ["cells", "selectedCell", "cultivation"];
   }
@@ -110,5 +115,9 @@ function createDefaultRuntimeEventClient() {
     const url = new URL("/api/v1/runtime/events", window.location.href);
     url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
     return url.toString();
+  }, {
+    // Node 22 exposes a global WebSocket. The UI transport must still remain a
+    // browser concern; SSR and tests must not open an implicit network client.
+    WebSocketFactory: typeof window === "undefined" ? null : globalThis.WebSocket,
   });
 }

@@ -48,4 +48,18 @@ assert.equal(mixed.summaryStimuli.length, 1);
 assert.equal(mixed.reasoningStimuli.length, 1);
 assert.equal(mixed.summaryObservation.facts[0], "artifact-001: passed");
 
+const documentBatch = evaluateStimulusBatch([{
+  schemaVersion: 1,
+  stimulusId: "stim-document",
+  source: "file.ingestion",
+  facts: {
+    processing: "summary-only",
+    sourceName: "notes.txt",
+    extractionOutcome: "sufficient",
+  },
+}]);
+assert.equal(documentBatch.processing, "summary-only");
+assert.equal(documentBatch.observation.summary, "1 low-salience document stimulus/stimuli recorded without full cultivation.");
+assert.equal(documentBatch.observation.facts[0], "notes.txt: sufficient");
+
 console.log("Stimulus salience policy tests passed");

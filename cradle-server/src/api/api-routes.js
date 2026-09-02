@@ -61,6 +61,7 @@ export function createApiRoutes({
   stabilizationServiceFactory,
   divisionServiceFactory,
   fusionServiceFactory,
+  ingestFileStimulusUseCase,
   cradleConfigFile,
 }) {
   return [
@@ -137,6 +138,14 @@ export function createApiRoutes({
     exact("POST", "/api/v1/cells", async ({ request }) =>
       new CreateCellUseCase({ engine, eventStream }).execute({
         cellId: request.body?.cellId,
+      })
+    ),
+    exact("POST", "/api/v1/stimuli/files", async ({ request, route }) =>
+      ingestFileStimulusUseCase.execute({
+        fileName: decodeFileNameHeader(request.headers?.["x-cradle-file-name"]),
+        mediaType: request.headers?.["content-type"],
+        bytes: request.body,
+        cellId: route.searchParams.get("cellId"),
       })
     ),
     exact("POST", "/api/v1/cells/activate-all", async () =>
@@ -421,6 +430,14 @@ function pattern(method, matcher, execute) {
     },
     execute,
   };
+}
+
+function decodeFileNameHeader(value) {
+  try {
+    return decodeURIComponent(String(value ?? ""));
+  } catch {
+    return String(value ?? "");
+  }
 }
 
 function parseBoolean(value) {

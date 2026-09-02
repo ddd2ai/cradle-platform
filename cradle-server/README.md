@@ -82,6 +82,16 @@ Validate → Execute → Observe
 * **演化必須可追溯**：DNA history、Memory、Thoughts、Lifecycle Events、Artifact Origin 與 Stability Records 共同保留演化證據。
 * **品質必須由證據判定**：品質結論來自有限指標與明確閘門，不來自模型信心或人類逐份校對。
 
+## Drop it in. Let it grow.
+
+Cradle web 現在可直接拖放或選擇文字、PDF、圖片與受支援文件。檔案不是 chat attachment：server 先保存
+source bytes 與 digest，再抽取可觀測內容、建立 canonical Stimulus、判斷相關 Cell 與 salience，最後以
+`202 Accepted` 在背景完成 memory、cultivation、品質驗證及必要的 owner-only Artifact evolution。
+
+主要 UI 只呈現 `Growing`、`Stable`、`Needs Attention` 與真實 lifecycle progress；一般 model output、reasoning
+和 execution log 留在次要 diagnostics surface。完整 active path、格式、品質閘門與 provenance 定義見
+[STIMULUS_CULTIVATION_PIPELINE.md](./docs/STIMULUS_CULTIVATION_PIPELINE.md)。
+
 ---
 
 # 願景（Vision）
@@ -595,6 +605,19 @@ providers/
   ├─ gemini-provider.js   (Google GenAI SDK)
   └─ codex-provider.js    (Codex CLI)
 ```
+
+Provider 可透過 `capabilities` 宣告可選能力，application/domain 不假設每個 provider
+都能處理圖片。目前 media input 的實作狀態為：
+
+| Provider | Text | Image/media | Adapter 行為 |
+| --- | --- | --- | --- |
+| Codex CLI | 支援 | 支援 | 在與 repository 隔離的暫存目錄以 read-only sandbox + `--image` 傳入，完成後清除 |
+| Ollama | 支援 | 支援，取決於所選 model | 以 Ollama `images` payload 傳入；非 vision model 的錯誤會成為 evidence failure |
+| Gemini CLI | 支援 | 尚未啟用 | 顯式宣告 unsupported，不假裝已觀察圖片 |
+| Copilot SDK | 支援 | 尚未啟用 | 顯式宣告 unsupported，等待穩定 attachment 介面 |
+
+圖片 ingestion 統一經過 `DocumentExtractorRegistry → ProviderMediaAnalyzer → LLM Provider`。
+Cell lifecycle 只看結構化 observation 與 evidence，不會看 CLI flag、HTTP payload 或 SDK attachment object。
 
 ## 使用範例
 

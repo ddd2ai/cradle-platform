@@ -3,6 +3,7 @@ import { IncubatorControlBar } from "./IncubatorControlBar";
 import { IncubatorDish } from "./IncubatorDish";
 import { IncubatorStats } from "./IncubatorStats";
 import { projectCellToViewport } from "../../features/incubator/utils/projectCellToViewport";
+import { hasFilePayload, useIncubatorFeed } from "../../hooks/useIncubatorFeed";
 
 const DEFAULT_CAMERA = {
   yaw: 0,
@@ -53,9 +54,19 @@ export function IncubatorWorkspace({
     moved: false,
   });
   const suppressClickRef = useRef(false);
+  const feedDragDepthRef = useRef(0);
   const [camera, setCamera] = useState(DEFAULT_CAMERA);
   const [viewportSize, setViewportSize] = useState(DEFAULT_VIEWPORT_SIZE);
   const [isDragging, setIsDragging] = useState(false);
+  const [isFeedDragActive, setIsFeedDragActive] = useState(false);
+  const {
+    acceptedOperation,
+    dismissOperation,
+    feedError,
+    feedFiles,
+    feedMessage,
+    isFeeding,
+  } = useIncubatorFeed();
   const isInspectorOpen = Boolean(selectedCellId);
   const inspectorWidth = isInspectorOpen ? CELL_INSPECTOR_WIDTH : 0;
   const usableViewportWidth = Math.max(
@@ -313,8 +324,51 @@ export function IncubatorWorkspace({
     }
   }
 
+  function handleFeedDragEnter(event) {
+    if (!hasFilePayload(event.dataTransfer)) return;
+    event.preventDefault();
+    feedDragDepthRef.current += 1;
+    if (!isFeeding) setIsFeedDragActive(true);
+  }
+
+  function handleFeedDragOver(event) {
+    if (!hasFilePayload(event.dataTransfer)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = isFeeding ? "none" : "copy";
+  }
+
+  function handleFeedDragLeave(event) {
+    if (!hasFilePayload(event.dataTransfer)) return;
+    event.preventDefault();
+    feedDragDepthRef.current = Math.max(0, feedDragDepthRef.current - 1);
+    if (feedDragDepthRef.current === 0) setIsFeedDragActive(false);
+  }
+
+  function handleFeedDrop(event) {
+    if (!hasFilePayload(event.dataTransfer)) return;
+    event.preventDefault();
+    feedDragDepthRef.current = 0;
+    setIsFeedDragActive(false);
+    if (!isFeeding) feedFiles(event.dataTransfer.files);
+  }
+
   return (
-    <section className="incubator-workspace">
+    <section
+      className={`incubator-workspace${isFeedDragActive ? " incubator-workspace--feed-ready" : ""}`}
+      data-feed-scope="cradle-auto-route"
+      aria-label="Incubator feeding area"
+      onDragEnter={handleFeedDragEnter}
+      onDragOver={handleFeedDragOver}
+      onDragLeave={handleFeedDragLeave}
+      onDrop={handleFeedDrop}
+    >
+      <div className="incubator-drop-overlay" aria-hidden={!isFeedDragActive}>
+        <div className="incubator-drop-overlay__message">
+          <span aria-hidden="true">↓</span>
+          <strong>Feed Cradle</strong>
+          <small>Release and let Cradle determine where this material belongs</small>
+        </div>
+      </div>
       <div className="incubator-stage">
         <div
           ref={viewportRef}
@@ -366,6 +420,12 @@ export function IncubatorWorkspace({
           onOrbitRight={orbitRight}
           onFocusSelectedCell={focusSelectedCell}
           onResetCamera={resetCamera}
+          acceptedOperation={acceptedOperation}
+          feedError={feedError}
+          feedMessage={feedMessage}
+          isFeeding={isFeeding}
+          onFeedFiles={feedFiles}
+          onDismissFeedOperation={dismissOperation}
         />
       </div>
     </section>

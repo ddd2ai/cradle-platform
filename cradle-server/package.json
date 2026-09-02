@@ -2,6 +2,9 @@
   "name": "cradle-server",
   "version": "1.0.0",
   "description": "Software Life Engineering Platform",
+  "engines": {
+    "node": ">=22 <23"
+  },
   "type": "module",
   "main": "src/cradle.js",
   "bin": {
@@ -29,6 +32,7 @@
     "@github/copilot-sdk": "^0.3.0",
     "@google/genai": "^2.11.0",
     "dotenv": "^17.4.2",
+    "pdfjs-dist": "^6.3.289",
     "terminal-kit": "^3.1.2",
     "ws": "^8.18.0"
   }

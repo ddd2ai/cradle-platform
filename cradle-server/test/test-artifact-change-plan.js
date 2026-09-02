@@ -35,6 +35,11 @@ const changePlan = createArtifactChangePlan({
   idFactory: () => "change-1",
   revisionIdFactory: () => "rev-next",
   now: () => new Date("2026-01-01T00:00:00.000Z"),
+  provenance: {
+    stimulusId: "stimulus-1",
+    sourceId: "source-1",
+    cellId: "cell-1",
+  },
 });
 
 const repaired = applyArtifactChangePlan({ artifact, changePlan });
@@ -42,6 +47,8 @@ assert.match(repaired.outputs[0].content, /return 'ok'/);
 assert.equal(repaired.outputs[1].content, artifact.outputs[1].content);
 assert.equal(repaired.revision.revisionId, "rev-next");
 assert.deepEqual(repaired.revision.changedPaths, ["src/service.js"]);
+assert.equal(repaired.revision.provenance.stimulusId, "stimulus-1");
+assert.deepEqual(repaired.evolutionHistory[0].changedPaths, ["src/service.js"]);
 
 assert.throws(
   () => createArtifactChangePlan({

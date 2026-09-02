@@ -139,6 +139,28 @@ describe("useOperationProgress - 核心訂閱行為", () => {
     sub.stop();
   });
 
+  it("terminal 狀態不會被較晚抵達的 202 accepted snapshot 覆寫", () => {
+    const operationId = "op-terminal-race";
+
+    updateOperationProgress({
+      operationId,
+      status: "completed",
+      progress: 100,
+      currentStage: "stable",
+      lifeState: "stable",
+    });
+    updateOperationProgress({
+      operationId,
+      status: "accepted",
+      progress: 0,
+      currentStage: "accepted",
+      lifeState: "growing",
+    });
+
+    assert.equal(getOperationState(operationId)?.status, "completed");
+    assert.equal(getOperationState(operationId)?.lifeState, "stable");
+  });
+
   it("取消訂閱後不再收到更新", async () => {
     const operationId = "op-hook-unsub";
     const sub = createProgressSubscription(operationId);

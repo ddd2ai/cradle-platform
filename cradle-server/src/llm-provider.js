@@ -7,6 +7,7 @@
  * @typedef {Object} LLMProvider
  * @property {string} name - Provider 名稱 (e.g., "copilot", "ollama")
  * @property {string} model - 使用的模型名稱 (e.g., "gpt-5-mini", "llama3.1:8b")
+ * @property {{mediaInput?: boolean}} [capabilities] - 可選的 provider capabilities
  * @property {Function} ask - 向 LLM 提問並取得回應
  * @property {Function} [cleanup] - 清理資源 (optional)
  */
@@ -16,6 +17,7 @@
  *
  * @typedef {Object} AskOptions
  * @property {string} prompt - 完整的 prompt,包含 system prompt 和 user input
+ * @property {{name?: string, mediaType: string, data: Uint8Array}[]} [media] - 可選的媒體輸入
  * @property {Function} [onDelta] - 每次收到新內容時的回調 (chunk: string) => void
  * @property {Function} [onIdle] - 回應完成時的回調 () => void
  * @property {Function} [onError] - 發生錯誤時的回調 (error: Error) => void

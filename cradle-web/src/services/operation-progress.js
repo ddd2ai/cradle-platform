@@ -74,6 +74,24 @@ export function updateOperationProgress(operation) {
   }
 
   const { operationId, status } = operation;
+  if (!operationStates.has(operationId)) {
+    operationStates.set(operationId, {
+      operation: null,
+      listeners: new Set(),
+      lastPublishedAt: 0,
+    });
+  }
+  const existing = operationStates.get(operationId).operation;
+
+  // The HTTP 202 response and the runtime stream race each other. A very fast
+  // operation can complete over WebSocket before fetch resolves; never let the
+  // later accepted snapshot roll authoritative terminal presentation backward.
+  if (
+    ["completed", "failed"].includes(existing?.status) &&
+    !["completed", "failed"].includes(status)
+  ) {
+    return;
+  }
 
   // Terminal 狀態 (completed/failed) 立即送達
   if (status === "completed" || status === "failed") {

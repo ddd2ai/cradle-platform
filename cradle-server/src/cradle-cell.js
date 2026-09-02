@@ -145,6 +145,7 @@ export class CradleCell {
     await this.prepareDNAVector();
     await this.prepareMemoryFiles();
     await this.prepareLivingContext();
+    await this.cultivationStateStore.reconcileInterrupted();
 
     this.productionService = new ArtifactProductionService({
       cell: this,
@@ -627,6 +628,14 @@ ${input}
     await this.profileStore.updateStatus(status);
   }
 
+  async getCultivationState() {
+    return await this.cultivationStateStore.read();
+  }
+
+  async updateCultivationState(patch) {
+    return await this.cultivationStateStore.update(patch);
+  }
+
   /**
    * Legacy maturity counter (deprecated)
    * DNA maturity is now calculated from dna-history.json
@@ -1050,6 +1059,7 @@ ${memoryContext}
     salience,
     summary,
     facts,
+    notify = true,
   } = {}) {
     const stimulus = await this.stimulusStore.writeStimulus({
       category,
@@ -1068,6 +1078,8 @@ ${memoryContext}
     if (stimulus.duplicate) {
       return stimulus;
     }
+
+    if (!notify) return stimulus;
 
     const admission = evaluateStimulusAdmission(stimulus.envelope);
     this.runtimeMetrics?.increment("stimulus_activation_decision", 1, {

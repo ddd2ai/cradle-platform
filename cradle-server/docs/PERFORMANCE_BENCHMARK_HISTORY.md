@@ -284,3 +284,66 @@ npm run benchmark:artifact
 - 沒有測量 provider token throughput、API rate limit、HTTP/event transport、React render、冷 cache 或明確 `fsync` durability。
 - p95 使用有限 samples，適合 regression 比較，不應直接當成 production SLO。
 - 未來若變更硬體、Node、filesystem、sample count 或 cache 模式，必須建立新紀錄，不可直接和本次宣稱 speedup。
+
+### 2026-09-02 — Stimulus cultivation event coalescing 與 Node 22 sanity check
+
+狀態：`current-state only`。Node 已由 v20 改為 v22.23.2，因此 Artifact 數值不與舊紀錄宣稱改善百分比；
+presentation benchmark 的 direct-dispatch control 與 coalesced path 是同一版本、同機、同 workload 比較，
+目的只在量化 subscriber/render amplification，不代表 React browser render latency。
+
+優化目標與 invariant：
+
+- `cell.cultivation.updated` 以 `cellId` 在同一 presentation frame 只保留最新事件。
+- 同一 Cell 的 background cultivation 由 coordinator 序列執行，避免重複 claim；不同 Cell 不共用 queue key。
+- `stimulus-cultivation` terminal event 不再觸發 `cells + selectedCell` REST refetch；Cell event 局部 patch 對應 state，reconnect 仍可由 REST reconciliation。
+- 百分比只能來自 server lifecycle checkpoint，不能 drop terminal state 或用 client timer 製造 progress。
+- 不減少 Stimulus persistence、quality gates、Artifact validation 或 provenance 工作。
+
+複雜度：一個 frame 內有 `E` 筆 cultivation events、`C` 個受影響 Cells 時，presentation subscriber delivery
+由 `O(E)` 降為 `O(C)`；queue ingestion 仍是 `O(E)`。單一 Cell 的 1000-event burst 因此只送出一次最新狀態。
+operation terminal 的正常 REST amplification 由 2 個 Cell resources request 降為 0；斷線重連仍保留全域 truth reconciliation。
+
+環境：Apple M4 Pro、14 logical CPUs、48 GiB RAM、Darwin arm64、Node v22.23.2。presentation workload 為
+25 次 warm-up、200 samples、每個 sample 同一 Cell 1000 events；`performance.now()`、Node `--expose-gc`，
+不含 browser layout/paint、network 與 LLM。
+
+```bash
+npm run benchmark:presentation --workspace=cradle-web
+```
+
+| Path | p50 | p95 | raw throughput | subscriber calls / 1000 events | terminal value |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| direct-dispatch control | 0.0008 ms | 0.0438 ms | 104,472,357 events/s | 1000 | 999 |
+| keyed frame coalescing | 0.0802 ms | 0.1344 ms | 11,026,294 events/s | 1 | 999 |
+
+coalescing 本身增加 Map/queue 的 raw CPU 成本，但把可能導致 React update 的 subscriber calls 從 1000 降為 1；
+這是此次要消除的 amplification。量測後 retained heap delta 為 29,384 bytes。focused test 另驗證 100 次
+same-Cell updates 的 pending queue 為 1，且最後 progress 99 未遺失。
+
+Artifact path 因新增 stimulus provenance 欄位也執行正式 sanity benchmark：
+
+```bash
+npm run benchmark:artifact
+```
+
+| Outputs | Full save p50 / p95 | Delta p50 / p95 | Selective p50 | Full read p50 |
+| ---: | ---: | ---: | ---: | ---: |
+| 10 | 9.189 / 9.398 ms | 2.111 / 2.283 ms | 0.493 ms | 1.132 ms |
+| 100 | 76.722 / 85.238 ms | 1.938 / 2.465 ms | 0.482 ms | 5.467 ms |
+| 1000 | 602.870 / 715.387 ms | 1.916 / 2.338 ms | 0.458 ms | 49.666 ms |
+
+| Cells | Independent p50 / throughput | Same-owner p50 / throughput | Cross-coordinator p50 / lease p95 |
+| ---: | ---: | ---: | ---: |
+| 2 | 2.715 ms / 736.614 ops/s | 4.401 ms / 454.438 ops/s | 8.170 ms / 7 ms |
+| 4 | 4.061 ms / 985.030 ops/s | 8.914 ms / 448.739 ops/s | 43.085 ms / 41 ms |
+| 8 | 9.393 ms / 851.679 ops/s | 19.057 ms / 419.789 ops/s | 384.420 ms / 371 ms |
+| 16 | 15.429 ms / 1036.977 ops/s | 42.940 ms / 372.612 ops/s | 1212.935 ms / 1193 ms |
+
+ownership rejection 1000 samples p50/p95 均為 0.003 ms，coordinator、lease 與 LLM calls 都是 0。
+完整結果：`/var/folders/xg/8d1b0g653xld375mpb6rc5k80000gn/T/cradle-artifact-benchmark-2026-09-02T10-47-12.069Z.json`。
+
+限制與下一步：
+
+- presentation 數字是 Node microbenchmark；下一步以 browser profiler 記錄 React commit count、frame time 與 network requests。
+- current operation store 是 process-local；restart recovery 若加入 durable worker queue，需另量測 queue age p50/p95。
+- image OCR 尚未加入，因此沒有用省略 vision work 換取效能；其 evidence outcome 明確是 `insufficient_evidence`。

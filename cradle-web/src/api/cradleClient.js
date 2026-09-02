@@ -1,5 +1,8 @@
 import { subscribeToCradleEvents } from "../services/cradle-event-stream.js";
-import { subscribeOperationProgress } from "../services/operation-progress.js";
+import {
+  subscribeOperationProgress,
+  updateOperationProgress,
+} from "../services/operation-progress.js";
 
 export async function fetchCells() {
   const response = await fetch("/api/v1/cells");
@@ -26,6 +29,15 @@ export async function fetchCreations() {
 
   const data = await response.json();
   return Array.isArray(data) ? data : data.items ?? [];
+}
+
+export async function fetchOperations() {
+  const response = await fetch("/api/v1/operations");
+  const data = await readJsonResponse(response);
+  if (!response.ok) {
+    throw new Error(data?.error?.message ?? `Failed to fetch operations: ${response.status}`);
+  }
+  return data?.operations ?? [];
 }
 
 export async function createCell(cellId) {
@@ -231,6 +243,38 @@ export async function feedCell(cellId, request) {
     `/api/v1/cells/${encodeURIComponent(cellId)}/feed`,
     request,
   );
+}
+
+export async function uploadStimulusFile(file, { cellId = null } = {}) {
+  if (!(file instanceof Blob)) {
+    throw new Error("A file is required");
+  }
+
+  const search = cellId
+    ? `?cellId=${encodeURIComponent(cellId)}`
+    : "";
+  let response;
+
+  try {
+    response = await fetch(`/api/v1/stimuli/files${search}`, {
+      method: "POST",
+      headers: {
+        "content-type": file.type || "application/octet-stream",
+        "x-cradle-file-name": encodeURIComponent(file.name || "stimulus.bin"),
+      },
+      body: file,
+    });
+  } catch {
+    throw new Error("Backend unavailable");
+  }
+
+  const data = await readJsonResponse(response);
+  if (!response.ok) {
+    throw new Error(data?.error?.message ?? `Upload failed: ${response.status}`);
+  }
+
+  updateOperationProgress(data);
+  return data;
 }
 
 export async function heartbeatCell() {

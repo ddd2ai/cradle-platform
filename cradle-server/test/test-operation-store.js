@@ -23,6 +23,23 @@ const terminalEvent = events.findLast(
 assert.equal("result" in terminalEvent.payload.operation, false);
 assert.equal(store.get(first.operationId).result.snapshot.cells.length, 100);
 
+const attention = store.create({ type: "stimulus-cultivation" });
+store.update(attention.operationId, {
+  status: "completed",
+  lifeState: "needs_attention",
+  result: {
+    cells: [{
+      qualityDecision: {
+        gates: [{ indicator: "content_evidence", outcome: "insufficient_evidence", actual: "OCR unavailable" }],
+      },
+    }],
+  },
+});
+const attentionEvent = events.findLast(
+  (event) => event.type === "operation.updated" && event.payload.operation.operationId === attention.operationId
+);
+assert.equal(attentionEvent.payload.operation.attention.message, "OCR unavailable");
+
 store.create({ type: "cell-division" });
 store.create({ type: "cell-fusion" });
 assert.equal(store.list().length, 2);

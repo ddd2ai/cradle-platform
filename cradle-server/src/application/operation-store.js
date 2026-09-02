@@ -17,6 +17,7 @@ export class InMemoryOperationStore {
       status: "accepted",
       progress: 0,
       currentStage: "accepted",
+      lifeState: type === "stimulus-cultivation" ? "growing" : null,
       result: null,
       error: null,
       createdAt: this.now().toISOString(),
@@ -96,5 +97,15 @@ export class InMemoryOperationStore {
 
 function toEventOperation(operation) {
   const { result: _result, ...summary } = operation;
-  return summary;
+  const attentionMessage = operation.lifeState === "needs_attention"
+    ? operation.error?.message ??
+      operation.result?.cells?.flatMap((cell) => cell.qualityDecision?.gates ?? [])
+        .find((gate) => gate.outcome !== "sufficient")?.actual ??
+      operation.result?.qualityDecision?.reason ??
+      null
+    : null;
+  return {
+    ...summary,
+    ...(attentionMessage ? { attention: { message: attentionMessage } } : {}),
+  };
 }

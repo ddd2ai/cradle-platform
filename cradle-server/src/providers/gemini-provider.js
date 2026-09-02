@@ -19,6 +19,7 @@ export async function createGeminiProvider({
   return {
     name: "gemini-cli",
     model: model || "auto",
+    capabilities: { mediaInput: false },
 
     async ask({
       prompt,

@@ -60,6 +60,7 @@ export async function createCopilotProvider({
   return {
     name: "copilot",
     model,
+    capabilities: { mediaInput: false },
 
     async ask({
       prompt,

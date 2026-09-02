@@ -22,8 +22,15 @@ export function mapCellToVisualState(cell, index = 0) {
 }
 
 export function mapCellActivity(cell, view = toCellViewModel(cell)) {
+  const cultivationState = String(
+    cell.cultivation?.state ?? view.cultivation?.state ?? "",
+  ).toLowerCase();
   const status = String(cell.status ?? view.status ?? "").toLowerCase();
   const phase = String(view.lifecycleInfo?.phase ?? "").toLowerCase();
+
+  if (["stimulated", "growing"].includes(cultivationState)) return "growing";
+  if (cultivationState === "stable") return "stable";
+  if (cultivationState === "needs_attention") return "needs-attention";
 
   if (
     cell.active === false ||
@@ -83,5 +90,6 @@ function getCellTone(cellId, index) {
 }
 
 function formatActivity(activity) {
+  if (activity === "needs-attention") return "Needs Attention";
   return `${activity.charAt(0).toUpperCase()}${activity.slice(1)}`;
 }

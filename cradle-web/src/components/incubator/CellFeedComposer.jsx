@@ -1,16 +1,16 @@
+import { useRef } from "react";
+
 export function CellFeedComposer({
   value,
-  selectedCell,
   onChange,
   onSubmit,
+  onFiles,
   disabled,
   statusMessage,
   statusTone = "success",
 }) {
-  const targetLabel = selectedCell?.name ?? selectedCell?.id;
-  const placeholder = selectedCell
-    ? `Feed information to ${targetLabel}...`
-    : "Select a Cell to begin feeding...";
+  const inputRef = useRef(null);
+  const placeholder = "Feed Cradle. It will find the right Cell...";
 
   function handleKeyDown(event) {
     if (event.key === "Enter" && !event.shiftKey) {
@@ -19,8 +19,13 @@ export function CellFeedComposer({
     }
   }
 
+  function acceptFiles(fileList) {
+    const files = Array.from(fileList ?? []);
+    if (files.length > 0) onFiles(files);
+  }
+
   return (
-    <section className="cell-feed" aria-label="Feed information to selected Cell">
+    <section className="cell-feed" aria-label="Feed information to Cradle">
       {statusMessage ? (
         <div
           className={[
@@ -40,12 +45,25 @@ export function CellFeedComposer({
           disabled ? "cell-feed__composer--disabled" : "",
         ].filter(Boolean).join(" ")}
       >
+        <input
+          ref={inputRef}
+          className="cell-feed__file-input"
+          type="file"
+          multiple
+          accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.svg,.txt,.md,.markdown,.csv,.json,.xml,.html,.htm,text/*,image/*,application/pdf"
+          disabled={disabled}
+          onChange={(event) => {
+            acceptFiles(event.target.files);
+            event.target.value = "";
+          }}
+        />
         <button
           type="button"
           className="cell-feed__attach"
           disabled={disabled}
           aria-label="Attach feeding material"
           title="Attach material"
+          onClick={() => inputRef.current?.click()}
         >
           +
         </button>
@@ -63,8 +81,8 @@ export function CellFeedComposer({
           className="cell-feed__send"
           onClick={onSubmit}
           disabled={disabled || !value.trim()}
-          aria-label="Feed selected Cell"
-          title="Feed Cell"
+          aria-label="Cultivate text stimulus"
+          title="Let it grow"
         >
           ↑
         </button>

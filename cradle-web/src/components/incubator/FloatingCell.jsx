@@ -91,6 +91,18 @@ export function FloatingCell({
       <span className="floating-cell__label">
         <strong>{visual.id}</strong>
         <small>{visual.activityLabel}</small>
+        {visual.cultivation?.state === "growing" || visual.cultivation?.state === "stimulated" ? (
+          <span
+            className="floating-cell__progress"
+            role="progressbar"
+            aria-label={`${visual.id} cultivation`}
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow={visual.cultivation.progress}
+          >
+            <span style={{ width: `${visual.cultivation.progress}%` }} />
+          </span>
+        ) : null}
       </span>
     </button>
   );

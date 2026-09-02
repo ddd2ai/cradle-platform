@@ -3,7 +3,11 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=22 <23"
+  },
   "scripts": {
+    "benchmark:presentation": "node --expose-gc scripts/benchmark-runtime-presentation.js",
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint",

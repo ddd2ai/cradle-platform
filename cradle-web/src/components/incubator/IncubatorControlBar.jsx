@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import { feedCell } from "../../api/cradleClient";
+import { useMemo, useState } from "react";
 import { CellFeedComposer } from "./CellFeedComposer";
+import { CultivationProgressCard } from "./CultivationProgressCard";
 import { CultivateButton } from "./CultivateButton";
 import { DigitalMicroscopeControls } from "./DigitalMicroscopeControls";
 
@@ -19,11 +19,14 @@ export function IncubatorControlBar({
   onOrbitRight,
   onFocusSelectedCell,
   onResetCamera,
+  acceptedOperation,
+  feedError,
+  feedMessage,
+  isFeeding,
+  onFeedFiles,
+  onDismissFeedOperation,
 }) {
   const [feedInput, setFeedInput] = useState("");
-  const [isFeeding, setIsFeeding] = useState(false);
-  const [feedMessage, setFeedMessage] = useState(null);
-  const [feedError, setFeedError] = useState(null);
   const hasSelectedCell = Boolean(selectedCellId);
   const selectedCell = useMemo(
     () => cells.find((cell) => cell.id === selectedCellId) ?? null,
@@ -33,44 +36,19 @@ export function IncubatorControlBar({
     "cradle-control-dock__viewport",
     isInspectorOpen ? "cradle-control-dock__viewport--inspector-open" : "",
   ].filter(Boolean).join(" ");
-  const isFeedDisabled = !selectedCell || isFeeding;
+  const isFeedDisabled = isFeeding;
   const feedStatusMessage = feedError || feedMessage;
   const feedStatusTone = feedError ? "error" : "success";
-
-  useEffect(() => {
-    if (!feedMessage || isFeeding) {
-      return undefined;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setFeedMessage(null);
-    }, 3200);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [feedMessage, isFeeding]);
 
   async function handleFeedSubmit() {
     const content = feedInput.trim();
 
-    if (!selectedCellId || !content) {
+    if (!content) {
       return;
     }
-
-    setIsFeeding(true);
-    setFeedError(null);
-    setFeedMessage(`Feeding ${selectedCellId}...`);
-
-    try {
-      await feedCell(selectedCellId, { content });
-      setFeedInput("");
-      setFeedMessage(`Feed delivered to ${selectedCellId}. Run Cultivate to metabolize it.`);
-    } catch (feedFailure) {
-      setFeedError(feedFailure.message);
-    } finally {
-      setIsFeeding(false);
-    }
+    const note = new File([content], `note-${Date.now()}.txt`, { type: "text/plain" });
+    await onFeedFiles([note]);
+    setFeedInput("");
   }
 
   return (
@@ -85,17 +63,23 @@ export function IncubatorControlBar({
 
         <div className="incubator-control-bar__divider" aria-hidden="true" />
 
-        {selectedCell ? (
+        <div className="cell-feed-zone">
           <CellFeedComposer
             value={feedInput}
-            selectedCell={selectedCell}
             onChange={setFeedInput}
             onSubmit={handleFeedSubmit}
+            onFiles={onFeedFiles}
             disabled={isFeedDisabled}
             statusMessage={feedStatusMessage}
             statusTone={feedStatusTone}
           />
-        ) : null}
+          <CultivationProgressCard
+            operationId={acceptedOperation?.operationId ?? null}
+            acceptedOperation={acceptedOperation}
+            selectedCell={selectedCell}
+            onDismiss={onDismissFeedOperation}
+          />
+        </div>
 
         <DigitalMicroscopeControls
           camera={camera}

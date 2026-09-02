@@ -44,6 +44,8 @@ const duplicate = await store.writeStimulus({
   content: "duplicate signal",
 });
 assert.equal(duplicate.duplicate, true);
+assert.equal(duplicate.duplicateOf, generated.envelope.stimulusId);
+assert.equal(duplicate.envelope.stimulusId, generated.envelope.stimulusId);
 
 await fs.mkdir(path.join(stimuliDir, "signals"), { recursive: true });
 await fs.writeFile(path.join(stimuliDir, "signals", "notes.txt"), "ignored");

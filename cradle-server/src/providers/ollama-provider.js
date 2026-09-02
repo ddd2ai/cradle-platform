@@ -61,8 +61,9 @@ export function createOllamaProvider({
   return {
     name: "ollama",
     model,
+    capabilities: { mediaInput: true },
 
-    async ask({ prompt, onDelta, onIdle, onError } = {}) {
+    async ask({ prompt, media = [], onDelta, onIdle, onError } = {}) {
       const askId = crypto.randomUUID().substring(0, 8);
       const DEBUG = process.env.OLLAMA_DEBUG === "true";
 
@@ -83,6 +84,9 @@ export function createOllamaProvider({
           body: JSON.stringify({
             model,
             prompt,
+            ...(media.length > 0
+              ? { images: media.map((item) => Buffer.from(item.data).toString("base64")) }
+              : {}),
             stream: true,
           }),
         });
