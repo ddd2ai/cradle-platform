@@ -1,5 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { toCultivationViewModel } from "../../domain/cultivationViewModel";
+import { formatElapsed } from "../../domain/cultivationElapsed";
 import { useOperationProgress } from "../../hooks/useOperationProgress";
 import { useUiPreferences } from "../../i18n/UiPreferencesProvider";
 
@@ -13,7 +14,9 @@ export function CultivationProgressCard({
 }) {
   const { t } = useUiPreferences();
   const streamedOperation = useOperationProgress(operationId);
-  const view = toCultivationViewModel(streamedOperation ?? acceptedOperation, selectedCell);
+  const operation = streamedOperation ?? acceptedOperation;
+  const view = toCultivationViewModel(operation, selectedCell);
+  const elapsed = useElapsedTime(operation);
 
   useEffect(() => {
     if (view?.tone !== "stable") return undefined;
@@ -43,11 +46,12 @@ export function CultivationProgressCard({
             aria-valuemin="0"
             aria-valuemax="100"
             aria-valuenow={view.progress}
+            aria-valuetext={`${translateProgressPhase(view.phaseLabel, t)} · ${t("incubator.elapsed", { time: elapsed })}`}
           >
             <span style={{ width: `${view.progress}%` }} />
           </div>
           <div className="cultivation-progress__meta">
-            <span>{view.progress}% · {translateProgressPhase(view.phaseLabel, t)}</span>
+            <span>{translateProgressPhase(view.phaseLabel, t)} · {t("incubator.elapsed", { time: elapsed })}</span>
             {view.sourceName ? <span title={view.sourceName}>{view.sourceName}</span> : null}
           </div>
         </>
@@ -69,6 +73,23 @@ export function CultivationProgressCard({
       )}
     </section>
   );
+}
+
+function useElapsedTime(operation) {
+  const terminal = ["completed", "failed"].includes(operation?.status);
+  const startedAt = operation?.startedAt ?? operation?.createdAt;
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    if (!startedAt || terminal) return undefined;
+    const intervalId = window.setInterval(() => setTick((value) => value + 1), 1000);
+    return () => window.clearInterval(intervalId);
+  }, [startedAt, terminal]);
+
+  const endAt = terminal
+    ? operation.completedAt ?? operation.failedAt ?? operation.updatedAt
+    : null;
+  return formatElapsed(startedAt, endAt);
 }
 
 function translateProgressStatus(value, t) {

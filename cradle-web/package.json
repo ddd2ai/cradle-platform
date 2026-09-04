@@ -8,6 +8,7 @@
   },
   "scripts": {
     "benchmark:presentation": "node --expose-gc scripts/benchmark-runtime-presentation.js",
+    "benchmark:feed": "node --expose-gc scripts/benchmark-stimulus-feed-queue.js",
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint",

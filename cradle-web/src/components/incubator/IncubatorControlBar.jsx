@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { CellFeedComposer } from "./CellFeedComposer";
-import { CultivationProgressCard } from "./CultivationProgressCard";
+import { CultivationActivityStack } from "./CultivationActivityStack";
 import { CultivateButton } from "./CultivateButton";
 import { DigitalMicroscopeControls } from "./DigitalMicroscopeControls";
 import { useUiPreferences } from "../../i18n/UiPreferencesProvider";
@@ -20,15 +20,15 @@ export function IncubatorControlBar({
   onOrbitRight,
   onFocusSelectedCell,
   onResetCamera,
-  acceptedOperation,
+  feedItems,
   artifactTypes,
   artifactType,
   feedError,
   feedMessage,
-  isFeeding,
   onFeedFiles,
   onArtifactTypeChange,
-  onDismissFeedOperation,
+  onDismissFeedItem,
+  onRetryFeedItem,
 }) {
   const { t } = useUiPreferences();
   const [feedInput, setFeedInput] = useState("");
@@ -41,7 +41,6 @@ export function IncubatorControlBar({
     "cradle-control-dock__viewport",
     isInspectorOpen ? "cradle-control-dock__viewport--inspector-open" : "",
   ].filter(Boolean).join(" ");
-  const isFeedDisabled = isFeeding;
   const feedStatusMessage = feedError || feedMessage;
   const feedStatusTone = feedError ? "error" : "success";
 
@@ -52,7 +51,7 @@ export function IncubatorControlBar({
       return;
     }
     const note = new File([content], `note-${Date.now()}.txt`, { type: "text/plain" });
-    await onFeedFiles([note]);
+    onFeedFiles([note]);
     setFeedInput("");
   }
 
@@ -77,15 +76,15 @@ export function IncubatorControlBar({
             artifactType={artifactType}
             artifactTypes={artifactTypes}
             onArtifactTypeChange={onArtifactTypeChange}
-            disabled={isFeedDisabled}
-            statusMessage={feedStatusMessage}
+            disabled={false}
+            statusMessage={feedItems.length === 0 ? feedStatusMessage : null}
             statusTone={feedStatusTone}
           />
-          <CultivationProgressCard
-            operationId={acceptedOperation?.operationId ?? null}
-            acceptedOperation={acceptedOperation}
+          <CultivationActivityStack
+            items={feedItems}
             selectedCell={selectedCell}
-            onDismiss={onDismissFeedOperation}
+            onDismiss={onDismissFeedItem}
+            onRetry={onRetryFeedItem}
           />
         </div>
 

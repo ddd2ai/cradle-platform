@@ -538,3 +538,37 @@ throughput、filesystem durability 或網路表現。真實 provider 的 p50/p95
 spec Goal 的獨立 semantic oracle，因此這筆結果不能證明內容已達 declared-purpose sufficient quality。後續若要自動
 publish 此類規格，必須新增版本化 Quality Contract 與可重現的 catalog-consistency indicator，不能以模型文字流暢度
 或基本 Markdown validation 代替。
+
+### 2026-09-04 — Incubator 連續 Stimulus feed queue
+
+目標路徑為 Incubator composer／workspace drop → `useIncubatorFeed` → `StimulusFeedQueue` →
+`POST /api/v1/stimuli/files`。先前 `feedFiles` 在 browser 逐一 `await` 每個 upload，整批結束前 composer disabled，且
+單一 `acceptedOperation` 會讓後一份刺激覆蓋前一份的可見進度。現在所有輸入同步進入可見 feed queue，composer 立即
+恢復可用；browser 最多並行送出兩份，server 接受後每份 operation 獨立訂閱 authoritative runtime state。
+
+複雜度：N 份檔案、單次 upload latency L 下，舊 input blocking／drain 約為 `O(NL)`；新 input release 為 `O(N)`
+建立輕量 queue records，background drain 約為 `O(ceil(N/2)L)`，queue memory 為 `O(N)`。server routing、Stimulus
+持久化與 Cell ownership semantics 不變。REST 接受後立即釋放 browser Blob，避免 LLM 執行期間保留大型 payload。
+
+環境與命令：Apple M4 Pro、14 logical CPUs、48 GiB RAM、Darwin arm64、Node v22.23.2；12 samples，每 sample
+20 個 stimulus，固定 3 ms fake upload，queue concurrency 2，無 network、cache 與 durability。p50/p95 是 composer
+可再次接受輸入前的 caller blocking time；throughput 是全部 240 個 fake uploads 的 drain rate。
+
+```bash
+npm run benchmark:feed --workspace=cradle-web
+```
+
+| Path | samples × files | input release p50 | input release p95 | wall | throughput | CPU | RSS delta |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| sequential reference | 12 × 20 | 68.010 ms | 68.442 ms | 813.701 ms | 294.949 files/s | 8.332 ms | 163,840 B |
+| bounded feed queue | 12 × 20 | 0.067 ms | 0.191 ms | 409.846 ms | 585.585 files/s | 12.973 ms | 5,832,704 B |
+
+在這個固定 synthetic workload，input release p95 降 99.7%，background drain throughput 為 1.99 倍。這只證明
+移除 browser sequential await 與 concurrency 2 的預期效果，不代表真實檔案、network、extraction、Cell routing 或
+LLM 的相同比例。RSS delta 包含 V8 為 240 個可追蹤 queue/operation records 保留及擴張的 heap pages；本次不宣稱
+記憶體改善，真實 browser 長時間 soak test 必須另量 retained heap。
+
+Correctness invariants：Cell 選擇仍由 server Living Context routing 決定；queue 只表示尚未被 REST 接受的材料，不是
+第二份 lifecycle authority；每份 stimulus 保存當下明確選擇的 Artifact Type；upload failure 保留原檔並可重試同一
+feed record；REST accepted 後不再從 browser 重送；terminal event 不會被較晚的 HTTP 202 snapshot 倒退。UI 以真實
+operation phase 與 timestamp 顯示 elapsed time，不合成 timer progress。

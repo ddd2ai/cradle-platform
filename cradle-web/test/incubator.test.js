@@ -22,6 +22,8 @@ let IncubatorDish;
 let IncubatorWorkspace;
 let hasFilePayload;
 let CultivationProgressCard;
+let CultivationActivityStack;
+let formatElapsed;
 let DigitalMicroscopeControls;
 let CellOperationDialogs;
 let CellControlCard;
@@ -65,6 +67,12 @@ before(async () => {
   ));
   ({ CultivationProgressCard } = await vite.ssrLoadModule(
     "/src/components/incubator/CultivationProgressCard.jsx",
+  ));
+  ({ formatElapsed } = await vite.ssrLoadModule(
+    "/src/domain/cultivationElapsed.js",
+  ));
+  ({ CultivationActivityStack } = await vite.ssrLoadModule(
+    "/src/components/incubator/CultivationActivityStack.jsx",
   ));
   ({ DigitalMicroscopeControls } = await vite.ssrLoadModule(
     "/src/components/incubator/DigitalMicroscopeControls.jsx",
@@ -1035,7 +1043,7 @@ test("Artifact capabilities come from the server catalog", async () => {
   }
 });
 
-test("Cultivation progress is shown only while work is growing", () => {
+test("Cultivation progress shows real phase and elapsed time while work is growing", () => {
   const growing = renderToStaticMarkup(React.createElement(CultivationProgressCard, {
     operationId: null,
     acceptedOperation: {
@@ -1049,7 +1057,9 @@ test("Cultivation progress is shown only while work is growing", () => {
     selectedCell: { id: "B01", name: "B01" },
   }));
   assert.match(growing, /role="progressbar"/);
-  assert.match(growing, /58% · Cultivating/);
+  assert.match(growing, /Cultivating · .* elapsed/);
+  assert.match(growing, /aria-valuetext="Cultivating · .* elapsed"/);
+  assert.doesNotMatch(growing, />58% ·/);
 
   const produced = renderToStaticMarkup(React.createElement(CultivationProgressCard, {
     operationId: null,
@@ -1085,6 +1095,37 @@ test("Cultivation progress is shown only while work is growing", () => {
   assert.doesNotMatch(attention, /role="progressbar"/);
   assert.match(attention, /Needs Attention/);
   assert.match(attention, /needs text extraction or OCR/);
+});
+
+test("Cultivation activity keeps queued stimuli visible together", () => {
+  const markup = renderToStaticMarkup(React.createElement(CultivationActivityStack, {
+    items: [
+      {
+        feedId: "feed-2",
+        sourceName: "second.md",
+        state: "queued",
+        queuePosition: 1,
+      },
+      {
+        feedId: "feed-1",
+        sourceName: "first.md",
+        state: "uploading",
+      },
+    ],
+  }));
+
+  assert.match(markup, /Cultivation activity/);
+  assert.match(markup, /second.md/);
+  assert.match(markup, /Queue 1/);
+  assert.match(markup, /first.md/);
+  assert.match(markup, /Entering Cradle/);
+});
+
+test("elapsed cultivation time is derived from operation timestamps", () => {
+  assert.equal(
+    formatElapsed("2026-09-04T00:00:00.000Z", "2026-09-04T00:01:05.000Z"),
+    "1m 5s",
+  );
 });
 
 test("Cell cultivation state takes precedence over manual active state", () => {

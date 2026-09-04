@@ -1,28 +1,40 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchArtifactTypes, fetchOperations, uploadStimulusFile } from "../api/cradleClient";
 import { useUiPreferences } from "../i18n/UiPreferencesProvider";
+import { StimulusFeedQueue } from "../services/stimulus-feed-queue";
+
+const RESTORED_FEED_LIMIT = 12;
 
 export function useIncubatorFeed() {
   const { t } = useUiPreferences();
-  const feedingRef = useRef(false);
-  const [isFeeding, setIsFeeding] = useState(false);
+  const queueRef = useRef(null);
+  if (!queueRef.current) {
+    queueRef.current = new StimulusFeedQueue({
+      upload: uploadStimulusFile,
+      concurrency: 2,
+    });
+  }
+  const [feedItems, setFeedItems] = useState(() => queueRef.current.list());
   const [feedMessage, setFeedMessage] = useState(null);
   const [feedError, setFeedError] = useState(null);
-  const [acceptedOperation, setAcceptedOperation] = useState(null);
   const [artifactTypes, setArtifactTypes] = useState([]);
   const [artifactType, setArtifactType] = useState("");
+
+  useEffect(() => queueRef.current.subscribe(setFeedItems), []);
 
   useEffect(() => {
     let cancelled = false;
     fetchOperations()
-      .then((operations) => operations.find(
+      .then((operations) => operations.filter(
         (operation) => operation.type === "stimulus-cultivation" && (
           !["completed", "failed"].includes(operation.status) ||
           operation.lifeState === "needs_attention"
         ),
       ))
-      .then((operation) => {
-        if (!cancelled && operation) setAcceptedOperation(operation);
+      .then((operations) => {
+        // The activity rail is a recent working set, not operation storage.
+        // Older authoritative history remains available from the server.
+        if (!cancelled) queueRef.current.adoptOperations(operations.slice(0, RESTORED_FEED_LIMIT));
       })
       .catch(() => {
         // Cell snapshots remain authoritative when operation history is unavailable.
@@ -47,58 +59,48 @@ export function useIncubatorFeed() {
   }, []);
 
   useEffect(() => {
-    if (!feedMessage || isFeeding) return undefined;
+    if (!feedMessage) return undefined;
 
     const timeoutId = window.setTimeout(() => setFeedMessage(null), 3200);
     return () => window.clearTimeout(timeoutId);
-  }, [feedMessage, isFeeding]);
+  }, [feedMessage]);
 
-  const feedFiles = useCallback(async (fileList) => {
+  const feedFiles = useCallback((fileList) => {
     const files = Array.from(fileList ?? []);
-    if (files.length === 0 || feedingRef.current) return;
+    if (files.length === 0) return [];
 
-    feedingRef.current = true;
-    setIsFeeding(true);
     setFeedError(null);
-    setFeedMessage(
-      files.length === 1
-        ? t("incubator.acceptingFile", { name: files[0].name })
-        : t("incubator.acceptingStimuli", { count: files.length }),
-    );
-
     try {
-      for (const file of files) {
-        // Incubator feeding is intentionally untargeted. The server selects Cells
-        // from reproducible Living Context relevance instead of UI selection.
-        const accepted = await uploadStimulusFile(file, {
-          artifactType: artifactType || null,
-        });
-        setAcceptedOperation(accepted);
-      }
-      setFeedMessage(t("incubator.acceptedRouting"));
+      // Queueing is local and immediate. Authoritative cultivation starts only
+      // after each POST is accepted, and Cell routing remains server-owned.
+      const queued = queueRef.current.enqueue(files, {
+        artifactType: artifactType || null,
+      });
+      setFeedMessage(t("incubator.queuedStimuli", { count: queued.length }));
+      return queued;
     } catch (error) {
       setFeedError(error.message);
-    } finally {
-      feedingRef.current = false;
-      setIsFeeding(false);
+      return [];
     }
   }, [artifactType, t]);
 
-  const dismissOperation = useCallback((operationId) => {
-    setAcceptedOperation((current) =>
-      current?.operationId === operationId ? null : current
-    );
+  const dismissFeedItem = useCallback((feedId) => {
+    queueRef.current.dismiss(feedId);
+  }, []);
+
+  const retryFeedItem = useCallback((feedId) => {
+    queueRef.current.retry(feedId);
   }, []);
 
   return {
-    acceptedOperation,
     artifactTypes,
     artifactType,
-    dismissOperation,
+    dismissFeedItem,
     feedError,
     feedFiles,
+    feedItems,
     feedMessage,
-    isFeeding,
+    retryFeedItem,
     setArtifactType,
   };
 }

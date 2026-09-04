@@ -1857,12 +1857,36 @@ button.comparison-row:hover, button.comparison-row.selected { background: #111f2
   white-space: nowrap;
 }
 
-.cultivation-progress {
+.cultivation-activity-stack {
   position: absolute;
   right: 6px;
   bottom: calc(100% + 9px);
   left: 6px;
+  z-index: 6;
+  display: flex;
+  max-height: min(42vh, 360px);
+  flex-direction: column;
+  gap: 7px;
+  padding-left: 9px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(104, 195, 153, .28) transparent;
+}
+
+.cultivation-activity-stack__rail {
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 2px;
+  width: 1px;
+  background: linear-gradient(180deg, rgba(121, 236, 177, .62), rgba(101, 117, 213, .08));
+}
+
+.cultivation-progress {
+  position: relative;
   display: grid;
+  flex: none;
   gap: 7px;
   padding: 11px 13px;
   border: 1px solid rgba(96, 211, 148, .25);
@@ -1870,6 +1894,28 @@ button.comparison-row:hover, button.comparison-row.selected { background: #111f2
   background: rgba(4, 20, 28, .94);
   box-shadow: 0 15px 34px rgba(0, 0, 0, .28);
   backdrop-filter: blur(18px);
+}
+
+.cultivation-progress::before {
+  position: absolute;
+  top: 17px;
+  left: -11px;
+  width: 5px;
+  height: 5px;
+  border: 1px solid rgba(122, 237, 181, .78);
+  border-radius: 50%;
+  background: #071820;
+  box-shadow: 0 0 8px rgba(96, 211, 148, .5);
+  content: "";
+}
+
+.cultivation-progress--local {
+  border-color: rgba(120, 149, 218, .24);
+  background: rgba(7, 17, 34, .92);
+}
+
+.cultivation-progress--local .cultivation-progress__heading span {
+  color: #9dadf0;
 }
 
 .cultivation-progress__heading,
@@ -1927,6 +1973,23 @@ button.comparison-row:hover, button.comparison-row.selected { background: #111f2
   color: rgba(207, 225, 215, .78);
   font-size: 11px;
   line-height: 1.45;
+}
+
+.cultivation-progress__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.cultivation-progress__actions button {
+  padding: 4px 8px;
+  border: 1px solid rgba(225, 174, 116, .3);
+  border-radius: 999px;
+  background: rgba(28, 20, 16, .74);
+  color: rgba(246, 211, 173, .88);
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
 }
 
 .cultivation-progress--attention {
