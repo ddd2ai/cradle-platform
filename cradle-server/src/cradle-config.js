@@ -31,6 +31,7 @@ const DEFAULT_CRADLE_CONFIG = Object.freeze({
   }),
   runtime: Object.freeze({
     activationConcurrency: 4,
+    llmConcurrency: 3,
   }),
 });
 
@@ -169,6 +170,14 @@ export function getActivationConcurrency(options = {}) {
   return validatePositiveInteger(
     config.runtime?.activationConcurrency,
     "runtime.activationConcurrency"
+  );
+}
+
+export function getLlmConcurrency(options = {}) {
+  const config = readCradleConfig(options);
+  return validatePositiveInteger(
+    config.runtime?.llmConcurrency,
+    "runtime.llmConcurrency"
   );
 }
 

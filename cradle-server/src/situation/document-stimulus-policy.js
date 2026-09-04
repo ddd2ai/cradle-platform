@@ -1,5 +1,5 @@
-const ACTION_PATTERN = /\b(change|update|repair|replace|remove|add|implement|migrate|must|requirement|bug|fail(?:ed|ure)?|error|security|conflict|breaking)\b|修改|修正|更新|新增|移除|需求|錯誤|失敗|衝突|安全/iu;
-const RISK_PATTERN = /\b(security|vulnerability|destructive|data loss|critical|corrupt|breach|fail(?:ed|ure)?|conflict)\b|資安|漏洞|破壞|資料遺失|嚴重|失敗|衝突/iu;
+const ACTION_PATTERN = /\b(change|update|repair|replace|remove|add|implement|migrate|verify|investigate|analy[sz]e|test|must|requirement|bug|fail(?:ed|ing|ure|ures)?|error|security|conflict|breaking)\b|修改|修正|更新|新增|移除|驗證|調查|分析|測試|需求|錯誤|失敗|衝突|安全/iu;
+const RISK_PATTERN = /\b(security|vulnerability|destructive|data loss|critical|corrupt|breach|fail(?:ed|ing|ure|ures)?|conflict|duplicate charges?)\b|資安|漏洞|破壞|資料遺失|重複扣款|嚴重|失敗|衝突/iu;
 const NEGATED_ACTION_PATTERN = /不(?:需要|要求|必須)?(?:進行)?(?:任何)?(?:修改|修正|更新|變更|新增|移除)|無(?:需|須)?(?:進行)?(?:任何)?(?:修改|修正|更新|變更)|\b(?:no changes? required|does not require (?:a )?(?:change|update|repair)|do not (?:change|update|modify))\b/giu;
 
 export function evaluateDocumentStimulus({ source, extraction, relevance = 0 } = {}) {

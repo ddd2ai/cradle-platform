@@ -40,8 +40,13 @@ const DEFAULT_SETTINGS = {
     gemini: { timeoutSeconds: "3600" },
   },
   timeouts: {
+    cultivationSeconds: "60",
     reflectionSeconds: "30",
     mavenExecutionSeconds: "3600",
+  },
+  runtime: {
+    activationConcurrency: "4",
+    llmConcurrency: "3",
   },
   heartbeatMode: "manual",
 };
@@ -338,6 +343,10 @@ function mapConfigToSettings(config) {
       ]),
     ),
     timeouts: {
+      cultivationSeconds: stringifySetting(
+        config.timeouts?.cultivationSeconds,
+        "60",
+      ),
       reflectionSeconds: stringifySetting(
         config.timeouts?.reflectionSeconds,
         "30",
@@ -345,6 +354,16 @@ function mapConfigToSettings(config) {
       mavenExecutionSeconds: stringifySetting(
         config.timeouts?.mavenExecutionSeconds,
         "3600",
+      ),
+    },
+    runtime: {
+      activationConcurrency: stringifySetting(
+        config.runtime?.activationConcurrency,
+        "4",
+      ),
+      llmConcurrency: stringifySetting(
+        config.runtime?.llmConcurrency,
+        "3",
       ),
     },
     heartbeatMode: normalizeHeartbeatMode(config.heartbeat?.mode),
@@ -383,10 +402,15 @@ function mapSettingsToConfig(settings) {
       ]),
     ),
     timeouts: {
+      cultivationSeconds: parseIntegerSetting(settings.timeouts.cultivationSeconds),
       reflectionSeconds: parseIntegerSetting(settings.timeouts.reflectionSeconds),
       mavenExecutionSeconds: parseIntegerSetting(
         settings.timeouts.mavenExecutionSeconds
       ),
+    },
+    runtime: {
+      activationConcurrency: parseIntegerSetting(settings.runtime.activationConcurrency),
+      llmConcurrency: parseIntegerSetting(settings.runtime.llmConcurrency),
     },
     heartbeat: {
       mode: settings.heartbeatMode,

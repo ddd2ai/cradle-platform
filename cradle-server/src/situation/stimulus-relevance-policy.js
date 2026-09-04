@@ -1,5 +1,14 @@
 const MAX_TARGET_CELLS = 3;
 const MIN_RELEVANCE = 0.12;
+const RELEVANCE_TERM_BUDGET = 12;
+const MIN_RELEVANCE_TERM_BUDGET = 9;
+const PLATFORM_TERMS = new Set([
+  "artifact",
+  "artifacts",
+  "cell",
+  "cells",
+  "cradle",
+]);
 
 export function rankStimulusRelevance({ stimulus, cells = [], explicitCellId = null } = {}) {
   if (explicitCellId) {
@@ -24,14 +33,27 @@ export function rankStimulusRelevance({ stimulus, cells = [], explicitCellId = n
       ...(cell.outputs ?? []),
       ...(cell.artifacts ?? []).flatMap((artifact) => [artifact.title, artifact.goal, ...(artifact.outputPaths ?? [])]),
     ]);
-    const matches = [...stimulusTerms].filter((term) => cellTerms.has(term));
-    const denominator = Math.max(6, Math.min(stimulusTerms.size, cellTerms.size));
+    const excludedTerms = termsFor(cell.excludes ?? []);
+    const excludedMatches = [...stimulusTerms].filter((term) => excludedTerms.has(term));
+    const matches = [...stimulusTerms].filter(
+      (term) => cellTerms.has(term) && !excludedTerms.has(term)
+    );
+    // A long source must not dilute a small set of distinctive domain matches
+    // until an otherwise explainable owner becomes unroutable. The bounded
+    // budget still requires at least two matching terms to clear the default
+    // threshold, while keeping the score deterministic and inspectable.
+    const denominator = Math.max(
+      MIN_RELEVANCE_TERM_BUDGET,
+      Math.min(RELEVANCE_TERM_BUDGET, stimulusTerms.size, cellTerms.size),
+    );
     const relevance = clamp(matches.length / denominator);
     return {
       cellId: cell.cellId,
       relevance,
       reason: matches.length > 0
-        ? `matched ${matches.slice(0, 5).join(", ")}`
+        ? `matched ${matches.slice(0, 5).join(", ")}${excludedMatches.length > 0
+            ? `; excluded ${excludedMatches.slice(0, 5).join(", ")}`
+            : ""}`
         : "no deterministic context match",
     };
   }).sort((a, b) => b.relevance - a.relevance || a.cellId.localeCompare(b.cellId));
@@ -75,10 +97,15 @@ function termsFor(values) {
   const terms = new Set();
   const segmenter = new Intl.Segmenter(undefined, { granularity: "word" });
   for (const value of values.flat(Infinity)) {
-    const text = String(value ?? "").toLowerCase();
+    const text = String(value ?? "")
+      .replace(/([a-z\d])([A-Z])/g, "$1 $2")
+      .replace(/[\\/_.:-]+/g, " ")
+      .toLowerCase();
     for (const segment of segmenter.segment(text)) {
       const term = segment.segment.replace(/^[_-]+|[_-]+$/g, "");
-      if (segment.isWordLike && term.length >= 2) terms.add(term);
+      if (segment.isWordLike && term.length >= 2 && !PLATFORM_TERMS.has(term)) {
+        terms.add(term);
+      }
     }
   }
   return terms;

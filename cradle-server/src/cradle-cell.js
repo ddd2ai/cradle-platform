@@ -52,6 +52,7 @@ export class CradleCell {
     projectRoot = PROJECT_ROOT,
     cellsDir = path.join(projectRoot, "cells"),
     activationScheduler = null,
+    llmCallScheduler = null,
     runtimeMetrics = null,
     activationNotifier = null,
     assistantFactory = null,
@@ -67,6 +68,7 @@ export class CradleCell {
       mode: "default",
     });
     this.activationScheduler = activationScheduler;
+    this.llmCallScheduler = llmCallScheduler;
     this.runtimeMetrics = runtimeMetrics;
     this.activationNotifier = activationNotifier;
     this.assistantFactory = assistantFactory;
@@ -423,7 +425,10 @@ ${input}
   ) {
     const assistant = await this.ensureAssistant();
     const startedAt = Date.now();
-    let timeoutId;
+    const controller = new AbortController();
+    const timeoutError = new Error(`Timeout after ${timeoutMs}ms waiting for AI response`);
+    const timeoutId = setTimeout(() => controller.abort(timeoutError), timeoutMs);
+    timeoutId.unref?.();
     const metricLabels = {
       cellId: this.id,
       provider: this.provider,
@@ -432,18 +437,22 @@ ${input}
     this.runtimeMetrics?.increment("llm_calls", 1, metricLabels);
     this.activeAiCalls += 1;
     try {
-      return await Promise.race([
-        assistant.ask(input, { timeoutMs }),
-        new Promise((_, reject) => {
-          timeoutId = setTimeout(
-            () => reject(new Error(`Timeout after ${timeoutMs}ms waiting for AI response`)),
-            timeoutMs
-          );
-          timeoutId.unref?.();
-        }),
-      ]);
+      const execute = () => assistant.ask(input, {
+        timeoutMs,
+        signal: controller.signal,
+      });
+      return await (this.llmCallScheduler
+        ? this.llmCallScheduler.run(execute, {
+            signal: controller.signal,
+            labels: metricLabels,
+          })
+        : execute());
     } catch (error) {
       this.runtimeMetrics?.increment("llm_errors", 1, metricLabels);
+      if (controller.signal.aborted) {
+        this.runtimeMetrics?.increment("llm_timeouts", 1, metricLabels);
+        throw timeoutError;
+      }
       throw error;
     } finally {
       clearTimeout(timeoutId);
@@ -1024,6 +1033,10 @@ ${memoryContext}
 
   async buildMemoryContext(input = "") {
     return await this.promptContextService.buildMemoryContext(input);
+  }
+
+  async buildOperationalContext(input = "") {
+    return await this.promptContextService.buildOperationalContext(input);
   }
 
   async readMemoryContext() {

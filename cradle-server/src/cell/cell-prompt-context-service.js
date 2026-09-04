@@ -32,14 +32,25 @@ export class CellPromptContextService {
   }
 
   async buildMemoryContext(input = "") {
-    const identity = await this.cell.safeReadMemory("identity");
-    const rules = await this.cell.safeReadMemory("rules");
-    const knowledge = await this.cell.safeReadMemory("knowledge");
-    const recentHistory = await this.cell.readRecentHistory(8000);
-    const recentThoughts = await this.cell.readRecentThoughts(4000);
-    const dnaContext = await this.readDNAContext();
-    const vision = await this.cell.readVision();
-    const environment = await this.cell.readEnvironment();
+    const [
+      identity,
+      rules,
+      knowledge,
+      recentHistory,
+      recentThoughts,
+      dnaContext,
+      vision,
+      environment,
+    ] = await Promise.all([
+      this.cell.safeReadMemory("identity"),
+      this.cell.safeReadMemory("rules"),
+      this.cell.safeReadMemory("knowledge"),
+      this.cell.readRecentHistory(8000),
+      this.cell.readRecentThoughts(4000),
+      this.readDNAContext(),
+      this.cell.readVision(),
+      this.cell.readEnvironment(),
+    ]);
 
     return `
     ## DNA
@@ -96,20 +107,64 @@ export class CellPromptContextService {
     `;
   }
 
+  async buildOperationalContext(input = "") {
+    const [livingContext, recentHistory, recentThoughts] = await Promise.all([
+      this.cell.readLivingContext(),
+      this.cell.readRecentHistory(8000),
+      this.cell.readRecentThoughts(4000),
+    ]);
+
+    return `
+    ## Living Context
+
+    ${JSON.stringify(livingContext ?? {}, null, 2)}
+
+    ---
+
+    ## Recent History
+
+    ${recentHistory}
+
+    ---
+
+    ## Recent Thoughts
+
+    ${recentThoughts}
+
+    ---
+
+    ## Current Task Hint
+
+    ${input}
+    `;
+  }
+
   async readMemoryContext() {
     return await this.buildMemoryContext();
   }
 
   async buildCellSystemPrompt() {
-    const vision = await this.cell.safeReadFile(this.cell.visionFile, "# VISION\n\n(empty)");
-    const environment = await this.cell.safeReadFile(this.cell.environmentFile, "# ENVIRONMENT\n\n(empty)");
-    const dnaDefinition = await this.cell.safeReadFile(this.cell.dnaDefinitionFile, "# DNA_DEFINITION\n\n(empty)");
-    const dnaFactors = await this.cell.safeReadFile(this.cell.dnaFactorsFile, "# DNA_FACTORS\n\n(empty)");
-
-    const identity = await this.cell.safeReadMemory("identity");
-    const rules = await this.cell.safeReadMemory("rules");
-    const knowledge = await this.cell.safeReadMemory("knowledge");
-    const dnaContext = await this.readDNAContext();
+    const [
+      vision,
+      environment,
+      dnaDefinition,
+      dnaFactors,
+      identity,
+      rules,
+      knowledge,
+      dnaContext,
+      livingContext,
+    ] = await Promise.all([
+      this.cell.safeReadFile(this.cell.visionFile, "# VISION\n\n(empty)"),
+      this.cell.safeReadFile(this.cell.environmentFile, "# ENVIRONMENT\n\n(empty)"),
+      this.cell.safeReadFile(this.cell.dnaDefinitionFile, "# DNA_DEFINITION\n\n(empty)"),
+      this.cell.safeReadFile(this.cell.dnaFactorsFile, "# DNA_FACTORS\n\n(empty)"),
+      this.cell.safeReadMemory("identity"),
+      this.cell.safeReadMemory("rules"),
+      this.cell.safeReadMemory("knowledge"),
+      this.readDNAContext(),
+      this.cell.readLivingContext(),
+    ]);
 
     return `
 你是 Cradle Cell，不是 Cradle Platform 的核心助手。
@@ -164,6 +219,12 @@ ${identity}
 # CELL RULES
 
 ${rules}
+
+---
+
+# LIVING CONTEXT
+
+${JSON.stringify(livingContext ?? {}, null, 2)}
 
 ---
 

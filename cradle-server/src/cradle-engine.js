@@ -23,6 +23,7 @@ import { createLifecycleCommands } from "./commands/lifecycle-commands.js";
 import dnaPlot2DCommand from "./commands/plot2d-command.js";
 import { PROJECT_ROOT } from "./project-root.js";
 import { CellActivationScheduler } from "./cell/cell-activation-scheduler.js";
+import { LlmCallScheduler } from "./ai/llm-call-scheduler.js";
 import { RuntimeMetrics } from "./application/runtime-metrics.js";
 
 export class CradleEngine {
@@ -33,6 +34,7 @@ export class CradleEngine {
       heartbeatMode = "manual",
       projectRoot = PROJECT_ROOT,
       activationConcurrency = 4,
+      llmConcurrency = 3,
   } = {}) {
     this.model = model;
     this.provider = provider;
@@ -42,6 +44,10 @@ export class CradleEngine {
     this.runtimeMetrics = new RuntimeMetrics();
     this.activationScheduler = new CellActivationScheduler({
       concurrency: activationConcurrency,
+      metrics: this.runtimeMetrics,
+    });
+    this.llmCallScheduler = new LlmCallScheduler({
+      concurrency: llmConcurrency,
       metrics: this.runtimeMetrics,
     });
 
@@ -154,6 +160,7 @@ export class CradleEngine {
       provider: this.provider,
       projectRoot: this.projectRoot,
       activationScheduler: this.activationScheduler,
+      llmCallScheduler: this.llmCallScheduler,
       runtimeMetrics: this.runtimeMetrics,
       activationNotifier: (cellIds, reason, context) =>
         this.notifyCellActors(cellIds, reason, context),
@@ -236,6 +243,7 @@ export class CradleEngine {
       provider: this.provider,
       projectRoot: this.projectRoot,
       activationScheduler: this.activationScheduler,
+      llmCallScheduler: this.llmCallScheduler,
       runtimeMetrics: this.runtimeMetrics,
       activationNotifier: (cellIds, reason, context) =>
         this.notifyCellActors(cellIds, reason, context),

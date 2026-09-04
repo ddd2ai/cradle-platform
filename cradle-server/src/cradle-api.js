@@ -6,6 +6,7 @@ import {
   getAiDefaultProvider,
   getAiTimeoutSeconds,
   getActivationConcurrency,
+  getLlmConcurrency,
   getHeartbeatMode,
 } from "./cradle-config.js";
 import { createApiHandler } from "./api/api-handler.js";
@@ -47,6 +48,7 @@ const engine = new CradleEngine({
   timeoutSeconds: getAiTimeoutSeconds(),
   heartbeatMode: getHeartbeatMode() ?? "manual",
   activationConcurrency: readActivationConcurrency(),
+  llmConcurrency: readLlmConcurrency(),
 });
 
 function readActivationConcurrency() {
@@ -56,6 +58,17 @@ function readActivationConcurrency() {
   const concurrency = Number(configured);
   if (!Number.isInteger(concurrency) || concurrency <= 0) {
     throw new Error("CRADLE_ACTIVATION_CONCURRENCY must be a positive integer");
+  }
+  return concurrency;
+}
+
+function readLlmConcurrency() {
+  const configured = process.env.CRADLE_LLM_CONCURRENCY;
+  if (configured === undefined) return getLlmConcurrency();
+
+  const concurrency = Number(configured);
+  if (!Number.isInteger(concurrency) || concurrency <= 0) {
+    throw new Error("CRADLE_LLM_CONCURRENCY must be a positive integer");
   }
   return concurrency;
 }

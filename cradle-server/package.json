@@ -14,6 +14,7 @@
   "scripts": {
     "copilot:ensure": "node scripts/ensure-copilot-cli.js",
     "benchmark:artifact": "node --expose-gc scripts/benchmark-artifact-performance.js",
+    "benchmark:llm": "node scripts/benchmark-llm-scheduling.js",
     "test": "node scripts/run-tests.js",
     "start": "node src/cradle.js start",
     "dev": "node src/cradle.js start",

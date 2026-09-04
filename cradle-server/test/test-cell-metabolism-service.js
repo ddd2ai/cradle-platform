@@ -54,9 +54,9 @@ const cell = {
     calls.push({ type: "readStimuli" });
     return stimuli;
   },
-  async buildMemoryContext() {
-    calls.push({ type: "buildMemoryContext" });
-    return "memory context";
+  async buildOperationalContext() {
+    calls.push({ type: "buildOperationalContext" });
+    return "operational context";
   },
   async askWithTimeout(input, timeoutMs) {
     calls.push({ type: "askWithTimeout", input, timeoutMs });
@@ -99,7 +99,7 @@ assert.deepEqual(result, {
 const askCall = calls.find((call) => call.type === "askWithTimeout");
 assert.ok(askCall.input.includes("cell-metabolism"));
 assert.ok(askCall.input.includes("failure.md"));
-assert.ok(askCall.input.includes("memory context"));
+assert.ok(askCall.input.includes("operational context"));
 assert.equal(askCall.timeoutMs, 60_000);
 
 assert.deepEqual(
@@ -193,7 +193,7 @@ assert.equal(calls.find((call) => call.type === "archiveStimuli").items, stimuli
         return `observations/${observations.length}.md`;
       },
     },
-    async buildMemoryContext() { return "memory"; },
+    async buildOperationalContext() { return "operational context"; },
     async askWithTimeout(prompt) {
       prompts.push(prompt);
       return { text: JSON.stringify({ observation: { summary: "failure" }, tasks: [] }) };

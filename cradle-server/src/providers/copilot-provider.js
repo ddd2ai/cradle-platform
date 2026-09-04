@@ -1,4 +1,9 @@
 import { CopilotClient } from "@github/copilot-sdk";
+import { getProviderTimeoutMs } from "../cradle-config.js";
+import {
+  createProviderRequestControl,
+  raceWithSignal,
+} from "./provider-request-control.js";
 
 /**
  * 從 Copilot SDK event 萃取文字內容。
@@ -48,8 +53,10 @@ async function disposeSession(session) {
 export async function createCopilotProvider({
   model = "gpt-5-mini",
   cliUrl = "http://localhost:4321",
+  timeoutMs = getProviderTimeoutMs("copilot"),
+  clientFactory = (options) => new CopilotClient(options),
 } = {}) {
-  const client = new CopilotClient({
+  const client = clientFactory({
     cliUrl,
   });
 
@@ -64,6 +71,8 @@ export async function createCopilotProvider({
 
     async ask({
       prompt,
+      timeoutMs: requestTimeoutMs = timeoutMs,
+      signal,
       onDelta,
       onIdle,
       onError,
@@ -84,6 +93,11 @@ export async function createCopilotProvider({
       let buffer = "";
       let finished = false;
       let idleNotified = false;
+      const request = createProviderRequestControl({
+        signal,
+        timeoutMs: requestTimeoutMs,
+        label: "Copilot",
+      });
 
       const notifyIdleOnce = () => {
         if (idleNotified) {
@@ -166,11 +180,11 @@ export async function createCopilotProvider({
       };
 
       try {
-        session = await client.createSession({
+        session = await raceWithSignal(client.createSession({
           model,
           streaming: true,
           onPermissionRequest: approveAll,
-        });
+        }), request.signal);
 
         session.on?.(
           "assistant.message_delta",
@@ -187,9 +201,9 @@ export async function createCopilotProvider({
           handleError
         );
 
-        await session.sendAndWait({
+        await raceWithSignal(session.sendAndWait({
           prompt,
-        });
+        }), request.signal);
 
         if (!buffer.trim()) {
           throw new Error(
@@ -207,6 +221,8 @@ export async function createCopilotProvider({
         finished = true;
 
         removeListeners();
+
+        request.cleanup();
 
         onDelta = null;
         onIdle = null;

@@ -385,3 +385,103 @@ before 的未隔離 Codex 曾在 repository 建立 `.cell003-validation/PaymentR
 - auto-routing 仍是 lexical policy；Living Context、Memory 與 Artifact ownership 不一致時，target 雖可能符合歷史分工，卻難以向使用者解釋。
 - Codex 能由 per-request timeout 終止；其他 provider adapter 的底層取消能力仍需逐一驗證。
 - 本次未量 browser FPS、React commit 或 long task；UI 體感仍需瀏覽器 trace。
+
+### 2026-09-04 — 全域 LLM admission、真正取消與 Cell inbox 呼叫降幅
+
+狀態：`synthetic before/after + current runtime context measurement`。這筆先隔離 scheduler、timeout 與
+prompt amplification，不把 fake provider 的毫秒數當成真實模型 latency；實際 Codex 重複樣本仍需另外收集。
+
+優化目標與 correctness invariant：
+
+- 所有 Cell 的 LLM request 共用 FIFO admission，`runtime.llmConcurrency` 預設為 `3`；Cell identity、Task、
+  Stimulus 與 Artifact ownership 不移入 scheduler。
+- deadline 從 request 進入 queue 就開始，排隊不能無限等待；逾時必須傳到底層 Codex/Gemini child process、
+  Ollama HTTP request 與 Copilot SDK session，並在釋放 scheduler slot 前完成終止／清理。
+- `llm_queue_wait_ms` 與 `llm_duration_ms` 分別保留排隊與端到端觀測；不以丟棄 request 換取 throughput。
+- Cell system prompt 保留 DNA、Memory、Vision、Environment 與 Living Context；每次代謝的 dynamic prompt
+  不再重複整份靜態 context，只加入 Living Context 與 recent history/thoughts。
+- `delegation` 是明確的跨 Cell Task，直接以平台指派的 Task ID 持久化；一般 message/report 仍做一次 LLM
+  觀察，但不再無條件產生第二個 Task LLM。
+
+複雜度：無界 request burst 的 provider concurrency 由 `O(R)` 限制為 `O(min(R, L))`，其中 `L` 是
+`runtime.llmConcurrency`；其餘 request 進入 `O(R)` FIFO queue。代謝 prompt 的靜態 context amplification
+由約 `2S + D` 降為 `S + D`。明確 delegation 的端到端 LLM calls 由 2 降為 1。
+
+環境與命令：Apple M4 Pro、14 logical CPUs、48 GiB RAM、Darwin arm64、Node v22.23.2；12 個 request，
+fake provider healthy concurrency 3、base latency 20 ms、超過容量後每 request 增加 25 ms。單次 run，
+p50/p95 是該 run 的 12 筆 request samples；cache/durability 不適用，沒有 network 或真實 LLM。
+
+```bash
+npm run benchmark:llm --workspace=cradle-server
+```
+
+| Path | samples | wall | p50 | p95 | throughput | max provider concurrency |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| unbounded reference | 12 | 251.9 ms | 125.4 ms | 251.8 ms | 47.6 req/s | 12 |
+| bounded current | 12 | 87.8 ms | 66.3 ms | 87.7 ms | 136.7 req/s | 3 |
+
+bounded path 的 queue wait p50/p95 為 45/65 ms。這個 overload model 下 wall latency 降 65.1%、throughput
+提高 2.87 倍；這只證明 admission 在 provider 超載時的效果，不代表 Codex、Gemini、Ollama 或 Copilot
+真實服務會有相同比例。
+
+timeout scenario 使用 20 ms deadline：21.6 ms 回到 caller，隨後立即觀察到 provider running `0`、scheduler
+running `0`。provider focused tests 另讓 Codex/Gemini fake CLI 忽略 `SIGTERM`，確認 250 ms 後以 `SIGKILL`
+收束；Ollama AbortSignal 到達 fetch，Copilot session listener 被移除且 session dispose 完成。
+
+Cell-to-Cell delegation benchmark 使用相同 20 ms fake model latency：current path 為 1 次 LLM、21.9 ms；
+舊的 inbox summary → generated Task path 為 2 次 LLM、41.1 ms。兩者都形成 1 個 durable Task，因此沒有以
+省略委派工作換取速度。一般資訊若模型判斷不需 Task，現在停在一次觀察，不再固定放大成第二次呼叫。
+
+現有 runtime data 的 prompt 字元量（system + dynamic）也以相同 revision 直接量測：
+
+| Cell | Before | After | 變化 |
+| --- | ---: | ---: | ---: |
+| cell-003 | 28,792 | 21,717 | -24.6% |
+| cell-022 | 21,665 | 14,227 | -34.3% |
+
+#### 真實 Codex current-state 驗證
+
+同一台機器與 Node v22.23.2 上，透過 live API 投入一份包含 payment retry failure、duplicate charge risk、
+idempotency validation 與 transaction evidence 的文字 Stimulus。初次 lexical routing 因長文分母稀釋且沒有拆解
+camelCase/path token，17 ms 內收斂為 `needs_attention`，沒有呼叫 LLM；這是 routing correctness failure，不能當成
+低 latency 成功。修正為 bounded 12-term denominator 並拆解 camelCase/path 後，operation
+`op-6d80f050-92d4-4e75-b44b-99099eccf525` 的 acceptance latency 為 4.921 ms，三個 target 同時進入 cultivation：
+
+| Cell | LLM queue wait | LLM duration | 結果 | Durable Task |
+| --- | ---: | ---: | --- | ---: |
+| cell-002 | 0 ms | 17,500 ms | Stable / sufficient | 1 |
+| cell-001 | 0 ms | 18,928 ms | Stable / sufficient | 1 |
+| cell-004 | 0 ms | 60,010 ms | needs_attention / error（60 秒 timeout） | 0 |
+
+operation 端到端為 60,037 ms；terminal metrics 為 `llm_running=0`、`llm_queue_depth=0`，證明 timeout 已傳到
+provider 並釋放 admission slot，而不是 caller 先返回、模型仍在背景執行。三個 Cell 的
+`metabolism.started` 相差 1 ms，證明不同 Cell 沒有再彼此串行等待。這是一筆 current-state sample，不足以代表
+Codex p50/p95。
+
+這筆 live sample 同時暴露出 platform nouns 與 Living Context exclusion 沒有參與 lexical routing，導致上游
+commerce Cell 也支付一次 LLM。後續同 slice 的 deterministic refinement 排除 `Cradle`／`Cell`／`Artifact`
+等平台通用詞、把 Living Context `excludes` 視為負向 ownership evidence，並以 9-term minimum denominator
+保證至少兩個可解釋的領域詞才能自動路由。代表性 policy test 讓上游與 owner 候選收斂為唯一 payment owner；因為沒有
+在相同 live corpus 重跑付費模型，此處只記 correctness／expected amplification change，不宣稱實測 latency
+改善。
+
+#### Correctness 與 regression
+
+- 12/12 requests 都完成，bounded path 最大 provider concurrency 符合 3。
+- deadline 包含 queue wait；尚未取得 slot 的 request 可取消並從 queue 移除。
+- delegation Task 保存 message ID、來源 Cell、時間與原始內容；平台仍指派 authoritative Task ID。
+- message/report 的模型輸出只形成 Observation 與最多 1 個 Task，並保留 inbox receipt provenance。
+- server 完整 suite（含 scheduler、prompt、provider cancellation、inbox 與 routing/salience slice）為
+  141 個 test files，全部通過。
+
+#### 限制與下一步
+
+- synthetic overload penalty 用來固定重現資源飽和，不代表特定 provider 的 capacity curve。
+- `runtime.llmConcurrency=3` 是安全起點；應分別用 Codex remote 與 Ollama local corpus 量 p50/p95、tokens/s、
+  rate limit、RSS/GPU memory 後再調整，不能直接提高 concurrency。
+- 知識檔仍是完整載入 system prompt；長期需要可追溯的 relevance retrieval／summary compaction，不能直接
+  截斷 durable Memory。
+- 這次真實 sample 對一個問題啟動 3 次 LLM，顯示跨 Cell 重複 Observation/Task 已取代 scheduler 成為主要
+  amplification；下一個 server slice 應量 `llm_calls / unique issue fingerprint`，再決定 primary owner 與
+  secondary summary-only／delegation policy。不能用固定只選一個 Cell 換取速度，因為跨 boundary Stimulus
+  仍可能具有多個必要 owner。

@@ -454,6 +454,7 @@ export class StimulusCultivationService {
       purpose: livingContext?.purpose,
       responsibilities: livingContext?.responsibilities ?? profile.responsibilities ?? [],
       owns: livingContext?.owns ?? [],
+      excludes: livingContext?.excludes ?? [],
       inputs: livingContext?.inputs ?? [],
       outputs: livingContext?.outputs ?? [],
       artifacts: catalog.artifacts ?? [],

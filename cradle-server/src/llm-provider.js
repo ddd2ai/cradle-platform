@@ -41,7 +41,7 @@
  *     name: "my-provider",
  *     model,
  *
- *     async ask({ prompt, onDelta, onIdle, onError }) {
+ *     async ask({ prompt, timeoutMs, signal, onDelta, onIdle, onError }) {
  *       let buffer = "";
  *
  *       try {
@@ -97,7 +97,7 @@ export const LLMProviderInterface = {
   name: "interface-definition",
   model: "N/A",
 
-  async ask({ prompt, onDelta, onIdle, onError }) {
+  async ask({ prompt, timeoutMs, signal, onDelta, onIdle, onError }) {
     throw new Error("LLMProviderInterface.ask() must be implemented");
   },
 

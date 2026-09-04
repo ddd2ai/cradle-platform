@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { getProviderTimeoutMs } from "../cradle-config.js";
+import { abortReason } from "./provider-request-control.js";
 
 export async function createCodexProvider({
   model = null,
@@ -18,6 +19,7 @@ export async function createCodexProvider({
       prompt,
       media = [],
       timeoutMs: requestTimeoutMs = timeoutMs,
+      signal,
       onDelta,
       onIdle,
       onError,
@@ -35,6 +37,7 @@ export async function createCodexProvider({
       }
 
       try {
+        if (signal?.aborted) throw abortReason(signal);
         const args = [
           "exec",
           "--json",
@@ -45,6 +48,10 @@ export async function createCodexProvider({
         ];
 
         const materialized = await materializeMedia(media);
+        if (signal?.aborted) {
+          await materialized.cleanup();
+          throw abortReason(signal);
+        }
 
         /*
          * model 為 null、undefined 或 auto 時，
@@ -75,6 +82,7 @@ export async function createCodexProvider({
             args,
             cwd: materialized.directory,
             timeoutMs: requestTimeoutMs,
+            signal,
             onDelta,
           });
         } finally {
@@ -138,6 +146,7 @@ function executeCodex({
   args,
   cwd,
   timeoutMs,
+  signal,
   onDelta,
 }) {
   return new Promise((resolve, reject) => {
@@ -155,6 +164,10 @@ function executeCodex({
     let stderr = "";
     let answer = "";
     let settled = false;
+    let terminationError = null;
+    let timer = null;
+    let forceKillTimer = null;
+    let stopFallbackTimer = null;
 
     child.stdout.setEncoding("utf8");
     child.stderr.setEncoding("utf8");
@@ -166,8 +179,25 @@ function executeCodex({
 
       settled = true;
       clearTimeout(timer);
+      clearTimeout(forceKillTimer);
+      clearTimeout(stopFallbackTimer);
+      signal?.removeEventListener("abort", handleAbort);
       callback();
     };
+
+    const requestStop = (error) => {
+      if (settled || terminationError) return;
+      terminationError = error;
+      child.kill("SIGTERM");
+      forceKillTimer = setTimeout(() => child.kill("SIGKILL"), 250);
+      forceKillTimer.unref?.();
+      stopFallbackTimer = setTimeout(() => finish(() => reject(error)), 1_000);
+      stopFallbackTimer.unref?.();
+    };
+
+    const handleAbort = () => requestStop(abortReason(signal));
+    if (signal?.aborted) handleAbort();
+    else signal?.addEventListener("abort", handleAbort, { once: true });
 
     const handleLine = (line) => {
       const trimmed = line.trim();
@@ -217,11 +247,7 @@ function executeCodex({
           handleLine(line);
         }
       } catch (error) {
-        child.kill("SIGTERM");
-
-        finish(() => {
-          reject(error);
-        });
+        requestStop(error);
       }
     });
 
@@ -229,17 +255,10 @@ function executeCodex({
       stderr += chunk;
     });
 
-    const timer = setTimeout(() => {
-      child.kill("SIGTERM");
-
-      finish(() => {
-        reject(
-          new Error(
-            `Codex CLI timed out after ${timeoutMs} ms`
-          )
-        );
-      });
+    timer = setTimeout(() => {
+      requestStop(new Error(`Codex CLI timed out after ${timeoutMs} ms`));
     }, timeoutMs);
+    timer.unref?.();
 
     child.on("error", (error) => {
       finish(() => {
@@ -254,6 +273,11 @@ function executeCodex({
 
     child.on("close", (exitCode, signal) => {
       if (settled) {
+        return;
+      }
+
+      if (terminationError) {
+        finish(() => reject(terminationError));
         return;
       }
 

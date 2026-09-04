@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { getProviderTimeoutMs } from "../cradle-config.js";
 import { PROJECT_ROOT } from "../project-root.js";
+import { abortReason } from "./provider-request-control.js";
 
 /**
  * 建立 Gemini CLI Provider
@@ -26,6 +27,8 @@ export async function createGeminiProvider({
       onDelta,
       onIdle,
       onError,
+      timeoutMs: requestTimeoutMs = timeoutMs,
+      signal,
     }) {
       if (typeof prompt !== "string" || !prompt.trim()) {
         const error = new Error(
@@ -52,7 +55,8 @@ export async function createGeminiProvider({
           command,
           args,
           cwd,
-          timeoutMs,
+          timeoutMs: requestTimeoutMs,
+          signal,
         });
 
         const payload = parseGeminiResponse(stdout);
@@ -97,6 +101,7 @@ function executeGemini({
   args,
   cwd,
   timeoutMs,
+  signal,
 }) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
@@ -112,6 +117,10 @@ function executeGemini({
     let stdout = "";
     let stderr = "";
     let settled = false;
+    let terminationError = null;
+    let timer = null;
+    let forceKillTimer = null;
+    let stopFallbackTimer = null;
 
     child.stdout.setEncoding("utf8");
     child.stderr.setEncoding("utf8");
@@ -131,20 +140,30 @@ function executeGemini({
 
       settled = true;
       clearTimeout(timer);
+      clearTimeout(forceKillTimer);
+      clearTimeout(stopFallbackTimer);
+      signal?.removeEventListener("abort", handleAbort);
       callback();
     };
 
-    const timer = setTimeout(() => {
+    const requestStop = (error) => {
+      if (settled || terminationError) return;
+      terminationError = error;
       child.kill("SIGTERM");
+      forceKillTimer = setTimeout(() => child.kill("SIGKILL"), 250);
+      forceKillTimer.unref?.();
+      stopFallbackTimer = setTimeout(() => finish(() => reject(error)), 1_000);
+      stopFallbackTimer.unref?.();
+    };
 
-      finish(() => {
-        reject(
-          new Error(
-            `Gemini CLI timed out after ${timeoutMs} ms`
-          )
-        );
-      });
+    const handleAbort = () => requestStop(abortReason(signal));
+    if (signal?.aborted) handleAbort();
+    else signal?.addEventListener("abort", handleAbort, { once: true });
+
+    timer = setTimeout(() => {
+      requestStop(new Error(`Gemini CLI timed out after ${timeoutMs} ms`));
     }, timeoutMs);
+    timer.unref?.();
 
     child.on("error", (error) => {
       finish(() => {
@@ -159,6 +178,10 @@ function executeGemini({
 
     child.on("close", (exitCode, signal) => {
       finish(() => {
+        if (terminationError) {
+          reject(terminationError);
+          return;
+        }
         if (exitCode !== 0) {
           reject(
             new Error(

@@ -1,4 +1,6 @@
 import crypto from "crypto";
+import { getProviderTimeoutMs } from "../cradle-config.js";
+import { createProviderRequestControl } from "./provider-request-control.js";
 
 /**
  * 偵測 corrupted raw response (duplicated streaming chunks)
@@ -57,19 +59,33 @@ function parseOllamaLine(line, { askId, DEBUG } = {}) {
 export function createOllamaProvider({
   model = "llama3.1:8b",
   baseUrl = "http://localhost:11434",
+  timeoutMs = getProviderTimeoutMs("ollama"),
 } = {}) {
   return {
     name: "ollama",
     model,
     capabilities: { mediaInput: true },
 
-    async ask({ prompt, media = [], onDelta, onIdle, onError } = {}) {
+    async ask({
+      prompt,
+      media = [],
+      timeoutMs: requestTimeoutMs = timeoutMs,
+      signal,
+      onDelta,
+      onIdle,
+      onError,
+    } = {}) {
       const askId = crypto.randomUUID().substring(0, 8);
       const DEBUG = process.env.OLLAMA_DEBUG === "true";
 
       let buffer = "";
       let lineBuffer = "";
       let chunkCount = 0;
+      const request = createProviderRequestControl({
+        signal,
+        timeoutMs: requestTimeoutMs,
+        label: "Ollama",
+      });
 
       if (DEBUG) {
         console.log(`[ollama-provider] askId=${askId} start`);
@@ -89,6 +105,7 @@ export function createOllamaProvider({
               : {}),
             stream: true,
           }),
+          signal: request.signal,
         });
 
         if (!response.ok) {
@@ -213,8 +230,11 @@ export function createOllamaProvider({
           console.error(`[ollama-provider] askId=${askId} error:`, error);
         }
 
-        onError?.(error);
-        throw error;
+        const reportedError = request.signal.aborted ? request.error(error.message) : error;
+        onError?.(reportedError);
+        throw reportedError;
+      } finally {
+        request.cleanup();
       }
     },
 

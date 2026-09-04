@@ -32,6 +32,17 @@ const high = evaluateDocumentStimulus({
 assert.equal(high.decision, "cultivate");
 assert.equal(high.evolveArtifact, true);
 
+const operationalFailure = evaluateDocumentStimulus({
+  source: { sourceId: "source-operational" },
+  extraction: {
+    text: "Production payment retries are failing and duplicate charges are possible. Verify idempotency and preserve transaction evidence.",
+    evidence: { outcome: "sufficient" },
+  },
+  relevance: 1 / 3,
+});
+assert.equal(operationalFailure.decision, "cultivate");
+assert.equal(operationalFailure.salience.risk, 0.85);
+
 const missing = evaluateDocumentStimulus({
   extraction: {
     text: "",

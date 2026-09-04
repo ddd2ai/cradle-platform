@@ -317,6 +317,10 @@ await fs.writeFile(
     heartbeat: {
       mode: "manual",
     },
+    runtime: {
+      activationConcurrency: 4,
+      llmConcurrency: 3,
+    },
   }),
 );
 const handler = createApiHandler({
@@ -590,6 +594,10 @@ assert.deepEqual(cradleConfig.body, {
   heartbeat: {
     mode: "manual",
   },
+  runtime: {
+    activationConcurrency: 4,
+    llmConcurrency: 3,
+  },
 });
 
 const missingConfigHandler = createApiHandler({
@@ -643,6 +651,10 @@ const updatedCradleConfig = await handler({
     heartbeat: {
       mode: "auto",
     },
+    runtime: {
+      activationConcurrency: 6,
+      llmConcurrency: 2,
+    },
   },
 });
 
@@ -655,6 +667,10 @@ assert.deepEqual(updatedCradleConfig.body.ai, {
   maxSourceArtifactContentLength: 32000,
 });
 assert.deepEqual(updatedCradleConfig.body.heartbeat, { mode: "auto" });
+assert.deepEqual(updatedCradleConfig.body.runtime, {
+  activationConcurrency: 6,
+  llmConcurrency: 2,
+});
 const persistedCradleConfig = JSON.parse(await fs.readFile(cradleConfigFile, "utf8"));
 assert.deepEqual(persistedCradleConfig, updatedCradleConfig.body);
 assert.match(

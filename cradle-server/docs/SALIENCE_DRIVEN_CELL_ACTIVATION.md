@@ -106,6 +106,11 @@ Evolution 不再由 thought 數量門檻觸發。Cell 先累積結構化 evidenc
 `runtime.activationConcurrency` 控制同時執行的 Cell actor 數，預設為 `4`。API runtime 也可用
 `CRADLE_ACTIVATION_CONCURRENCY` 覆寫。這是 attention budget，不是 Cell 數量上限。
 
+`runtime.llmConcurrency` 則獨立限制所有 Cell 共用的模型呼叫數，預設為 `3`；API runtime 可用
+`CRADLE_LLM_CONCURRENCY` 覆寫。LLM 的 deadline 從進入 queue 就開始計算，排隊與實際執行分別由
+`llm_queue_wait_ms`、`llm_duration_ms` 觀測。逾時必須把取消訊號傳到 provider adapter，不能只讓
+上層停止等待而留下背景 CLI、HTTP stream 或 SDK session。
+
 48GB RAM 的單機建議仍依 provider 調整：遠端模型可先從 4 到 6；本機 24B 模型通常先從
 1 到 2，觀測 RSS、模型 context/KV cache、queue age 與 p95 latency 後再提高。SSD 容量適合
 durable queues，但 dedup 與 processed archive 仍需後續 retention/compaction policy。

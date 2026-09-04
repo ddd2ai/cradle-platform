@@ -27,5 +27,9 @@
   },
   "heartbeat": {
     "mode": "manual"
+  },
+  "runtime": {
+    "activationConcurrency": 4,
+    "llmConcurrency": 3
   }
 }

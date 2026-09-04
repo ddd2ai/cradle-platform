@@ -50,6 +50,7 @@ function validateCradleConfig(config) {
   const providers = requireObject(config.providers, "providers");
   const timeouts = requireObject(config.timeouts, "timeouts");
   const heartbeat = requireObject(config.heartbeat, "heartbeat");
+  const runtime = requireObject(config.runtime, "runtime");
   const defaultProvider = requireAllowedProvider(
     ai.defaultProvider,
     "ai.defaultProvider"
@@ -114,6 +115,16 @@ function validateCradleConfig(config) {
     },
     heartbeat: {
       mode: requireHeartbeatMode(heartbeat.mode, "heartbeat.mode"),
+    },
+    runtime: {
+      activationConcurrency: requirePositiveInteger(
+        runtime.activationConcurrency,
+        "runtime.activationConcurrency"
+      ),
+      llmConcurrency: requirePositiveInteger(
+        runtime.llmConcurrency,
+        "runtime.llmConcurrency"
+      ),
     },
   };
 }

@@ -162,7 +162,7 @@ Cradle Cell 可以根據 Stimuli 形成觀察、解讀與假設,但必須保持�
 
 # Cell Context
 
-${await this.cell.buildMemoryContext()}
+${await this.cell.buildOperationalContext()}
 
 # Stimuli
 

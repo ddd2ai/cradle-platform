@@ -6,6 +6,7 @@ import {
   getAiDefaultProvider,
   getAiTimeoutSeconds,
   getActivationConcurrency,
+  getLlmConcurrency,
   getHeartbeatMode,
 } from "./cradle-config.js";
 
@@ -63,6 +64,7 @@ const engine = new CradleEngine({
   timeoutSeconds: getAiTimeoutSeconds(),
   heartbeatMode: getHeartbeatMode() ?? "manual",
   activationConcurrency: getActivationConcurrency(),
+  llmConcurrency: getLlmConcurrency(),
 });
 
 await engine.start();
