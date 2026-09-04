@@ -35,6 +35,7 @@ export class CradleEngine {
       projectRoot = PROJECT_ROOT,
       activationConcurrency = 4,
       llmConcurrency = 3,
+      cultivationStateStoreFactory = null,
   } = {}) {
     this.model = model;
     this.provider = provider;
@@ -50,6 +51,7 @@ export class CradleEngine {
       concurrency: llmConcurrency,
       metrics: this.runtimeMetrics,
     });
+    this.cultivationStateStoreFactory = cultivationStateStoreFactory;
 
     this.cells = new Map();
     this.inboxes = new Map();
@@ -161,6 +163,7 @@ export class CradleEngine {
       projectRoot: this.projectRoot,
       activationScheduler: this.activationScheduler,
       llmCallScheduler: this.llmCallScheduler,
+      cultivationStateStoreFactory: this.cultivationStateStoreFactory,
       runtimeMetrics: this.runtimeMetrics,
       activationNotifier: (cellIds, reason, context) =>
         this.notifyCellActors(cellIds, reason, context),

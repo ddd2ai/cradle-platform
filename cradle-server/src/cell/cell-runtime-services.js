@@ -13,7 +13,7 @@ import { StimulusStore } from "../situation/stimulus-store.js";
 import { ObservationStore } from "../situation/observation-store.js";
 import { CellCultivationStateStore } from "./cell-cultivation-state-store.js";
 
-export function createCellRuntimeServices({ cell, paths }) {
+export function createCellRuntimeServices({ cell, paths, cultivationStateStoreFactory = null }) {
   const timestampFormatter = (date) => cell.formatTimestamp(date);
   const tail = (content, maxChars) => cell.tail(content, maxChars);
 
@@ -26,10 +26,11 @@ export function createCellRuntimeServices({ cell, paths }) {
     lifecycleEventStore: new CellLifecycleEventStore({
       lifecycleEventsFile: paths.lifecycleEventsFile,
     }),
-    cultivationStateStore: new CellCultivationStateStore({
-      file: paths.cultivationStateFile,
-      cellId: cell.id,
-    }),
+    cultivationStateStore: cultivationStateStoreFactory?.({ cell, paths })
+      ?? new CellCultivationStateStore({
+        file: paths.cultivationStateFile,
+        cellId: cell.id,
+      }),
     inboxStore: new CellInboxStore({
       inboxDir: paths.inboxDir,
       inboxFile: paths.inboxFile,

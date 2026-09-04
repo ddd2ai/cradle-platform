@@ -28,10 +28,14 @@ must be retried or reviewed. Cell state reconciliation remains authoritative for
 the Cell itself.
 
 The database stores metadata only. Source bytes, Memory, observations, and
-Artifact contents continue to use their existing file/blob stores. The next
-Persistent Layer slices can add SQLite-backed Cell cultivation state, lifecycle
-events, and inbox indexes behind the same injected store boundaries without
-moving large content into SQLite.
+Artifact contents continue to use their existing file/blob stores. The API
+runtime also injects `SqliteCellCultivationStateStore` for Cell cultivation
+state. On first read it migrates a matching legacy `cultivation-state.json`
+record, then uses the SQLite row as the authoritative state for that API
+process. CLI-only runtimes retain the existing file-backed store until they are
+given the same persistence configuration. Lifecycle events, inbox indexes, and
+other Cell stores remain on their existing boundaries for the next slices;
+large content still does not move into SQLite.
 
 ## Performance boundary
 

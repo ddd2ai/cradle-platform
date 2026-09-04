@@ -57,6 +57,7 @@ export class CradleCell {
     runtimeMetrics = null,
     activationNotifier = null,
     assistantFactory = null,
+    cultivationStateStoreFactory = null,
     summaryFlushDelayMs = 100,
   } = {}) {
     this.id = id;
@@ -73,6 +74,7 @@ export class CradleCell {
     this.runtimeMetrics = runtimeMetrics;
     this.activationNotifier = activationNotifier;
     this.assistantFactory = assistantFactory;
+    this.cultivationStateStoreFactory = cultivationStateStoreFactory;
     this.summaryFlushDelayMs = summaryFlushDelayMs;
 
     this.paths = createCellPaths({
@@ -87,6 +89,7 @@ export class CradleCell {
       createCellRuntimeServices({
         cell: this,
         paths: this.paths,
+        cultivationStateStoreFactory: this.cultivationStateStoreFactory,
       })
     );
     this.promptContextService = new CellPromptContextService({

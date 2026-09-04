@@ -609,8 +609,10 @@ Artifact；晚於 authoritative revision 的取消不能把已存在的產物偽
 
 ### 2026-09-04 — SQLite operation metadata persistence
 
-這是 Persistent Layer 的第一個切片：API runtime 將 operation metadata 寫入 SQLite WAL，保留既有 operation-store port，
-並在 server restart 時把無法安全恢復的 `accepted`／`running`／`cancelling` operation 標成 `OPERATION_INTERRUPTED`。
+這是 Persistent Layer 的第一個切片：API runtime 將 operation metadata 與 Cell cultivation state 寫入 SQLite WAL，保留
+既有 store ports，並在 server restart 時把無法安全恢復的 `accepted`／`running`／`cancelling` operation 標成
+`OPERATION_INTERRUPTED`。既有 `cultivation-state.json` 會在該 Cell 首次讀取時 migration；API process 之後以 SQLite row
+為 state authority。
 Cell、Source、Memory 與 Artifact 的大型內容仍留在既有 file/blob stores；本次沒有宣稱 cultivation latency 改善。
 
 環境與命令：Apple M4 Pro、Darwin arm64、Node v22.23.2；200 samples，每筆執行 create + running update + completed update，

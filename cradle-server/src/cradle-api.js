@@ -19,9 +19,12 @@ import { WebSocketRuntimeEventTransport } from "./application/runtime/websocket-
 import { attachRuntimeWebSocketEndpoint } from "./api/runtime-websocket-endpoint.js";
 import path from "node:path";
 import { SqliteOperationStore } from "./persistence/sqlite-operation-store.js";
+import { SqliteCellCultivationStateStore } from "./persistence/sqlite-cell-cultivation-state-store.js";
+import { PROJECT_ROOT } from "./project-root.js";
 
 const DEFAULT_PORT = 8787;
 const BUILT_IN_DEFAULT_PROVIDER = "codex";
+const SQLITE_FILE = process.env.CRADLE_SQLITE_FILE ?? path.join(PROJECT_ROOT, ".runtime", "cradle.sqlite");
 
 const DEFAULT_MODELS = Object.freeze({
   ollama: "devstral-small-2:24b",
@@ -51,6 +54,11 @@ const engine = new CradleEngine({
   heartbeatMode: getHeartbeatMode() ?? "manual",
   activationConcurrency: readActivationConcurrency(),
   llmConcurrency: readLlmConcurrency(),
+  cultivationStateStoreFactory: ({ cell, paths }) => new SqliteCellCultivationStateStore({
+    file: SQLITE_FILE,
+    cellId: cell.id,
+    legacyFile: paths.cultivationStateFile,
+  }),
 });
 
 function readActivationConcurrency() {
@@ -91,7 +99,7 @@ installConsoleLogBuffer({ logBuffer });
 await engine.loadCells();
 
 const operationStore = new SqliteOperationStore({
-  file: process.env.CRADLE_SQLITE_FILE ?? path.join(engine.projectRoot, ".runtime", "cradle.sqlite"),
+  file: SQLITE_FILE,
   eventBus: aggregator,
 });
 operationStore.reconcileInterrupted();
