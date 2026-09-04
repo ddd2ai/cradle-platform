@@ -17,6 +17,8 @@ import { RuntimeEventAggregator } from "./application/runtime-event-aggregator.j
 import { SseRuntimeEventTransport } from "./application/runtime/sse-runtime-event-transport.js";
 import { WebSocketRuntimeEventTransport } from "./application/runtime/websocket-runtime-event-transport.js";
 import { attachRuntimeWebSocketEndpoint } from "./api/runtime-websocket-endpoint.js";
+import path from "node:path";
+import { SqliteOperationStore } from "./persistence/sqlite-operation-store.js";
 
 const DEFAULT_PORT = 8787;
 const BUILT_IN_DEFAULT_PROVIDER = "codex";
@@ -88,6 +90,12 @@ installConsoleLogBuffer({ logBuffer });
 
 await engine.loadCells();
 
+const operationStore = new SqliteOperationStore({
+  file: process.env.CRADLE_SQLITE_FILE ?? path.join(engine.projectRoot, ".runtime", "cradle.sqlite"),
+  eventBus: aggregator,
+});
+operationStore.reconcileInterrupted();
+
 const port = Number(process.env.PORT || DEFAULT_PORT);
 const host = process.env.HOST || "127.0.0.1";
 const server = createHttpServer({
@@ -96,6 +104,7 @@ const server = createHttpServer({
     eventBus: aggregator,
     logBuffer,
     sseRuntimeEventTransport,
+    operationStore,
   }),
 });
 const websocketEndpoint = attachRuntimeWebSocketEndpoint({

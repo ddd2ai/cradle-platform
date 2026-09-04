@@ -606,3 +606,26 @@ Correctness invariants：REST operation state 仍是 authority；runtime event �
 不會破壞同一 Cell ordering；取消必須先完成 Cell state 與 lifecycle event 補償才 terminal；取消後不保存未 commit 的
 Artifact；晚於 authoritative revision 的取消不能把已存在的產物偽裝成 cancelled；每個 operation controller 在 terminal
 後移除。
+
+### 2026-09-04 — SQLite operation metadata persistence
+
+這是 Persistent Layer 的第一個切片：API runtime 將 operation metadata 寫入 SQLite WAL，保留既有 operation-store port，
+並在 server restart 時把無法安全恢復的 `accepted`／`running`／`cancelling` operation 標成 `OPERATION_INTERRUPTED`。
+Cell、Source、Memory 與 Artifact 的大型內容仍留在既有 file/blob stores；本次沒有宣稱 cultivation latency 改善。
+
+環境與命令：Apple M4 Pro、Darwin arm64、Node v22.23.2；200 samples，每筆執行 create + running update + completed update，
+events disabled；SQLite 為 WAL + `synchronous=NORMAL`，無 LLM、network 或大型內容 I/O。
+
+```bash
+npm run benchmark:persistence --workspace=cradle-server
+```
+
+| Path | samples | p50 | p95 | total |
+| --- | ---: | ---: | ---: | ---: |
+| in-memory operation store | 200 | 0.003 ms | 0.012 ms | 2.154 ms |
+| SQLite WAL operation store | 200 | 0.092 ms | 0.138 ms | 21.081 ms |
+
+這是 **current-state only** measurement，沒有 pre-change durability baseline；結果顯示 operation metadata 的 SQLite
+寫入成本明顯高於 in-memory，但仍屬短 metadata transaction，不可外推到完整 cultivation latency。這個切片只宣稱
+durability/resume correctness 改善，不把 SQLite 寫入成本當成效能提升。Correctness invariants：重開後 terminal operation payload 可讀回；in-flight operation 不會假裝
+自動續跑；Cell cultivation 的 interrupted state 仍進入既有 needs-attention reconciliation。

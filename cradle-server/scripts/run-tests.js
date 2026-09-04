@@ -114,6 +114,8 @@ const tests = [
   "test/test-memory-commands.js",
   "test/test-observation-store.js",
   "test/test-operation-store.js",
+  "test/test-operation-cancellation.js",
+  "test/test-sqlite-operation-store.js",
   "test/test-runtime-event-aggregator.js",
   "test/test-runtime-event-transport-parity.js",
   "test/test-runtime-metrics.js",

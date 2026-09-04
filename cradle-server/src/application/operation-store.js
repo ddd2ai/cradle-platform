@@ -61,34 +61,7 @@ export class InMemoryOperationStore {
     this.#trim();
     this.eventBus?.publish("operation.updated", { operation: toEventOperation(updated) });
 
-    if (["completed", "failed", "cancelled"].includes(updated.status)) {
-      this.eventBus?.publish("cell.updated", {
-        cellIds: updated.context?.cellIds ?? [],
-        operationId: updated.operationId,
-      });
-
-      if (["cell-division", "cell-fusion", "cell-stabilization"].includes(updated.type)) {
-        this.eventBus?.publish("artifacts.updated", {
-          cellIds: updated.context?.cellIds ?? [],
-          operationId: updated.operationId,
-        });
-      }
-
-      const artifacts = artifactChanges(updated);
-      if (updated.type === "stimulus-cultivation" && artifacts.length > 0) {
-        this.eventBus?.publish("artifacts.updated", {
-          cellIds: [...new Set(artifacts.map((artifact) => artifact.cellId).filter(Boolean))],
-          artifactIds: artifacts.map((artifact) => artifact.artifactId),
-          operationId: updated.operationId,
-        });
-      }
-
-      if (updated.type === "heartbeat") {
-        this.eventBus?.publish("cultivation.updated", {
-          operationId: updated.operationId,
-        });
-      }
-    }
+    publishOperationUpdate(this.eventBus, updated);
 
     return updated;
   }
@@ -104,7 +77,7 @@ export class InMemoryOperationStore {
   }
 }
 
-function toEventOperation(operation) {
+export function toEventOperation(operation) {
   const { result: _result, ...summary } = operation;
   const artifacts = artifactChanges(operation);
   const attentionMessage = operation.lifeState === "needs_attention"
@@ -123,7 +96,7 @@ function toEventOperation(operation) {
   };
 }
 
-function artifactChanges(operation) {
+export function artifactChanges(operation) {
   return (operation.result?.cells ?? []).flatMap((cell) => {
     const evolution = cell?.artifactEvolution;
     if (!["created", "evolved"].includes(evolution?.decision) || !evolution.artifactId) {
@@ -137,4 +110,36 @@ function artifactChanges(operation) {
       changedPaths: evolution.changedPaths ?? [],
     }];
   });
+}
+
+export function publishOperationUpdate(eventBus, updated) {
+  if (!eventBus) return;
+  if (["completed", "failed", "cancelled"].includes(updated.status)) {
+    eventBus.publish("cell.updated", {
+      cellIds: updated.context?.cellIds ?? [],
+      operationId: updated.operationId,
+    });
+
+    if (["cell-division", "cell-fusion", "cell-stabilization"].includes(updated.type)) {
+      eventBus.publish("artifacts.updated", {
+        cellIds: updated.context?.cellIds ?? [],
+        operationId: updated.operationId,
+      });
+    }
+
+    const artifacts = artifactChanges(updated);
+    if (updated.type === "stimulus-cultivation" && artifacts.length > 0) {
+      eventBus.publish("artifacts.updated", {
+        cellIds: [...new Set(artifacts.map((artifact) => artifact.cellId).filter(Boolean))],
+        artifactIds: artifacts.map((artifact) => artifact.artifactId),
+        operationId: updated.operationId,
+      });
+    }
+
+    if (updated.type === "heartbeat") {
+      eventBus.publish("cultivation.updated", {
+        operationId: updated.operationId,
+      });
+    }
+  }
 }
