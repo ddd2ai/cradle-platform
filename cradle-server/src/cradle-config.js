@@ -33,6 +33,9 @@ const DEFAULT_CRADLE_CONFIG = Object.freeze({
     activationConcurrency: 4,
     llmConcurrency: 3,
   }),
+  cultivation: Object.freeze({
+    artifactType: "document",
+  }),
 });
 
 const CRADLE_CONFIG_FILE = path.join(
@@ -72,6 +75,10 @@ export function readCradleConfig({
     runtime: {
       ...DEFAULT_CRADLE_CONFIG.runtime,
       ...(parsed.runtime || {}),
+    },
+    cultivation: {
+      ...DEFAULT_CRADLE_CONFIG.cultivation,
+      ...(parsed.cultivation || {}),
     },
   };
 }

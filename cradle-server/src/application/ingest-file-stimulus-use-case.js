@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { normalizeStimulusEnvelope } from "../situation/stimulus-envelope.js";
 import { assertSupportedArtifactType } from "../production/artifact-type-catalog.js";
 import { throwIfAborted } from "../utils/abort.js";
+import { readCradleConfig } from "../cradle-config.js";
 
 export class IngestFileStimulusUseCase {
   constructor({
@@ -26,10 +27,11 @@ export class IngestFileStimulusUseCase {
 
   async execute({ fileName, mediaType, bytes, cellId = null, artifactType = null } = {}) {
     const explicitCellId = String(cellId ?? "").trim() || null;
-    let requestedArtifactType = null;
-    if (String(artifactType ?? "").trim()) {
+    let requestedArtifactType = String(artifactType ?? "").trim() ||
+      readCradleConfig().cultivation.artifactType;
+    if (requestedArtifactType) {
       try {
-        requestedArtifactType = assertSupportedArtifactType(artifactType);
+      requestedArtifactType = assertSupportedArtifactType(requestedArtifactType);
       } catch (error) {
         throw new ApiError({
           status: 400,

@@ -6,9 +6,6 @@ export function CellFeedComposer({
   onChange,
   onSubmit,
   onFiles,
-  artifactType = "",
-  artifactTypes = [],
-  onArtifactTypeChange = () => {},
   disabled,
   statusMessage,
   statusTone = "success",
@@ -18,7 +15,11 @@ export function CellFeedComposer({
   const placeholder = t("incubator.feedPlaceholder");
 
   function handleKeyDown(event) {
-    if (event.key === "Enter" && !event.shiftKey) {
+    // Enter is also emitted while an IME is committing a composed phrase.
+    // Never submit during composition; the following plain Enter remains the
+    // explicit send gesture.
+    const composing = event.isComposing || event.keyCode === 229;
+    if (event.key === "Enter" && !event.shiftKey && !composing) {
       event.preventDefault();
       onSubmit();
     }
@@ -73,20 +74,6 @@ export function CellFeedComposer({
           +
         </button>
         <div className="cell-feed__body">
-          <label className="cell-feed__artifact-type">
-            <span>{t("incubator.outputMode")}</span>
-            <select
-              value={artifactType}
-              onChange={(event) => onArtifactTypeChange(event.target.value)}
-              disabled={disabled}
-              aria-label={t("incubator.outputMode")}
-            >
-              <option value="">{t("incubator.absorbOnly")}</option>
-              {artifactTypes.map((type) => (
-                <option key={type.id} value={type.id}>{type.label} · {type.id}</option>
-              ))}
-            </select>
-          </label>
           <textarea
             value={value}
             onChange={(event) => onChange(event.target.value)}

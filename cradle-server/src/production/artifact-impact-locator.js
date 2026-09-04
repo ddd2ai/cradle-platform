@@ -8,12 +8,20 @@ export function locateArtifactChangeTargets({
   task,
   executionResult,
   candidatePaths,
+  scope = "file",
 } = {}) {
   const allOutputs = (artifact?.outputs ?? []).filter(
     (output) => output?.kind === "file" && output.path
   );
   if (allOutputs.length === 0) {
     return { paths: [], confidence: 0, reason: "artifact has no file outputs" };
+  }
+  if (scope === "artifact") {
+    return {
+      paths: allOutputs.map((output) => output.path),
+      confidence: 0.6,
+      reason: "Artifact outputs directory is the declared bounded mutation scope",
+    };
   }
   const candidateSet = Array.isArray(candidatePaths)
     ? new Set(candidatePaths)
@@ -70,11 +78,38 @@ export function locateArtifactChangeTargets({
     };
   }
 
+  const technologyPaths = locateTechnologyConfigurationPaths(outputs, evidence);
+  if (technologyPaths.length > 0) {
+    return {
+      paths: technologyPaths,
+      confidence: 0.45,
+      reason: "database technology change matched bounded build and application configuration outputs",
+    };
+  }
+
   return {
     paths: [],
     confidence: 0,
     reason: "no deterministic output target could be located",
   };
+}
+
+function locateTechnologyConfigurationPaths(outputs, evidence) {
+  const databaseChange = /\b(?:switch|use|migrate|change|adopt|database|db)\b[\s\S]{0,80}\b(?:h2|postgres(?:ql)?|mysql|mariadb)\b|\b(?:h2|postgres(?:ql)?|mysql|mariadb)\b[\s\S]{0,80}\b(?:database|db|switch|use|migrate|change)\b|資料庫|數據庫|切換|改用/iu.test(evidence);
+  if (!databaseChange) return [];
+
+  const configurationNames = new Set([
+    "pom.xml",
+    "build.gradle",
+    "build.gradle.kts",
+    "application.yml",
+    "application.yaml",
+    "application.properties",
+  ]);
+  return outputs
+    .filter((output) => configurationNames.has(path.posix.basename(normalize(output.path))))
+    .map((output) => output.path)
+    .slice(0, MAX_TARGETS);
 }
 
 function buildEvidenceText(task, executionResult) {

@@ -21,13 +21,10 @@ export function IncubatorControlBar({
   onFocusSelectedCell,
   onResetCamera,
   feedItems,
-  artifactTypes,
-  artifactType,
   onCancelFeedItem,
   feedError,
   feedMessage,
   onFeedFiles,
-  onArtifactTypeChange,
   onDismissFeedItem,
   onRetryFeedItem,
 }) {
@@ -74,9 +71,6 @@ export function IncubatorControlBar({
             onChange={setFeedInput}
             onSubmit={handleFeedSubmit}
             onFiles={onFeedFiles}
-            artifactType={artifactType}
-            artifactTypes={artifactTypes}
-            onArtifactTypeChange={onArtifactTypeChange}
             disabled={false}
             statusMessage={feedItems.length === 0 ? feedStatusMessage : null}
             statusTone={feedStatusTone}

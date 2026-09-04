@@ -325,6 +325,7 @@ export class StimulusCultivationService {
 
     let memoryRecorded = false;
     let artifactEvolution = { decision: "not-required", reason: policy.reason };
+    let artifactHandled = false;
     try {
       const beforeTasks = directProduction ? [] : await cell.readTasks();
       const beforeTaskIds = new Set(beforeTasks.map((task) => task.id));
@@ -346,54 +347,84 @@ export class StimulusCultivationService {
           processing: "direct-production",
           consumed: 1,
         });
-        updatePhase(update, "producing");
-        await this.#publishCellState(cell, {
-          progress: PHASES.producing,
-          phase: "producing",
-        });
-        this.activityLogger?.info("cultivation", "artifact.production_started", {
-          operationId,
-          sourceId: source.sourceId,
-          cellId: cell.id,
-          type: productionIntent.type,
-        });
-        const provenance = {
-          mode: "stimulus",
-          stimulusId: stimulus.envelope.stimulusId,
-          sourceId: source.sourceId,
-          sourceStimulusId: source.stimulusId,
-          sourceName: source.originalName,
-          sourceMediaType: source.mediaType,
-          sourceSha256: source.sha256,
-          cellId: cell.id,
-          observedAt: stimulus.envelope.createdAt,
-        };
-        const produced = await cell.produceArtifact({
-          type: productionIntent.type,
-          title: productionIntent.title,
-          goal: productionIntent.goal,
-          origin: {
-            ...provenance,
-            producerCellId: cell.id,
-            targetCellId: cell.id,
-          },
-          signal,
-        });
-        artifactEvolution = {
-          decision: "created",
-          artifactId: produced.artifact.id,
-          revisionId: produced.saved.revisionId ?? null,
-          changedPaths: produced.artifact.outputs.map((output) => output.path),
-          provenance,
-        };
-        this.activityLogger?.info("cultivation", "artifact.production_completed", {
-          operationId,
-          sourceId: source.sourceId,
-          cellId: cell.id,
-          type: productionIntent.type,
-          artifactId: produced.artifact.id,
-          revisionId: produced.saved.revisionId,
-        });
+        const existing = await findOwnedArtifactOfType(cell, productionIntent.type);
+        if (existing) {
+          // Once a Cell has a product of this type, new Stimuli evolve that
+          // product into a new revision instead of creating a parallel copy.
+          updatePhase(update, "evolving");
+          await this.#publishCellState(cell, { progress: PHASES.evolving, phase: "evolving" });
+          this.activityLogger?.info("cultivation", "artifact.evolution_started", {
+            operationId,
+            sourceId: source.sourceId,
+            cellId: cell.id,
+            artifactId: existing.artifactId,
+            type: productionIntent.type,
+          });
+          artifactEvolution = await this.artifactEvolutionService.evaluateAndEvolve({
+            cell,
+            stimulus: stimulus.envelope,
+            source,
+            signal,
+          });
+          artifactHandled = true;
+          this.activityLogger?.info("cultivation", "artifact.evolution_completed", {
+            operationId,
+            sourceId: source.sourceId,
+            cellId: cell.id,
+            artifactId: artifactEvolution.artifactId ?? existing.artifactId,
+            revisionId: artifactEvolution.revisionId ?? null,
+            decision: artifactEvolution.decision,
+          });
+        } else {
+          updatePhase(update, "producing");
+          await this.#publishCellState(cell, {
+            progress: PHASES.producing,
+            phase: "producing",
+          });
+          this.activityLogger?.info("cultivation", "artifact.production_started", {
+            operationId,
+            sourceId: source.sourceId,
+            cellId: cell.id,
+            type: productionIntent.type,
+          });
+          const provenance = {
+            mode: "stimulus",
+            stimulusId: stimulus.envelope.stimulusId,
+            sourceId: source.sourceId,
+            sourceStimulusId: source.stimulusId,
+            sourceName: source.originalName,
+            sourceMediaType: source.mediaType,
+            sourceSha256: source.sha256,
+            cellId: cell.id,
+            observedAt: stimulus.envelope.createdAt,
+          };
+          const produced = await cell.produceArtifact({
+            type: productionIntent.type,
+            title: productionIntent.title,
+            goal: productionIntent.goal,
+            origin: {
+              ...provenance,
+              producerCellId: cell.id,
+              targetCellId: cell.id,
+            },
+            signal,
+          });
+          artifactEvolution = {
+            decision: "created",
+            artifactId: produced.artifact.id,
+            revisionId: produced.saved.revisionId ?? null,
+            changedPaths: produced.artifact.outputs.map((output) => output.path),
+            provenance,
+          };
+          this.activityLogger?.info("cultivation", "artifact.production_completed", {
+            operationId,
+            sourceId: source.sourceId,
+            cellId: cell.id,
+            type: productionIntent.type,
+            artifactId: produced.artifact.id,
+            revisionId: produced.saved.revisionId,
+          });
+        }
       } else {
         this.activityLogger?.info("cultivation", "metabolism.started", {
           operationId,
@@ -459,7 +490,7 @@ export class StimulusCultivationService {
       });
     }
 
-    if (policy.evolveArtifact) {
+    if (policy.evolveArtifact && !artifactHandled) {
       updatePhase(update, "evolving");
       await this.#publishCellState(cell, { progress: PHASES.evolving, phase: "evolving" });
       this.activityLogger?.info("cultivation", "artifact.evaluation_started", {
@@ -650,6 +681,13 @@ function updatePhase(update, phase) {
 function stimulusSummary(source, extraction) {
   const excerpt = String(extraction.text ?? "").replace(/\s+/g, " ").trim().slice(0, 240);
   return excerpt || `${source.originalName} (${source.mediaType}, ${source.byteLength} bytes)`;
+}
+
+async function findOwnedArtifactOfType(cell, type) {
+  const catalog = await cell.artifactStore.listArtifactSummaries();
+  return (catalog.artifacts ?? []).find((artifact) =>
+    artifact.ownerCellId === cell.id && artifact.type === type
+  ) ?? null;
 }
 
 function buildKnowledgeRecord({ source, stimulus, extraction }) {

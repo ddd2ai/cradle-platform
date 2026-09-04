@@ -163,6 +163,37 @@ assert.equal(archivedStimuli, 1, "the directly produced Stimulus must still be a
 assert.equal(productionResult.cells[0].artifactEvolution.decision, "created");
 assert.equal(productionResult.cells[0].artifactEvolution.artifactId, "artifact-payment-spec");
 
+const evolvingCell = createCell("orders-evolving");
+let unexpectedCreation = 0;
+evolvingCell.artifactStore.listArtifactSummaries = async () => ({
+  artifacts: [{ artifactId: "artifact-orders", ownerCellId: "orders-evolving", type: "document", title: "Orders", goal: "orders" }],
+  errors: [],
+});
+evolvingCell.produceArtifact = async () => {
+  unexpectedCreation += 1;
+  throw new Error("existing Artifact must be evolved, not recreated");
+};
+const evolutionCalls = [];
+const evolvingService = new StimulusCultivationService({
+  engine: { listCells: () => [evolvingCell], requireCell: () => evolvingCell },
+  artifactEvolutionService: {
+    evaluateAndEvolve: async (input) => {
+      evolutionCalls.push(input);
+      return { decision: "evolved", artifactId: "artifact-orders", revisionId: "rev-orders-2", provenance: { stimulusId: input.stimulus.stimulusId } };
+    },
+  },
+});
+const evolved = await evolvingService.cultivate({
+  source: { ...source, sourceId: "source-orders-2", sha256: "orders-hash-2" },
+  extraction: { status: "extracted", method: "utf8-text-v1", text: "Add return handling to the order flow", evidence: { outcome: "sufficient", reason: "decoded" } },
+  explicitCellId: "orders-evolving",
+  operationId: "op-orders-2",
+});
+assert.equal(unexpectedCreation, 0);
+assert.equal(evolutionCalls.length, 1);
+assert.equal(evolved.cells[0].artifactEvolution.decision, "evolved");
+assert.equal(evolved.cells[0].artifactEvolution.revisionId, "rev-orders-2");
+
 const cancelledCell = createCell("payments-cancelled");
 cancelledCell.getCultivationState = async () => cancelledCell.states.at(-1);
 const productionStarted = createDeferred();

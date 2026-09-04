@@ -31,5 +31,8 @@
   "runtime": {
     "activationConcurrency": 4,
     "llmConcurrency": 3
+  },
+  "cultivation": {
+    "artifactType": "code"
   }
 }

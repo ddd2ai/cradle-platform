@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { ApiError } from "../api/api-error.js";
 import { PROJECT_ROOT } from "../project-root.js";
+import { isSupportedArtifactType } from "../production/artifact-type-catalog.js";
 
 const DEFAULT_CRADLE_CONFIG_FILE = path.join(
   PROJECT_ROOT,
@@ -51,6 +52,10 @@ function validateCradleConfig(config) {
   const timeouts = requireObject(config.timeouts, "timeouts");
   const heartbeat = requireObject(config.heartbeat, "heartbeat");
   const runtime = requireObject(config.runtime, "runtime");
+  const cultivation = requireObject(
+    config.cultivation ?? { artifactType: "document" },
+    "cultivation",
+  );
   const defaultProvider = requireAllowedProvider(
     ai.defaultProvider,
     "ai.defaultProvider"
@@ -126,7 +131,20 @@ function validateCradleConfig(config) {
         "runtime.llmConcurrency"
       ),
     },
+    cultivation: {
+      artifactType: requireArtifactType(cultivation.artifactType),
+    },
   };
+}
+
+function requireArtifactType(value) {
+  if (typeof value !== "string" || !isSupportedArtifactType(value)) {
+    throw invalidConfig(
+      "cultivation.artifactType must be a supported Artifact type.",
+      { path: "cultivation.artifactType" },
+    );
+  }
+  return value;
 }
 
 function requireObject(value, pathName) {

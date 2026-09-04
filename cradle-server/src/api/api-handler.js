@@ -19,6 +19,8 @@ import {
   RuntimeActivityLogger,
   formatRuntimeActivity,
 } from "../application/runtime-activity-logger.js";
+import { HeartbeatScheduler } from "../heartbeat/heartbeat-scheduler.js";
+import { HeartbeatModeStore } from "../heartbeat/heartbeat-mode.js";
 
 // ApplicationEventStream re-export 保留 backward compat (測試與舊 callsite 用)
 export { RuntimeEventBus as ApplicationEventStream } from "../application/runtime-event-bus.js";
@@ -47,6 +49,7 @@ export function createApiHandler({
   fusionServiceFactory,
   cradleConfigFile,
   foundationDocumentStore,
+  heartbeatScheduler = null,
 }) {
   const runtimeEvents = eventBus ?? eventStream;
   const sseTransport = sseRuntimeEventTransport ?? new SseRuntimeEventTransport({
@@ -90,6 +93,12 @@ export function createApiHandler({
     ?? new FoundationDocumentStore({
       configDir: path.join(engine.projectRoot ?? PROJECT_ROOT, "config"),
     });
+  const resolvedHeartbeatScheduler = heartbeatScheduler ?? new HeartbeatScheduler({
+    engine,
+    operationRunner: resolvedOperationRunner,
+    heartbeatServiceFactory,
+    heartbeatModeStoreFactory: heartbeatModeStoreFactory ?? (() => new HeartbeatModeStore()),
+  });
 
   const routes = createApiRoutes({
     engine,
@@ -108,6 +117,7 @@ export function createApiHandler({
     fusionServiceFactory,
     cradleConfigFile,
     foundationDocumentStore: resolvedFoundationDocumentStore,
+    heartbeatScheduler: resolvedHeartbeatScheduler,
   });
 
   return async function handleApiRequest(request) {

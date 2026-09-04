@@ -48,8 +48,15 @@ const DEFAULT_SETTINGS = {
     activationConcurrency: "4",
     llmConcurrency: "3",
   },
+  cultivation: {
+    artifactType: "document",
+  },
   heartbeatMode: "manual",
 };
+
+const ARTIFACT_TYPE_OPTIONS = [
+  "document", "image", "code",
+];
 
 const PROVIDER_ROWS = [
   { id: "ollama", label: "Ollama" },
@@ -268,11 +275,16 @@ export function SettingsPage({ initialSectionId = "ai-runtime" } = {}) {
             )}
 
             {selectedSectionId === "cultivation" && (
-              <CultivationForm
-                heartbeatMode={draftSettings.heartbeatMode}
-                onChange={updateHeartbeatMode}
-                t={t}
-              />
+      <CultivationForm
+        heartbeatMode={draftSettings.heartbeatMode}
+        artifactType={draftSettings.cultivation.artifactType}
+        onChange={updateHeartbeatMode}
+        onArtifactTypeChange={(value) => setDraftSettings((current) => ({
+          ...current,
+          cultivation: { ...current.cultivation, artifactType: value },
+        }))}
+        t={t}
+      />
             )}
 
             {selectedSectionId === "advanced" && <AdvancedConfiguration t={t} />}
@@ -366,6 +378,9 @@ function mapConfigToSettings(config) {
         "3",
       ),
     },
+    cultivation: {
+      artifactType: String(config.cultivation?.artifactType ?? "document"),
+    },
     heartbeatMode: normalizeHeartbeatMode(config.heartbeat?.mode),
   };
 }
@@ -411,6 +426,9 @@ function mapSettingsToConfig(settings) {
     runtime: {
       activationConcurrency: parseIntegerSetting(settings.runtime.activationConcurrency),
       llmConcurrency: parseIntegerSetting(settings.runtime.llmConcurrency),
+    },
+    cultivation: {
+      artifactType: settings.cultivation.artifactType,
     },
     heartbeat: {
       mode: settings.heartbeatMode,
@@ -613,10 +631,24 @@ function ProvidersForm({ providers, onChange, t }) {
   );
 }
 
-function CultivationForm({ heartbeatMode, onChange, t }) {
+function CultivationForm({ heartbeatMode, artifactType, onChange, onArtifactTypeChange, t }) {
   return (
     <div className="settings-section-block">
       <h3>{t("settings.cultivation")}</h3>
+      <label className="settings-field">
+        <span>{t("settings.artifactType")}</span>
+        <select
+          className="settings-select"
+          value={artifactType}
+          onChange={(event) => onArtifactTypeChange(event.target.value)}
+        >
+          {ARTIFACT_TYPE_OPTIONS.map((type) => (
+            <option key={type} value={type}>{formatArtifactTypeLabel(type)}</option>
+          ))}
+        </select>
+        <small className="settings-field-hint">{t("settings.artifactTypeDescription")}</small>
+      </label>
+
       <label className="settings-field">
         <span>{t("settings.mode")}</span>
         <select
@@ -641,6 +673,10 @@ function CultivationForm({ heartbeatMode, onChange, t }) {
       </div>
     </div>
   );
+}
+
+function formatArtifactTypeLabel(type) {
+  return String(type).charAt(0).toUpperCase() + String(type).slice(1);
 }
 
 function AdvancedConfiguration({ t }) {

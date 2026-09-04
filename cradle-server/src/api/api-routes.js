@@ -69,6 +69,7 @@ export function createApiRoutes({
   ingestFileStimulusUseCase,
   cradleConfigFile,
   foundationDocumentStore,
+  heartbeatScheduler = null,
 }) {
   return [
     exact("GET", "/api/v1/events", async ({ request }) => ({
@@ -175,10 +176,10 @@ export function createApiRoutes({
       })
     ),
     exact("POST", "/api/v1/cells/activate-all", async () =>
-      new SetAllCellsActiveUseCase({ engine, eventStream }).execute({ active: true })
+      new SetAllCellsActiveUseCase({ engine, eventStream, heartbeatScheduler }).execute({ active: true })
     ),
     exact("POST", "/api/v1/cells/deactivate-all", async () =>
-      new SetAllCellsActiveUseCase({ engine, eventStream }).execute({ active: false })
+      new SetAllCellsActiveUseCase({ engine, eventStream, heartbeatScheduler }).execute({ active: false })
     ),
     exact("POST", "/api/v1/cells/fuse", async ({ request }) => {
       const useCase = new FuseCellsUseCase({

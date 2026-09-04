@@ -1825,7 +1825,7 @@ button.comparison-row:hover, button.comparison-row.selected { background: #111f2
   height: var(--incubator-control-height, 72px);
   min-height: var(--incubator-control-height, 72px);
   grid-template-columns: 38px minmax(0, 1fr) 38px;
-  align-items: end;
+  align-items: center;
   gap: 8px;
   padding: 9px 10px;
   border: 1px solid rgba(114, 145, 174, .2);
@@ -2046,15 +2046,16 @@ button.comparison-row:hover, button.comparison-row.selected { background: #111f2
 }
 
 .cell-feed__body {
-  display: grid;
+  display: flex;
   min-width: 0;
   align-self: stretch;
-  grid-template-rows: 20px minmax(0, 1fr);
+  align-items: center;
 }
 
 .cell-feed__body textarea {
+  align-self: center;
   min-height: 0;
-  padding: 3px 0 0;
+  padding: 0;
 }
 
 .cell-feed__artifact-type {

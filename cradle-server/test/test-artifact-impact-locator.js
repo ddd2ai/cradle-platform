@@ -43,6 +43,27 @@ assert.deepEqual(
   []
 );
 
+const artifactScope = locateArtifactChangeTargets({
+  artifact,
+  scope: "artifact",
+  task: { title: "改用 H2 資料庫" },
+});
+assert.deepEqual(artifactScope.paths, artifact.outputs.map((output) => output.path));
+assert.match(artifactScope.reason, /outputs directory/);
+
+const h2Targets = locateArtifactChangeTargets({
+  artifact: {
+    outputs: [
+      { kind: "file", path: "pom.xml", content: "spring-boot-starter-data-jpa" },
+      { kind: "file", path: "src/main/resources/application.yml", content: "spring.datasource.url" },
+      { kind: "file", path: "src/main/java/example/OrderService.java", content: "class OrderService {}" },
+    ],
+  },
+  task: { title: "改用 H2 資料庫" },
+});
+assert.deepEqual(h2Targets.paths, ["pom.xml", "src/main/resources/application.yml"]);
+assert.match(h2Targets.reason, /bounded build/);
+
 const indexedOnly = locateArtifactChangeTargets({
   artifact: {
     outputs: [{

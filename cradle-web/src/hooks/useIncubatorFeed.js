@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   cancelOperation,
-  fetchArtifactTypes,
   fetchOperations,
   uploadStimulusFile,
 } from "../api/cradleClient";
@@ -22,8 +21,6 @@ export function useIncubatorFeed() {
   const [feedItems, setFeedItems] = useState(() => queueRef.current.list());
   const [feedMessage, setFeedMessage] = useState(null);
   const [feedError, setFeedError] = useState(null);
-  const [artifactTypes, setArtifactTypes] = useState([]);
-  const [artifactType, setArtifactType] = useState("");
 
   useEffect(() => queueRef.current.subscribe(setFeedItems), []);
 
@@ -50,20 +47,6 @@ export function useIncubatorFeed() {
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    fetchArtifactTypes()
-      .then((items) => {
-        if (!cancelled) setArtifactTypes(items);
-      })
-      .catch(() => {
-        // Absorb-only remains available if capability discovery is unavailable.
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
     if (!feedMessage) return undefined;
 
     const timeoutId = window.setTimeout(() => setFeedMessage(null), 3200);
@@ -79,7 +62,7 @@ export function useIncubatorFeed() {
       // Queueing is local and immediate. Authoritative cultivation starts only
       // after each POST is accepted, and Cell routing remains server-owned.
       const queued = queueRef.current.enqueue(files, {
-        artifactType: artifactType || null,
+        artifactType: null,
       });
       setFeedMessage(t("incubator.queuedStimuli", { count: queued.length }));
       return queued;
@@ -87,7 +70,7 @@ export function useIncubatorFeed() {
       setFeedError(error.message);
       return [];
     }
-  }, [artifactType, t]);
+  }, [t]);
 
   const dismissFeedItem = useCallback((feedId) => {
     queueRef.current.dismiss(feedId);
@@ -114,8 +97,6 @@ export function useIncubatorFeed() {
   }, []);
 
   return {
-    artifactTypes,
-    artifactType,
     cancelFeedItem,
     dismissFeedItem,
     feedError,
@@ -123,7 +104,6 @@ export function useIncubatorFeed() {
     feedItems,
     feedMessage,
     retryFeedItem,
-    setArtifactType,
   };
 }
 

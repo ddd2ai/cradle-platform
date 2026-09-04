@@ -41,6 +41,7 @@ export class StimulusArtifactEvolutionService {
     const located = locateArtifactChangeTargets({
       artifact,
       task,
+      scope: "artifact",
       candidatePaths: indexed.available && indexed.paths.length > 0 ? indexed.paths : undefined,
     });
     if (located.paths.length === 0) {
