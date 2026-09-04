@@ -21,6 +21,7 @@ export class LifecycleExecutionService {
 
   async execute(proposal) {
     const startedAt = new Date().toISOString();
+    const onProgress = proposal.onProgress ?? (() => {});
 
     try {
       if (proposal.action === "stay") {
@@ -124,10 +125,12 @@ export class LifecycleExecutionService {
 
       if (proposal.action === "divide") {
         const parentCell = this.engine.requireCell(proposal.sourceCellId);
+        onProgress({ progress: 30, currentStage: "division-validating" });
         const result = await this.divisionService.divide({
           engine: this.engine,
           parentCell,
           childId: proposal.suggestedChildId,
+          onStage: onProgress,
         });
 
         return {

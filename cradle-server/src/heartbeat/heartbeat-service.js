@@ -27,7 +27,7 @@ export class HeartbeatService {
     this.approvalService = approvalService;
   }
 
-  async beat() {
+  async beat({ onProgress = () => {} } = {}) {
     const mode = await this.modeStore.getMode();
     const snapshot = await this.snapshotService.create();
     const observations = [];
@@ -89,7 +89,7 @@ export class HeartbeatService {
       };
     }
 
-    const handled = await this.handleProposal(selected, mode);
+    const handled = await this.handleProposal(selected, mode, { onProgress });
     if (handled.record.proposal.action !== "stay") {
       saved.push(await this.proposalStore.save(handled.record));
     }
@@ -134,7 +134,7 @@ export class HeartbeatService {
     return (b.proposal.confidence ?? 0) - (a.proposal.confidence ?? 0);
   }
 
-  async handleProposal(record, mode) {
+  async handleProposal(record, mode, { onProgress = () => {} } = {}) {
     const { proposal, policyDecision } = record;
 
     if (!policyDecision.allowed) {
@@ -201,6 +201,7 @@ export class HeartbeatService {
     const executionResult = await this.executionService.execute({
       ...proposal,
       status: "executing",
+      onProgress,
     });
 
     return {

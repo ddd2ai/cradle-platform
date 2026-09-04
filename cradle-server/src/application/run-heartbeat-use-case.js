@@ -20,9 +20,11 @@ export class RunHeartbeatUseCase {
           currentStage: "heartbeat",
         });
 
-        return await this.heartbeatServiceFactory({
+        const result = await this.heartbeatServiceFactory({
           engine: this.engine,
-        }).beat();
+        }).beat({ onProgress: update });
+        update({ progress: 100, currentStage: "heartbeat-complete" });
+        return result;
       },
     });
 
