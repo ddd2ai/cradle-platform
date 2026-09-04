@@ -572,3 +572,37 @@ Correctness invariants：Cell 選擇仍由 server Living Context routing 決定�
 第二份 lifecycle authority；每份 stimulus 保存當下明確選擇的 Artifact Type；upload failure 保留原檔並可重試同一
 feed record；REST accepted 後不再從 browser 重送；terminal event 不會被較晚的 HTTP 202 snapshot 倒退。UI 以真實
 operation phase 與 timestamp 顯示 elapsed time，不合成 timer progress。
+
+### 2026-09-04 — Stimulus cultivation 端到端取消
+
+目標路徑為 Incubator activity card → `POST /api/v1/operations/:operationId/cancel` → `OperationRunner` →
+extraction／Cell coordinator／metabolism／Artifact production／provider adapter。先前已接受的 cultivation 無法由使用者
+停止；卡住或已不需要的 LLM 工作會繼續占用全域 admission slot 與同一 Cell 的序列 queue。現在 operation 會先進入
+`cancelling`，待正在執行的工作完成取消補償後成為 `cancelled`。尚未開始的同 Cell operation 可立即回應取消，但仍由
+內部 queue tail 保持 ordering，不讓後續工作越過它。
+
+複雜度：取消查找與 AbortSignal propagation 為 `O(1)`；同一 Cell 的既有 serialization 與 queue memory `O(Q)` 不變。
+Artifact revision 是 commit boundary：signal 在權威寫入前中止；若 revision 已成功寫入，completion 優先，避免
+operation terminal state 與實際 Artifact 不一致。`cancelled` 不增加成熟度、不形成品質判定，也不等同 Stable 或
+Needs Attention。
+
+環境與命令：Apple M4 Pro、14 logical CPUs、48 GiB RAM、Darwin arm64、Node v22.23.2；10 warmups、100 samples，
+in-process abort-aware fake task、in-memory operation store，無 network、cache、disk durability 或真實 provider process。
+
+```bash
+npm run benchmark:cancel --workspace=cradle-server
+```
+
+| Measurement | samples | p50 | p95 | max active calls | remaining calls | remaining controllers | CPU | RSS delta |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| cancel request → terminal `cancelled` | 100 | 0.007 ms | 0.010 ms | 1 | 0 | 0 | 2.096 ms | 327,680 B |
+
+這是 **current-state only** measurement，沒有可比較的 pre-change cancellation baseline，也不代表真實 Codex、Gemini、
+Ollama 或 Copilot 的 process／network shutdown latency。既有 provider cancellation tests 分別驗證 CLI terminate/kill、
+fetch AbortSignal 與 session disposal；本 benchmark 只驗證 application cancellation propagation 不累積 active calls 或
+operation controllers，因此不宣稱真實 provider latency 改善比例。
+
+Correctness invariants：REST operation state 仍是 authority；runtime event 只通知 presentation；已排隊和執行中的工作
+不會破壞同一 Cell ordering；取消必須先完成 Cell state 與 lifecycle event 補償才 terminal；取消後不保存未 commit 的
+Artifact；晚於 authoritative revision 的取消不能把已存在的產物偽裝成 cancelled；每個 operation controller 在 terminal
+後移除。

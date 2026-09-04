@@ -83,3 +83,20 @@ test("cultivation attention accepts the safe reason carried by a terminal operat
   });
   assert.equal(view.attentionMessage, "Image analysis provider is unavailable");
 });
+
+test("cancelled cultivation is neutral and never claims stable quality", () => {
+  const view = toCultivationViewModel({
+    operationId: "op-cancelled",
+    type: "stimulus-cultivation",
+    status: "cancelled",
+    currentStage: "cancelled",
+    lifeState: "cancelled",
+    progress: 76,
+    context: { cellIds: ["cell-a"] },
+  });
+
+  assert.equal(view.status, "Cancelled");
+  assert.equal(view.tone, "cancelled");
+  assert.equal(view.phaseLabel, "Cancelled");
+  assert.notEqual(view.status, "Stable");
+});

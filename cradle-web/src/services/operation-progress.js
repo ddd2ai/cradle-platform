@@ -87,14 +87,14 @@ export function updateOperationProgress(operation) {
   // operation can complete over WebSocket before fetch resolves; never let the
   // later accepted snapshot roll authoritative terminal presentation backward.
   if (
-    ["completed", "failed"].includes(existing?.status) &&
-    !["completed", "failed"].includes(status)
+    ["completed", "failed", "cancelled"].includes(existing?.status) &&
+    !["completed", "failed", "cancelled"].includes(status)
   ) {
     return;
   }
 
-  // Terminal 狀態 (completed/failed) 立即送達
-  if (status === "completed" || status === "failed") {
+  // Terminal 狀態 (completed/failed/cancelled) 立即送達
+  if (["completed", "failed", "cancelled"].includes(status)) {
     flushOperationProgress(operationId);
     publishOperationProgress(operationId, operation);
     

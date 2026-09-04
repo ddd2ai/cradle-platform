@@ -7,6 +7,7 @@ import { ArtifactIncrementalValidator } from "./artifact-incremental-validator.j
 import { ArtifactValidator } from "./artifact-validator.js";
 import { buildArtifactImpactLookupKeys } from "./artifact-impact-index.js";
 import { locateArtifactChangeTargets } from "./artifact-impact-locator.js";
+import { throwIfAborted } from "../utils/abort.js";
 
 export class StimulusArtifactEvolutionService {
   constructor({ mutationServiceFactory, now = () => new Date() } = {}) {
@@ -21,7 +22,7 @@ export class StimulusArtifactEvolutionService {
     this.now = now;
   }
 
-  async evaluateAndEvolve({ cell, stimulus, source } = {}) {
+  async evaluateAndEvolve({ cell, stimulus, source, signal = null } = {}) {
     const catalog = await cell.artifactStore.listArtifactSummaries();
     const selection = selectArtifactCandidate({ stimulus, artifacts: catalog.artifacts ?? [] });
     if (selection.decision !== "selected") return selection;
@@ -60,8 +61,9 @@ export class StimulusArtifactEvolutionService {
       allowedOutputs,
       environment,
       evaluatedAt,
-    }), getAiTimeoutMs());
+    }), getAiTimeoutMs(), { signal });
     const proposal = parseLooseJsonObject(raw?.text ?? raw?.answer ?? raw ?? "{}");
+    throwIfAborted(signal);
     if (proposal.decision === "no-change" || !Array.isArray(proposal.changes) || proposal.changes.length === 0) {
       return {
         decision: "no-change",
@@ -85,6 +87,7 @@ export class StimulusArtifactEvolutionService {
       allowedPaths: located.paths,
       provenance,
     });
+    throwIfAborted(signal);
     const applied = await this.mutationServiceFactory(cell.artifactStore).apply(changePlan);
     return {
       decision: "evolved",

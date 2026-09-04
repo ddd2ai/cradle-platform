@@ -74,7 +74,7 @@ function handleRuntimeEvent(event) {
 
   if (type === "operation.updated" && payload.operation) {
     updateOperationProgress(payload.operation);
-    if (["completed", "failed"].includes(payload.operation.status)) {
+    if (["completed", "failed", "cancelled"].includes(payload.operation.status)) {
       reconcileResources(resourcesForOperation(payload.operation));
     }
   }

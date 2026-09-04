@@ -86,6 +86,27 @@ test("authoritative operations can be restored without duplication", () => {
   assert.equal(queue.list()[0].operation, operation);
 });
 
+test("a queued stimulus can be cancelled before REST acceptance", async () => {
+  const gate = deferred();
+  let nextId = 0;
+  const queue = new StimulusFeedQueue({
+    concurrency: 1,
+    idFactory: () => `feed-${++nextId}`,
+    upload: async (file) => {
+      if (file.name === "first.txt") await gate.promise;
+      return operationFor(file.name);
+    },
+  });
+  queue.enqueue([stimulus("first.txt"), stimulus("second.txt")]);
+  await nextTurn();
+
+  assert.equal(queue.cancelQueued("feed-2"), true);
+  assert.equal(queue.list().find((entry) => entry.feedId === "feed-2").state, "cancelled");
+  gate.resolve();
+  await queue.whenIdle();
+  assert.equal(queue.list().find((entry) => entry.feedId === "feed-1").state, "accepted");
+});
+
 function stimulus(name) {
   return { name, type: "text/plain", size: 12 };
 }
@@ -102,4 +123,10 @@ function operationFor(sourceName) {
 
 function nextTurn() {
   return new Promise((resolve) => setImmediate(resolve));
+}
+
+function deferred() {
+  let resolve;
+  const promise = new Promise((done) => { resolve = done; });
+  return { promise, resolve };
 }

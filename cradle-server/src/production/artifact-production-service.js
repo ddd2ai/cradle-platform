@@ -23,6 +23,7 @@ import {
 } from "./artifact-ownership-policy.js";
 import { getArtifactTypePolicy } from "./artifact-type-policy.js";
 import { assertSupportedArtifactType } from "./artifact-type-catalog.js";
+import { throwIfAborted } from "../utils/abort.js";
 
 export class ArtifactProductionService {
   constructor({
@@ -68,6 +69,7 @@ export class ArtifactProductionService {
     constraints = [],
     origin = null,
     timeoutMs = getAiTimeoutMs(),
+    signal = null,
   } = {}) {
     // 不使用完整的 Memory Context,避免 Vision 干擾 Goal
     // 只提供必要的技術環境資訊
@@ -93,6 +95,7 @@ The actual artifact MUST follow the current Goal, not any past Vision or History
     const result = await this.cell.askWithTimeout(
       prompt,
       timeoutMs,
+      { signal },
     );
     const raw = result?.text ?? result?.answer ?? result ?? "{}";
     
@@ -140,6 +143,7 @@ The actual artifact MUST follow the current Goal, not any past Vision or History
     artifact,
     validationError,
     timeoutMs = getAiTimeoutMs(),
+    signal = null,
   } = {}) {
     // Repair 時同樣只提供必要環境,避免干擾
     const environment = await this.cell.readEnvironment();
@@ -164,6 +168,7 @@ The actual artifact MUST follow the Original Goal, not any past Vision or Histor
     const result = await this.cell.askWithTimeout(
       prompt,
       timeoutMs,
+      { signal },
     );
     const raw = result?.text ?? result?.answer ?? result ?? "{}";
     
@@ -401,6 +406,7 @@ This repair changed how the cell improves an artifact after real execution feedb
     goal,
     constraints = [],
     origin = null,
+    signal = null,
   } = {}) {
     if (!goal?.trim()) {
       throw new Error("produce requires goal");
@@ -417,6 +423,7 @@ This repair changed how the cell improves an artifact after real execution feedb
       constraints,
       origin,
       timeoutMs: remainingBudgetMs(deadline),
+      signal,
     });
 
     // Step 2: Normalize
@@ -451,6 +458,7 @@ Attempting one repair cycle.
         artifact,
         validationError: error.message,
         timeoutMs: remainingBudgetMs(deadline),
+        signal,
       });
 
       // Step 5: Normalize repaired artifact
@@ -459,6 +467,10 @@ Attempting one repair cycle.
       // Step 6: Validate again
       this.validator.validate(artifact);
     }
+
+    // Cancellation before this boundary stores no Artifact. Once the
+    // authoritative revision is written, completion wins over a late cancel.
+    throwIfAborted(signal);
 
     // Step 7: Store artifact
     const saved = await this.store.saveArtifact(artifact);

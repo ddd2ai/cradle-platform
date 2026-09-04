@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { fetchArtifactTypes, fetchOperations, uploadStimulusFile } from "../api/cradleClient";
+import {
+  cancelOperation,
+  fetchArtifactTypes,
+  fetchOperations,
+  uploadStimulusFile,
+} from "../api/cradleClient";
 import { useUiPreferences } from "../i18n/UiPreferencesProvider";
 import { StimulusFeedQueue } from "../services/stimulus-feed-queue";
 
@@ -27,7 +32,7 @@ export function useIncubatorFeed() {
     fetchOperations()
       .then((operations) => operations.filter(
         (operation) => operation.type === "stimulus-cultivation" && (
-          !["completed", "failed"].includes(operation.status) ||
+          !["completed", "failed", "cancelled"].includes(operation.status) ||
           operation.lifeState === "needs_attention"
         ),
       ))
@@ -92,9 +97,26 @@ export function useIncubatorFeed() {
     queueRef.current.retry(feedId);
   }, []);
 
+  const cancelFeedItem = useCallback(async (feedId) => {
+    const item = queueRef.current.list().find((candidate) => candidate.feedId === feedId);
+    if (!item) return;
+    if (item.state === "queued") {
+      queueRef.current.cancelQueued(feedId);
+      return;
+    }
+    if (!item.operation?.operationId) return;
+    try {
+      const operation = await cancelOperation(item.operation.operationId);
+      if (operation) queueRef.current.updateOperation(feedId, operation);
+    } catch (error) {
+      queueRef.current.setActionError(feedId, error);
+    }
+  }, []);
+
   return {
     artifactTypes,
     artifactType,
+    cancelFeedItem,
     dismissFeedItem,
     feedError,
     feedFiles,

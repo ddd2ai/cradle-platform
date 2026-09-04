@@ -10,6 +10,8 @@ const PHASE_LABELS = Object.freeze({
   validating: "Validating",
   stabilizing: "Stabilizing",
   stable: "Stable",
+  cancelling: "Cancelling",
+  cancelled: "Cancelled",
   needs_attention: "Needs Attention",
   failed: "Needs Attention",
 });
@@ -18,8 +20,10 @@ export function toCultivationViewModel(operation, selectedCell = null) {
   if (!operation) return null;
 
   const failed = operation.status === "failed";
+  const cancelled = operation.status === "cancelled";
   const lifeState = failed
     ? "needs_attention"
+    : cancelled ? "cancelled"
     : operation.lifeState ?? (operation.status === "completed" ? "stable" : "growing");
   const phase = String(operation.currentStage ?? "accepted").toLowerCase();
   const cellIds = operation.context?.cellIds ?? [];
@@ -48,11 +52,15 @@ export function toCultivationViewModel(operation, selectedCell = null) {
     operationId: operation.operationId,
     status: lifeState === "needs_attention"
       ? "Needs Attention"
+      : lifeState === "cancelled"
+        ? "Cancelled"
       : lifeState === "stable"
         ? "Stable"
         : "Growing",
     tone: lifeState === "needs_attention"
       ? "attention"
+      : lifeState === "cancelled"
+        ? "cancelled"
       : lifeState === "stable"
         ? "stable"
         : "growing",

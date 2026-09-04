@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { createServer } from "vite";
 import {
   activateCell,
+  cancelOperation,
   deactivateCell,
   divideCell,
   fetchArtifactTypes,
@@ -1043,6 +1044,30 @@ test("Artifact capabilities come from the server catalog", async () => {
   }
 });
 
+test("Cultivation cancellation uses the authoritative operation endpoint", async () => {
+  const originalFetch = globalThis.fetch;
+  let request = null;
+  globalThis.fetch = async (url, options) => {
+    request = { url, options };
+    return Response.json({
+      operation: {
+        operationId: "op-cancel-me",
+        type: "stimulus-cultivation",
+        status: "cancelling",
+        currentStage: "cancelling",
+      },
+    });
+  };
+  try {
+    const operation = await cancelOperation("op-cancel-me");
+    assert.equal(operation.status, "cancelling");
+    assert.equal(request.url, "/api/v1/operations/op-cancel-me/cancel");
+    assert.equal(request.options.method, "POST");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("Cultivation progress shows real phase and elapsed time while work is growing", () => {
   const growing = renderToStaticMarkup(React.createElement(CultivationProgressCard, {
     operationId: null,
@@ -1126,6 +1151,27 @@ test("elapsed cultivation time is derived from operation timestamps", () => {
     formatElapsed("2026-09-04T00:00:00.000Z", "2026-09-04T00:01:05.000Z"),
     "1m 5s",
   );
+});
+
+test("cancelled cultivation does not look stable or require attention", () => {
+  const markup = renderToStaticMarkup(React.createElement(CultivationProgressCard, {
+    operationId: null,
+    acceptedOperation: {
+      operationId: "op-cancelled",
+      status: "cancelled",
+      progress: 76,
+      currentStage: "cancelled",
+      lifeState: "cancelled",
+      createdAt: "2026-09-04T00:00:00.000Z",
+      cancelledAt: "2026-09-04T00:00:03.000Z",
+      context: { cellIds: ["B01"], sourceName: "cancelled.md" },
+    },
+  }));
+
+  assert.match(markup, /Cancelled/);
+  assert.match(markup, /No quality decision was made/);
+  assert.doesNotMatch(markup, /Needs Attention/);
+  assert.doesNotMatch(markup, /Cultivation complete/);
 });
 
 test("Cell cultivation state takes precedence over manual active state", () => {

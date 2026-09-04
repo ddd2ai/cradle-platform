@@ -150,6 +150,42 @@ assert.equal(archivedStimuli, 1, "the directly produced Stimulus must still be a
 assert.equal(productionResult.cells[0].artifactEvolution.decision, "created");
 assert.equal(productionResult.cells[0].artifactEvolution.artifactId, "artifact-payment-spec");
 
+const cancelledCell = createCell("payments-cancelled");
+cancelledCell.getCultivationState = async () => cancelledCell.states.at(-1);
+const productionStarted = createDeferred();
+cancelledCell.produceArtifact = async ({ signal }) => {
+  productionStarted.resolve();
+  return await new Promise((resolve, reject) => {
+    signal.addEventListener("abort", () => reject(signal.reason), { once: true });
+  });
+};
+const cancelledService = new StimulusCultivationService({
+  engine: { listCells: () => [cancelledCell], requireCell: () => cancelledCell },
+});
+const cancellationController = new AbortController();
+const cancelledCultivation = cancelledService.cultivate({
+  source: { ...source, sourceId: "source-cancelled", sha256: "cancelled-hash" },
+  extraction: {
+    status: "extracted",
+    method: "utf8-text-v1",
+    text: "Create a payment specification",
+    evidence: { outcome: "sufficient", reason: "decoded" },
+  },
+  artifactType: "spec",
+  explicitCellId: "payments-cancelled",
+  operationId: "op-cancelled",
+  signal: cancellationController.signal,
+});
+await productionStarted.promise;
+cancellationController.abort(Object.assign(new Error("cancel cultivation"), {
+  code: "OPERATION_CANCELLED",
+}));
+await assert.rejects(cancelledCultivation, /cancel cultivation/);
+assert.equal(cancelledCell.states.at(-1).state, "cancelled");
+assert.equal(cancelledCell.states.at(-1).attention, null);
+assert.equal(cancelledCell.lifecycleEvents.at(-1).status, "cancelled");
+assert.equal(cancelledCell.lifecycleEvents.at(-1).qualityOutcome, null);
+
 const productionCells = [createCell("orders-a"), createCell("orders-b")];
 let multiCellProductionCalls = 0;
 let secondarySummaryCalls = 0;
@@ -280,6 +316,55 @@ assert.equal(retryMetabolismCalls, 1);
 assert.equal(retryActivities.includes("stimulus.retrying"), true);
 assert.equal(retryActivities.includes("stimulus.persisted"), false);
 
+const cancelledRetryCell = createCell("cancelled-retry");
+let cancelledRetryProductionCalls = 0;
+cancelledRetryCell.writeStimulus = async (input) => ({
+  duplicate: true,
+  duplicateOf: "stimulus-cancelled-retry",
+  envelope: {
+    ...input,
+    schemaVersion: 1,
+    stimulusId: "stimulus-cancelled-retry",
+    createdAt: "2026-09-04T12:00:00.000Z",
+  },
+});
+cancelledRetryCell.getCultivationState = async () => ({
+  state: "cancelled",
+  stimulusId: "stimulus-cancelled-retry",
+});
+cancelledRetryCell.produceArtifact = async (input) => {
+  cancelledRetryProductionCalls += 1;
+  return {
+    artifact: {
+      id: "artifact-after-cancel",
+      type: input.type,
+      outputs: [{ path: "result.md", language: "markdown" }],
+    },
+    saved: { revisionId: "rev-after-cancel" },
+  };
+};
+const cancelledRetryService = new StimulusCultivationService({
+  engine: {
+    listCells: () => [cancelledRetryCell],
+    requireCell: () => cancelledRetryCell,
+  },
+});
+const cancelledRetry = await cancelledRetryService.cultivate({
+  source: { ...source, sourceId: "source-cancelled-retry", sha256: "cancelled-retry" },
+  extraction: {
+    status: "extracted",
+    method: "utf8-text-v1",
+    text: "Create the specification again",
+    evidence: { outcome: "sufficient", reason: "decoded" },
+  },
+  artifactType: "spec",
+  explicitCellId: "cancelled-retry",
+  operationId: "op-cancelled-retry",
+});
+assert.equal(cancelledRetry.lifeState, "stable");
+assert.equal(cancelledRetryProductionCalls, 1, "a cancelled duplicate must remain retryable");
+assert.equal(cancelledRetry.cells[0].artifactEvolution.artifactId, "artifact-after-cancel");
+
 const deferredTaskCell = createCell("payments");
 let deferredTaskReads = 0;
 let deferredTaskProcessingCalls = 0;
@@ -369,3 +454,9 @@ assert.deepEqual(
 );
 
 console.log("Stimulus cultivation service tests passed");
+
+function createDeferred() {
+  let resolve;
+  const promise = new Promise((done) => { resolve = done; });
+  return { promise, resolve };
+}

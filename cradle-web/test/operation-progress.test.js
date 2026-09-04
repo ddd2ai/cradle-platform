@@ -97,6 +97,21 @@ describe("Operation Progress Throttling", () => {
   });
 
   describe("Terminal Status Bypass", () => {
+    it("cancelled 狀態應該立即送達,不受 throttle 影響", async () => {
+      const listener = mock.fn();
+      const operationId = "op-cancelled";
+
+      subscribeOperationProgress(operationId, listener);
+      updateOperationProgress({ operationId, status: "running", progress: 60 });
+      updateOperationProgress({ operationId, status: "cancelled", progress: 60 });
+
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      assert.equal(
+        listener.mock.calls.some((call) => call.arguments[0].status === "cancelled"),
+        true,
+      );
+    });
+
     it("completed 狀態應該立即送達,不受 throttle 影響", async () => {
       const listener = mock.fn();
       const operationId = "op-complete";

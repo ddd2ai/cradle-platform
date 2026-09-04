@@ -19,6 +19,7 @@ import { CellArtifactStabilizationService } from "./cell/cell-artifact-stabiliza
 import { prepareCellDirectories } from "./cell/cell-directory-preparer.js";
 import { mergeCellProfileForStart } from "./cell/cell-profile.js";
 import { block } from "./utils/text.js";
+import { abortReason, throwIfAborted } from "./utils/abort.js";
 import { parseLooseJsonObject } from "./utils/json.js";
 import { writeJsonFile } from "./utils/json-file.js";
 import {
@@ -421,14 +422,24 @@ ${input}
 
   async askWithTimeout(
     input,
-    timeoutMs = getAiTimeoutMs()
+    timeoutMs = getAiTimeoutMs(),
+    { signal: parentSignal = null } = {},
   ) {
+    throwIfAborted(parentSignal);
     const assistant = await this.ensureAssistant();
+    throwIfAborted(parentSignal);
     const startedAt = Date.now();
     const controller = new AbortController();
     const timeoutError = new Error(`Timeout after ${timeoutMs}ms waiting for AI response`);
-    const timeoutId = setTimeout(() => controller.abort(timeoutError), timeoutMs);
+    let timedOut = false;
+    const timeoutId = setTimeout(() => {
+      timedOut = true;
+      controller.abort(timeoutError);
+    }, timeoutMs);
     timeoutId.unref?.();
+    const onParentAbort = () => controller.abort(abortReason(parentSignal));
+    if (parentSignal?.aborted) onParentAbort();
+    else parentSignal?.addEventListener("abort", onParentAbort, { once: true });
     const metricLabels = {
       cellId: this.id,
       provider: this.provider,
@@ -448,14 +459,20 @@ ${input}
           })
         : execute());
     } catch (error) {
-      this.runtimeMetrics?.increment("llm_errors", 1, metricLabels);
-      if (controller.signal.aborted) {
+      if (timedOut) {
+        this.runtimeMetrics?.increment("llm_errors", 1, metricLabels);
         this.runtimeMetrics?.increment("llm_timeouts", 1, metricLabels);
         throw timeoutError;
       }
+      if (parentSignal?.aborted) {
+        this.runtimeMetrics?.increment("llm_cancelled", 1, metricLabels);
+        throw abortReason(parentSignal);
+      }
+      this.runtimeMetrics?.increment("llm_errors", 1, metricLabels);
       throw error;
     } finally {
       clearTimeout(timeoutId);
+      parentSignal?.removeEventListener("abort", onParentAbort);
       this.activeAiCalls = Math.max(0, this.activeAiCalls - 1);
       this.runtimeMetrics?.observe(
         "llm_duration_ms",

@@ -7,6 +7,7 @@ import {
 import { StimulusArtifactEvolutionService } from "../production/stimulus-artifact-evolution-service.js";
 import { resolveArtifactProductionRequest } from "../production/artifact-production-request.js";
 import { CellCultivationCoordinator } from "./cell-cultivation-coordinator.js";
+import { abortReason, throwIfAborted } from "../utils/abort.js";
 
 const PHASES = Object.freeze({
   analyzing: 15,
@@ -45,7 +46,9 @@ export class StimulusCultivationService {
     artifactType = null,
     operationId,
     update = () => {},
+    signal = null,
   } = {}) {
+    throwIfAborted(signal);
     this.activityLogger?.info("cultivation", "routing.started", {
       operationId,
       sourceId: source.sourceId,
@@ -55,6 +58,7 @@ export class StimulusCultivationService {
     const descriptors = await Promise.all(
       this.engine.listCells().map((cell) => this.#describeCell(cell))
     );
+    throwIfAborted(signal);
     updatePhase(update, "selecting");
     const stimulusDraft = {
       summary: `${source.originalName} entered Cradle`,
@@ -138,8 +142,9 @@ export class StimulusCultivationService {
           role: index === 0 ? "primary" : "secondary",
         },
         operationId,
+        signal,
         update: (patch) => updateTargetProgress(cell.id, patch),
-      }));
+      }), { signal });
     }));
     const needsAttention = results.some((result) => result.lifeState === "needs_attention");
     updatePhase(update, needsAttention ? "needs_attention" : "stable");
@@ -152,7 +157,27 @@ export class StimulusCultivationService {
     };
   }
 
-  async #cultivateCell({ cell, source, extraction, target, productionIntent, operationId, update }) {
+  async #cultivateCell(input) {
+    try {
+      return await this.#cultivateCellWork(input);
+    } catch (error) {
+      if (!input.signal?.aborted) throw error;
+      await this.#cancelCell(input);
+      throw abortReason(input.signal);
+    }
+  }
+
+  async #cultivateCellWork({
+    cell,
+    source,
+    extraction,
+    target,
+    productionIntent,
+    operationId,
+    update,
+    signal,
+  }) {
+    throwIfAborted(signal);
     const policy = applyProductionRequest(
       evaluateDocumentStimulus({ source, extraction, relevance: target.relevance }),
       productionIntent,
@@ -224,12 +249,15 @@ export class StimulusCultivationService {
       },
       notify: false,
     });
+    throwIfAborted(signal);
     let retryingDuplicate = false;
     if (stimulus.duplicate) {
       const currentCultivation = await cell.getCultivationState?.();
-      const retryingAttention = currentCultivation?.state === "needs_attention" &&
+      const retryingTerminalStimulus = ["needs_attention", "cancelled"].includes(
+        currentCultivation?.state
+      ) &&
         currentCultivation.stimulusId === stimulus.duplicateOf;
-      if (retryingAttention) {
+      if (retryingTerminalStimulus) {
         retryingDuplicate = true;
         this.activityLogger?.info("cultivation", "stimulus.retrying", {
           operationId,
@@ -301,6 +329,7 @@ export class StimulusCultivationService {
       const beforeTasks = directProduction ? [] : await cell.readTasks();
       const beforeTaskIds = new Set(beforeTasks.map((task) => task.id));
       await cell.appendKnowledge(buildKnowledgeRecord({ source, stimulus: stimulus.envelope, extraction }));
+      throwIfAborted(signal);
       memoryRecorded = true;
       this.activityLogger?.info("cultivation", "memory.recorded", {
         operationId,
@@ -310,6 +339,7 @@ export class StimulusCultivationService {
       });
       if (directProduction) {
         await cell.archiveStimuli([stimulus]);
+        throwIfAborted(signal);
         this.activityLogger?.info("cultivation", "stimulus.absorbed", {
           operationId,
           cellId: cell.id,
@@ -347,6 +377,7 @@ export class StimulusCultivationService {
             producerCellId: cell.id,
             targetCellId: cell.id,
           },
+          signal,
         });
         artifactEvolution = {
           decision: "created",
@@ -371,6 +402,7 @@ export class StimulusCultivationService {
         });
         const metabolism = await cell.metabolismService.metabolize({
           summaryOnly: policy.decision === "summary-only",
+          signal,
         });
         this.activityLogger?.info("cultivation", "metabolism.completed", {
           operationId,
@@ -399,6 +431,7 @@ export class StimulusCultivationService {
         }
       }
     } catch (error) {
+      if (signal?.aborted) throw abortReason(signal);
       this.activityLogger?.error("cultivation", "cell.failed", {
         operationId,
         sourceId: source.sourceId,
@@ -439,6 +472,7 @@ export class StimulusCultivationService {
           cell,
           stimulus: stimulus.envelope,
           source,
+          signal,
         });
         this.activityLogger?.info("cultivation", "artifact.evaluation_completed", {
           operationId,
@@ -449,6 +483,7 @@ export class StimulusCultivationService {
           revisionId: artifactEvolution.revisionId,
         });
       } catch (error) {
+        if (signal?.aborted) throw abortReason(signal);
         artifactEvolution = { decision: "needs-attention", reason: error.message };
         this.activityLogger?.warn("cultivation", "artifact.needs_attention", {
           operationId,
@@ -501,6 +536,31 @@ export class StimulusCultivationService {
     updatePhase(update, "stabilizing");
     await this.#publishCellState(cell, { progress: PHASES.stabilizing, phase: "stabilizing" });
     return await this.#finishCell({ cell, source, stimulus, policy, qualityDecision, artifactEvolution });
+  }
+
+  async #cancelCell({ cell, source, operationId }) {
+    const current = await cell.getCultivationState?.();
+    if (current?.operationId !== operationId) return;
+    const cultivation = await this.#publishCellState(cell, {
+      state: "cancelled",
+      phase: "cancelled",
+      attention: null,
+    });
+    await cell.lifecycleEventStore.appendLifecycleEvent({
+      type: "stimulus-cultivation",
+      status: "cancelled",
+      stimulusId: current.stimulusId ?? null,
+      sourceId: source.sourceId,
+      sourceStimulusId: source.stimulusId,
+      qualityOutcome: null,
+      salienceDecision: "cancelled-by-user",
+    });
+    this.activityLogger?.info("cultivation", "cell.cancelled", {
+      operationId,
+      sourceId: source.sourceId,
+      cellId: cell.id,
+      stimulusId: cultivation.stimulusId,
+    });
   }
 
   async #finishCell({ cell, source, stimulus, policy, qualityDecision, artifactEvolution }) {

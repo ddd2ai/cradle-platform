@@ -71,6 +71,24 @@ export async function fetchOperations() {
   return data?.operations ?? [];
 }
 
+export async function cancelOperation(operationId) {
+  let response;
+  try {
+    response = await fetch(
+      `/api/v1/operations/${encodeURIComponent(operationId)}/cancel`,
+      { method: "POST" },
+    );
+  } catch {
+    throw new Error("Backend unavailable");
+  }
+  const data = await readJsonResponse(response);
+  if (!response.ok) {
+    throw new Error(data?.error?.message ?? `Failed to cancel operation: ${response.status}`);
+  }
+  if (data?.operation) updateOperationProgress(data.operation);
+  return data?.operation ?? null;
+}
+
 export async function fetchArtifactTypes() {
   const response = await fetch("/api/v1/artifact-types");
   const data = await readJsonResponse(response);
@@ -453,7 +471,7 @@ async function waitForOperation(
     (operation) => {
       onProgress?.(operation);
 
-      if (["completed", "failed"].includes(operation.status)) {
+      if (["completed", "failed", "cancelled"].includes(operation.status)) {
         wake?.();
       }
     }
@@ -478,6 +496,9 @@ async function waitForOperation(
       }
       if (operation.status === "failed") {
         throw new Error(operation.error?.message ?? "Operation failed");
+      }
+      if (operation.status === "cancelled") {
+        throw new Error(operation.cancellation?.reason ?? "Operation cancelled");
       }
 
       await new Promise((resolve) => {

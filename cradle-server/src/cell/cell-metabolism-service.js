@@ -2,6 +2,7 @@ import { getTimeoutMs } from "../cradle-config.js";
 import { parseLooseJsonObject } from "../utils/json.js";
 import { evaluateStimulusBatch } from "../situation/stimulus-salience-policy.js";
 import { stimuliToEvolutionEvidence } from "../evolution/evolution-significance-gate.js";
+import { throwIfAborted } from "../utils/abort.js";
 
 export class CellMetabolismService {
   constructor({ cell } = {}) {
@@ -66,10 +67,11 @@ export class CellMetabolismService {
     return lines.join("\n");
   }
 
-  async metabolize({ summaryOnly = false } = {}) {
+  async metabolize({ summaryOnly = false, signal = null } = {}) {
     const stimuli = this.cell.claimStimuli
       ? await this.cell.claimStimuli()
       : await this.cell.readStimuli();
+    throwIfAborted(signal);
 
     if (stimuli.length === 0) {
       return {
@@ -106,19 +108,18 @@ export class CellMetabolismService {
         };
       }
 
-      let summaryObservationFile = null;
-      if (salience.summaryStimuli.length > 0) {
-        summaryObservationFile = await this.cell.observationStore.writeObservationMarkdown(
-          this.formatObservationMarkdown(
-            salience.observation ?? salience.summaryObservation
-          )
+      const summaryObservationMarkdown = salience.summaryStimuli.length > 0
+        ? this.formatObservationMarkdown(salience.observation ?? salience.summaryObservation)
+        : null;
+
+      if (salience.processing === "summary-only") {
+        throwIfAborted(signal);
+        const summaryObservationFile = await this.cell.observationStore.writeObservationMarkdown(
+          summaryObservationMarkdown
         );
         await this.cell.recordEvolutionEvidence?.(
           stimuliToEvolutionEvidence(salience.summaryStimuli)
         );
-      }
-
-      if (salience.processing === "summary-only") {
         await this.cell.archiveStimuli(stimuli);
         return {
           created: 0,
@@ -201,8 +202,9 @@ ${s.content}
     }
   ]
 }
-`,
-        getTimeoutMs("cultivationSeconds")
+        `,
+        getTimeoutMs("cultivationSeconds"),
+        { signal },
       );
 
       const raw =
@@ -211,7 +213,22 @@ ${s.content}
         result ??
         "{}";
 
+      // Everything below is one authoritative metabolism commit phase. A
+      // cancellation before it starts stores no derived result; once it starts,
+      // finish all related writes so the operation cannot expose partial state.
+      throwIfAborted(signal);
+
       const parsed = parseLooseJsonObject(raw);
+
+      let summaryObservationFile = null;
+      if (summaryObservationMarkdown) {
+        summaryObservationFile = await this.cell.observationStore.writeObservationMarkdown(
+          summaryObservationMarkdown
+        );
+        await this.cell.recordEvolutionEvidence?.(
+          stimuliToEvolutionEvidence(salience.summaryStimuli)
+        );
+      }
 
       const observationFile = await this.cell.observationStore.writeObservationMarkdown(
         this.formatObservationMarkdown(parsed.observation)

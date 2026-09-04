@@ -61,7 +61,7 @@ export class InMemoryOperationStore {
     this.#trim();
     this.eventBus?.publish("operation.updated", { operation: toEventOperation(updated) });
 
-    if (["completed", "failed"].includes(updated.status)) {
+    if (["completed", "failed", "cancelled"].includes(updated.status)) {
       this.eventBus?.publish("cell.updated", {
         cellIds: updated.context?.cellIds ?? [],
         operationId: updated.operationId,
@@ -96,7 +96,7 @@ export class InMemoryOperationStore {
   #trim() {
     if (this.operations.size <= this.limit) return;
     for (const [operationId, operation] of this.operations) {
-      if (["completed", "failed"].includes(operation.status)) {
+      if (["completed", "failed", "cancelled"].includes(operation.status)) {
         this.operations.delete(operationId);
         if (this.operations.size <= this.limit) return;
       }

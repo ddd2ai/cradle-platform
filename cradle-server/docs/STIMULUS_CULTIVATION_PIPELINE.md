@@ -11,6 +11,8 @@ Drop file or text
   → Stable
        or
     Needs Attention (only when a required evidence gate cannot pass)
+       or
+    Cancelled (explicit user stop; no quality decision)
 ```
 
 使用者離開 Incubator 後，server-side operation 仍會繼續。返回畫面時，web 會讀取最近的 operation，
@@ -74,7 +76,7 @@ elements 與 uncertainties，並在 evidence 保留 provider、model 與 method�
 - extraction evidence 不足：保存來源與 Stimulus，要求真正必要的人類 attention。
 
 這條 event-driven path 不要求 Cell 永久 active。原本的 `active` flag 仍控制 manual/heartbeat cultivation；
-新的 cultivation state 獨立呈現 `dormant → stimulated → growing → stable | needs_attention`。
+新的 cultivation state 獨立呈現 `dormant → stimulated → growing → stable | needs_attention | cancelled`。
 同一 Cell 的多個 background operations 由 application coordinator 排隊，避免同時 claim 同一 mailbox 或互相覆蓋狀態；
 不同 Cell 會並行培養。Codex reasoning 一律在 ephemeral read-only directory 中執行；模型不能直接把檔案寫進
 Cradle repository 或 Cell workspace，權威 Artifact mutation 仍只能通過 ChangePlan 與既有 validation/store path。
@@ -100,8 +102,24 @@ Cradle repository 或 Cell workspace，權威 Artifact mutation 仍只能通過 
 | stabilizing | 96 |
 | Stable / Needs Attention decision | 100 |
 
-UI 只把這些 checkpoint 聚合成 `Growing`、`Stable`、`Needs Attention`；reasoning、model output 與內部 log
+UI 只把這些 checkpoint 聚合成 `Growing`、`Stable`、`Needs Attention`、`Cancelled`；reasoning、model output 與內部 log
 留在 diagnostics/log surfaces。
+
+## Controlled cancellation
+
+Incubator 可透過 `POST /api/v1/operations/:operationId/cancel` 取消 `stimulus-cultivation`。operation 依序進入
+`cancelling → cancelled`；`cancelled` 是使用者要求的 terminal outcome，不是錯誤、Stable 或 Needs Attention，也不會
+形成品質判定。AbortSignal 由 `OperationRunner` 傳入 extraction、Cell coordinator、metabolism、Artifact production
+與 provider adapter。尚未取得 LLM slot 的請求會從 scheduler queue 移除；Codex/Gemini CLI、Ollama fetch 與 Copilot
+session 使用既有 provider cancellation boundary 收束。
+
+同一 Cell 中尚未開始的 operation 可立即取消而不越過 coordinator ordering；已開始的 operation 必須先完成取消補償，
+將 Cell cultivation state 與 lifecycle event 記錄為 `cancelled`，operation 才成為 terminal。Artifact Store 是 commit
+boundary：取消在權威 revision 寫入前生效且不得落檔；revision 已成功寫入時 completion 優先，避免 operation 與實際
+Artifact state 矛盾。
+
+取消不會把 Stimulus 的 dedup identity 當成已成功消化；使用者再次送入相同材料時，若該 Cell 的最後狀態仍是同一
+Stimulus 的 `cancelled`，會重新進入 cultivation，而不是被誤判為已完成的 duplicate。
 
 ## Operational diagnostics
 

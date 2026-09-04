@@ -1,5 +1,6 @@
 import { createLLMProvider } from "../providers/llm-provider-factory.js";
 import { parseLooseJsonObject } from "../utils/json.js";
+import { abortReason, throwIfAborted } from "../utils/abort.js";
 
 const MEDIA_ANALYSIS_PROMPT = `
 Observe the attached image as source material for a software-life Cell.
@@ -28,7 +29,8 @@ export class ProviderMediaAnalyzer {
     this.resolveBinding = resolveBinding;
   }
 
-  async analyze({ source, bytes, provider, model } = {}) {
+  async analyze({ source, bytes, provider, model, signal = null } = {}) {
+    throwIfAborted(signal);
     const binding = {
       ...this.resolveBinding(),
       ...(provider ? { provider } : {}),
@@ -50,7 +52,7 @@ export class ProviderMediaAnalyzer {
           mediaType: source.mediaType,
           data: Buffer.from(bytes),
         }],
-      });
+      }, { signal });
       const observation = normalizeObservation(parseLooseJsonObject(response));
       if (!observation.summary && observation.visibleText.length === 0 && observation.visualElements.length === 0) {
         return unavailable("Image analysis returned no observable content", binding);
@@ -72,6 +74,7 @@ export class ProviderMediaAnalyzer {
         },
       };
     } catch (error) {
+      if (signal?.aborted) throw abortReason(signal);
       return unavailable(error?.message ?? "Image analysis failed", binding, "error");
     } finally {
       try {

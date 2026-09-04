@@ -1,4 +1,5 @@
 import { CreateCellUseCase } from "../application/create-cell-use-case.js";
+import { CancelOperationUseCase } from "../application/cancel-operation-use-case.js";
 import { DivideCellUseCase } from "../application/divide-cell-use-case.js";
 import { ClearLogsUseCase } from "../application/clear-logs-use-case.js";
 import { ExportCellArtifactUseCase } from "../application/export-cell-artifact-use-case.js";
@@ -432,6 +433,14 @@ export function createApiRoutes({
       /^\/api\/v1\/operations\/([^/]+)$/,
       async ({ params }) =>
         new GetOperationUseCase({ operationStore }).execute({
+          operationId: params[0],
+        })
+    ),
+    pattern(
+      "POST",
+      /^\/api\/v1\/operations\/([^/]+)\/cancel$/,
+      async ({ params }) =>
+        new CancelOperationUseCase({ operationStore, operationRunner }).execute({
           operationId: params[0],
         })
     ),

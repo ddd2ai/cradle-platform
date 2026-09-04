@@ -2009,6 +2009,23 @@ button.comparison-row:hover, button.comparison-row.selected { background: #111f2
   color: rgba(244, 203, 157, .86);
 }
 
+.cultivation-progress--cancelled {
+  border-color: rgba(135, 151, 170, .28);
+  background: rgba(13, 21, 29, .94);
+}
+
+.cultivation-progress--cancelled .cultivation-progress__heading span,
+.cultivation-progress--cancelled .cultivation-progress__terminal-message {
+  color: rgba(176, 192, 208, .78);
+}
+
+.cultivation-progress__action-error {
+  margin: 0;
+  color: #e7a58f;
+  font-size: 10px;
+  line-height: 1.35;
+}
+
 .cell-feed__composer--disabled {
   opacity: .68;
 }

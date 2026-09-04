@@ -39,6 +39,7 @@ export class StimulusFeedQueue {
         state: "queued",
         operation: null,
         error: null,
+        actionError: null,
         enqueuedAt: this.now().toISOString(),
         startedAt: null,
         acceptedAt: null,
@@ -70,6 +71,7 @@ export class StimulusFeedQueue {
         state: "accepted",
         operation,
         error: null,
+        actionError: null,
         enqueuedAt: operation.createdAt ?? this.now().toISOString(),
         startedAt: operation.startedAt ?? null,
         acceptedAt: operation.createdAt ?? this.now().toISOString(),
@@ -84,6 +86,7 @@ export class StimulusFeedQueue {
     if (!entry || entry.state !== "failed" || !entry.file) return false;
     entry.state = "queued";
     entry.error = null;
+    entry.actionError = null;
     entry.startedAt = null;
     entry.acceptedAt = null;
     this.pending.push(feedId);
@@ -100,6 +103,37 @@ export class StimulusFeedQueue {
     this.entries.delete(feedId);
     this.#publish();
     this.#resolveIdle();
+    return true;
+  }
+
+  cancelQueued(feedId) {
+    const entry = this.entries.get(feedId);
+    if (!entry || entry.state !== "queued") return false;
+    const pendingIndex = this.pending.indexOf(feedId);
+    if (pendingIndex >= 0) this.pending.splice(pendingIndex, 1);
+    entry.state = "cancelled";
+    entry.file = null;
+    entry.error = null;
+    this.#publish();
+    this.#resolveIdle();
+    return true;
+  }
+
+  updateOperation(feedId, operation) {
+    const entry = this.entries.get(feedId);
+    if (!entry || !operation?.operationId) return false;
+    entry.operation = operation;
+    entry.state = "accepted";
+    entry.actionError = null;
+    this.#publish();
+    return true;
+  }
+
+  setActionError(feedId, error) {
+    const entry = this.entries.get(feedId);
+    if (!entry) return false;
+    entry.actionError = error?.message || String(error || "Action failed");
+    this.#publish();
     return true;
   }
 
@@ -151,6 +185,7 @@ export class StimulusFeedQueue {
       });
       entry.state = "accepted";
       entry.operation = operation;
+      entry.actionError = null;
       entry.acceptedAt = this.now().toISOString();
       entry.sourceName = operation?.context?.sourceName ?? entry.sourceName;
       // Once REST has accepted the source, the server owns it. Releasing the
@@ -195,6 +230,7 @@ function toPublicEntry(entry, pending) {
     state: entry.state,
     operation: entry.operation,
     error: entry.error,
+    actionError: entry.actionError,
     enqueuedAt: entry.enqueuedAt,
     startedAt: entry.startedAt,
     acceptedAt: entry.acceptedAt,

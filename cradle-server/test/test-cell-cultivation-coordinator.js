@@ -32,4 +32,36 @@ const failed = coordinator.run("cell-a", async () => { throw new Error("expected
 await assert.rejects(failed, /expected/);
 assert.equal(await coordinator.run("cell-a", async () => "recovered"), "recovered");
 
+const cancellationOrder = [];
+const cancellationGate = deferred();
+const firstBlocking = coordinator.run("cell-cancel", async () => {
+  cancellationOrder.push("first:start");
+  await cancellationGate.promise;
+  cancellationOrder.push("first:end");
+});
+const controller = new AbortController();
+let cancelledTaskCalled = false;
+const cancelled = coordinator.run("cell-cancel", async () => {
+  cancelledTaskCalled = true;
+}, { signal: controller.signal });
+controller.abort(Object.assign(new Error("cancel queued cultivation"), {
+  code: "OPERATION_CANCELLED",
+}));
+await assert.rejects(cancelled, /cancel queued cultivation/);
+const afterCancelled = coordinator.run("cell-cancel", async () => {
+  cancellationOrder.push("third:start");
+});
+await new Promise((resolve) => setImmediate(resolve));
+assert.deepEqual(cancellationOrder, ["first:start"]);
+assert.equal(cancelledTaskCalled, false);
+cancellationGate.resolve();
+await Promise.all([firstBlocking, afterCancelled]);
+assert.deepEqual(cancellationOrder, ["first:start", "first:end", "third:start"]);
+
 console.log("Cell cultivation coordinator tests passed");
+
+function deferred() {
+  let resolve;
+  const promise = new Promise((done) => { resolve = done; });
+  return { promise, resolve };
+}

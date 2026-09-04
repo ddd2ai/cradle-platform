@@ -5,6 +5,7 @@ export const CELL_LIFE_STATES = Object.freeze([
   "stimulated",
   "growing",
   "stable",
+  "cancelled",
   "needs_attention",
 ]);
 

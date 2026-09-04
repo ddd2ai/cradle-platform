@@ -180,7 +180,7 @@ export function CellOperationDialogs({
 }
 
 function OperationProgress({ operation, t }) {
-  if (!operation || ["completed", "failed"].includes(operation.status)) {
+  if (!operation || ["completed", "failed", "cancelled"].includes(operation.status)) {
     return null;
   }
 

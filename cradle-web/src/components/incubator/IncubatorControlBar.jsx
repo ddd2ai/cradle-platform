@@ -23,6 +23,7 @@ export function IncubatorControlBar({
   feedItems,
   artifactTypes,
   artifactType,
+  onCancelFeedItem,
   feedError,
   feedMessage,
   onFeedFiles,
@@ -83,6 +84,7 @@ export function IncubatorControlBar({
           <CultivationActivityStack
             items={feedItems}
             selectedCell={selectedCell}
+            onCancel={onCancelFeedItem}
             onDismiss={onDismissFeedItem}
             onRetry={onRetryFeedItem}
           />

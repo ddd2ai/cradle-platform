@@ -2,6 +2,7 @@ import { ApiError } from "../api/api-error.js";
 import { randomUUID } from "node:crypto";
 import { normalizeStimulusEnvelope } from "../situation/stimulus-envelope.js";
 import { assertSupportedArtifactType } from "../production/artifact-type-catalog.js";
+import { throwIfAborted } from "../utils/abort.js";
 
 export class IngestFileStimulusUseCase {
   constructor({
@@ -93,14 +94,16 @@ export class IngestFileStimulusUseCase {
         artifactType: requestedArtifactType,
         cellIds: explicitCellId ? [explicitCellId] : [],
       },
-      task: async ({ update, operationId }) => {
+      task: async ({ update, operationId, signal }) => {
         try {
+          throwIfAborted(signal);
           update({ progress: 10, currentStage: "analyzing", lifeState: "growing" });
           this.activityLogger?.info("stimulus", "extraction.started", {
             operationId,
             sourceId: source.sourceId,
           });
           const content = await this.sourceStore.readBytes(source.sourceId);
+          throwIfAborted(signal);
           const targetCell = explicitCellId ? this.engine.getCell(explicitCellId) : null;
           const extraction = await this.extractorRegistry.extract({
             source,
@@ -109,8 +112,11 @@ export class IngestFileStimulusUseCase {
               provider: targetCell?.provider ?? this.engine.provider,
               model: targetCell?.model ?? this.engine.model,
             },
+            signal,
           });
+          throwIfAborted(signal);
           await this.sourceStore.recordExtraction(source.sourceId, extraction);
+          throwIfAborted(signal);
           this.activityLogger?.info("stimulus", "extraction.completed", {
             operationId,
             sourceId: source.sourceId,
@@ -126,13 +132,18 @@ export class IngestFileStimulusUseCase {
             artifactType: requestedArtifactType,
             operationId,
             update,
+            signal,
           });
         } catch (error) {
-          this.activityLogger?.error("stimulus", "operation.failed", {
+          this.activityLogger?.[signal?.aborted ? "info" : "error"](
+            "stimulus",
+            signal?.aborted ? "operation.cancelled" : "operation.failed",
+            {
             operationId,
             sourceId: source.sourceId,
             error: error?.message ?? "Unknown cultivation error",
-          });
+            },
+          );
           throw error;
         }
       },

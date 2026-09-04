@@ -64,6 +64,7 @@ export function IncubatorWorkspace({
   const {
     artifactTypes,
     artifactType,
+    cancelFeedItem,
     dismissFeedItem,
     feedError,
     feedFiles,
@@ -428,6 +429,7 @@ export function IncubatorWorkspace({
           feedItems={feedItems}
           artifactTypes={artifactTypes}
           artifactType={artifactType}
+          onCancelFeedItem={cancelFeedItem}
           feedError={feedError}
           feedMessage={feedMessage}
           onFeedFiles={feedFiles}

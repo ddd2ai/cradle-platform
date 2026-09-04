@@ -30,6 +30,7 @@ export function mapCellActivity(cell, view = toCellViewModel(cell)) {
 
   if (["stimulated", "growing"].includes(cultivationState)) return "growing";
   if (cultivationState === "stable") return "stable";
+  if (cultivationState === "cancelled") return "idle";
   if (cultivationState === "needs_attention") return "needs-attention";
 
   if (

@@ -10,6 +10,8 @@ export function CultivationProgressCard({
   operationId,
   acceptedOperation,
   selectedCell,
+  actionError = null,
+  onCancel,
   onDismiss,
 }) {
   const { t } = useUiPreferences();
@@ -19,7 +21,7 @@ export function CultivationProgressCard({
   const elapsed = useElapsedTime(operation);
 
   useEffect(() => {
-    if (view?.tone !== "stable") return undefined;
+    if (!["stable", "cancelled"].includes(view?.tone)) return undefined;
     const timeoutId = window.setTimeout(
       () => onDismiss?.(view.operationId),
       STABLE_CONFIRMATION_MS,
@@ -29,7 +31,11 @@ export function CultivationProgressCard({
 
   if (!view) return null;
 
-  const symbol = view.tone === "attention" ? "⚠" : view.tone === "stable" ? "✓" : "🌱";
+  const symbol = view.tone === "attention"
+    ? "⚠"
+    : view.tone === "stable"
+      ? "✓"
+      : view.tone === "cancelled" ? "×" : "🌱";
 
   return (
     <section className={`cultivation-progress cultivation-progress--${view.tone}`} aria-live="polite">
@@ -60,6 +66,8 @@ export function CultivationProgressCard({
           <p className="cultivation-progress__terminal-message">
             {view.tone === "attention"
               ? translateAttentionMessage(view.attentionMessage, t)
+              : view.tone === "cancelled"
+                ? t("incubator.cultivationCancelled")
               : view.artifact?.artifactId
                 ? t("incubator.artifactCreated", { id: view.artifact.artifactId })
                 : t("incubator.complete")}
@@ -71,12 +79,18 @@ export function CultivationProgressCard({
           ) : null}
         </>
       )}
+      {actionError ? <p className="cultivation-progress__action-error">{actionError}</p> : null}
+      {view.tone === "growing" && operation?.status !== "cancelling" ? (
+        <div className="cultivation-progress__actions">
+          <button type="button" onClick={onCancel}>{t("incubator.cancelCultivation")}</button>
+        </div>
+      ) : null}
     </section>
   );
 }
 
 function useElapsedTime(operation) {
-  const terminal = ["completed", "failed"].includes(operation?.status);
+  const terminal = ["completed", "failed", "cancelled"].includes(operation?.status);
   const startedAt = operation?.startedAt ?? operation?.createdAt;
   const [, setTick] = useState(0);
 
@@ -95,6 +109,7 @@ function useElapsedTime(operation) {
 function translateProgressStatus(value, t) {
   return ({
     "Needs Attention": t("status.needsAttention"),
+    Cancelled: t("status.cancelled"),
     Stable: t("status.stable"),
     Growing: t("observatory.growing"),
   })[value] ?? value;
@@ -112,6 +127,8 @@ function translateProgressPhase(value, t) {
     "Evolving Artifact": "incubator.phaseEvolving",
     Validating: "incubator.phaseValidating",
     Stabilizing: "incubator.phaseStabilizing",
+    Cancelling: "incubator.phaseCancelling",
+    Cancelled: "status.cancelled",
     Stable: "status.stable",
     "Needs Attention": "status.needsAttention",
     Growing: "observatory.growing",

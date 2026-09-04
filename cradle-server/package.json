@@ -16,6 +16,7 @@
     "benchmark:artifact": "node --expose-gc scripts/benchmark-artifact-performance.js",
     "benchmark:llm": "node scripts/benchmark-llm-scheduling.js",
     "benchmark:stimulus-production": "node scripts/benchmark-stimulus-production.js",
+    "benchmark:cancel": "node --expose-gc scripts/benchmark-operation-cancellation.js",
     "test": "node scripts/run-tests.js",
     "start": "node src/cradle.js start",
     "dev": "node src/cradle.js start",
