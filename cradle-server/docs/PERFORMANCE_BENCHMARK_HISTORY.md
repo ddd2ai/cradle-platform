@@ -347,3 +347,41 @@ ownership rejection 1000 samples p50/p95 均為 0.003 ms，coordinator、lease �
 - presentation 數字是 Node microbenchmark；下一步以 browser profiler 記錄 React commit count、frame time 與 network requests。
 - current operation store 是 process-local；restart recovery 若加入 durable worker queue，需另量測 queue age p50/p95。
 - image OCR 尚未加入，因此沒有用省略 vision work 換取效能；其 evidence outcome 明確是 `insufficient_evidence`。
+
+### 2026-09-04 — 真實 Stimulus cultivation latency、Cell 並行與 Codex 隔離
+
+狀態：`observational before/after`。在同一台 Apple M4 Pro、Node v22.23.2、Codex `auto` provider 與既有
+26-Cell runtime 上，經由 `POST /api/v1/stimuli/files` 投入真實 payment failure 文字刺激。before 與 after
+的文字及 target Cell 數不同，before 又是被安全終止的 censored sample，因此不宣稱改善百分比。
+
+優化目標與 correctness invariant：
+
+- operation acceptance 必須維持快速，來源 bytes、SHA-256 與 acceptance Stimulus 先成為持久化事實。
+- 不同 Cell 可並行 reasoning；同一 Cell 仍由 `CellCultivationCoordinator` 序列化。
+- 多 Cell operation 使用 target checkpoint 平均 progress，phase 取最慢 target，不能倒退或過早顯示完成。
+- ingestion cultivation 以一次 reasoning 形成 Observation 與 durable pending Task，不同步執行第二次 Task LLM。
+- Codex 純文字與 media 呼叫都使用 ephemeral read-only directory，不得直接修改 repository／Cell workspace。
+- `timeouts.cultivationSeconds` 預設 60 秒，限制單次 cultivation reasoning；逾時不能被回報為 Stable。
+- 不省略六個 required quality gates，不把尚未完成的 Artifact mutation 宣稱為 sufficient。
+
+| Sample | Targets | LLM calls | Queue age | Result |
+| --- | ---: | ---: | ---: | --- |
+| before, high salience | 3 | 第 1 個 Cell 已進入第 2 次 call | 4 ms | 超過 180 秒仍停在 58%，未完成後安全終止 |
+| after, summary-only | 3 | 0 | 2–3 ms | 24 ms，3 Cells Stable |
+| after, high salience | 2 | 2，並行且每 Cell 1 次 | 2–3 ms | 17.528 秒，2 Cells Stable |
+
+after high-salience 的 Cell LLM durations 分別為 16.985 秒與 17.508 秒；兩個 `metabolism.started` 同時在
+`2026-09-04T06:30:37.625Z`，terminal time 為 `2026-09-04T06:30:55.140Z`。每個 Cell 各保存一個
+pending Task，quality outcome 都是 `sufficient`，Artifact decision 都是 `not-required`。focused regression test
+另以兩個受控 Cell 證明不同 key 並行，並驗證 ingestion 不會同步呼叫 `processTask()`。
+
+before 的未隔離 Codex 曾在 repository 建立 `.cell003-validation/PaymentRetryProbe.java` 並執行現有 Artifact；
+測試收束時該暫存目錄已不存在。after 未新增 repository 產物，provider test 同時驗證文字與影像請求的
+`--ephemeral --sandbox read-only --skip-git-repo-check`、isolated cwd 與 cleanup。
+
+限制與後續：
+
+- 目前只有各一筆真實 high-salience before/after，不代表穩定的 p50/p95；需建立固定 corpus 並重複取樣。
+- auto-routing 仍是 lexical policy；Living Context、Memory 與 Artifact ownership 不一致時，target 雖可能符合歷史分工，卻難以向使用者解釋。
+- Codex 能由 per-request timeout 終止；其他 provider adapter 的底層取消能力仍需逐一驗證。
+- 本次未量 browser FPS、React commit 或 long task；UI 體感仍需瀏覽器 trace。

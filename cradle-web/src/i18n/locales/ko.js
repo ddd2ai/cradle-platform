@@ -186,6 +186,7 @@ export const koTranslations = {
   "incubator.phaseSelecting": "알맞은 세포 찾는 중",
   "incubator.phaseStimulating": "자극 중",
   "incubator.phaseCultivating": "육성 중",
+  "incubator.phasePlanning": "다음 성장 형성 중",
   "incubator.phaseEvolving": "산출물 진화 중",
   "incubator.phaseValidating": "검증 중",
   "incubator.phaseStabilizing": "안정화 중",

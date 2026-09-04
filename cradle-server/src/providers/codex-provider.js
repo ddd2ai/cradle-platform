@@ -3,12 +3,10 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { getProviderTimeoutMs } from "../cradle-config.js";
-import { PROJECT_ROOT } from "../project-root.js";
 
 export async function createCodexProvider({
   model = null,
   command = "codex",
-  cwd = PROJECT_ROOT,
   timeoutMs = getProviderTimeoutMs("codex"),
 } = {}) {
   return {
@@ -19,6 +17,7 @@ export async function createCodexProvider({
     async ask({
       prompt,
       media = [],
+      timeoutMs: requestTimeoutMs = timeoutMs,
       onDelta,
       onIdle,
       onError,
@@ -39,17 +38,13 @@ export async function createCodexProvider({
         const args = [
           "exec",
           "--json",
+          "--ephemeral",
+          "--sandbox",
+          "read-only",
+          "--skip-git-repo-check",
         ];
 
         const materialized = await materializeMedia(media);
-        if (materialized.paths.length > 0) {
-          args.push(
-            "--ephemeral",
-            "--sandbox",
-            "read-only",
-            "--skip-git-repo-check",
-          );
-        }
 
         /*
          * model 為 null、undefined 或 auto 時，
@@ -78,8 +73,8 @@ export async function createCodexProvider({
           answer = await executeCodex({
             command,
             args,
-            cwd: materialized.directory ?? cwd,
-            timeoutMs,
+            cwd: materialized.directory,
+            timeoutMs: requestTimeoutMs,
             onDelta,
           });
         } finally {
@@ -108,13 +103,10 @@ export async function createCodexProvider({
 }
 
 async function materializeMedia(media = []) {
-  if (!Array.isArray(media) || media.length === 0) {
-    return { directory: null, paths: [], cleanup: async () => {} };
-  }
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), "cradle-media-"));
   const paths = [];
   try {
-    for (let index = 0; index < media.length; index += 1) {
+    for (let index = 0; index < (Array.isArray(media) ? media.length : 0); index += 1) {
       const item = media[index];
       if (!item?.data) throw new Error("Media input requires data");
       const file = path.join(directory, `${index}${extensionFor(item.mediaType)}`);

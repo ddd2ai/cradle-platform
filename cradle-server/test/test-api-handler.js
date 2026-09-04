@@ -310,6 +310,7 @@ await fs.writeFile(
       gemini: { timeoutSeconds: 3600 },
     },
     timeouts: {
+      cultivationSeconds: 60,
       reflectionSeconds: 30,
       mavenExecutionSeconds: 3600,
     },
@@ -582,6 +583,7 @@ assert.deepEqual(cradleConfig.body, {
     gemini: { timeoutSeconds: 3600 },
   },
   timeouts: {
+    cultivationSeconds: 60,
     reflectionSeconds: 30,
     mavenExecutionSeconds: 3600,
   },
@@ -634,6 +636,7 @@ const updatedCradleConfig = await handler({
       gemini: { timeoutSeconds: 3604 },
     },
     timeouts: {
+      cultivationSeconds: 60,
       reflectionSeconds: 45,
       mavenExecutionSeconds: 2400,
     },

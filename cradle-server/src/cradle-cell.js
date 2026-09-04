@@ -433,7 +433,7 @@ ${input}
     this.activeAiCalls += 1;
     try {
       return await Promise.race([
-        assistant.ask(input),
+        assistant.ask(input, { timeoutMs }),
         new Promise((_, reject) => {
           timeoutId = setTimeout(
             () => reject(new Error(`Timeout after ${timeoutMs}ms waiting for AI response`)),

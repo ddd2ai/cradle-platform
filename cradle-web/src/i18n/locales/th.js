@@ -186,6 +186,7 @@ export const thTranslations = {
   "incubator.phaseSelecting": "กำลังค้นหาเซลล์ที่เหมาะสม",
   "incubator.phaseStimulating": "กำลังกระตุ้น",
   "incubator.phaseCultivating": "กำลังเพาะเลี้ยง",
+  "incubator.phasePlanning": "กำลังก่อรูปการเติบโตขั้นถัดไป",
   "incubator.phaseEvolving": "กำลังพัฒนาผลงาน",
   "incubator.phaseValidating": "กำลังตรวจสอบ",
   "incubator.phaseStabilizing": "กำลังทำให้เสถียร",

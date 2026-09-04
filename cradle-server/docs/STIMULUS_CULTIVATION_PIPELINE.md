@@ -69,14 +69,18 @@ elements 與 uncertainties，並在 evidence 保留 provider、model 與 method�
 抽取證據充足後，salience policy 以 relevance、action/state-impact、risk 與 urgency 計算：
 
 - 低 salience：`summary-only`，只保存 Stimulus／memory 並執行便宜 metabolism。
-- 高 salience：`cultivate`，處理至多一個本次新建立的 pending task。
+- 高 salience：`cultivate`，以一次 bounded reasoning 形成 Observation 與至多一個 durable pending Task；Task 的深度執行交給後續 Cell runtime，不阻塞這次 ingestion operation。
 - 高 salience 且 state impact 足夠：評估 Artifact evolution。
 - extraction evidence 不足：保存來源與 Stimulus，要求真正必要的人類 attention。
 
 這條 event-driven path 不要求 Cell 永久 active。原本的 `active` flag 仍控制 manual/heartbeat cultivation；
 新的 cultivation state 獨立呈現 `dormant → stimulated → growing → stable | needs_attention`。
 同一 Cell 的多個 background operations 由 application coordinator 排隊，避免同時 claim 同一 mailbox 或互相覆蓋狀態；
-不同 Cell 仍可獨立工作。
+不同 Cell 會並行培養。Codex reasoning 一律在 ephemeral read-only directory 中執行；模型不能直接把檔案寫進
+Cradle repository 或 Cell workspace，權威 Artifact mutation 仍只能通過 ChangePlan 與既有 validation/store path。
+單次 cultivation reasoning 的 latency budget 由 `timeouts.cultivationSeconds` 控制，逾時必須留下明確失敗證據，
+不能讓 operation 無界停留在 Growing。多 Cell operation 的 progress 是各 target Cell checkpoint 的平均值，phase
+取最慢 Cell 的真實階段，避免並行更新造成進度倒退或過早接近 100%。
 
 ## Real progress
 
@@ -90,6 +94,7 @@ elements 與 uncertainties，並在 evidence 保留 provider、model 與 method�
 | selecting target Cell | 30 |
 | Stimulus persisted | 42 |
 | memory / cultivation | 58 |
+| durable next-growth Task formed (when required) | 68 |
 | Artifact evolution (when required) | 76 |
 | quality validation | 90 |
 | stabilizing | 96 |

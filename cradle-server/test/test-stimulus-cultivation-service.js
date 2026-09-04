@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { StimulusCultivationService } from "../src/application/stimulus-cultivation-service.js";
 
-function createCell() {
+function createCell(id = "orders") {
   const states = [];
   const lifecycleEvents = [];
   let tasks = [];
   return {
-    id: "orders",
-    name: "Orders",
+    id,
+    name: id,
     states,
     lifecycleEvents,
     artifactStore: {
@@ -187,5 +187,93 @@ assert.equal(retried.lifeState, "stable");
 assert.equal(retryMetabolismCalls, 1);
 assert.equal(retryActivities.includes("stimulus.retrying"), true);
 assert.equal(retryActivities.includes("stimulus.persisted"), false);
+
+const deferredTaskCell = createCell("payments");
+let deferredTaskReads = 0;
+let deferredTaskProcessingCalls = 0;
+deferredTaskCell.readTasks = async () => {
+  deferredTaskReads += 1;
+  return deferredTaskReads === 1
+    ? []
+    : [{ id: "task-payment-safety", status: "pending" }];
+};
+deferredTaskCell.processTask = async () => {
+  deferredTaskProcessingCalls += 1;
+};
+deferredTaskCell.metabolismService.metabolize = async () => ({
+  consumed: 1,
+  created: 1,
+  processing: "reasoning",
+});
+const deferredActivities = [];
+const deferredUpdates = [];
+const deferredService = new StimulusCultivationService({
+  engine: {
+    listCells: () => [deferredTaskCell],
+    requireCell: () => deferredTaskCell,
+  },
+  activityLogger: {
+    info: (_scope, action) => deferredActivities.push(action),
+    warn: () => {},
+    error: () => {},
+  },
+});
+const deferred = await deferredService.cultivate({
+  source: { ...source, sourceId: "source-payment", sha256: "payment-hash" },
+  extraction: {
+    status: "extracted",
+    method: "utf8-text-v1",
+    text: "Payment failure must preserve idempotency and transaction evidence",
+    evidence: { outcome: "sufficient", reason: "decoded" },
+  },
+  explicitCellId: "payments",
+  operationId: "op-payment",
+  update: (patch) => deferredUpdates.push(patch),
+});
+assert.equal(deferred.lifeState, "stable");
+assert.equal(deferredTaskProcessingCalls, 0, "cultivation must not synchronously execute the queued task");
+assert.equal(deferredActivities.includes("task.queued"), true);
+assert.equal(deferredUpdates.some((patch) => patch.currentStage === "planning"), true);
+
+let activeMetabolisms = 0;
+let maxActiveMetabolisms = 0;
+const concurrentCells = [createCell("orders-a"), createCell("orders-b")];
+for (const concurrentCell of concurrentCells) {
+  concurrentCell.metabolismService.metabolize = async () => {
+    activeMetabolisms += 1;
+    maxActiveMetabolisms = Math.max(maxActiveMetabolisms, activeMetabolisms);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    activeMetabolisms -= 1;
+    return { consumed: 1, processing: "summary-only" };
+  };
+}
+const concurrentService = new StimulusCultivationService({
+  engine: {
+    listCells: () => concurrentCells,
+    requireCell: (cellId) => concurrentCells.find((candidate) => candidate.id === cellId),
+  },
+});
+const concurrentUpdates = [];
+const concurrent = await concurrentService.cultivate({
+  source: { ...source, sourceId: "source-concurrent", sha256: "concurrent-hash" },
+  extraction: {
+    status: "extracted",
+    method: "utf8-text-v1",
+    text: "Order processing reference",
+    evidence: { outcome: "sufficient", reason: "decoded" },
+  },
+  operationId: "op-concurrent",
+  update: (patch) => concurrentUpdates.push(patch),
+});
+assert.equal(concurrent.cells.length, 2);
+assert.equal(maxActiveMetabolisms, 2, "different Cells should cultivate concurrently");
+const concurrentProgress = concurrentUpdates
+  .map((patch) => patch.progress)
+  .filter((progress) => Number.isFinite(progress));
+assert.deepEqual(
+  concurrentProgress,
+  [...concurrentProgress].sort((left, right) => left - right),
+  "aggregate operation progress must not move backwards",
+);
 
 console.log("Stimulus cultivation service tests passed");

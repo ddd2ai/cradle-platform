@@ -12,6 +12,7 @@ const PHASES = Object.freeze({
   selecting: 30,
   stimulating: 42,
   cultivating: 58,
+  planning: 68,
   evolving: 76,
   validating: 90,
   stabilizing: 96,
@@ -82,19 +83,37 @@ export class StimulusCultivationService {
     });
     update({ context: { sourceId: source.sourceId, sourceName: source.originalName, cellIds } });
     updatePhase(update, "stimulating");
-    const results = [];
-    for (let index = 0; index < routing.targets.length; index += 1) {
-      const target = routing.targets[index];
+    const targetProgress = new Map(cellIds.map((cellId) => [cellId, {
+      progress: PHASES.stimulating,
+      currentStage: "stimulating",
+    }]));
+    const updateTargetProgress = (cellId, patch) => {
+      const current = targetProgress.get(cellId);
+      targetProgress.set(cellId, {
+        progress: Math.max(current.progress, Number(patch.progress) || current.progress),
+        currentStage: patch.currentStage ?? current.currentStage,
+      });
+      const states = [...targetProgress.values()];
+      const slowest = states.reduce((lowest, state) =>
+        state.progress < lowest.progress ? state : lowest
+      );
+      update({
+        progress: Math.round(states.reduce((sum, state) => sum + state.progress, 0) / states.length),
+        currentStage: slowest.currentStage,
+        lifeState: "growing",
+      });
+    };
+    const results = await Promise.all(routing.targets.map((target) => {
       const cell = this.engine.requireCell(target.cellId);
-      results.push(await this.coordinator.run(cell.id, () => this.#cultivateCell({
+      return this.coordinator.run(cell.id, () => this.#cultivateCell({
         cell,
         source,
         extraction,
         target,
         operationId,
-        update,
-      })));
-    }
+        update: (patch) => updateTargetProgress(cell.id, patch),
+      }));
+    }));
     const needsAttention = results.some((result) => result.lifeState === "needs_attention");
     updatePhase(update, needsAttention ? "needs_attention" : "stable");
     return {
@@ -268,9 +287,18 @@ export class StimulusCultivationService {
         const newTasks = (await cell.readTasks()).filter(
           (task) => task.status === "pending" && !beforeTaskIds.has(task.id)
         ).slice(0, 1);
-        for (const task of newTasks) {
-          await cell.processTask(task);
-          await cell.completeTask(task.id);
+        if (newTasks.length > 0) {
+          updatePhase(update, "planning");
+          await this.#publishCellState(cell, {
+            progress: PHASES.planning,
+            phase: "planning",
+          });
+          this.activityLogger?.info("cultivation", "task.queued", {
+            operationId,
+            sourceId: source.sourceId,
+            cellId: cell.id,
+            taskId: newTasks[0].id,
+          });
         }
       }
     } catch (error) {

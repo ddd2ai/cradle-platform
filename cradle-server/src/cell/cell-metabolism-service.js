@@ -1,4 +1,4 @@
-import { getAiTimeoutMs } from "../cradle-config.js";
+import { getTimeoutMs } from "../cradle-config.js";
 import { parseLooseJsonObject } from "../utils/json.js";
 import { evaluateStimulusBatch } from "../situation/stimulus-salience-policy.js";
 import { stimuliToEvolutionEvidence } from "../evolution/evolution-significance-gate.js";
@@ -202,7 +202,7 @@ ${s.content}
   ]
 }
 `,
-        getAiTimeoutMs()
+        getTimeoutMs("cultivationSeconds")
       );
 
       const raw =

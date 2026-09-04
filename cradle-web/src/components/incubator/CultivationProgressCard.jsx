@@ -82,6 +82,7 @@ function translateProgressPhase(value, t) {
     "Finding the right Cell": "incubator.phaseSelecting",
     Stimulating: "incubator.phaseStimulating",
     Cultivating: "incubator.phaseCultivating",
+    "Forming next growth": "incubator.phasePlanning",
     "Evolving Artifact": "incubator.phaseEvolving",
     Validating: "incubator.phaseValidating",
     Stabilizing: "incubator.phaseStabilizing",

@@ -21,6 +21,7 @@
     }
   },
   "timeouts": {
+    "cultivationSeconds": 60,
     "reflectionSeconds": 30,
     "mavenExecutionSeconds": 3600
   },

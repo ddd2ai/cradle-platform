@@ -13,11 +13,12 @@ try {
 import fs from "node:fs";
 const args = process.argv.slice(2);
 const imageIndex = args.indexOf("--image");
+const imagePath = imageIndex >= 0 ? args[imageIndex + 1] : null;
 fs.writeFileSync(process.env.CRADLE_CODEX_MEDIA_CAPTURE, JSON.stringify({
   args,
   cwd: process.cwd(),
-  imagePath: args[imageIndex + 1],
-  imageExists: fs.existsSync(args[imageIndex + 1]),
+  imagePath,
+  imageExists: imagePath ? fs.existsSync(imagePath) : false,
 }));
 process.stdout.write(JSON.stringify({
   type: "item.completed",
@@ -48,6 +49,17 @@ process.stdout.write(JSON.stringify({
   assert.ok(capture.args.indexOf("Observe this image") < capture.args.indexOf("--image"));
   await assert.rejects(fs.access(capture.imagePath));
   await assert.rejects(fs.access(capture.cwd));
+
+  const textAnswer = await provider.ask({ prompt: "Summarize this stimulus" });
+  const textCapture = JSON.parse(await fs.readFile(capturePath, "utf8"));
+  assert.equal(textAnswer, "observed");
+  assert.equal(textCapture.imagePath, null);
+  assert.equal(textCapture.args.includes("--ephemeral"), true);
+  assert.equal(textCapture.args.includes("--sandbox"), true);
+  assert.equal(textCapture.args[textCapture.args.indexOf("--sandbox") + 1], "read-only");
+  assert.equal(textCapture.args.includes("--skip-git-repo-check"), true);
+  assert.notEqual(textCapture.cwd, process.cwd());
+  await assert.rejects(fs.access(textCapture.cwd));
 } finally {
   delete process.env.CRADLE_CODEX_MEDIA_CAPTURE;
   await fs.rm(testDirectory, { recursive: true, force: true });

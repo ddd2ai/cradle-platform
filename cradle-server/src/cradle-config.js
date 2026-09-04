@@ -25,6 +25,7 @@ const DEFAULT_CRADLE_CONFIG = Object.freeze({
     }),
   }),
   timeouts: Object.freeze({
+    cultivationSeconds: 60,
     reflectionSeconds: 30,
     mavenExecutionSeconds: 3600,
   }),

@@ -4,6 +4,7 @@ const PHASE_LABELS = Object.freeze({
   selecting: "Finding the right Cell",
   stimulating: "Stimulating",
   cultivating: "Cultivating",
+  planning: "Forming next growth",
   evolving: "Evolving Artifact",
   validating: "Validating",
   stabilizing: "Stabilizing",

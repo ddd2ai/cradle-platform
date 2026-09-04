@@ -144,7 +144,7 @@ ${input}
 `;
   }
 
-  async function ask(input) {
+  async function ask(input, { timeoutMs } = {}) {
     buffer = "";
 
     let finalPrompt = await buildPrompt({ input });
@@ -172,6 +172,7 @@ ${input}
 
     const answer = await provider.ask({
       prompt: finalPrompt,
+      timeoutMs,
       onDelta: (chunk) => {
         buffer += chunk;
         onDelta?.(chunk);

@@ -99,6 +99,10 @@ function validateCradleConfig(config) {
     },
     providers: validatedProviders,
     timeouts: {
+      cultivationSeconds: requirePositiveInteger(
+        timeouts.cultivationSeconds,
+        "timeouts.cultivationSeconds"
+      ),
       reflectionSeconds: requirePositiveInteger(
         timeouts.reflectionSeconds,
         "timeouts.reflectionSeconds"

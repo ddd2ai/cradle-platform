@@ -100,7 +100,7 @@ const askCall = calls.find((call) => call.type === "askWithTimeout");
 assert.ok(askCall.input.includes("cell-metabolism"));
 assert.ok(askCall.input.includes("failure.md"));
 assert.ok(askCall.input.includes("memory context"));
-assert.equal(askCall.timeoutMs, 3_600_000);
+assert.equal(askCall.timeoutMs, 60_000);
 
 assert.deepEqual(
   calls.find((call) => call.type === "addTask").task,
