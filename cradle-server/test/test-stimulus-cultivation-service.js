@@ -30,6 +30,14 @@ function createCell(id = "orders") {
     }),
     appendKnowledge: async () => {},
     archiveStimuli: async () => {},
+    produceArtifact: async (input) => ({
+      artifact: {
+        id: `artifact-${id}`,
+        type: input.type,
+        outputs: [{ path: `${id}.md`, language: "markdown" }],
+      },
+      saved: { revisionId: `revision-${id}` },
+    }),
     metabolismService: { metabolize: async () => ({ consumed: 1, processing: "summary-only" }) },
     readTasks: async () => tasks,
     processTask: async () => {},
@@ -81,6 +89,8 @@ const stable = await service.cultivate({
   update: (patch) => updates.push(patch),
 });
 assert.equal(stable.lifeState, "stable");
+assert.equal(stable.productionIntent.type, "document");
+assert.equal(stable.cells[0].artifactEvolution.decision, "created");
 assert.equal(cell.states.at(-1).state, "stable");
 assert.equal(cell.lifecycleEvents[0].sourceId, "source-1");
 assert.equal(cell.lifecycleEvents[0].sourceStimulusId, "source-stimulus-1");
@@ -94,8 +104,11 @@ assert.deepEqual(
     "cell.selected",
     "stimulus.persisted",
     "memory.recorded",
-    "metabolism.started",
-    "metabolism.completed",
+    "stimulus.absorbed",
+    "artifact.production_started",
+    "artifact.production_completed",
+    "artifact.evaluation_started",
+    "artifact.evaluation_completed",
     "cell.stable",
   ],
 );
@@ -312,7 +325,7 @@ const retried = await retryService.cultivate({
   operationId: "op-image-retry",
 });
 assert.equal(retried.lifeState, "stable");
-assert.equal(retryMetabolismCalls, 1);
+assert.equal(retryMetabolismCalls, 0, "retry must regrow the Artifact instead of summary metabolism");
 assert.equal(retryActivities.includes("stimulus.retrying"), true);
 assert.equal(retryActivities.includes("stimulus.persisted"), false);
 
@@ -409,8 +422,7 @@ const deferred = await deferredService.cultivate({
 });
 assert.equal(deferred.lifeState, "stable");
 assert.equal(deferredTaskProcessingCalls, 0, "cultivation must not synchronously execute the queued task");
-assert.equal(deferredActivities.includes("task.queued"), true);
-assert.equal(deferredUpdates.some((patch) => patch.currentStage === "planning"), true);
+assert.equal(deferred.cells[0].artifactEvolution.decision, "created");
 
 let activeMetabolisms = 0;
 let maxActiveMetabolisms = 0;
@@ -443,7 +455,7 @@ const concurrent = await concurrentService.cultivate({
   update: (patch) => concurrentUpdates.push(patch),
 });
 assert.equal(concurrent.cells.length, 2);
-assert.equal(maxActiveMetabolisms, 2, "different Cells should cultivate concurrently");
+assert.equal(maxActiveMetabolisms, 1, "only secondary Cells use metabolism after primary Artifact production");
 const concurrentProgress = concurrentUpdates
   .map((patch) => patch.progress)
   .filter((progress) => Number.isFinite(progress));

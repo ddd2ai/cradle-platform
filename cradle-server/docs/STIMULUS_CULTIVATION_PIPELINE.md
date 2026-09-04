@@ -70,8 +70,10 @@ elements 與 uncertainties，並在 evidence 保留 provider、model 與 method�
 
 抽取證據充足後，salience policy 以 relevance、action/state-impact、risk 與 urgency 計算：
 
-- 低 salience：`summary-only`，只保存 Stimulus／memory 並執行便宜 metabolism。
-- 高 salience：`cultivate`，以一次 bounded reasoning 形成 Observation 與至多一個 durable pending Task；Task 的深度執行交給後續 Cell runtime，不阻塞這次 ingestion operation。
+- 每個具足夠抽取證據的非重複 Stimulus 都會產生至少一個 Artifact；未指定類型時使用中性的 `document`，並保留來源 provenance。抽取證據不足仍先進入 Needs Attention，避免把不可觀察內容誤製成可信產品。
+- 低 salience 仍可採用較便宜的 reasoning，但不再以「只有 summary」作為完成結果；Artifact 會經過既有 validation/evidence gate。
+- 高 salience：`cultivate`，可額外形成 Observation 與至多一個 durable pending Task；Task 的深度執行交給後續 Cell runtime，不阻塞這次 ingestion operation。
+- 相同 Stimulus 的重送只會記錄 `deduplicated`，不重複產生 Artifact；被取消或需 attention 的 Stimulus 可重試培養。
 - 高 salience 且 state impact 足夠：評估 Artifact evolution。
 - extraction evidence 不足：保存來源與 Stimulus，要求真正必要的人類 attention。
 

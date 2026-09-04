@@ -50,8 +50,13 @@ assert.deepEqual(
 
 assert.equal(
   resolveArtifactProductionRequest({ text: "請產生 API 規格文件" }).decision,
-  "observe",
-  "natural-language keywords must not control Artifact type",
+  "create",
+  "every Stimulus must produce a default Artifact",
+);
+assert.equal(
+  resolveArtifactProductionRequest({ text: "請產生 API 規格文件" }).type,
+  "document",
+  "automatic production uses the neutral document type",
 );
 assert.equal(
   resolveArtifactProductionRequest({ text: "/produce document 日本語の説明を書く" }).type,

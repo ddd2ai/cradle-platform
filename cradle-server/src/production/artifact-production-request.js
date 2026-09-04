@@ -28,10 +28,16 @@ export function resolveArtifactProductionRequest({
     });
   }
 
-  return {
-    decision: "observe",
-    reason: "No explicit Artifact type was supplied",
-  };
+  // Every accepted Stimulus must leave a durable product.  A document is the
+  // neutral default when the caller did not request a more specific type.
+  // Explicit `/produce` directives and API headers still select specialised
+  // Artifact types.
+  return productionRequest({
+    type: "document",
+    goal: text || `Record and explain the information from ${sourceName || "this Stimulus"}`,
+    sourceName,
+    mode: "automatic",
+  });
 }
 
 export function parseProduceDirective(text) {

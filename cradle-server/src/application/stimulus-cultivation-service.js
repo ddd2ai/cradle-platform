@@ -468,12 +468,18 @@ export class StimulusCultivationService {
         cellId: cell.id,
       });
       try {
-        artifactEvolution = await this.artifactEvolutionService.evaluateAndEvolve({
+        const evaluation = await this.artifactEvolutionService.evaluateAndEvolve({
           cell,
           stimulus: stimulus.envelope,
           source,
           signal,
         });
+        // Evaluation may report "none" because no further revision is needed;
+        // retain the Artifact creation decision so the Stimulus still has a
+        // durable product in its cultivation result and provenance.
+        artifactEvolution = evaluation?.decision === "none" && artifactEvolution.decision === "created"
+          ? { ...artifactEvolution, evaluationDecision: "none" }
+          : evaluation;
         this.activityLogger?.info("cultivation", "artifact.evaluation_completed", {
           operationId,
           sourceId: source.sourceId,
@@ -680,7 +686,9 @@ function applyProductionRequest(policy, request) {
     ...policy,
     decision: "cultivate",
     activate: true,
-    evolveArtifact: false,
+    // Automatic production still goes through the normal artifact evaluation
+    // gate so risky or invalid output cannot be reported as stable.
+    evolveArtifact: request.mode === "automatic" ? true : false,
     score: Math.max(0.68, policy.score),
     reason: request.reason,
   };
