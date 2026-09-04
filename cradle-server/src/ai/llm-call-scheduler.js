@@ -8,7 +8,7 @@ export class LlmCallScheduler {
     this.metrics?.gauge("llm_concurrency_capacity", this.concurrency);
   }
 
-  run(task, { signal = null, labels = {} } = {}) {
+  run(task, { signal = null, labels = {}, onStart = null } = {}) {
     if (typeof task !== "function") {
       throw new Error("LlmCallScheduler requires a task");
     }
@@ -24,6 +24,7 @@ export class LlmCallScheduler {
         resolve,
         reject,
         signal,
+        onStart,
         abortListener: null,
       };
 
@@ -69,7 +70,10 @@ export class LlmCallScheduler {
       this.metrics?.gauge("llm_running", this.running);
 
       Promise.resolve()
-        .then(entry.task)
+        .then(() => {
+          entry.onStart?.();
+          return entry.task();
+        })
         .then(entry.resolve, entry.reject)
         .finally(() => {
           this.running -= 1;

@@ -640,3 +640,11 @@ npm run benchmark:persistence --workspace=cradle-server
 寫入成本明顯高於 in-memory，但仍屬短 metadata transaction，不可外推到完整 cultivation latency。這個切片只宣稱
 durability/resume correctness 改善，不把 SQLite 寫入成本當成效能提升。Correctness invariants：重開後 terminal operation payload 可讀回；in-flight operation 不會假裝
 自動續跑；Cell cultivation 的 interrupted state 仍進入既有 needs-attention reconciliation。
+
+### 2026-09-04 — LLM timeout starts at scheduler admission (current-state only)
+
+- Target: prevent queued Cell LLM calls from timing out before they reach a provider.
+- Active path: `CradleCell.askWithTimeout` + `LlmCallScheduler`; timeout now starts when a global LLM slot is admitted.
+- Correctness invariant: queued calls remain cancellable, provider calls retain the same timeout and AbortSignal, and queue wait remains observable via `llm_queue_wait_ms`.
+- Verification: full server suite (148 files), `test/test-llm-call-scheduler.js`.
+- Measurement: current-state only; no comparable pre-change baseline or speedup percentage claimed.

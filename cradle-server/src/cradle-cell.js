@@ -441,11 +441,15 @@ ${input}
     const controller = new AbortController();
     const timeoutError = new Error(`Timeout after ${timeoutMs}ms waiting for AI response`);
     let timedOut = false;
-    const timeoutId = setTimeout(() => {
-      timedOut = true;
-      controller.abort(timeoutError);
-    }, timeoutMs);
-    timeoutId.unref?.();
+    let timeoutId = null;
+    const startTimeout = () => {
+      if (timeoutId || controller.signal.aborted) return;
+      timeoutId = setTimeout(() => {
+        timedOut = true;
+        controller.abort(timeoutError);
+      }, timeoutMs);
+      timeoutId.unref?.();
+    };
     const onParentAbort = () => controller.abort(abortReason(parentSignal));
     if (parentSignal?.aborted) onParentAbort();
     else parentSignal?.addEventListener("abort", onParentAbort, { once: true });
@@ -465,8 +469,9 @@ ${input}
         ? this.llmCallScheduler.run(execute, {
             signal: controller.signal,
             labels: metricLabels,
+            onStart: startTimeout,
           })
-        : execute());
+        : (startTimeout(), execute()));
     } catch (error) {
       if (timedOut) {
         this.runtimeMetrics?.increment("llm_errors", 1, metricLabels);
