@@ -58,6 +58,8 @@ export class CradleCell {
     activationNotifier = null,
     assistantFactory = null,
     cultivationStateStoreFactory = null,
+    lifecycleEventStoreFactory = null,
+    artifactCatalogStoreFactory = null,
     summaryFlushDelayMs = 100,
   } = {}) {
     this.id = id;
@@ -75,6 +77,8 @@ export class CradleCell {
     this.activationNotifier = activationNotifier;
     this.assistantFactory = assistantFactory;
     this.cultivationStateStoreFactory = cultivationStateStoreFactory;
+    this.lifecycleEventStoreFactory = lifecycleEventStoreFactory;
+    this.artifactCatalogStoreFactory = artifactCatalogStoreFactory;
     this.summaryFlushDelayMs = summaryFlushDelayMs;
 
     this.paths = createCellPaths({
@@ -90,6 +94,7 @@ export class CradleCell {
         cell: this,
         paths: this.paths,
         cultivationStateStoreFactory: this.cultivationStateStoreFactory,
+        lifecycleEventStoreFactory: this.lifecycleEventStoreFactory,
       })
     );
     this.promptContextService = new CellPromptContextService({
@@ -157,6 +162,7 @@ export class CradleCell {
       cell: this,
       assistant: this.assistant,
       productionsDir: this.productionsDir,
+      artifactCatalogStore: this.artifactCatalogStoreFactory?.({ cell: this, paths: this.paths }),
     });
 
     // 暴露 artifactStore 供其他服務使用

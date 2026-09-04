@@ -611,9 +611,18 @@ Artifact；晚於 authoritative revision 的取消不能把已存在的產物偽
 
 這是 Persistent Layer 的第一個切片：API runtime 將 operation metadata 與 Cell cultivation state 寫入 SQLite WAL，保留
 既有 store ports，並在 server restart 時把無法安全恢復的 `accepted`／`running`／`cancelling` operation 標成
-`OPERATION_INTERRUPTED`。既有 `cultivation-state.json` 會在該 Cell 首次讀取時 migration；API process 之後以 SQLite row
-為 state authority。
+`OPERATION_INTERRUPTED`。既有 `cultivation-state.json` 與 `lifecycle-events.json` 會在該 Cell 首次讀取時 migration；API
+process 之後以 SQLite row／append-only event table 為 authority。Lifecycle event append 不再使用 JSON
+read-modify-write，降低並發寫入互相覆蓋風險；本次沒有宣稱整體 cultivation latency 改善。
 Cell、Source、Memory 與 Artifact 的大型內容仍留在既有 file/blob stores；本次沒有宣稱 cultivation latency 改善。
+
+### 2026-09-04 — SQLite Artifact catalog (current-state only)
+
+- Target: query Artifact metadata without reading every filesystem manifest.
+- Active path: `ArtifactStore.saveArtifact` / incremental delta → derived `artifact_records` row.
+- Correctness invariant: filesystem manifest remains authoritative; catalog failure is non-fatal.
+- Verification: `node test/test-sqlite-artifact-catalog-store.js`; full server suite (148 files).
+- Measurement: current-state only; no comparable baseline or speedup percentage claimed.
 
 環境與命令：Apple M4 Pro、Darwin arm64、Node v22.23.2；200 samples，每筆執行 create + running update + completed update，
 events disabled；SQLite 為 WAL + `synchronous=NORMAL`，無 LLM、network 或大型內容 I/O。

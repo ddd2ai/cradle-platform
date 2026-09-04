@@ -30,6 +30,7 @@ export class ArtifactProductionService {
     cell,
     assistant,
     productionsDir,
+    artifactCatalogStore = null,
   } = {}) {
     if (!cell) {
       throw new Error("ArtifactProductionService requires cell");
@@ -45,6 +46,7 @@ export class ArtifactProductionService {
     this.store = new ArtifactStore({
       productionsDir,
       ownerCellId: this.cell.id,
+      artifactCatalogStore,
     });
 
     this.parser = new ArtifactParser();

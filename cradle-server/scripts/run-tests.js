@@ -117,6 +117,8 @@ const tests = [
   "test/test-operation-cancellation.js",
   "test/test-sqlite-operation-store.js",
   "test/test-sqlite-cell-cultivation-state-store.js",
+  "test/test-sqlite-cell-lifecycle-event-store.js",
+  "test/test-sqlite-artifact-catalog-store.js",
   "test/test-runtime-event-aggregator.js",
   "test/test-runtime-event-transport-parity.js",
   "test/test-runtime-metrics.js",

@@ -35,6 +35,7 @@ export class ArtifactStore {
     mutationLease,
     revisionCompactionPolicy,
     artifactSnapshotWriter,
+    artifactCatalogStore,
   } = {}) {
     if (!productionsDir) {
       throw new Error("ArtifactStore requires productionsDir");
@@ -52,6 +53,7 @@ export class ArtifactStore {
       evaluateArtifactRevisionCompaction;
     this.artifactSnapshotWriter = artifactSnapshotWriter ??
       writeArtifactSnapshotAtomic;
+    this.artifactCatalogStore = artifactCatalogStore;
   }
 
   async ensureReady() {
@@ -247,6 +249,7 @@ export class ArtifactStore {
         error: error.message,
       };
     }
+    this.#indexCatalog(manifest, dir);
 
     return {
       artifactId: persistedArtifact.id,
@@ -469,6 +472,8 @@ export class ArtifactStore {
       }
     }
 
+    this.#indexCatalog({ ...stripRepairHeadMetadata(artifact), outputs: manifestOutputs }, dir);
+
     return {
       artifactId: artifact.id,
       dir,
@@ -477,6 +482,14 @@ export class ArtifactStore {
       impactIndex,
       compaction,
     };
+  }
+
+  #indexCatalog(manifest, dir) {
+    try {
+      this.artifactCatalogStore?.upsertManifest({ manifest, storageDir: dir });
+    } catch {
+      // Catalog is derived metadata; filesystem Artifact remains authoritative.
+    }
   }
 
   async readArtifact(artifactId) {

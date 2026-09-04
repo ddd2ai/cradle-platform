@@ -20,6 +20,8 @@ import { attachRuntimeWebSocketEndpoint } from "./api/runtime-websocket-endpoint
 import path from "node:path";
 import { SqliteOperationStore } from "./persistence/sqlite-operation-store.js";
 import { SqliteCellCultivationStateStore } from "./persistence/sqlite-cell-cultivation-state-store.js";
+import { SqliteCellLifecycleEventStore } from "./persistence/sqlite-cell-lifecycle-event-store.js";
+import { SqliteArtifactCatalogStore } from "./persistence/sqlite-artifact-catalog-store.js";
 import { PROJECT_ROOT } from "./project-root.js";
 
 const DEFAULT_PORT = 8787;
@@ -59,6 +61,12 @@ const engine = new CradleEngine({
     cellId: cell.id,
     legacyFile: paths.cultivationStateFile,
   }),
+  lifecycleEventStoreFactory: ({ cell, paths }) => new SqliteCellLifecycleEventStore({
+    file: SQLITE_FILE,
+    cellId: cell.id,
+    legacyFile: paths.lifecycleEventsFile,
+  }),
+  artifactCatalogStoreFactory: () => new SqliteArtifactCatalogStore({ file: SQLITE_FILE }),
 });
 
 function readActivationConcurrency() {

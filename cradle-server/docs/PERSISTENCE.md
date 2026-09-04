@@ -29,13 +29,21 @@ the Cell itself.
 
 The database stores metadata only. Source bytes, Memory, observations, and
 Artifact contents continue to use their existing file/blob stores. The API
-runtime also injects `SqliteCellCultivationStateStore` for Cell cultivation
-state. On first read it migrates a matching legacy `cultivation-state.json`
-record, then uses the SQLite row as the authoritative state for that API
-process. CLI-only runtimes retain the existing file-backed store until they are
-given the same persistence configuration. Lifecycle events, inbox indexes, and
-other Cell stores remain on their existing boundaries for the next slices;
-large content still does not move into SQLite.
+runtime also injects `SqliteCellCultivationStateStore` and
+`SqliteCellLifecycleEventStore`. On first read they migrate matching legacy
+`cultivation-state.json` and `lifecycle-events.json` records, then use SQLite
+as the state/event authority for that API process. Lifecycle events are
+append-only rows, so concurrent writes do not use the old read-modify-write
+JSON pattern. CLI-only runtimes retain the existing file-backed stores until
+they are given the same persistence configuration. Inbox indexes and other
+Cell stores remain on their existing boundaries for the next slices; large
+content still does not move into SQLite.
+
+Artifact metadata also has a derived SQLite catalog (`artifact_records`) with
+the owning Cell, type, title, goal, status, current revision, storage
+directory, and output paths. The filesystem manifest and blobs remain
+authoritative. Catalog failures are non-fatal and can be repaired by a future
+manifest reconciliation pass.
 
 ## Performance boundary
 
