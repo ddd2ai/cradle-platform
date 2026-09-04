@@ -5,6 +5,7 @@ const PHASE_LABELS = Object.freeze({
   stimulating: "Stimulating",
   cultivating: "Cultivating",
   planning: "Forming next growth",
+  producing: "Producing Artifact",
   evolving: "Evolving Artifact",
   validating: "Validating",
   stabilizing: "Stabilizing",
@@ -36,6 +37,12 @@ export function toCultivationViewModel(operation, selectedCell = null) {
           ?.qualityDecision?.gates?.find((gate) => gate.outcome !== "sufficient")?.actual
       )
     : null;
+  const artifact = operation.artifacts?.[0] ??
+    operation.result?.cells?.map((cell) => ({
+      cellId: cell.cellId,
+      ...cell.artifactEvolution,
+    })).find((candidate) => candidate.decision === "created" || candidate.decision === "evolved") ??
+    null;
 
   return {
     operationId: operation.operationId,
@@ -54,6 +61,7 @@ export function toCultivationViewModel(operation, selectedCell = null) {
     cellLabel: selectedLabel ?? (cellIds.length === 1 ? cellIds[0] : "Cradle"),
     sourceName: operation.source?.originalName ?? operation.context?.sourceName ?? null,
     attentionMessage,
+    ...(artifact ? { artifact } : {}),
   };
 }
 

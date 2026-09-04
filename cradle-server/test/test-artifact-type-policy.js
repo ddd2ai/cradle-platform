@@ -6,6 +6,8 @@ import {
   ARTIFACT_TYPE_POLICIES, 
   getArtifactTypePolicy 
 } from "../src/production/artifact-type-policy.js";
+import assert from "node:assert/strict";
+import { listSupportedArtifactTypes } from "../src/production/artifact-type-catalog.js";
 
 console.log("🧪 Artifact Type Policy 測試\n");
 
@@ -33,6 +35,15 @@ console.log(`✓ document policy: ${docPolicy.description}`);
 
 const codePolicy = getArtifactTypePolicy("code");
 console.log(`✓ code policy: ${codePolicy.description}`);
+assert.equal(codePolicy.allowedLanguages.includes("python"), true);
+assert.equal(codePolicy.allowedLanguages.includes("go"), true);
+
+const imagePolicy = getArtifactTypePolicy("image");
+assert.deepEqual(imagePolicy.allowedLanguages, ["svg"]);
+assert.deepEqual(imagePolicy.allowedExtensions, [".svg"]);
+
+assert.equal(listSupportedArtifactTypes().some((type) => type.id === "video"), false);
+assert.equal(listSupportedArtifactTypes().some((type) => type.id === "generic"), false);
 
 // 測試未知 type (應該 fallback 到 generic)
 const unknownPolicy = getArtifactTypePolicy("unknown");

@@ -1,15 +1,7 @@
+import { listSupportedArtifactTypes } from "./artifact-type-catalog.js";
+
 export const ARTIFACT_TYPES = [
-  "code",
-  "document",
-  "diagram",
-  "sql",
-  "config",
-  "test",
-  "prompt",
-  "decision",
-  "research",
-  "spec",
-  "task",
+  ...listSupportedArtifactTypes({ includeLegacy: true }).map((entry) => entry.id),
   "generic",
 ];
 
@@ -74,6 +66,13 @@ export function createArtifact({
       livingContextId: origin.livingContextId || null,
       ...(origin.producerCellId ? { producerCellId: origin.producerCellId } : {}),
       ...(origin.targetCellId ? { targetCellId: origin.targetCellId } : {}),
+      ...(origin.stimulusId ? { stimulusId: origin.stimulusId } : {}),
+      ...(origin.sourceId ? { sourceId: origin.sourceId } : {}),
+      ...(origin.sourceStimulusId ? { sourceStimulusId: origin.sourceStimulusId } : {}),
+      ...(origin.sourceName ? { sourceName: origin.sourceName } : {}),
+      ...(origin.sourceMediaType ? { sourceMediaType: origin.sourceMediaType } : {}),
+      ...(origin.sourceSha256 ? { sourceSha256: origin.sourceSha256 } : {}),
+      ...(origin.observedAt ? { observedAt: origin.observedAt } : {}),
     };
   }
 

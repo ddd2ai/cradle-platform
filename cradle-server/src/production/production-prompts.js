@@ -85,7 +85,7 @@ ${context}
     {
       "kind": "file",
       "path": "relative/path.ext",
-      "language": "javascript | markdown | sql | json | yaml | text",
+      "language": "javascript | typescript | java | python | go | rust | shell | html | css | svg | markdown | sql | json | yaml | properties | xml | text",
       "content": "完整檔案內容"
     }
   ],
@@ -101,6 +101,14 @@ ${context}
 - outputs[].content 必須符合 outputs[].language 的格式:
   * language=java → content 必須是 Java 程式碼(包含 class/package/import)
   * language=javascript → content 必須是 JavaScript 程式碼(包含 function/const/export)
+  * language=typescript → content 必須是 TypeScript 程式碼
+  * language=python → content 必須是 Python 程式碼
+  * language=go → content 必須是 Go 程式碼
+  * language=rust → content 必須是 Rust 程式碼
+  * language=shell → content 必須是 shell script
+  * language=html → content 必須是 HTML
+  * language=css → content 必須是 CSS
+  * language=svg → content 必須是單一、自包含且無 script 的 SVG
   * language=json → content 必須是合法 JSON,可用 JSON.parse() 解析
   * language=markdown → content 必須是 Markdown,包含標題(#)
   * language=sql → content 必須是 SQL,包含 CREATE/ALTER/INSERT/SELECT 等關鍵字
@@ -112,6 +120,7 @@ ${context}
 - 如果 type 是 code,必須輸出可落檔的完整程式碼。
 - 如果 type 是 document,輸出 markdown。
 - 如果 type 是 diagram,優先輸出 Mermaid markdown。
+- 如果 type 是 image,只能輸出安全、自包含的 SVG。
 - 如果資訊不足,仍要產生合理的 draft,但在 notes 標明假設。
 - JSON 中不可使用 trailing comma (例如 [..., ] 或 {..., })
 
@@ -215,6 +224,13 @@ ${context}
 | .yaml     | yaml        | YAML document      |
 | .yml      | yaml        | YAML document      |
 | .properties | properties | key=value format |
+| .py       | python      | Python source code |
+| .go       | go          | Go source code     |
+| .rs       | rust        | Rust source code   |
+| .sh       | shell       | Shell script       |
+| .html     | html        | HTML document      |
+| .css      | css         | CSS stylesheet     |
+| .svg      | svg         | Safe SVG image     |
 
 # Goal Fidelity Rules
 
@@ -242,7 +258,7 @@ ${context}
     {
       "kind": "file",
       "path": "relative/path.ext",
-      "language": "java | javascript | markdown | sql | json | yaml | properties | xml",
+      "language": "java | javascript | typescript | python | go | rust | shell | html | css | svg | markdown | sql | json | yaml | properties | xml",
       "content": "完整檔案內容"
     }
   ],
@@ -325,7 +341,7 @@ ${context}
     {
       "kind": "file",
       "path": "relative/path.ext",
-      "language": "java | javascript | markdown | sql | json | yaml | properties | xml",
+      "language": "java | javascript | typescript | python | go | rust | shell | html | css | svg | markdown | sql | json | yaml | properties | xml",
       "content": "完整檔案內容"
     }
   ],

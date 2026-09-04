@@ -16,11 +16,13 @@ import { produceFromTransformation as _produceFromTransformation } from "./artif
 import { produceDivisionProductPair as _produceDivisionProductPair } from "./division-product-pair-production.js";
 import { ArtifactIncrementalRepairService } from "./artifact-incremental-repair-service.js";
 import { ArtifactIncrementalValidator } from "./artifact-incremental-validator.js";
-import { getAiTimeoutMs } from "../cradle-config.js";
+import { getAiTimeoutMs, getTimeoutMs } from "../cradle-config.js";
 import {
   ARTIFACT_OWNER_VIOLATION,
   assertArtifactMutationActor,
 } from "./artifact-ownership-policy.js";
+import { getArtifactTypePolicy } from "./artifact-type-policy.js";
+import { assertSupportedArtifactType } from "./artifact-type-catalog.js";
 
 export class ArtifactProductionService {
   constructor({
@@ -64,6 +66,8 @@ export class ArtifactProductionService {
     title,
     goal,
     constraints = [],
+    origin = null,
+    timeoutMs = getAiTimeoutMs(),
   } = {}) {
     // 不使用完整的 Memory Context,避免 Vision 干擾 Goal
     // 只提供必要的技術環境資訊
@@ -88,7 +92,7 @@ The actual artifact MUST follow the current Goal, not any past Vision or History
 
     const result = await this.cell.askWithTimeout(
       prompt,
-      getAiTimeoutMs()
+      timeoutMs,
     );
     const raw = result?.text ?? result?.answer ?? result ?? "{}";
     
@@ -99,6 +103,7 @@ The actual artifact MUST follow the current Goal, not any past Vision or History
       type,
       title,
       goal,
+      origin,
     });
   }
 
@@ -107,13 +112,16 @@ The actual artifact MUST follow the current Goal, not any past Vision or History
     type,
     title,
     goal,
+    origin = null,
   } = {}) {
     const artifactId =
       `artifact-${this.cell.formatTimestamp(new Date())}`;
 
     return createArtifact({
       id: artifactId,
-      type: parsed.type ?? type,
+      // Artifact type is authoritative operation input. Model output cannot
+      // widen the selected capability or switch its validation policy.
+      type,
       title: parsed.title || title || goal,
       goal: goal, // 強制使用原始 goal,不信任模型改寫的 goal
       cellId: this.cell.id,
@@ -122,6 +130,7 @@ The actual artifact MUST follow the current Goal, not any past Vision or History
       plan: parsed.plan ?? null,
       outputs: parsed.outputs ?? [],
       notes: parsed.notes ?? [],
+      origin,
     });
   }
 
@@ -130,6 +139,7 @@ The actual artifact MUST follow the current Goal, not any past Vision or History
     goal,
     artifact,
     validationError,
+    timeoutMs = getAiTimeoutMs(),
   } = {}) {
     // Repair 時同樣只提供必要環境,避免干擾
     const environment = await this.cell.readEnvironment();
@@ -153,7 +163,7 @@ The actual artifact MUST follow the Original Goal, not any past Vision or Histor
 
     const result = await this.cell.askWithTimeout(
       prompt,
-      getAiTimeoutMs()
+      timeoutMs,
     );
     const raw = result?.text ?? result?.answer ?? result ?? "{}";
     
@@ -164,6 +174,7 @@ The actual artifact MUST follow the Original Goal, not any past Vision or Histor
       type,
       title: artifact.title,
       goal,
+      origin: artifact.origin ?? null,
     });
 
     // 保留原 artifact id,標記為 repaired
@@ -385,14 +396,18 @@ This repair changed how the cell improves an artifact after real execution feedb
   }
 
   async produce({
-    type = "generic",
+    type,
     title,
     goal,
     constraints = [],
+    origin = null,
   } = {}) {
     if (!goal?.trim()) {
       throw new Error("produce requires goal");
     }
+
+    type = assertSupportedArtifactType(type);
+    const deadline = Date.now() + getTimeoutMs("cultivationSeconds");
 
     // Step 1: Generate draft
     let artifact = await this.generateArtifactDraft({
@@ -400,6 +415,8 @@ This repair changed how the cell improves an artifact after real execution feedb
       title,
       goal,
       constraints,
+      origin,
+      timeoutMs: remainingBudgetMs(deadline),
     });
 
     // Step 2: Normalize
@@ -433,6 +450,7 @@ Attempting one repair cycle.
         goal,
         artifact,
         validationError: error.message,
+        timeoutMs: remainingBudgetMs(deadline),
       });
 
       // Step 5: Normalize repaired artifact
@@ -485,4 +503,8 @@ This production changed how the cell transforms intent into artifact.
       saved,
     };
   }
+}
+
+function remainingBudgetMs(deadline) {
+  return Math.max(1, deadline - Date.now());
 }

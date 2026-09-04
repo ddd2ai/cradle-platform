@@ -40,6 +40,36 @@ const attentionEvent = events.findLast(
 );
 assert.equal(attentionEvent.payload.operation.attention.message, "OCR unavailable");
 
+const production = store.create({ type: "stimulus-cultivation", context: { cellIds: ["cell-a"] } });
+store.update(production.operationId, {
+  status: "completed",
+  lifeState: "stable",
+  result: {
+    cells: [{
+      cellId: "cell-a",
+      artifactEvolution: {
+        decision: "created",
+        artifactId: "artifact-spec",
+        revisionId: "rev-1",
+        changedPaths: ["api.md"],
+      },
+    }],
+  },
+});
+const productionEvent = events.findLast(
+  (event) => event.type === "operation.updated" && event.payload.operation.operationId === production.operationId
+);
+assert.deepEqual(productionEvent.payload.operation.artifacts, [{
+  cellId: "cell-a",
+  artifactId: "artifact-spec",
+  revisionId: "rev-1",
+  decision: "created",
+  changedPaths: ["api.md"],
+}]);
+assert.equal(events.some(
+  (event) => event.type === "artifacts.updated" && event.payload.artifactIds?.includes("artifact-spec")
+), true);
+
 store.create({ type: "cell-division" });
 store.create({ type: "cell-fusion" });
 assert.equal(store.list().length, 2);

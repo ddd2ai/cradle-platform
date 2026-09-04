@@ -123,7 +123,7 @@ export class ArtifactValidator {
       throw new Error(`Output path cannot contain '..': ${output.path}`);
     }
 
-    const ext = path.extname(output.path);
+    const ext = outputExtension(output.path);
 
     if (!ext) {
       throw new Error(`Output path must include file extension: ${output.path}`);
@@ -145,7 +145,7 @@ export class ArtifactValidator {
   validateOutputExtension(output, policy) {
     if (!policy.allowedExtensions?.length) return;
 
-    const ext = path.extname(output.path).toLowerCase();
+    const ext = outputExtension(output.path);
 
     if (!policy.allowedExtensions.includes(ext)) {
       throw new Error(
@@ -176,6 +176,10 @@ export class ArtifactValidator {
 
     if (artifactType === "executable-java") {
       this.validateExecutableJavaContent(output, content);
+    }
+
+    if (artifactType === "image") {
+      this.validateSvgImage(output, language, content);
     }
   }
 
@@ -288,4 +292,22 @@ export class ArtifactValidator {
       );
     }
   }
+
+  validateSvgImage(output, language, content) {
+    if (language !== "svg" || path.extname(output.path).toLowerCase() !== ".svg") {
+      throw new Error(`Image artifact output must be SVG: ${output.path}`);
+    }
+    if (!/^<svg\b[\s\S]*<\/svg>$/i.test(content)) {
+      throw new Error(`SVG image must contain one complete svg root: ${output.path}`);
+    }
+    if (/<(?:script|foreignObject)\b|\son\w+\s*=|(?:href|src)\s*=\s*["'](?:https?:|javascript:|data:)/i.test(content)) {
+      throw new Error(`SVG image contains active or external content: ${output.path}`);
+    }
+  }
+}
+
+function outputExtension(filePath) {
+  const basename = path.basename(String(filePath ?? "")).toLowerCase();
+  if (basename === ".env") return ".env";
+  return path.extname(basename).toLowerCase();
 }

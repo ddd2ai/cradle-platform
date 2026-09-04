@@ -54,7 +54,11 @@ export function CultivationProgressCard({
       ) : (
         <>
           <p className="cultivation-progress__terminal-message">
-            {view.tone === "attention" ? translateAttentionMessage(view.attentionMessage, t) : t("incubator.complete")}
+            {view.tone === "attention"
+              ? translateAttentionMessage(view.attentionMessage, t)
+              : view.artifact?.artifactId
+                ? t("incubator.artifactCreated", { id: view.artifact.artifactId })
+                : t("incubator.complete")}
           </p>
           {view.sourceName ? (
             <div className="cultivation-progress__meta">
@@ -83,6 +87,7 @@ function translateProgressPhase(value, t) {
     Stimulating: "incubator.phaseStimulating",
     Cultivating: "incubator.phaseCultivating",
     "Forming next growth": "incubator.phasePlanning",
+    "Producing Artifact": "incubator.phaseProducing",
     "Evolving Artifact": "incubator.phaseEvolving",
     Validating: "incubator.phaseValidating",
     Stabilizing: "incubator.phaseStabilizing",

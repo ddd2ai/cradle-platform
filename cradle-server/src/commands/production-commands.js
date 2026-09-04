@@ -2,6 +2,7 @@ import { renderAnswerStart } from "../cradle-console.js";
 import path from "path";
 import { splitFirstArg } from "./command-input.js";
 import { PROJECT_ROOT } from "../project-root.js";
+import { assertSupportedArtifactType } from "../production/artifact-type-catalog.js";
 
 export function createProductionCommands() {
   return [
@@ -13,12 +14,13 @@ export function createProductionCommands() {
       execute: async ({ engine, input }) => {
         const cell = engine.getActiveCell();
 
-        const { first: type, rest: goal } = splitFirstArg(input, "/produce");
+        const { first: requestedType, rest: goal } = splitFirstArg(input, "/produce");
 
-        if (!type || !goal) {
+        if (!requestedType || !goal) {
           console.log("Usage: /produce <type> <goal>");
           return;
         }
+        const type = assertSupportedArtifactType(requestedType);
 
         renderAnswerStart();
 

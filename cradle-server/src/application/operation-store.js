@@ -74,6 +74,15 @@ export class InMemoryOperationStore {
         });
       }
 
+      const artifacts = artifactChanges(updated);
+      if (updated.type === "stimulus-cultivation" && artifacts.length > 0) {
+        this.eventBus?.publish("artifacts.updated", {
+          cellIds: [...new Set(artifacts.map((artifact) => artifact.cellId).filter(Boolean))],
+          artifactIds: artifacts.map((artifact) => artifact.artifactId),
+          operationId: updated.operationId,
+        });
+      }
+
       if (updated.type === "heartbeat") {
         this.eventBus?.publish("cultivation.updated", {
           operationId: updated.operationId,
@@ -97,6 +106,7 @@ export class InMemoryOperationStore {
 
 function toEventOperation(operation) {
   const { result: _result, ...summary } = operation;
+  const artifacts = artifactChanges(operation);
   const attentionMessage = operation.lifeState === "needs_attention"
     ? operation.error?.message ??
       operation.result?.cells?.flatMap((cell) => cell.qualityDecision?.gates ?? [])
@@ -106,6 +116,25 @@ function toEventOperation(operation) {
     : null;
   return {
     ...summary,
+    ...(artifacts.length > 0
+      ? { artifacts }
+      : {}),
     ...(attentionMessage ? { attention: { message: attentionMessage } } : {}),
   };
+}
+
+function artifactChanges(operation) {
+  return (operation.result?.cells ?? []).flatMap((cell) => {
+    const evolution = cell?.artifactEvolution;
+    if (!["created", "evolved"].includes(evolution?.decision) || !evolution.artifactId) {
+      return [];
+    }
+    return [{
+      cellId: cell.cellId ?? null,
+      artifactId: evolution.artifactId,
+      revisionId: evolution.revisionId ?? null,
+      decision: evolution.decision,
+      changedPaths: evolution.changedPaths ?? [],
+    }];
+  });
 }

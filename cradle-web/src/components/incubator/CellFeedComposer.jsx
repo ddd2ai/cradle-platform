@@ -6,6 +6,9 @@ export function CellFeedComposer({
   onChange,
   onSubmit,
   onFiles,
+  artifactType = "",
+  artifactTypes = [],
+  onArtifactTypeChange = () => {},
   disabled,
   statusMessage,
   statusTone = "success",
@@ -69,15 +72,31 @@ export function CellFeedComposer({
         >
           +
         </button>
-        <textarea
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={placeholder}
-          disabled={disabled}
-          rows={1}
-          aria-label={placeholder}
-        />
+        <div className="cell-feed__body">
+          <label className="cell-feed__artifact-type">
+            <span>{t("incubator.outputMode")}</span>
+            <select
+              value={artifactType}
+              onChange={(event) => onArtifactTypeChange(event.target.value)}
+              disabled={disabled}
+              aria-label={t("incubator.outputMode")}
+            >
+              <option value="">{t("incubator.absorbOnly")}</option>
+              {artifactTypes.map((type) => (
+                <option key={type.id} value={type.id}>{type.label} · {type.id}</option>
+              ))}
+            </select>
+          </label>
+          <textarea
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={placeholder}
+            disabled={disabled}
+            rows={1}
+            aria-label={placeholder}
+          />
+        </div>
         <button
           type="button"
           className="cell-feed__send"

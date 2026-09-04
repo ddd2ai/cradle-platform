@@ -63,11 +63,14 @@ export function IncubatorWorkspace({
   const [isFeedDragActive, setIsFeedDragActive] = useState(false);
   const {
     acceptedOperation,
+    artifactTypes,
+    artifactType,
     dismissOperation,
     feedError,
     feedFiles,
     feedMessage,
     isFeeding,
+    setArtifactType,
   } = useIncubatorFeed();
   const isInspectorOpen = Boolean(selectedCellId);
   const inspectorWidth = isInspectorOpen ? CELL_INSPECTOR_WIDTH : 0;
@@ -423,10 +426,13 @@ export function IncubatorWorkspace({
           onFocusSelectedCell={focusSelectedCell}
           onResetCamera={resetCamera}
           acceptedOperation={acceptedOperation}
+          artifactTypes={artifactTypes}
+          artifactType={artifactType}
           feedError={feedError}
           feedMessage={feedMessage}
           isFeeding={isFeeding}
           onFeedFiles={feedFiles}
+          onArtifactTypeChange={setArtifactType}
           onDismissFeedOperation={dismissOperation}
         />
       </div>

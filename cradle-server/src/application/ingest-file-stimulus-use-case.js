@@ -1,6 +1,7 @@
 import { ApiError } from "../api/api-error.js";
 import { randomUUID } from "node:crypto";
 import { normalizeStimulusEnvelope } from "../situation/stimulus-envelope.js";
+import { assertSupportedArtifactType } from "../production/artifact-type-catalog.js";
 
 export class IngestFileStimulusUseCase {
   constructor({
@@ -22,8 +23,21 @@ export class IngestFileStimulusUseCase {
     this.activityLogger = activityLogger;
   }
 
-  async execute({ fileName, mediaType, bytes, cellId = null } = {}) {
+  async execute({ fileName, mediaType, bytes, cellId = null, artifactType = null } = {}) {
     const explicitCellId = String(cellId ?? "").trim() || null;
+    let requestedArtifactType = null;
+    if (String(artifactType ?? "").trim()) {
+      try {
+        requestedArtifactType = assertSupportedArtifactType(artifactType);
+      } catch (error) {
+        throw new ApiError({
+          status: 400,
+          code: error.code,
+          message: error.message,
+          details: { supportedTypes: error.supportedTypes },
+        });
+      }
+    }
     if (explicitCellId && !this.engine.getCell(explicitCellId)) {
       throw new ApiError({
         status: 404,
@@ -64,6 +78,7 @@ export class IngestFileStimulusUseCase {
         byteLength: source.byteLength,
         sha256: source.sha256,
         processing: "accepted",
+        artifactType: requestedArtifactType,
       },
     });
     await this.sourceStore.recordStimulus(source.sourceId, acceptedStimulus);
@@ -75,6 +90,7 @@ export class IngestFileStimulusUseCase {
         sourceId: source.sourceId,
         stimulusId: source.stimulusId,
         sourceName: source.originalName,
+        artifactType: requestedArtifactType,
         cellIds: explicitCellId ? [explicitCellId] : [],
       },
       task: async ({ update, operationId }) => {
@@ -107,6 +123,7 @@ export class IngestFileStimulusUseCase {
             source,
             extraction,
             explicitCellId,
+            artifactType: requestedArtifactType,
             operationId,
             update,
           });

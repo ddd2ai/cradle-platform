@@ -71,6 +71,15 @@ export async function fetchOperations() {
   return data?.operations ?? [];
 }
 
+export async function fetchArtifactTypes() {
+  const response = await fetch("/api/v1/artifact-types");
+  const data = await readJsonResponse(response);
+  if (!response.ok) {
+    throw new Error(data?.error?.message ?? `Failed to fetch Artifact types: ${response.status}`);
+  }
+  return data?.items ?? [];
+}
+
 export async function createCell(cellId) {
   const response = await fetch("/api/v1/cells", {
     method: "POST",
@@ -276,7 +285,7 @@ export async function feedCell(cellId, request) {
   );
 }
 
-export async function uploadStimulusFile(file, { cellId = null } = {}) {
+export async function uploadStimulusFile(file, { cellId = null, artifactType = null } = {}) {
   if (!(file instanceof Blob)) {
     throw new Error("A file is required");
   }
@@ -292,6 +301,7 @@ export async function uploadStimulusFile(file, { cellId = null } = {}) {
       headers: {
         "content-type": file.type || "application/octet-stream",
         "x-cradle-file-name": encodeURIComponent(file.name || "stimulus.bin"),
+        ...(artifactType ? { "x-cradle-artifact-type": artifactType } : {}),
       },
       body: file,
     });

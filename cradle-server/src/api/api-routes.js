@@ -25,6 +25,7 @@ import { FuseCellsUseCase } from "../application/fuse-cells-use-case.js";
 import { GetCreationPreviewUseCase } from "../application/get-creation-preview-use-case.js";
 import { HeartbeatModeStore } from "../heartbeat/heartbeat-mode.js";
 import { ListCellArtifactsUseCase } from "../application/list-cell-artifacts-use-case.js";
+import { ListArtifactTypesUseCase } from "../application/list-artifact-types-use-case.js";
 import { ListCellInboxUseCase } from "../application/list-cell-inbox-use-case.js";
 import { ListCellLifecycleEventsUseCase } from "../application/list-cell-lifecycle-events-use-case.js";
 import { ListCellTasksUseCase } from "../application/list-cell-tasks-use-case.js";
@@ -143,6 +144,9 @@ export function createApiRoutes({
         settingsStore: aiSettingsStoreFactory(),
       }).execute()
     ),
+    exact("GET", "/api/v1/artifact-types", async () =>
+      new ListArtifactTypesUseCase().execute()
+    ),
     exact("PUT", "/api/v1/ai/settings", async ({ request }) =>
       new SetAiSettingsUseCase({
         engine,
@@ -166,6 +170,7 @@ export function createApiRoutes({
         mediaType: request.headers?.["content-type"],
         bytes: request.body,
         cellId: route.searchParams.get("cellId"),
+        artifactType: request.headers?.["x-cradle-artifact-type"],
       })
     ),
     exact("POST", "/api/v1/cells/activate-all", async () =>

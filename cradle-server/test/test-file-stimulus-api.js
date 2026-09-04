@@ -30,13 +30,27 @@ const direct = await apiHandler({
   headers: {
     "content-type": "text/plain",
     "x-cradle-file-name": "quality%20notes.txt",
+    "x-cradle-artifact-type": "spec",
   },
   body: Buffer.from("bounded evidence"),
 });
 assert.equal(direct.status, 202);
 assert.equal(useCaseInput.fileName, "quality notes.txt");
 assert.equal(useCaseInput.cellId, "cell-a");
+assert.equal(useCaseInput.artifactType, "spec");
 assert.equal(useCaseInput.bytes.toString("utf8"), "bounded evidence");
+
+const artifactTypes = await apiHandler({
+  method: "GET",
+  url: "/api/v1/artifact-types",
+  headers: {},
+});
+assert.equal(artifactTypes.status, 200);
+assert.deepEqual(
+  artifactTypes.body.items.map((item) => item.id),
+  ["code", "document", "spec", "research", "test", "diagram", "image", "config", "sql", "prompt", "decision", "task"],
+);
+assert.equal(artifactTypes.body.selectionAuthority, "explicit");
 
 let observedBody = null;
 const server = createHttpServer({

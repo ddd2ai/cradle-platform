@@ -84,9 +84,11 @@ export class ArtifactExecutionService {
       const executor = this.selectExecutor(artifact);
 
       if (!executor) {
-        throw new Error(
-          `No executor available for artifact type: ${artifact.type}`
-        );
+        return ExecutionResult.createSkipped({
+          artifactId,
+          reason: `No execution adapter is available for Artifact type "${artifact.type}" and its outputs.`,
+          executionId: `execution-${Date.now()}`,
+        });
       }
 
       // 執行
@@ -164,6 +166,10 @@ export class ArtifactExecutionService {
     const nonExecutableTypes = new Set([
       "document",
       "diagram",
+      "image",
+      "config",
+      "sql",
+      "test",
       "prompt",
       "decision",
       "research",

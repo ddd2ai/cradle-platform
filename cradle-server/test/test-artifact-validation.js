@@ -97,4 +97,51 @@ assertValidOutputs({
   ],
 });
 
+assertValidOutputs({
+  type: "config",
+  outputs: [
+    output({ path: ".env", language: "env", content: "CRADLE_MODE=production" }),
+    output({ path: "service.yaml", language: "yaml", content: "mode: production" }),
+  ],
+});
+
+assertValidOutputs({
+  type: "image",
+  outputs: [
+    output({
+      path: "brand/cradle.svg",
+      language: "svg",
+      content: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="42" fill="#6ee7a8"/></svg>',
+    }),
+  ],
+});
+
+assertInvalidOutputs(
+  {
+    type: "image",
+    outputs: [
+      output({
+        path: "unsafe.svg",
+        language: "svg",
+        content: '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>',
+      }),
+    ],
+  },
+  /active or external content/,
+);
+
+assertInvalidOutputs(
+  {
+    type: "image",
+    outputs: [
+      output({
+        path: "fake.md",
+        language: "markdown",
+        content: "# A picture description",
+      }),
+    ],
+  },
+  /Invalid output language/,
+);
+
 console.log("Artifact validation tests passed");

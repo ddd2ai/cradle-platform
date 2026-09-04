@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { fetchOperations, uploadStimulusFile } from "../api/cradleClient";
+import { fetchArtifactTypes, fetchOperations, uploadStimulusFile } from "../api/cradleClient";
 import { useUiPreferences } from "../i18n/UiPreferencesProvider";
 
 export function useIncubatorFeed() {
@@ -9,6 +9,8 @@ export function useIncubatorFeed() {
   const [feedMessage, setFeedMessage] = useState(null);
   const [feedError, setFeedError] = useState(null);
   const [acceptedOperation, setAcceptedOperation] = useState(null);
+  const [artifactTypes, setArtifactTypes] = useState([]);
+  const [artifactType, setArtifactType] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -24,6 +26,20 @@ export function useIncubatorFeed() {
       })
       .catch(() => {
         // Cell snapshots remain authoritative when operation history is unavailable.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchArtifactTypes()
+      .then((items) => {
+        if (!cancelled) setArtifactTypes(items);
+      })
+      .catch(() => {
+        // Absorb-only remains available if capability discovery is unavailable.
       });
     return () => {
       cancelled = true;
@@ -54,7 +70,9 @@ export function useIncubatorFeed() {
       for (const file of files) {
         // Incubator feeding is intentionally untargeted. The server selects Cells
         // from reproducible Living Context relevance instead of UI selection.
-        const accepted = await uploadStimulusFile(file);
+        const accepted = await uploadStimulusFile(file, {
+          artifactType: artifactType || null,
+        });
         setAcceptedOperation(accepted);
       }
       setFeedMessage(t("incubator.acceptedRouting"));
@@ -64,7 +82,7 @@ export function useIncubatorFeed() {
       feedingRef.current = false;
       setIsFeeding(false);
     }
-  }, [t]);
+  }, [artifactType, t]);
 
   const dismissOperation = useCallback((operationId) => {
     setAcceptedOperation((current) =>
@@ -74,11 +92,14 @@ export function useIncubatorFeed() {
 
   return {
     acceptedOperation,
+    artifactTypes,
+    artifactType,
     dismissOperation,
     feedError,
     feedFiles,
     feedMessage,
     isFeeding,
+    setArtifactType,
   };
 }
 

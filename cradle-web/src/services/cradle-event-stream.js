@@ -95,7 +95,7 @@ function resourcesForOperation(operation) {
   if (operation.type === "stimulus-cultivation") {
     // Cell cultivation events patch presentation state directly. REST remains
     // available for reconnect reconciliation, without a terminal all-Cell fetch.
-    return [];
+    return operation.artifacts?.length > 0 ? ["artifacts"] : [];
   }
   if (operation.type === "heartbeat") {
     return ["cells", "selectedCell", "cultivation"];

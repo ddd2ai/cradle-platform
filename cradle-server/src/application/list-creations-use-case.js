@@ -65,7 +65,7 @@ export class ListCreationsUseCase {
 async function toCreationDto({ cell, cellId, artifact, summary }) {
   const artifactId = artifact.id ?? summary.artifactId;
   const description = normalizeText(artifact.plan?.summary);
-  const previewImageUrl = await resolvePreviewImageUrl({ cell, artifactId });
+  const previewImageUrl = await resolvePreviewImageUrl({ cell, artifactId, artifact });
   const outputs = Array.isArray(artifact.outputs) ? artifact.outputs : [];
   const outputPaths = outputs
     .map((output) => output?.path)
@@ -100,7 +100,10 @@ async function toCreationDto({ cell, cellId, artifact, summary }) {
   };
 }
 
-async function resolvePreviewImageUrl({ cell, artifactId }) {
+async function resolvePreviewImageUrl({ cell, artifactId, artifact }) {
+  if (findSvgPreview(artifact)) {
+    return `/api/v1/creations/${encodeURIComponent(artifactId)}/preview`;
+  }
   if (typeof cell.hasWorkspacePath !== "function") {
     return null;
   }
@@ -111,6 +114,15 @@ async function resolvePreviewImageUrl({ cell, artifactId }) {
   return hasPreview
     ? `/api/v1/creations/${encodeURIComponent(artifactId)}/preview`
     : null;
+}
+
+function findSvgPreview(artifact) {
+  if (artifact?.type !== "image") return null;
+  return artifact.outputs?.find((output) =>
+    output?.kind === "file" &&
+    String(output.language).toLowerCase() === "svg" &&
+    String(output.path).toLowerCase().endsWith(".svg")
+  ) ?? null;
 }
 
 function normalizeText(value) {

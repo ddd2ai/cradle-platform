@@ -29,6 +29,7 @@ function createCell(id = "orders") {
       },
     }),
     appendKnowledge: async () => {},
+    archiveStimuli: async () => {},
     metabolismService: { metabolize: async () => ({ consumed: 1, processing: "summary-only" }) },
     readTasks: async () => tasks,
     processTask: async () => {},
@@ -98,6 +99,97 @@ assert.deepEqual(
     "cell.stable",
   ],
 );
+
+const productionCell = createCell("payments");
+const producedInputs = [];
+let directMetabolismCalls = 0;
+let archivedStimuli = 0;
+productionCell.metabolismService.metabolize = async () => {
+  directMetabolismCalls += 1;
+  return { consumed: 1 };
+};
+productionCell.archiveStimuli = async (items) => {
+  archivedStimuli += items.length;
+};
+productionCell.produceArtifact = async (input) => {
+  producedInputs.push(input);
+  return {
+    artifact: {
+      id: "artifact-payment-spec",
+      type: input.type,
+      outputs: [{ path: "payment-api.md", language: "markdown" }],
+    },
+    saved: { revisionId: "rev-payment-spec" },
+  };
+};
+const productionService = new StimulusCultivationService({
+  engine: { listCells: () => [productionCell], requireCell: () => productionCell },
+});
+const productionResult = await productionService.cultivate({
+  source: { ...source, sourceId: "source-spec", sha256: "spec-hash" },
+  extraction: {
+    status: "extracted",
+    method: "utf8-text-v1",
+    text: "定義付款 API 的輸入、輸出與冪等規則",
+    evidence: { outcome: "sufficient", reason: "decoded" },
+  },
+  artifactType: "spec",
+  explicitCellId: "payments",
+  operationId: "op-spec",
+});
+assert.equal(productionResult.lifeState, "stable");
+assert.equal(productionResult.productionIntent.mode, "metadata");
+assert.equal(producedInputs.length, 1);
+assert.equal(producedInputs[0].type, "spec");
+assert.equal(producedInputs[0].goal, "定義付款 API 的輸入、輸出與冪等規則");
+assert.equal(producedInputs[0].origin.sourceId, "source-spec");
+assert.equal(producedInputs[0].origin.sourceMediaType, "text/plain");
+assert.equal(producedInputs[0].origin.sourceSha256, "spec-hash");
+assert.equal(directMetabolismCalls, 0, "explicit production must not run a second metabolism LLM call");
+assert.equal(archivedStimuli, 1, "the directly produced Stimulus must still be absorbed");
+assert.equal(productionResult.cells[0].artifactEvolution.decision, "created");
+assert.equal(productionResult.cells[0].artifactEvolution.artifactId, "artifact-payment-spec");
+
+const productionCells = [createCell("orders-a"), createCell("orders-b")];
+let multiCellProductionCalls = 0;
+let secondarySummaryCalls = 0;
+for (const candidate of productionCells) {
+  candidate.produceArtifact = async (input) => {
+    multiCellProductionCalls += 1;
+    return {
+      artifact: {
+        id: `artifact-${candidate.id}`,
+        type: input.type,
+        outputs: [{ path: "order-flow.mmd", language: "mermaid" }],
+      },
+      saved: { revisionId: `rev-${candidate.id}` },
+    };
+  };
+  candidate.metabolismService.metabolize = async ({ summaryOnly }) => {
+    assert.equal(summaryOnly, true);
+    secondarySummaryCalls += 1;
+    return { consumed: 1, processing: "summary-only" };
+  };
+}
+const multiCellProduction = await new StimulusCultivationService({
+  engine: {
+    listCells: () => productionCells,
+    requireCell: (cellId) => productionCells.find((candidate) => candidate.id === cellId),
+  },
+}).cultivate({
+  source: { ...source, sourceId: "source-diagram", sha256: "diagram-hash" },
+  extraction: {
+    status: "extracted",
+    method: "utf8-text-v1",
+    text: "Order processing flow between order services",
+    evidence: { outcome: "sufficient", reason: "decoded" },
+  },
+  artifactType: "diagram",
+  operationId: "op-diagram",
+});
+assert.equal(multiCellProduction.cells.length, 2);
+assert.equal(multiCellProductionCalls, 1, "only the primary routed Cell may produce the Artifact");
+assert.equal(secondarySummaryCalls, 1, "secondary routed Cells must absorb without duplicate production");
 
 const attentionCell = createCell();
 const attentionService = new StimulusCultivationService({

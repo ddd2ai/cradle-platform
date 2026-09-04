@@ -485,3 +485,56 @@ commerce Cell 也支付一次 LLM。後續同 slice 的 deterministic refinement
   amplification；下一個 server slice 應量 `llm_calls / unique issue fingerprint`，再決定 primary owner 與
   secondary summary-only／delegation policy。不能用固定只選一個 Cell 換取速度，因為跨 boundary Stimulus
   仍可能具有多個必要 owner。
+
+### 2026-09-04 — 明確 Artifact production stimulus 的單次 LLM 路徑
+
+狀態：`current-state only`。本次沒有保存相同 revision 前的可比較 benchmark，因此不宣稱改善百分比。
+
+目標路徑為 Incubator `[+]` → `POST /api/v1/stimuli/files` → extraction → deterministic Cell routing →
+`StimulusCultivationService` → `ArtifactProductionService`。使用者明確提供 Artifact Type 時，primary Cell 在記錄
+Memory 與歸檔該 Stimulus 後直接進入既有 `Generate → Parse → Normalize → Validate → Repair → Store`；不再先讓
+metabolism 產生另一個 Task 再等待後續週期。secondary Cell 只摘要吸收，不重複生產。
+
+預期 amplification 從每一明確生產要求可能支付 metabolism LLM 加 production LLM，收斂為 primary 的一次
+production LLM。routing 與 Cell 描述仍為 `O(C)`，C 是 Cell 數；單一 Cell 的直接生產 orchestration 為 `O(1)`。
+不可破壞的不變量是：Stimulus/Source provenance 必須進入 Artifact、只有 primary 生產、secondary 仍保存必要
+context、未通過驗證的 output 不得持久化、未指定 Type 時不得猜測或自動生產。
+
+環境：Apple M4 Pro、Darwin arm64、Node v22.23.2。benchmark 使用 5 次 warm-up、40 次正式 sample、單一 Cell、
+固定 10 ms fake provider、fake persistence、無 network、cache 不適用。p50/p95 是 40 次完整 cultivation orchestration
+samples；CPU 與 RSS 是整批量測。
+
+```bash
+npm run benchmark:stimulus-production --workspace=cradle-server
+```
+
+| samples | p50 | p95 | wall | throughput | production calls | metabolism calls | LLM calls / Artifact | CPU | RSS delta |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 40 | 11.113 ms | 11.432 ms | 444.016 ms | 90.087 ops/s | 40 | 0 | 1 | 6.77 ms | 802,816 B |
+
+Correctness evidence：focused tests 驗證明確 Type metadata 與 `/produce` directive 不受 Goal 語言影響、自然語言
+關鍵字不會決定 Type、未知 Type/影片被拒絕、direct production 不呼叫 metabolism、Stimulus 被歸檔、Source 與
+Stimulus provenance 被保留、Artifact completion 會觸發 Creations reconciliation。SVG image 另驗證禁止 script、
+foreignObject、event handler 與外部資源。
+
+限制：fake provider 數據只量 orchestration overhead 與 call amplification，不代表任何真實 LLM latency、token
+throughput、filesystem durability 或網路表現。真實 provider 的 p50/p95 必須用同一組 Goal corpus 分別量測；目前
+最大延遲仍預期來自 production LLM 與 bounded repair，而不是 Type selection。
+
+#### 真實 Codex current-state 驗證與 timeout 缺陷
+
+第一次 live run（operation `op-3817f0a9-b65d-46ac-ab1f-3235af85a37d`）揭露 production 仍使用
+`ai.timeoutSeconds=3600`：從 2026-09-04T09:22:59.752Z 到 10:03:53Z 仍停在 `producing`，超過 40 分鐘後人工
+終止測試 server。這不是成功 sample，也不是 latency 改善；它證明 `/produce` 沒有受到 60 秒 cultivation budget
+約束。修正後一次 production（包含最多一次 validation repair）共用 `timeouts.cultivationSeconds` 的總 deadline，
+剩餘 budget 才傳給每次 `askWithTimeout`，避免兩次呼叫各自取得完整 timeout。
+
+修正後以 110-byte English Goal、明確 `artifactType=spec`、固定 `cell-002` 重跑。operation
+`op-e29dd855-74fa-4bcf-9a81-9368cb2fc8f5` 從 2026-09-04T10:05:44.973Z 到 10:06:19.021Z，在
+34.048 秒完成並建立 `artifact-20260904-180619`；operation context 保留 Type 與 metadata mode，Creations API
+可立即讀到該 Artifact，Source/Stimulus/revision provenance 完整。這是單一 current-state sample，不是 p50/p95。
+
+產物的格式與 lineage gates 通過，但模型在文件內容中自行列出的 supported-type subset 不完整；目前沒有針對該
+spec Goal 的獨立 semantic oracle，因此這筆結果不能證明內容已達 declared-purpose sufficient quality。後續若要自動
+publish 此類規格，必須新增版本化 Quality Contract 與可重現的 catalog-consistency indicator，不能以模型文字流暢度
+或基本 Markdown validation 代替。

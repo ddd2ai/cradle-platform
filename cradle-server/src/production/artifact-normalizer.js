@@ -103,11 +103,19 @@ export class ArtifactNormalizer {
     if (ext === ".java") return "java";
     if (ext === ".js") return "javascript";
     if (ext === ".ts") return "typescript";
+    if (ext === ".py") return "python";
+    if (ext === ".go") return "go";
+    if (ext === ".rs") return "rust";
+    if (ext === ".sh") return "shell";
+    if (ext === ".html" || ext === ".htm") return "html";
+    if (ext === ".css") return "css";
+    if (ext === ".svg") return "svg";
     if (ext === ".md") return "markdown";
     if (ext === ".sql") return "sql";
     if (ext === ".json") return "json";
     if (ext === ".yaml" || ext === ".yml") return "yaml";
     if (ext === ".properties") return "properties";
+    if (path.basename(filePath).toLowerCase() === ".env") return "env";
     if (ext === ".xml") return "xml";
 
     return "text";

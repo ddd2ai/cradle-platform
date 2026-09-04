@@ -5,6 +5,7 @@ import {
   observation,
 } from "../situation/cultivation-quality-policy.js";
 import { StimulusArtifactEvolutionService } from "../production/stimulus-artifact-evolution-service.js";
+import { resolveArtifactProductionRequest } from "../production/artifact-production-request.js";
 import { CellCultivationCoordinator } from "./cell-cultivation-coordinator.js";
 
 const PHASES = Object.freeze({
@@ -13,6 +14,7 @@ const PHASES = Object.freeze({
   stimulating: 42,
   cultivating: 58,
   planning: 68,
+  producing: 76,
   evolving: 76,
   validating: 90,
   stabilizing: 96,
@@ -36,7 +38,14 @@ export class StimulusCultivationService {
     this.activityLogger = activityLogger;
   }
 
-  async cultivate({ source, extraction, explicitCellId = null, operationId, update = () => {} } = {}) {
+  async cultivate({
+    source,
+    extraction,
+    explicitCellId = null,
+    artifactType = null,
+    operationId,
+    update = () => {},
+  } = {}) {
     this.activityLogger?.info("cultivation", "routing.started", {
       operationId,
       sourceId: source.sourceId,
@@ -52,6 +61,11 @@ export class StimulusCultivationService {
       content: extraction.text,
       facts: { sourceName: source.originalName },
     };
+    const productionIntent = resolveArtifactProductionRequest({
+      artifactType,
+      text: extraction.text,
+      sourceName: source.originalName,
+    });
     const routing = selectStimulusTargets({
       stimulus: stimulusDraft,
       cells: descriptors,
@@ -81,7 +95,16 @@ export class StimulusCultivationService {
       sourceId: source.sourceId,
       cellIds,
     });
-    update({ context: { sourceId: source.sourceId, sourceName: source.originalName, cellIds } });
+    update({
+      context: {
+        sourceId: source.sourceId,
+        stimulusId: source.stimulusId,
+        sourceName: source.originalName,
+        artifactType: productionIntent.type ?? null,
+        productionMode: productionIntent.mode ?? null,
+        cellIds,
+      },
+    });
     updatePhase(update, "stimulating");
     const targetProgress = new Map(cellIds.map((cellId) => [cellId, {
       progress: PHASES.stimulating,
@@ -103,13 +126,17 @@ export class StimulusCultivationService {
         lifeState: "growing",
       });
     };
-    const results = await Promise.all(routing.targets.map((target) => {
+    const results = await Promise.all(routing.targets.map((target, index) => {
       const cell = this.engine.requireCell(target.cellId);
       return this.coordinator.run(cell.id, () => this.#cultivateCell({
         cell,
         source,
         extraction,
         target,
+        productionIntent: {
+          ...productionIntent,
+          role: index === 0 ? "primary" : "secondary",
+        },
         operationId,
         update: (patch) => updateTargetProgress(cell.id, patch),
       }));
@@ -120,12 +147,18 @@ export class StimulusCultivationService {
       lifeState: needsAttention ? "needs_attention" : "stable",
       currentStage: needsAttention ? "needs_attention" : "stable",
       routing,
+      productionIntent,
       cells: results,
     };
   }
 
-  async #cultivateCell({ cell, source, extraction, target, operationId, update }) {
-    const policy = evaluateDocumentStimulus({ source, extraction, relevance: target.relevance });
+  async #cultivateCell({ cell, source, extraction, target, productionIntent, operationId, update }) {
+    const policy = applyProductionRequest(
+      evaluateDocumentStimulus({ source, extraction, relevance: target.relevance }),
+      productionIntent,
+    );
+    const directProduction = productionIntent?.role === "primary" &&
+      productionIntent?.decision === "create";
     this.activityLogger?.info("cultivation", "cell.selected", {
       operationId,
       sourceId: source.sourceId,
@@ -169,7 +202,7 @@ export class StimulusCultivationService {
       targetCellIds: [cell.id],
       correlationId: operationId,
       causationId: source.stimulusId,
-      dedupKey: `file:${source.sha256}:${cell.id}`,
+      dedupKey: `file:${source.sha256}:${cell.id}:${productionIntent?.type ?? "observe"}`,
       salience: policy.salience,
       summary: stimulusSummary(source, extraction),
       content: extraction.text,
@@ -182,7 +215,11 @@ export class StimulusCultivationService {
         sha256: source.sha256,
         extractionStatus: extraction.status,
         extractionOutcome: extraction.evidence?.outcome,
-        processing: policy.decision,
+        processing: directProduction && policy.decision !== "needs-attention"
+          ? "direct-production"
+          : policy.decision,
+        productionIntent: productionIntent?.decision ?? "observe",
+        artifactType: productionIntent?.type ?? null,
         relevance: target.relevance,
       },
       notify: false,
@@ -201,28 +238,28 @@ export class StimulusCultivationService {
           stimulusId: stimulus.duplicateOf,
         });
       } else {
-      this.activityLogger?.info("cultivation", "stimulus.duplicate", {
-        operationId,
-        sourceId: source.sourceId,
-        cellId: cell.id,
-        stimulusId: stimulus.duplicateOf,
-      });
-      await cell.lifecycleEventStore.appendLifecycleEvent({
-        type: "stimulus-cultivation",
-        status: "duplicate",
-        stimulusId: stimulus.duplicateOf ?? stimulus.envelope.stimulusId,
-        sourceId: source.sourceId,
-        sourceStimulusId: source.stimulusId,
-        salienceDecision: "deduplicated",
-      });
-      return {
-        cellId: cell.id,
-        stimulusId: stimulus.duplicateOf ?? stimulus.envelope.stimulusId,
-        lifeState: "stable",
-        policy: { ...policy, decision: "deduplicated" },
-        artifactEvolution: { decision: "not-required", reason: "duplicate Stimulus" },
-        qualityDecision: { outcome: "sufficient", lifeState: "stable", duplicate: true },
-      };
+        this.activityLogger?.info("cultivation", "stimulus.duplicate", {
+          operationId,
+          sourceId: source.sourceId,
+          cellId: cell.id,
+          stimulusId: stimulus.duplicateOf,
+        });
+        await cell.lifecycleEventStore.appendLifecycleEvent({
+          type: "stimulus-cultivation",
+          status: "duplicate",
+          stimulusId: stimulus.duplicateOf ?? stimulus.envelope.stimulusId,
+          sourceId: source.sourceId,
+          sourceStimulusId: source.stimulusId,
+          salienceDecision: "deduplicated",
+        });
+        return {
+          cellId: cell.id,
+          stimulusId: stimulus.duplicateOf ?? stimulus.envelope.stimulusId,
+          lifeState: "stable",
+          policy: { ...policy, decision: "deduplicated" },
+          artifactEvolution: { decision: "not-required", reason: "duplicate Stimulus" },
+          qualityDecision: { outcome: "sufficient", lifeState: "stable", duplicate: true },
+        };
       }
     }
     if (!retryingDuplicate) {
@@ -245,11 +282,13 @@ export class StimulusCultivationService {
     await this.#publishCellState(cell, {
       state: "growing",
       progress: PHASES.cultivating,
-      phase: policy.decision === "summary-only" ? "remembering" : "cultivating",
+      phase: directProduction
+        ? "planning"
+        : policy.decision === "summary-only" ? "remembering" : "cultivating",
       operationId,
       stimulusId: stimulus.envelope.stimulusId,
     });
-    updatePhase(update, "cultivating");
+    updatePhase(update, directProduction ? "planning" : "cultivating");
 
     if (policy.decision === "needs-attention") {
       const qualityDecision = decideCultivationQuality(baseEvidence);
@@ -257,8 +296,9 @@ export class StimulusCultivationService {
     }
 
     let memoryRecorded = false;
+    let artifactEvolution = { decision: "not-required", reason: policy.reason };
     try {
-      const beforeTasks = await cell.readTasks();
+      const beforeTasks = directProduction ? [] : await cell.readTasks();
       const beforeTaskIds = new Set(beforeTasks.map((task) => task.id));
       await cell.appendKnowledge(buildKnowledgeRecord({ source, stimulus: stimulus.envelope, extraction }));
       memoryRecorded = true;
@@ -268,22 +308,79 @@ export class StimulusCultivationService {
         cellId: cell.id,
         stimulusId: stimulus.envelope.stimulusId,
       });
-      this.activityLogger?.info("cultivation", "metabolism.started", {
-        operationId,
-        cellId: cell.id,
-        mode: policy.decision,
-      });
-      const metabolism = await cell.metabolismService.metabolize({
-        summaryOnly: policy.decision === "summary-only",
-      });
-      this.activityLogger?.info("cultivation", "metabolism.completed", {
-        operationId,
-        cellId: cell.id,
-        processing: metabolism.processing ?? policy.decision,
-        consumed: metabolism.consumed ?? 0,
-        tasksCreated: metabolism.created ?? 0,
-      });
-      if (policy.decision === "cultivate") {
+      if (directProduction) {
+        await cell.archiveStimuli([stimulus]);
+        this.activityLogger?.info("cultivation", "stimulus.absorbed", {
+          operationId,
+          cellId: cell.id,
+          processing: "direct-production",
+          consumed: 1,
+        });
+        updatePhase(update, "producing");
+        await this.#publishCellState(cell, {
+          progress: PHASES.producing,
+          phase: "producing",
+        });
+        this.activityLogger?.info("cultivation", "artifact.production_started", {
+          operationId,
+          sourceId: source.sourceId,
+          cellId: cell.id,
+          type: productionIntent.type,
+        });
+        const provenance = {
+          mode: "stimulus",
+          stimulusId: stimulus.envelope.stimulusId,
+          sourceId: source.sourceId,
+          sourceStimulusId: source.stimulusId,
+          sourceName: source.originalName,
+          sourceMediaType: source.mediaType,
+          sourceSha256: source.sha256,
+          cellId: cell.id,
+          observedAt: stimulus.envelope.createdAt,
+        };
+        const produced = await cell.produceArtifact({
+          type: productionIntent.type,
+          title: productionIntent.title,
+          goal: productionIntent.goal,
+          origin: {
+            ...provenance,
+            producerCellId: cell.id,
+            targetCellId: cell.id,
+          },
+        });
+        artifactEvolution = {
+          decision: "created",
+          artifactId: produced.artifact.id,
+          revisionId: produced.saved.revisionId ?? null,
+          changedPaths: produced.artifact.outputs.map((output) => output.path),
+          provenance,
+        };
+        this.activityLogger?.info("cultivation", "artifact.production_completed", {
+          operationId,
+          sourceId: source.sourceId,
+          cellId: cell.id,
+          type: productionIntent.type,
+          artifactId: produced.artifact.id,
+          revisionId: produced.saved.revisionId,
+        });
+      } else {
+        this.activityLogger?.info("cultivation", "metabolism.started", {
+          operationId,
+          cellId: cell.id,
+          mode: policy.decision,
+        });
+        const metabolism = await cell.metabolismService.metabolize({
+          summaryOnly: policy.decision === "summary-only",
+        });
+        this.activityLogger?.info("cultivation", "metabolism.completed", {
+          operationId,
+          cellId: cell.id,
+          processing: metabolism.processing ?? policy.decision,
+          consumed: metabolism.consumed ?? 0,
+          tasksCreated: metabolism.created ?? 0,
+        });
+      }
+      if (!directProduction && policy.decision === "cultivate") {
         const newTasks = (await cell.readTasks()).filter(
           (task) => task.status === "pending" && !beforeTaskIds.has(task.id)
         ).slice(0, 1);
@@ -306,17 +403,29 @@ export class StimulusCultivationService {
         operationId,
         sourceId: source.sourceId,
         cellId: cell.id,
-        stage: memoryRecorded ? "metabolism" : "memory",
+        stage: directProduction && memoryRecorded ? "production" : memoryRecorded ? "metabolism" : "memory",
         error: error.message,
       });
       const qualityDecision = decideCultivationQuality([
         ...baseEvidence,
-        gateFailure("memory_recorded", error.message, source.sourceId),
+        gateFailure(
+          directProduction && memoryRecorded ? "artifact_integrity" : "memory_recorded",
+          error.message,
+          source.sourceId,
+        ),
       ]);
-      return await this.#finishCell({ cell, source, stimulus, policy, qualityDecision, artifactEvolution: null });
+      return await this.#finishCell({
+        cell,
+        source,
+        stimulus,
+        policy,
+        qualityDecision,
+        artifactEvolution: directProduction
+          ? { decision: "needs-attention", reason: error.message }
+          : null,
+      });
     }
 
-    let artifactEvolution = { decision: "not-required", reason: policy.reason };
     if (policy.evolveArtifact) {
       updatePhase(update, "evolving");
       await this.#publishCellState(cell, { progress: PHASES.evolving, phase: "evolving" });
@@ -355,7 +464,7 @@ export class StimulusCultivationService {
     const artifactOutcome = artifactEvolution.decision === "needs-attention"
       ? "insufficient_evidence"
       : "sufficient";
-    const provenanceOutcome = artifactEvolution.decision === "evolved" && !artifactEvolution.provenance
+    const provenanceOutcome = ["created", "evolved"].includes(artifactEvolution.decision) && !artifactEvolution.provenance
       ? "insufficient"
       : "sufficient";
     const qualityDecision = decideCultivationQuality([
@@ -491,4 +600,28 @@ function gateFailure(indicator, actual, sourceId) {
     actual,
     evidenceRef: `source:${sourceId}`,
   });
+}
+
+function applyProductionRequest(policy, request) {
+  if (!request || request.decision === "observe") return policy;
+  if (policy.decision === "needs-attention") return policy;
+
+  if (request.role === "secondary") {
+    return {
+      ...policy,
+      decision: "summary-only",
+      activate: false,
+      evolveArtifact: false,
+      reason: "Secondary Cell records the Stimulus without duplicating Artifact production",
+    };
+  }
+
+  return {
+    ...policy,
+    decision: "cultivate",
+    activate: true,
+    evolveArtifact: false,
+    score: Math.max(0.68, policy.score),
+    reason: request.reason,
+  };
 }

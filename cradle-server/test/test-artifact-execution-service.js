@@ -63,6 +63,25 @@ try {
     classifyExecutionStimulus(result) === "signals",
     `Expected signals, got ${classifyExecutionStimulus(result)}`
   );
+
+  await store.saveArtifact({
+    id: "artifact-python",
+    type: "code",
+    title: "Python utility",
+    goal: "Print a greeting",
+    outputs: [{
+      kind: "file",
+      path: "hello.py",
+      language: "python",
+      content: 'print("hello")\n',
+    }],
+  });
+  const unsupportedRuntime = await service.executeArtifact("artifact-python");
+  report(
+    "Code without a registered executor is explicitly skipped instead of reported as failed",
+    unsupportedRuntime.status === "skipped" && /No execution adapter/.test(unsupportedRuntime.stdout),
+    `Expected skipped unsupported adapter, got ${unsupportedRuntime.status}`,
+  );
 } finally {
   await fs.rm(tempDir, { recursive: true, force: true });
 }

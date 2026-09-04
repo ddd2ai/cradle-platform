@@ -8,12 +8,17 @@ export const ARTIFACT_TYPE_POLICIES = {
   },
 
   code: {
-    description: "Source code files.",
+    description: "Source code and the minimum files required by the requested runtime.",
     allowedLanguages: [
       "javascript",
       "typescript",
       "java",
       "python",
+      "go",
+      "rust",
+      "shell",
+      "html",
+      "css",
       "sql",
       "json",
       "yaml",
@@ -26,6 +31,11 @@ export const ARTIFACT_TYPE_POLICIES = {
       ".ts",
       ".java",
       ".py",
+      ".go",
+      ".rs",
+      ".sh",
+      ".html",
+      ".css",
       ".sql",
       ".json",
       ".yaml",
@@ -34,18 +44,14 @@ export const ARTIFACT_TYPE_POLICIES = {
       ".xml",
       ".md",
     ],
-    outputRule: `type=code 時,可以產生原始碼、設定檔、SQL、README,但每個檔案必須是完整可落檔內容。
-
-【Spring Boot 專案必要檔案】
-- pom.xml (Maven 專案描述檔,包含 groupId、artifactId、dependencies)
-- src/main/java/.../Application.java (Spring Boot 啟動類別,包含 @SpringBootApplication 和 main 方法)
-- application.yml 或 application.properties (應用程式設定檔)
-- README.md (專案說明文件)
+    outputRule: `type=code 時，可以產生任意明確要求的程式語言、設定檔與 README，但每個檔案必須是完整可落檔內容。
+只有 Goal 或 Environment 明確要求 Spring Boot 時才套用 Spring Boot 專案結構；不可把 Java、Maven 或 Spring 當成預設技術棧。
 
 【檔案路徑規則】
 - 每個 output.path 必須包含正確副檔名(.java、.xml、.yml、.md 等)
-- Java 檔案必須放在 src/main/java/{package_path}/ 目錄結構下
-- 設定檔必須放在 src/main/resources/ 目錄下
+- 只有 Goal 要求標準 Java 專案時，Java 檔案才放在 src/main/java/{package_path}/
+- 只有 Goal 要求標準 Java 專案時，設定檔才放在 src/main/resources/
+- 其他語言與專案結構必須忠實遵守 Goal，不可套用 Java 目錄慣例
 - 不可使用絕對路徑或 .. 跳出專案目錄
 
 【內容與語言一致性】
@@ -63,6 +69,14 @@ export const ARTIFACT_TYPE_POLICIES = {
       "type=diagram 時，outputs 應優先產生 Mermaid markdown 或 PlantUML，不可產生應用程式原始碼。",
   },
 
+  image: {
+    description: "A directly renderable vector image.",
+    allowedLanguages: ["svg"],
+    allowedExtensions: [".svg"],
+    outputRule:
+      "type=image 目前產生一個可直接渲染的 SVG 圖片。SVG 必須自包含、不得引用外部資源、不得包含 script、foreignObject 或事件處理器。不可用 Markdown 圖片說明冒充圖片 Artifact。",
+  },
+
   sql: {
     description: "SQL script only.",
     allowedLanguages: ["sql"],
@@ -78,6 +92,19 @@ export const ARTIFACT_TYPE_POLICIES = {
     outputRule:
       "type=config 時，outputs 只能產生設定檔。",
   },
+
+  test: {
+    description: "Executable or machine-readable test assets.",
+    allowedLanguages: ["javascript", "typescript", "java", "python", "go", "rust", "shell", "json", "yaml", "markdown"],
+    allowedExtensions: [".js", ".ts", ".java", ".py", ".go", ".rs", ".sh", ".json", ".yaml", ".yml", ".md"],
+    outputRule: "type=test 時，產生符合 Goal 技術環境的測試程式、fixture 或測試說明，不得預設為 Java。",
+  },
+
+  prompt: markdownPolicy("Prompt artifact."),
+  decision: markdownPolicy("Decision record."),
+  research: markdownPolicy("Evidence-backed research document."),
+  spec: markdownPolicy("Specification document."),
+  task: markdownPolicy("Structured task document."),
 
   "executable-java": {
     description: "Single-file executable Java source.",
@@ -130,6 +157,15 @@ public class HelloService {
       "type=generic 時，可以根據需求產生合理 artifact，但仍需保持 outputs 類型一致。",
   },
 };
+
+function markdownPolicy(description) {
+  return {
+    description,
+    allowedLanguages: ["markdown"],
+    allowedExtensions: [".md"],
+    outputRule: "此 Artifact 類型必須產生一份或多份可直接保存的 Markdown 文件，並保留 Goal、假設與證據邊界。",
+  };
+}
 
 export function getArtifactTypePolicy(type = "generic") {
   return ARTIFACT_TYPE_POLICIES[type] ?? ARTIFACT_TYPE_POLICIES.generic;

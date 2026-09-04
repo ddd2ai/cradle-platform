@@ -7,6 +7,7 @@ import {
   activateCell,
   deactivateCell,
   divideCell,
+  fetchArtifactTypes,
   feedCell,
   fuseCells,
   stabilizeCell,
@@ -1005,13 +1006,30 @@ test("File stimulus upload returns the accepted background operation", async () 
   try {
     const file = new Blob(["bounded evidence"], { type: "text/plain" });
     Object.defineProperty(file, "name", { value: "quality notes.txt" });
-    const accepted = await uploadStimulusFile(file);
+    const accepted = await uploadStimulusFile(file, { artifactType: "spec" });
     assert.equal(accepted.operationId, "op-stimulus");
     assert.equal(request.url, "/api/v1/stimuli/files");
     assert.equal(request.options.method, "POST");
     assert.equal(request.options.headers["content-type"], "text/plain");
     assert.equal(request.options.headers["x-cradle-file-name"], "quality%20notes.txt");
+    assert.equal(request.options.headers["x-cradle-artifact-type"], "spec");
     assert.equal(request.options.body, file);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("Artifact capabilities come from the server catalog", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => Response.json({
+    items: [{ id: "code", label: "Code" }, { id: "image", label: "Image" }],
+    selectionAuthority: "explicit",
+  });
+  try {
+    assert.deepEqual(await fetchArtifactTypes(), [
+      { id: "code", label: "Code" },
+      { id: "image", label: "Image" },
+    ]);
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -1032,6 +1050,21 @@ test("Cultivation progress is shown only while work is growing", () => {
   }));
   assert.match(growing, /role="progressbar"/);
   assert.match(growing, /58% · Cultivating/);
+
+  const produced = renderToStaticMarkup(React.createElement(CultivationProgressCard, {
+    operationId: null,
+    acceptedOperation: {
+      operationId: "op-produced",
+      status: "completed",
+      progress: 100,
+      currentStage: "stable",
+      lifeState: "stable",
+      context: { cellIds: ["B01"], sourceName: "api.md" },
+      artifacts: [{ artifactId: "artifact-spec", decision: "created" }],
+    },
+    selectedCell: { id: "B01", name: "B01" },
+  }));
+  assert.match(produced, /Artifact artifact-spec was born/);
 
   const attention = renderToStaticMarkup(React.createElement(CultivationProgressCard, {
     operationId: null,
