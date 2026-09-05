@@ -14,11 +14,16 @@
  */
 
 import { CradleEngine } from "../src/cradle-engine.js";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+
+const testRoot = await fs.mkdtemp(path.join(os.tmpdir(), "cradle-lifecycle-apply-"));
 
 async function testLifecycleApply() {
   console.log("\n=== Lifecycle Apply Safety Layer Test ===\n");
 
-  const engine = new CradleEngine();
+  const engine = new CradleEngine({ projectRoot: testRoot });
   await engine.start();
 
   // Use cell-001
@@ -159,4 +164,4 @@ async function testLifecycleApply() {
   console.log("");
 }
 
-testLifecycleApply().catch(console.error);
+testLifecycleApply().catch(console.error).finally(() => fs.rm(testRoot, { recursive: true, force: true }));

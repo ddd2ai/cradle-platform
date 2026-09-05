@@ -29,8 +29,7 @@ export function useIncubatorFeed() {
     fetchOperations()
       .then((operations) => operations.filter(
         (operation) => operation.type === "stimulus-cultivation" && (
-          !["completed", "failed", "cancelled"].includes(operation.status) ||
-          operation.lifeState === "needs_attention"
+          !["completed", "failed", "cancelled"].includes(operation.status)
         ),
       ))
       .then((operations) => {

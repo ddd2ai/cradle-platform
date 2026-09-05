@@ -259,6 +259,142 @@ test("Observatory separates recorded attention from insufficient evidence", () =
   assert.match(model.attention[1].reason, /Quality gate failed/);
 });
 
+test("Observatory includes needs-attention operations when cell state is stable", () => {
+  const model = buildObservatoryModel(
+    [
+      {
+        cellId: "stable-cell",
+        name: "Stable Cell",
+        cultivation: { state: "stable", updatedAt: "2026-09-05T00:00:00.000Z" },
+        maturity: { percent: 72, sampleSize: 4 },
+        dna: { maturityTrend: [] },
+      },
+    ],
+    [
+      {
+        type: "stimulus-cultivation",
+        lifeState: "needs_attention",
+        status: "completed",
+        updatedAt: "2026-09-05T00:00:10.000Z",
+        context: { cellIds: ["stable-cell"], sourceName: "doc.txt" },
+        result: {
+          cells: [
+            {
+              cellId: "stable-cell",
+              qualityDecision: {
+                gates: [
+                  { indicator: "content_evidence", outcome: "insufficient", actual: "Content parsing failed" },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    ],
+  );
+
+  assert.equal(model.attentionCount, 1);
+  assert.equal(model.attention.length, 1);
+  assert.equal(model.attention[0].cellId, "stable-cell");
+  assert.equal(model.attention[0].label, "Review");
+  assert.equal(model.attention[0].tone, "warn");
+  assert.match(model.attention[0].reason, /Content parsing failed/);
+});
+
+test("Observatory keeps persisted needs-attention operations in the queue", () => {
+  const model = buildObservatoryModel(
+    [
+      {
+        cellId: "stable-cell",
+        name: "Stable Cell",
+        cultivation: { state: "stable", updatedAt: "2026-09-05T00:05:00.000Z" },
+        maturity: { percent: 72, sampleSize: 4 },
+        dna: { maturityTrend: [] },
+      },
+    ],
+    [
+      {
+        type: "stimulus-cultivation",
+        lifeState: "needs_attention",
+        status: "completed",
+        updatedAt: "2026-09-05T00:00:00.000Z",
+        context: { cellIds: ["stable-cell"] },
+      },
+    ],
+  );
+
+  assert.equal(model.attentionCount, 1);
+  assert.equal(model.attention.length, 1);
+  assert.equal(model.attention[0].cellId, "stable-cell");
+});
+
+test("Observatory queues an unrouted needs-attention stimulus", () => {
+  const model = buildObservatoryModel(
+    [{
+      cellId: "cell-a",
+      name: "Cell A",
+      cultivation: { state: "stable", updatedAt: "2026-09-05T00:05:00.000Z" },
+      maturity: { percent: 72, sampleSize: 4 },
+      dna: { maturityTrend: [] },
+    }],
+    [{
+      operationId: "op-unrouted",
+      type: "stimulus-cultivation",
+      lifeState: "needs_attention",
+      status: "completed",
+      context: { sourceName: "order-system.txt", cellIds: [] },
+      result: { routing: { reason: "No deterministic Cell relevance match" } },
+    }],
+  );
+
+  assert.equal(model.attentionCount, 1);
+  assert.equal(model.attention[0].cellId, "operation:op-unrouted");
+  assert.equal(model.attention[0].name, "order-system.txt");
+  assert.equal(model.attention[0].reason, "No deterministic Cell relevance match");
+});
+
+test("Observatory keeps one attention entry when cell already needs attention", () => {
+  const model = buildObservatoryModel(
+    [
+      {
+        cellId: "attention-cell",
+        name: "Attention Cell",
+        cultivation: {
+          state: "needs_attention",
+          updatedAt: "2026-09-05T00:10:00.000Z",
+          attention: { message: "Cultivation reported that intervention is required." },
+        },
+        maturity: { percent: 41, sampleSize: 3 },
+        dna: { maturityTrend: [] },
+      },
+    ],
+    [
+      {
+        type: "stimulus-cultivation",
+        lifeState: "needs_attention",
+        status: "completed",
+        updatedAt: "2026-09-05T00:10:30.000Z",
+        context: { cellIds: ["attention-cell"] },
+        result: {
+          cells: [
+            {
+              cellId: "attention-cell",
+              qualityDecision: {
+                gates: [{ outcome: "insufficient", actual: "duplicate reason" }],
+              },
+            },
+          ],
+        },
+      },
+    ],
+  );
+
+  assert.equal(model.attentionCount, 1);
+  assert.equal(model.attention.length, 1);
+  assert.equal(model.attention[0].cellId, "attention-cell");
+  assert.equal(model.attention[0].reason, "Cultivation reported that intervention is required.");
+});
+
 test("SettingsPage renders the mock Runtime settings", () => {
   const markup = renderToStaticMarkup(React.createElement(SettingsPage));
 

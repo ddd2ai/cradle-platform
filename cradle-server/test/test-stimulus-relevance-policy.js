@@ -19,10 +19,11 @@ assert.deepEqual(
   selectStimulusTargets({ stimulus: {}, cells, explicitCellId: "catalog" }).targets,
   [{ cellId: "catalog", relevance: 1, reason: "explicit user target" }],
 );
-assert.equal(
-  selectStimulusTargets({ stimulus: { content: "unrelated" }, cells }).needsAttention,
-  true,
-);
+const unrelatedRouting = selectStimulusTargets({ stimulus: { content: "unrelated" }, cells });
+assert.equal(unrelatedRouting.needsAttention, false);
+assert.equal(unrelatedRouting.targets.length, 1);
+assert.equal(unrelatedRouting.targets[0].cellId, "catalog");
+assert.match(unrelatedRouting.targets[0].reason, /requires review/);
 assert.equal(
   selectStimulusTargets({ stimulus: { content: "anything" }, cells: [cells[0]] }).targets[0].cellId,
   "orders",

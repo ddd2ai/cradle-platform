@@ -85,11 +85,21 @@ export function selectStimulusTargets(input = {}) {
       needsAttention: false,
     };
   }
+  if (ranked.length > 0) {
+    return {
+      decision: "routed",
+      targets: [{
+        ...ranked[0],
+        reason: "best available Cell; relevance evidence requires review",
+      }],
+      needsAttention: false,
+    };
+  }
   return {
     decision: "needs-attention",
     targets: [],
     needsAttention: true,
-    reason: "no Cell has enough reproducible relevance evidence",
+    reason: "no Cell is available for cultivation",
   };
 }
 

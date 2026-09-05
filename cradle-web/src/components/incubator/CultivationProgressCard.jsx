@@ -21,7 +21,7 @@ export function CultivationProgressCard({
   const elapsed = useElapsedTime(operation);
 
   useEffect(() => {
-    if (!["stable", "cancelled"].includes(view?.tone)) return undefined;
+    if (!["stable", "attention", "cancelled"].includes(view?.tone)) return undefined;
     const timeoutId = window.setTimeout(
       () => onDismiss?.(view.operationId),
       STABLE_CONFIRMATION_MS,

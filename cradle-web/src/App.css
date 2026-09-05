@@ -302,14 +302,26 @@ button:focus-visible { outline: 2px solid #9b8cff; outline-offset: 2px; }
 .chart-cell-selector button.selected { border-color: #46697c; background: #132630; color: #c9dce5; }
 .empty-observation { display: grid; min-height: 265px; padding: 28px; color: #65747d; font-size: 11px; line-height: 1.6; text-align: center; place-items: center; }
 .attention-list { max-height: 280px; overflow: auto; padding: 8px; }
-.attention-list button { display: grid; width: 100%; grid-template-columns: 8px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 12px; border: 0; border-bottom: 1px solid #1f2b33; background: transparent; color: inherit; text-align: left; cursor: pointer; }
-.attention-list button:hover { background: rgba(255, 255, 255, .025); }
-.attention-list button > span:nth-child(2) { display: flex; min-width: 0; flex-direction: column; gap: 4px; }
+.attention-list__item { display: grid; width: 100%; grid-template-columns: 8px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 12px; border-bottom: 1px solid #1f2b33; }
+.attention-list__item.selected, .attention-list__item:hover { background: rgba(255, 255, 255, .025); }
+.attention-list__item > span:nth-child(2) { display: flex; min-width: 0; flex-direction: column; gap: 4px; }
 .attention-list strong { color: #d9e0e4; font-size: 11px; font-weight: 600; }
 .attention-list small { overflow: hidden; color: #687780; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 .attention-marker { width: 6px; height: 6px; border-radius: 50%; background: #8a789e; }
 .attention-marker--warn { background: #dc9b5d; }
 .attention-state { padding: 4px 7px; border: 1px solid #34424b; border-radius: 999px; color: #84929b; font-size: 8px; text-transform: uppercase; }
+.attention-state { background: transparent; cursor: pointer; }
+.attention-state:hover { border-color: #dc9b5d; color: #dc9b5d; }
+.attention-review-detail { display: flex; flex-direction: column; gap: 4px; margin: 0 8px 8px; padding: 10px 12px; border: 1px solid #34424b; color: #9baab2; font-size: 10px; line-height: 1.5; }
+.attention-review-detail strong { color: #d9e0e4; font-size: 11px; }
+.attention-dialog { width: min(520px, 100%); border: 1px solid #344650; border-radius: 16px; background: linear-gradient(145deg, #111e26, #091117 70%); box-shadow: 0 34px 90px rgba(0, 0, 0, .62); }
+.attention-dialog > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding: 24px 26px 20px; border-bottom: 1px solid #293840; }
+.attention-dialog h2 { margin: 5px 0 0; color: #edf2f4; font-size: 20px; font-weight: 620; }
+.attention-dialog > header > button { width: 30px; height: 30px; border: 1px solid #32424b; border-radius: 8px; background: transparent; color: #81909a; font-size: 19px; cursor: pointer; }
+.attention-dialog__body { display: flex; flex-direction: column; gap: 10px; padding: 24px 26px; color: #9baab2; font-size: 11px; line-height: 1.6; }
+.attention-dialog__body > span { color: #dc9b5d; font-size: 9px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.attention-dialog__body p { margin: 0; }
+.attention-dialog footer { display: flex; justify-content: flex-end; padding: 0 26px 24px; }
 .fitness-card, .comparison-card { min-height: 350px; }
 .fitness-plot-shell { position: relative; padding: 20px 22px 14px 42px; }
 .fitness-plot { position: relative; height: 218px; overflow: visible; border-left: 1px solid #43535e; border-bottom: 1px solid #43535e; background: #0a141a; }

@@ -1,26 +1,54 @@
 import { useEffect, useMemo, useState } from "react";
-import { fetchObservatory } from "../api/cradleClient";
+import { fetchObservatory, fetchOperations } from "../api/cradleClient";
 import { buildObservatoryModel } from "../domain/observatoryModel";
 import { useUiPreferences } from "../i18n/UiPreferencesProvider";
 
 export function ObservatoryPage() {
   const { locale, t } = useUiPreferences();
   const [snapshot, setSnapshot] = useState({ cells: [], observedAt: null });
+  const [operations, setOperations] = useState([]);
   const [selectedCellId, setSelectedCellId] = useState(null);
+  const [selectedAttentionId, setSelectedAttentionId] = useState(null);
+  const [attentionDialog, setAttentionDialog] = useState(null);
   const [isCapabilityGuideOpen, setIsCapabilityGuideOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
-    fetchObservatory()
-      .then((data) => {
+    async function loadObservatory() {
+      try {
+        const [observatoryResult, operationResult] = await Promise.allSettled([
+          fetchObservatory(),
+          fetchOperations(),
+        ]);
+
         if (cancelled) return;
-        setSnapshot(data);
-        setSelectedCellId(data.cells?.[0]?.cellId ?? null);
-      })
-      .catch((loadError) => !cancelled && setError(loadError.message))
-      .finally(() => !cancelled && setLoading(false));
+
+        if (observatoryResult.status === "fulfilled") {
+          setSnapshot(observatoryResult.value);
+          setSelectedCellId(observatoryResult.value.cells?.[0]?.cellId ?? null);
+        } else {
+          setError(observatoryResult.reason?.message ?? "Failed to fetch Observatory");
+        }
+
+        if (operationResult.status === "fulfilled") {
+          setOperations(operationResult.value);
+        } else {
+          setOperations([]);
+        }
+      } catch (loadError) {
+        if (!cancelled) {
+          setError(loadError.message);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadObservatory();
     return () => { cancelled = true; };
   }, []);
 
@@ -33,8 +61,25 @@ export function ObservatoryPage() {
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [isCapabilityGuideOpen]);
 
-  const model = useMemo(() => buildObservatoryModel(snapshot.cells ?? []), [snapshot.cells]);
+  useEffect(() => {
+    if (!attentionDialog) return undefined;
+    function closeOnEscape(event) {
+      if (event.key === "Escape") setAttentionDialog(null);
+    }
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [attentionDialog]);
+
+  const model = useMemo(() => buildObservatoryModel(snapshot.cells ?? [], operations), [snapshot.cells, operations]);
   const selected = model.cells.find((cell) => cell.cellId === selectedCellId) ?? model.cells[0];
+
+  function reviewAttention(item) {
+    setSelectedAttentionId(item.cellId);
+    setAttentionDialog(item);
+    if (model.cells.some((cell) => cell.cellId === item.cellId)) {
+      setSelectedCellId(item.cellId);
+    }
+  }
 
   return (
     <section className="platform-page observatory-page">
@@ -73,11 +118,13 @@ export function ObservatoryPage() {
               ) : (
                 <div className="attention-list">
                   {model.attention.map((item) => (
-                    <button type="button" key={item.cellId} onClick={() => setSelectedCellId(item.cellId)}>
+                    <div className={`attention-list__item ${selectedAttentionId === item.cellId ? "selected" : ""}`} key={item.cellId}>
                       <span className={`attention-marker attention-marker--${item.tone}`} />
                       <span><strong>{item.name}</strong><small>{translateAttentionReason(item, t)}</small></span>
-                      <span className="attention-state">{translateStatus(item.label, t)}</span>
-                    </button>
+                      <button type="button" className="attention-state" onClick={() => reviewAttention(item)}>
+                        {translateStatus(item.label, t)}
+                      </button>
+                    </div>
                   ))}
                 </div>
               )}
@@ -113,9 +160,33 @@ export function ObservatoryPage() {
           {isCapabilityGuideOpen && (
             <CapabilityGuideDialog onClose={() => setIsCapabilityGuideOpen(false)} t={t} />
           )}
+          {attentionDialog && (
+            <AttentionDialog item={attentionDialog} onClose={() => setAttentionDialog(null)} t={t} />
+          )}
         </>
       )}
     </section>
+  );
+}
+
+function AttentionDialog({ item, onClose, t }) {
+  return (
+    <div className="observation-guide-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+      <section className="attention-dialog" role="dialog" aria-modal="true" aria-labelledby="attention-dialog-title">
+        <header>
+          <div>
+            <span className="observation-guide-kicker">{t("observatory.attentionQueue")}</span>
+            <h2 id="attention-dialog-title">{item.name}</h2>
+          </div>
+          <button type="button" onClick={onClose} aria-label={t("guide.close")} autoFocus>×</button>
+        </header>
+        <div className="attention-dialog__body">
+          <span>{t("status.attention")}</span>
+          <p>{translateAttentionReason(item, t)}</p>
+        </div>
+        <footer><button type="button" className="primary-button" onClick={onClose}>{t("guide.close")}</button></footer>
+      </section>
+    </div>
   );
 }
 

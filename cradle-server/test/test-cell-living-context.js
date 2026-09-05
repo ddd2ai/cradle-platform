@@ -37,6 +37,8 @@ async function createTestCell(
     id,
     provider: "ollama",
     model: "test-model",
+    projectRoot: tmpBase,
+    cellsDir: path.join(tmpBase, "cells"),
   });
 
   await cell.prepareCellDirectory();
@@ -76,6 +78,8 @@ async function restartTestCell(id) {
     id,
     provider: "ollama",
     model: "test-model",
+    projectRoot: tmpBase,
+    cellsDir: path.join(tmpBase, "cells"),
   });
 
   await cell.prepareCellDirectory();
@@ -482,6 +486,8 @@ try {
       id: "cell-no-profile",
       provider: "ollama",
       model: "test-model",
+      projectRoot: tmpBase,
+      cellsDir: path.join(tmpBase, "cells"),
     });
 
     await cell.prepareCellDirectory();
