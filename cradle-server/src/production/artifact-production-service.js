@@ -73,18 +73,7 @@ export class ArtifactProductionService {
     timeoutMs = getAiTimeoutMs(),
     signal = null,
   } = {}) {
-    // 不使用完整的 Memory Context,避免 Vision 干擾 Goal
-    // 只提供必要的技術環境資訊
-    const environment = await this.cell.readEnvironment();
-
-    const context = `
-# Environment (Technical Stack Reference Only)
-
-${environment}
-
-Note: This environment is for reference only. 
-The actual artifact MUST follow the current Goal, not any past Vision or History.
-`;
+    const context = await buildFoundationContext(this.cell);
 
     const prompt = buildProductionPrompt({
       type,
@@ -147,17 +136,7 @@ The actual artifact MUST follow the current Goal, not any past Vision or History
     timeoutMs = getAiTimeoutMs(),
     signal = null,
   } = {}) {
-    // Repair 時同樣只提供必要環境,避免干擾
-    const environment = await this.cell.readEnvironment();
-
-    const context = `
-# Environment (Technical Stack Reference Only)
-
-${environment}
-
-Note: This environment is for reference only. 
-The actual artifact MUST follow the Original Goal, not any past Vision or History.
-`;
+    const context = await buildFoundationContext(this.cell);
 
     const prompt = buildArtifactRepairPrompt({
       type,
@@ -274,18 +253,7 @@ ${incremental.changePlan.changes.map((change) => `- ${change.path}`).join("\n")}
 
     const fullyHydratedArtifact = await this.store.readArtifact(artifactId);
 
-    const environment = await this.cell.readEnvironment();
-
-    const context = `
-# Environment (Technical Stack Reference Only)
-
-${environment}
-
-Note:
-The actual artifact MUST follow the Original Goal.
-Do not replace the goal with the repair task.
-The repair task only describes what needs to be fixed.
-`;
+    const context = await buildFoundationContext(this.cell);
 
     const prompt = buildArtifactExecutionRepairPrompt({
       type: fullyHydratedArtifact.type,
@@ -517,6 +485,39 @@ This production changed how the cell transforms intent into artifact.
       saved,
     };
   }
+}
+
+async function buildFoundationContext(cell) {
+  const [vision, environment, dnaDefinition, dnaFactors] = await Promise.all([
+    typeof cell.readVision === "function" ? cell.readVision() : "",
+    typeof cell.readEnvironment === "function" ? cell.readEnvironment() : "",
+    typeof cell.readDNADefinition === "function" ? cell.readDNADefinition() : [],
+    typeof cell.readDNAFactors === "function" ? cell.readDNAFactors() : [],
+  ]);
+
+  return `
+# Vision (Evolution Direction)
+
+${vision}
+
+# Environment (Technical Constraints)
+
+${environment}
+
+# DNA Definition (Capability Guidance)
+
+${JSON.stringify(dnaDefinition, null, 2)}
+
+# DNA Factors (Maturity Guidance)
+
+${JSON.stringify(dnaFactors, null, 2)}
+
+Rules:
+- The current Goal defines the requested capability and remains authoritative for scope.
+- Environment is binding for technology, runtime, architecture, and persistence decisions unless the Goal explicitly conflicts with it.
+- Vision guides the long-term direction and must influence compatible design choices without replacing the Goal.
+- DNA Definition and DNA Factors guide how the Cell designs, decomposes, validates, and evolves the result.
+`;
 }
 
 function remainingBudgetMs(deadline) {

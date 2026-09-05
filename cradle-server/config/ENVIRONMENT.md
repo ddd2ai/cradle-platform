@@ -3,4 +3,4 @@
 - Java 21
 - Spring Boot
 - Hexagonal Architecture
-- MariaDB
+- H2 DB

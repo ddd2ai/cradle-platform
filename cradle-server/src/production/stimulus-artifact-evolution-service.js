@@ -29,7 +29,7 @@ export class StimulusArtifactEvolutionService {
 
     const artifact = await cell.artifactStore.readArtifact(selection.artifactId);
     assertArtifactMutationActor({ artifact, actorCellId: cell.id, expectedOwnerCellId: cell.id });
-    const environment = String(await cell.readEnvironment?.() ?? "").slice(0, 8_000);
+    const foundationContext = await buildFoundationContext(cell);
     const evaluatedAt = this.now().toISOString();
     const task = { title: stimulus.summary, content: stimulus.content };
     const lookupKeys = buildArtifactImpactLookupKeys({ task });
@@ -68,7 +68,7 @@ export class StimulusArtifactEvolutionService {
       stimulus,
       source,
       allowedOutputs,
-      environment,
+      foundationContext,
       evaluatedAt,
     });
     const proposal = await requestProposal({ cell, prompt, signal });
@@ -171,7 +171,7 @@ function isCodeOutput(output) {
     !/\.(md|markdown|txt|xml|yml|yaml|json|sql)$/iu.test(String(output.path ?? ""));
 }
 
-function buildEvolutionPrompt({ artifact, stimulus, source, allowedOutputs, environment, evaluatedAt }) {
+function buildEvolutionPrompt({ artifact, stimulus, source, allowedOutputs, foundationContext, evaluatedAt }) {
   return `You are proposing a bounded Artifact evolution from one verified Stimulus.
 
 The Artifact goal is immutable. Only exact replacements inside the allowed outputs are permitted.
@@ -190,7 +190,19 @@ ${requiresCodeMutation(artifact)
 Artifact: ${JSON.stringify({ id: artifact.id, title: artifact.title, goal: artifact.goal })}
 Source: ${JSON.stringify({ sourceId: source.sourceId, name: source.originalName, mediaType: source.mediaType })}
 Stimulus: ${JSON.stringify({ summary: stimulus.summary, content: stimulus.content })}
-Environment at evaluation time ${evaluatedAt}: ${environment || "(not declared)"}
+Foundation settings at evaluation time ${evaluatedAt}. Apply Environment as a technical constraint, Vision as direction, and DNA settings as capability and maturity guidance; do not replace the current Stimulus goal:
+${foundationContext || "(not declared)"}
 Allowed outputs: ${JSON.stringify(allowedOutputs)}
 `;
+}
+
+async function buildFoundationContext(cell) {
+  const [vision, environment, dnaDefinition, dnaFactors] = await Promise.all([
+    typeof cell.readVision === "function" ? cell.readVision() : "",
+    typeof cell.readEnvironment === "function" ? cell.readEnvironment() : "",
+    typeof cell.readDNADefinition === "function" ? cell.readDNADefinition() : [],
+    typeof cell.readDNAFactors === "function" ? cell.readDNAFactors() : [],
+  ]);
+
+  return JSON.stringify({ vision, environment, dnaDefinition, dnaFactors });
 }
