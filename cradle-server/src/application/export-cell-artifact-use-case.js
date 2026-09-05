@@ -18,6 +18,7 @@ export class ExportCellArtifactUseCase {
     }
 
     try {
+      await cell.artifactStore?.materializeArtifact(artifactId);
       const filename = `${artifactId}.zip`;
       const body = await cell.exportWorkspaceZip({
         rootName: artifactId,
@@ -30,6 +31,7 @@ export class ExportCellArtifactUseCase {
         headers: {
           "content-type": "application/zip",
           "content-disposition": `attachment; filename="${filename}"`,
+          "cache-control": "no-store",
         },
         body,
       };

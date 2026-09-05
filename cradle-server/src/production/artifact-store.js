@@ -500,6 +500,21 @@ export class ArtifactStore {
     return await this.#hydrateArtifact(artifactId, manifest);
   }
 
+  async materializeArtifact(artifactId) {
+    const artifact = await this.readArtifact(artifactId);
+    const outputsDir = path.join(this.resolveProductionDir(artifactId), "outputs");
+
+    for (const output of artifact.outputs ?? []) {
+      if (output?.kind !== "file" || !output.path) continue;
+      await writeTextFile(
+        safeOutputPath(outputsDir, output.path),
+        String(output.content ?? ""),
+      );
+    }
+
+    return artifact;
+  }
+
   async readArtifactManifest(artifactId) {
     const manifest = await this.#readManifest(artifactId);
     if (!manifest) {

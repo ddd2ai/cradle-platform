@@ -38,23 +38,25 @@ export function createArtifactChangePlan({
   const seenPaths = new Set();
   const changes = rawChanges.map((rawChange) => {
     const path = String(rawChange?.path ?? "").trim();
-    if (!allowed.has(path)) {
+    if (!allowed.has(path) && !allowed.has("*")) {
       throw new Error(`ArtifactChangePlan path is outside allowed impact: ${path}`);
     }
+    assertOutputPath(path);
     if (seenPaths.has(path)) {
       throw new Error(`ArtifactChangePlan contains duplicate path: ${path}`);
     }
     seenPaths.add(path);
 
     const output = outputByPath.get(path);
-    if (!output) {
-      throw new Error(`ArtifactChangePlan output does not exist: ${path}`);
-    }
+    const isNewOutput = !output;
 
     const rawReplacements = Array.isArray(rawChange.replacements)
       ? rawChange.replacements
       : [];
-    if (rawReplacements.length === 0) {
+    if (isNewOutput && typeof rawChange.content !== "string") {
+      throw new Error(`ArtifactChangePlan new output requires content: ${path}`);
+    }
+    if (!isNewOutput && rawReplacements.length === 0) {
       throw new Error(`ArtifactChangePlan requires replacements: ${path}`);
     }
     if (rawReplacements.length > MAX_REPLACEMENTS_PER_FILE) {
@@ -63,7 +65,7 @@ export function createArtifactChangePlan({
       );
     }
 
-    let candidate = String(output.content ?? "");
+    let candidate = isNewOutput ? rawChange.content : String(output.content ?? "");
     const replacements = rawReplacements.map((replacement, index) => {
       const before = String(replacement?.before ?? "");
       const after = String(replacement?.after ?? "");
@@ -86,9 +88,10 @@ export function createArtifactChangePlan({
 
     return {
       path,
-      baseContentHash: hashArtifactContent(output.content),
+      ...(isNewOutput ? { newOutput: true } : { baseContentHash: hashArtifactContent(output.content) }),
       resultContentHash: hashArtifactContent(candidate),
       replacements,
+      ...(isNewOutput ? { content: candidate, language: rawChange.language } : {}),
     };
   });
 
@@ -139,6 +142,17 @@ export function applyArtifactChangePlan({ artifact, changePlan } = {}) {
     return { ...output, content };
   });
 
+  for (const change of changePlan.changes) {
+    if (!change.newOutput) continue;
+    outputs.push({
+      kind: "file",
+      path: change.path,
+      language: change.language || inferLanguage(change.path),
+      content: change.content,
+    });
+    changedPaths.push(change.path);
+  }
+
   if (changedPaths.length !== changePlan.changes.length) {
     throw new Error("ArtifactChangePlan did not apply every change");
   }
@@ -185,4 +199,15 @@ function countOccurrences(content, needle) {
     offset = found + needle.length;
   }
   return count;
+}
+
+function assertOutputPath(outputPath) {
+  if (!outputPath || outputPath.startsWith("/") || outputPath.split("/").includes("..")) {
+    throw new Error(`ArtifactChangePlan output path is invalid: ${outputPath}`);
+  }
+}
+
+function inferLanguage(filePath) {
+  const extension = String(filePath).toLowerCase().split(".").pop();
+  return { java: "java", js: "javascript", ts: "typescript", py: "python", go: "go", rs: "rust" }[extension] ?? "text";
 }

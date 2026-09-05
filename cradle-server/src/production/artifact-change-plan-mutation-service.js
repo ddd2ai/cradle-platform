@@ -108,6 +108,7 @@ export class ArtifactChangePlanMutationService {
     currentRevision,
   }) {
     let repairContext = await this.store.readArtifactRepairContext(artifactId);
+    const manifest = await this.store.readArtifactManifest(artifactId);
     if (
       repairContext.artifact?.revision?.revisionId !== currentRevision.revisionId
     ) {
@@ -116,9 +117,15 @@ export class ArtifactChangePlanMutationService {
         mode: "manifest-fallback",
       };
     }
+    const existingOutputPaths = new Set(
+      (manifest.outputs ?? []).map((output) => output.path)
+    );
+    const currentOutputPaths = outputPaths.filter((outputPath) =>
+      existingOutputPaths.has(outputPath)
+    );
 
     if (repairContext.mode === "head") {
-      const lookupKeys = outputPaths.flatMap((outputPath) =>
+      const lookupKeys = currentOutputPaths.flatMap((outputPath) =>
         buildArtifactImpactTerms({ kind: "file", path: outputPath })
       );
       const candidates = await this.store.findArtifactImpactCandidates(
@@ -126,7 +133,7 @@ export class ArtifactChangePlanMutationService {
         lookupKeys,
         { revisionId: currentRevision.revisionId }
       );
-      const outputPathSet = new Set(outputPaths);
+      const outputPathSet = new Set(currentOutputPaths);
       const candidateOutputs = (candidates.outputs ?? []).filter(
         (output) => outputPathSet.has(output.path)
       );
@@ -138,7 +145,7 @@ export class ArtifactChangePlanMutationService {
           head: repairContext.artifact,
           outputs: await this.store.readArtifactOutputs(
             artifactId,
-            outputPaths,
+            currentOutputPaths,
             { manifest: { outputs: candidateOutputs } }
           ),
           mode: "head",
@@ -146,15 +153,15 @@ export class ArtifactChangePlanMutationService {
       }
     }
 
-    const manifest = repairContext.mode === "manifest-fallback"
+    const fallbackManifest = repairContext.mode === "manifest-fallback"
       ? repairContext.artifact
-      : await this.store.readArtifactManifest(artifactId);
+      : manifest;
     return {
-      head: buildArtifactRepairHead(manifest),
+      head: buildArtifactRepairHead(fallbackManifest),
       outputs: await this.store.readArtifactOutputs(
         artifactId,
-        outputPaths,
-        { manifest }
+        currentOutputPaths,
+        { manifest: fallbackManifest }
       ),
       mode: "manifest-fallback",
     };

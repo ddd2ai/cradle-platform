@@ -227,7 +227,7 @@ export class StimulusCultivationService {
       targetCellIds: [cell.id],
       correlationId: operationId,
       causationId: source.stimulusId,
-      dedupKey: `file:${source.sha256}:${cell.id}:${productionIntent?.type ?? "observe"}`,
+      dedupKey: `file:${source.sourceId}:${cell.id}:${productionIntent?.type ?? "observe"}`,
       salience: policy.salience,
       summary: stimulusSummary(source, extraction),
       content: extraction.text,

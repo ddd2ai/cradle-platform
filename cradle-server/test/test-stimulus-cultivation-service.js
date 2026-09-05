@@ -4,12 +4,14 @@ import { StimulusCultivationService } from "../src/application/stimulus-cultivat
 function createCell(id = "orders") {
   const states = [];
   const lifecycleEvents = [];
+  const stimulusInputs = [];
   let tasks = [];
   return {
     id,
     name: id,
     states,
     lifecycleEvents,
+    stimulusInputs,
     artifactStore: {
       listArtifactSummaries: async () => ({ artifacts: [], errors: [] }),
     },
@@ -20,14 +22,17 @@ function createCell(id = "orders") {
       states.push(state);
       return state;
     },
-    writeStimulus: async (input) => ({
+    writeStimulus: async (input) => {
+      stimulusInputs.push(input);
+      return {
       envelope: {
         ...input,
         schemaVersion: 1,
         stimulusId: "stimulus-1",
         createdAt: "2026-09-02T12:00:00.000Z",
       },
-    }),
+      };
+    },
     appendKnowledge: async () => {},
     archiveStimuli: async () => {},
     produceArtifact: async (input) => ({
@@ -94,6 +99,7 @@ assert.equal(stable.cells[0].artifactEvolution.decision, "created");
 assert.equal(cell.states.at(-1).state, "stable");
 assert.equal(cell.lifecycleEvents[0].sourceId, "source-1");
 assert.equal(cell.lifecycleEvents[0].sourceStimulusId, "source-stimulus-1");
+assert.equal(cell.stimulusInputs[0].dedupKey, "file:source-1:orders:document");
 assert.equal(events.some((event) => event.type === "cell.cultivation.updated"), true);
 assert.equal(updates.some((patch) => patch.currentStage === "stabilizing"), true);
 assert.deepEqual(

@@ -44,7 +44,15 @@ export class StimulusArtifactEvolutionService {
       scope: "artifact",
       candidatePaths: indexed.available && indexed.paths.length > 0 ? indexed.paths : undefined,
     });
-    if (located.paths.length === 0) {
+    const requiredCodePaths = requiresCodeMutation(artifact)
+      ? artifact.outputs
+        .filter((output) => isCodeOutput(output))
+        .map((output) => output.path)
+      : [];
+    const mutationPaths = requiredCodePaths.length > 0
+      ? requiredCodePaths
+      : located.paths;
+    if (mutationPaths.length === 0) {
       return {
         decision: "needs-attention",
         artifactId: artifact.id,
@@ -53,17 +61,17 @@ export class StimulusArtifactEvolutionService {
     }
 
     const allowedOutputs = artifact.outputs
-      .filter((output) => located.paths.includes(output.path))
+      .filter((output) => mutationPaths.includes(output.path))
       .map((output) => ({ ...output, content: String(output.content ?? "").slice(0, 20_000) }));
-    const raw = await cell.askWithTimeout(buildEvolutionPrompt({
+    const prompt = buildEvolutionPrompt({
       artifact,
       stimulus,
       source,
       allowedOutputs,
       environment,
       evaluatedAt,
-    }), getAiTimeoutMs(), { signal });
-    const proposal = parseLooseJsonObject(raw?.text ?? raw?.answer ?? raw ?? "{}");
+    });
+    const proposal = await requestProposal({ cell, prompt, signal });
     throwIfAborted(signal);
     if (proposal.decision === "no-change" || !Array.isArray(proposal.changes) || proposal.changes.length === 0) {
       return {
@@ -85,7 +93,7 @@ export class StimulusArtifactEvolutionService {
     const changePlan = createArtifactChangePlan({
       artifact,
       proposal,
-      allowedPaths: located.paths,
+      allowedPaths: [...mutationPaths, "*"],
       provenance,
     });
     throwIfAborted(signal);
@@ -99,6 +107,29 @@ export class StimulusArtifactEvolutionService {
       provenance,
     };
   }
+}
+
+async function requestProposal({ cell, prompt, signal }) {
+  let lastError = null;
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const retryInstruction = attempt === 0
+        ? ""
+        : "Previous response was not valid JSON. Return only one valid JSON object with no markdown or trailing text.";
+      const raw = await cell.askWithTimeout(
+        `${prompt}\n${retryInstruction}`,
+        getAiTimeoutMs(),
+        { signal },
+      );
+      return parseLooseJsonObject(raw?.text ?? raw?.answer ?? raw ?? "{}");
+    } catch (error) {
+      lastError = error;
+      throwIfAborted(signal);
+    }
+  }
+
+  throw lastError;
 }
 
 function selectArtifactCandidate({ stimulus, artifacts }) {
@@ -131,6 +162,15 @@ function tokenize(values) {
   return new Set(values.join("\n").toLowerCase().match(/[\p{L}\p{N}_$.-]{3,}/gu) ?? []);
 }
 
+function requiresCodeMutation(artifact) {
+  return artifact.type === "code";
+}
+
+function isCodeOutput(output) {
+  return output?.kind === "file" &&
+    !/\.(md|markdown|txt|xml|yml|yaml|json|sql)$/iu.test(String(output.path ?? ""));
+}
+
 function buildEvolutionPrompt({ artifact, stimulus, source, allowedOutputs, environment, evaluatedAt }) {
   return `You are proposing a bounded Artifact evolution from one verified Stimulus.
 
@@ -139,10 +179,13 @@ Return JSON only. If evidence does not require a change, return {"decision":"no-
 Otherwise return {"decision":"change","summary":"...","changes":[{"path":"...","replacements":[{"before":"exact existing text","after":"replacement"}]}]}.
 
 Rules:
-- Do not add paths or change authoritative IDs, ownership, goal, or provenance.
-- Every before value must occur exactly once.
+- New source files may be added as outputs when the requested change requires a new module or package. Provide complete content and language instead of replacements for them.
+- Existing files use exact replacements; every before value must occur exactly once.
 - Change no more than 3 files and use no more than 8 replacements per file.
 - Preserve unrelated behavior.
+${requiresCodeMutation(artifact)
+    ? "- This is a feature stimulus for a code Artifact. At least one allowed source-code file (not README, migration, or configuration) must be changed."
+    : ""}
 
 Artifact: ${JSON.stringify({ id: artifact.id, title: artifact.title, goal: artifact.goal })}
 Source: ${JSON.stringify({ sourceId: source.sourceId, name: source.originalName, mediaType: source.mediaType })}
